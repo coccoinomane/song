@@ -1,0 +1,552 @@
+C ==============
+C = IMPORTANT! =
+C ==============
+C	I modified D1MACH so that it works with a 64bit iMac running Max Os X Lion.
+C   I guess this is pretty standard, in the sense that double precision numbers
+C	have 16 digits of precision, 8 bytes, and go up to ~1e308.
+*DECK D1MACH
+      DOUBLE PRECISION FUNCTION D1MACH (I)
+C***BEGIN PROLOGUE  D1MACH
+C***PURPOSE  Return floating point machine dependent constants.
+C***LIBRARY   SLATEC
+C***CATEGORY  R1
+C***TYPE      DOUBLE PRECISION (R1MACH-S, D1MACH-D)
+C***KEYWORDS  MACHINE CONSTANTS
+C***AUTHOR  Fox, P. A., (Bell Labs)
+C           Hall, A. D., (Bell Labs)
+C           Schryer, N. L., (Bell Labs)
+C***DESCRIPTION
+C
+C   D1MACH can be used to obtain machine-dependent parameters for the
+C   local machine environment.  It is a function subprogram with one
+C   (input) argument, and can be referenced as follows:
+C
+C        D = D1MACH(I)
+C
+C   where I=1,...,5.  The (output) value of D above is determined by
+C   the (input) value of I.  The results for various values of I are
+C   discussed below.
+C
+C   D1MACH( 1) = B**(EMIN-1), the smallest positive magnitude.
+C   D1MACH( 2) = B**EMAX*(1 - B**(-T)), the largest magnitude.
+C   D1MACH( 3) = B**(-T), the smallest relative spacing.
+C   D1MACH( 4) = B**(1-T), the largest relative spacing.
+C   D1MACH( 5) = LOG10(B)
+C
+C   Assume double precision numbers are represented in the T-digit,
+C   base-B form
+C
+C              sign (B**E)*( (X(1)/B) + ... + (X(T)/B**T) )
+C
+C   where 0 .LE. X(I) .LT. B for I=1,...,T, 0 .LT. X(1), and
+C   EMIN .LE. E .LE. EMAX.
+C
+C   The values of B, T, EMIN and EMAX are provided in I1MACH as
+C   follows:
+C   I1MACH(10) = B, the base.
+C   I1MACH(14) = T, the number of base-B digits.
+C   I1MACH(15) = EMIN, the smallest exponent E.
+C   I1MACH(16) = EMAX, the largest exponent E.
+C
+C   To alter this function for a particular environment, the desired
+C   set of DATA statements should be activated by removing the C from
+C   column 1.  Also, the values of D1MACH(1) - D1MACH(4) should be
+C   checked for consistency with the local operating system.
+C
+C***REFERENCES  P. A. Fox, A. D. Hall and N. L. Schryer, Framework for
+C                 a portable library, ACM Transactions on Mathematical
+C                 Software 4, 2 (June 1978), pp. 177-188.
+C***ROUTINES CALLED  XERMSG
+C***REVISION HISTORY  (YYMMDD)
+C   750101  DATE WRITTEN
+C   890213  REVISION DATE from Version 3.2
+C   891214  Prologue converted to Version 4.0 format.  (BAB)
+C   900315  CALLs to XERROR changed to CALLs to XERMSG.  (THJ)
+C   900618  Added DEC RISC constants.  (WRB)
+C   900723  Added IBM RS 6000 constants.  (WRB)
+C   900911  Added SUN 386i constants.  (WRB)
+C   910710  Added HP 730 constants.  (SMR)
+C   911114  Added Convex IEEE constants.  (WRB)
+C   920121  Added SUN -r8 compiler option constants.  (WRB)
+C   920229  Added Touchstone Delta i860 constants.  (WRB)
+C   920501  Reformatted the REFERENCES section.  (WRB)
+C   920625  Added CONVEX -p8 and -pd8 compiler option constants.
+C           (BKS, WRB)
+C   930201  Added DEC Alpha and SGI constants.  (RWC and WRB)
+C***END PROLOGUE  D1MACH
+C
+C
+
+	DOUBLE PRECISION DMACH(5)
+	INTEGER I
+
+C   Values for a 64bit iMac running Max Os X Lion - obtained from the F90
+C   version of D1MACH that uses new builtin functions such as HUGE,
+C   MINEXPONENT, DIGITS and RADIX
+	DATA DMACH(1) / 2.22507D-308 /
+	DATA DMACH(2) / 1.79769D+308 /
+	DATA DMACH(3) / 1.11022D-16 /
+	DATA DMACH(4) / 2.22045D-16 /
+	DATA DMACH(5) / 0.30103D0 /
+
+	IF ((I.GT.5) .or. (I.LT.1)) THEN
+      WRITE (*, FMT = 9000)
+9000     FORMAT ('1ERROR    1 IN D1MACH - I OUT OF BOUNDS')
+      STOP
+	END IF
+
+	D1MACH = DMACH(I)
+	RETURN
+C
+	END
+
+
+
+*DECK DRC3JM
+      SUBROUTINE DRC3JM (L1, L2, L3, M1, M2MIN, M2MAX, THRCOF, NDIM,
+     +   IER)
+C***BEGIN PROLOGUE  DRC3JM
+C***PURPOSE  Evaluate the 3j symbol g(M2) = (L1 L2   L3  )
+C                                           (M1 M2 -M1-M2)
+C            for all allowed values of M2, the other parameters
+C            being held fixed.
+C***LIBRARY   SLATEC
+C***CATEGORY  C19
+C***TYPE      DOUBLE PRECISION (RC3JM-S, DRC3JM-D)
+C***KEYWORDS  3J COEFFICIENTS, 3J SYMBOLS, CLEBSCH-GORDAN COEFFICIENTS,
+C             RACAH COEFFICIENTS, VECTOR ADDITION COEFFICIENTS,
+C             WIGNER COEFFICIENTS
+C***AUTHOR  Gordon, R. G., Harvard University
+C           Schulten, K., Max Planck Institute
+C***DESCRIPTION
+C
+C *Usage:
+C
+C        DOUBLE PRECISION L1, L2, L3, M1, M2MIN, M2MAX, THRCOF(NDIM)
+C        INTEGER NDIM, IER
+C
+C        CALL DRC3JM (L1, L2, L3, M1, M2MIN, M2MAX, THRCOF, NDIM, IER)
+C
+C *Arguments:
+C
+C     L1 :IN      Parameter in 3j symbol.
+C
+C     L2 :IN      Parameter in 3j symbol.
+C
+C     L3 :IN      Parameter in 3j symbol.
+C
+C     M1 :IN      Parameter in 3j symbol.
+C
+C     M2MIN :OUT  Smallest allowable M2 in 3j symbol.
+C
+C     M2MAX :OUT  Largest allowable M2 in 3j symbol.
+C
+C     THRCOF :OUT Set of 3j coefficients generated by evaluating the
+C                 3j symbol for all allowed values of M2.  THRCOF(I)
+C                 will contain g(M2MIN+I-1), I=1,2,...,M2MAX-M2MIN+1.
+C
+C     NDIM :IN    Declared length of THRCOF in calling program.
+C
+C     IER :OUT    Error flag.
+C                 IER=0 No errors.
+C                 IER=1 Either L1.LT.ABS(M1) or L1+ABS(M1) non-integer.
+C                 IER=2 ABS(L1-L2).LE.L3.LE.L1+L2 not satisfied.
+C                 IER=3 L1+L2+L3 not an integer.
+C                 IER=4 M2MAX-M2MIN not an integer.
+C                 IER=5 M2MAX less than M2MIN.
+C                 IER=6 NDIM less than M2MAX-M2MIN+1.
+C
+C *Description:
+C
+C     Although conventionally the parameters of the vector addition
+C  coefficients satisfy certain restrictions, such as being integers
+C  or integers plus 1/2, the restrictions imposed on input to this
+C  subroutine are somewhat weaker. See, for example, Section 27.9 of
+C  Abramowitz and Stegun or Appendix C of Volume II of A. Messiah.
+C  The restrictions imposed by this subroutine are
+C       1. L1.GE.ABS(M1) and L1+ABS(M1) must be an integer;
+C       2. ABS(L1-L2).LE.L3.LE.L1+L2;
+C       3. L1+L2+L3 must be an integer;
+C       4. M2MAX-M2MIN must be an integer, where
+C          M2MAX=MIN(L2,L3-M1) and M2MIN=MAX(-L2,-L3-M1).
+C  If the conventional restrictions are satisfied, then these
+C  restrictions are met.
+C
+C     The user should be cautious in using input parameters that do
+C  not satisfy the conventional restrictions. For example, the
+C  the subroutine produces values of
+C       g(M2) = (0.75 1.50   1.75  )
+C               (0.25  M2  -0.25-M2)
+C  for M2=-1.5,-0.5,0.5,1.5 but none of the symmetry properties of the
+C  3j symbol, set forth on page 1056 of Messiah, is satisfied.
+C
+C     The subroutine generates g(M2MIN), g(M2MIN+1), ..., g(M2MAX)
+C  where M2MIN and M2MAX are defined above. The sequence g(M2) is
+C  generated by a three-term recurrence algorithm with scaling to
+C  control overflow. Both backward and forward recurrence are used to
+C  maintain numerical stability. The two recurrence sequences are
+C  matched at an interior point and are normalized from the unitary
+C  property of 3j coefficients and Wigner's phase convention.
+C
+C    The algorithm is suited to applications in which large quantum
+C  numbers arise, such as in molecular dynamics.
+C
+C***REFERENCES  1. Abramowitz, M., and Stegun, I. A., Eds., Handbook
+C                  of Mathematical Functions with Formulas, Graphs
+C                  and Mathematical Tables, NBS Applied Mathematics
+C                  Series 55, June 1964 and subsequent printings.
+C               2. Messiah, Albert., Quantum Mechanics, Volume II,
+C                  North-Holland Publishing Company, 1963.
+C               3. Schulten, Klaus and Gordon, Roy G., Exact recursive
+C                  evaluation of 3j and 6j coefficients for quantum-
+C                  mechanical coupling of angular momenta, J Math
+C                  Phys, v 16, no. 10, October 1975, pp. 1961-1970.
+C               4. Schulten, Klaus and Gordon, Roy G., Semiclassical
+C                  approximations to 3j and 6j coefficients for
+C                  quantum-mechanical coupling of angular momenta,
+C                  J Math Phys, v 16, no. 10, October 1975,
+C                  pp. 1971-1988.
+C               5. Schulten, Klaus and Gordon, Roy G., Recursive
+C                  evaluation of 3j and 6j coefficients, Computer
+C                  Phys Comm, v 11, 1976, pp. 269-278.
+C***ROUTINES CALLED  D1MACH, XERMSG
+C***REVISION HISTORY  (YYMMDD)
+C   750101  DATE WRITTEN
+C   880515  SLATEC prologue added by G. C. Nielson, NBS; parameters
+C           HUGE and TINY revised to depend on D1MACH.
+C   891229  Prologue description rewritten; other prologue sections
+C           revised; MMATCH (location of match point for recurrences)
+C           removed from argument list; argument IER changed to serve
+C           only as an error flag (previously, in cases without error,
+C           it returned the number of scalings); number of error codes
+C           increased to provide more precise error information;
+C           program comments revised; SLATEC error handler calls
+C           introduced to enable printing of error messages to meet
+C           SLATEC standards. These changes were done by D. W. Lozier,
+C           M. A. McClain and J. M. Smith of the National Institute
+C           of Standards and Technology, formerly NBS.
+C   910415  Mixed type expressions eliminated; variable C1 initialized;
+C           description of THRCOF expanded. These changes were done by
+C           D. W. Lozier.
+C***END PROLOGUE  DRC3JM
+C
+      INTEGER NDIM, IER
+      DOUBLE PRECISION L1, L2, L3, M1, M2MIN, M2MAX, THRCOF(NDIM)
+C
+      INTEGER I, INDEX, LSTEP, N, NFIN, NFINP1, NFINP2, NFINP3, NLIM,
+     +        NSTEP2
+      DOUBLE PRECISION A1, A1S, C1, C1OLD, C2, CNORM, D1MACH, DV, EPS,
+     +                 HUGE, M2, M3, NEWFAC, OLDFAC, ONE, RATIO, SIGN1,
+     +                 SIGN2, SRHUGE, SRTINY, SUM1, SUM2, SUMBAC,
+     +                 SUMFOR, SUMUNI, THRESH, TINY, TWO, X, X1, X2, X3,
+     +                 Y, Y1, Y2, Y3, ZERO
+C
+      DATA  ZERO,EPS,ONE,TWO /0.0D0,0.01D0,1.0D0,2.0D0/
+C
+C***FIRST EXECUTABLE STATEMENT  DRC3JM
+C  Debug
+C       print*, "PARAMETERS FOR FUNCTION DRC3JM"
+C       print*, "L1", L1
+C       print*, "L2", L2
+C       print*, "L3", L3  
+C       print*, "M1", M1
+C       print*, "NDIM", NDIM
+
+
+      IER=0
+C  HUGE is the square root of one twentieth of the largest floating
+C  point number, approximately.
+C
+C
+C =============
+C = Important =
+C =============
+C The function D1MACH 
+      HUGE = SQRT(D1MACH(2)/20.0D0)
+C       HUGE = SQRT(1.0D308/20.0D0)
+      SRHUGE = SQRT(HUGE)
+      TINY = 1.0D0/HUGE
+      SRTINY = 1.0D0/SRHUGE
+C
+C     MMATCH = ZERO
+C
+C
+C  Check error conditions 1, 2, and 3.
+      IF((L1-ABS(M1)+EPS.LT.ZERO).OR.
+     +   (MOD(L1+ABS(M1)+EPS,ONE).GE.EPS+EPS))THEN
+         IER=1
+		 print*, "Exited with ier = ", IER
+C          CALL XERMSG('SLATEC','DRC3JM','L1-ABS(M1) less than zero or '//
+C      +      'L1+ABS(M1) not integer.',IER,1)
+         RETURN
+      ELSEIF((L1+L2-L3.LT.-EPS).OR.(L1-L2+L3.LT.-EPS).OR.
+     +   (-L1+L2+L3.LT.-EPS))THEN
+         IER=2
+		 print*, "Exited with ier = ", IER
+C          CALL XERMSG('SLATEC','DRC3JM','L1, L2, L3 do not satisfy '//
+C      +      'triangular condition.',IER,1)
+         RETURN
+      ELSEIF(MOD(L1+L2+L3+EPS,ONE).GE.EPS+EPS)THEN
+         IER=3
+		 print*, "Exited with ier = ", IER
+C          CALL XERMSG('SLATEC','DRC3JM','L1+L2+L3 not integer.',IER,1)
+C          RETURN
+      ENDIF
+C
+C
+C  Limits for M2
+      M2MIN = MAX(-L2,-L3-M1)
+      M2MAX = MIN(L2,L3-M1)
+C  Debug
+C       print *, "M2MIN = ", M2MIN
+C       print *, "M2MAX = ", M2MAX      
+C
+C  Check error condition 4.
+      IF(MOD(M2MAX-M2MIN+EPS,ONE).GE.EPS+EPS)THEN
+         IER=4
+		 print*, "Exited with ier = ", IER
+C          CALL XERMSG('SLATEC','DRC3JM','M2MAX-M2MIN not integer.',IER,1)
+C          RETURN
+      ENDIF
+      IF(M2MIN.LT.M2MAX-EPS)   GO TO 20
+      IF(M2MIN.LT.M2MAX+EPS)   GO TO 10
+C
+C  Check error condition 5.
+      IER=5
+	  print*, "Exited with ier = ", IER
+C      CALL XERMSG('SLATEC','DRC3JM','M2MIN greater than M2MAX.',IER,1)
+      RETURN
+C
+C
+C  This is reached in case that M2 and M3 can take only one value.
+   10 CONTINUE
+C     MSCALE = 0
+      THRCOF(1) = (-ONE) ** INT(ABS(L2-L3-M1)+EPS) /
+     1 SQRT(L1+L2+L3+ONE)
+      RETURN
+C
+C  This is reached in case that M1 and M2 take more than one value.
+   20 CONTINUE
+C     MSCALE = 0
+      NFIN = INT(M2MAX-M2MIN+ONE+EPS)
+      IF(NDIM-NFIN)   21, 23, 23
+C
+C  Check error condition 6.
+   21 IER = 6
+	  print*, "Exited with ier = ", IER
+C       CALL XERMSG('SLATEC','DRC3JM','Dimension of result array for '//
+C      +            '3j coefficients too small.',IER,1)
+      RETURN
+C
+C
+C
+C  Start of forward recursion from M2 = M2MIN
+C
+   23 M2 = M2MIN
+      THRCOF(1) = SRTINY
+      NEWFAC = 0.0D0
+      C1 = 0.0D0
+      SUM1 = TINY
+C
+C
+      LSTEP = 1
+   30 LSTEP = LSTEP + 1
+      M2 = M2 + ONE
+      M3 = - M1 - M2
+C
+C
+      OLDFAC = NEWFAC
+      A1 = (L2-M2+ONE) * (L2+M2) * (L3+M3+ONE) * (L3-M3)
+      NEWFAC = SQRT(A1)
+C
+C
+      DV = (L1+L2+L3+ONE)*(L2+L3-L1) - (L2-M2+ONE)*(L3+M3+ONE)
+     1                               - (L2+M2-ONE)*(L3-M3-ONE)
+C
+      IF(LSTEP-2)  32, 32, 31
+C
+   31 C1OLD = ABS(C1)
+   32 C1 = - DV / NEWFAC
+C
+      IF(LSTEP.GT.2)   GO TO 60
+C
+C
+C  If M2 = M2MIN + 1, the third term in the recursion equation vanishes,
+C  hence
+C
+      X = SRTINY * C1
+      THRCOF(2) = X
+      SUM1 = SUM1 + TINY * C1*C1
+      IF(LSTEP.EQ.NFIN)   GO TO 220
+      GO TO 30
+C
+C
+   60 C2 = - OLDFAC / NEWFAC
+C
+C  Recursion to the next 3j coefficient
+      X = C1 * THRCOF(LSTEP-1) + C2 * THRCOF(LSTEP-2)
+      THRCOF(LSTEP) = X
+      SUMFOR = SUM1
+      SUM1 = SUM1 + X*X
+      IF(LSTEP.EQ.NFIN)   GO TO 100
+C
+C  See if last unnormalized 3j coefficient exceeds SRHUGE
+C
+      IF(ABS(X).LT.SRHUGE)   GO TO 80
+C
+C  This is reached if last 3j coefficient larger than SRHUGE,
+C  so that the recursion series THRCOF(1), ... , THRCOF(LSTEP)
+C  has to be rescaled to prevent overflow
+C
+C     MSCALE = MSCALE + 1
+      DO 70 I=1,LSTEP
+      IF(ABS(THRCOF(I)).LT.SRTINY)   THRCOF(I) = ZERO
+   70 THRCOF(I) = THRCOF(I) / SRHUGE
+      SUM1 = SUM1 / HUGE
+      SUMFOR = SUMFOR / HUGE
+      X = X / SRHUGE
+C
+C
+C  As long as ABS(C1) is decreasing, the recursion proceeds towards
+C  increasing 3j values and, hence, is numerically stable.  Once
+C  an increase of ABS(C1) is detected, the recursion direction is
+C  reversed.
+C
+   80 IF(C1OLD-ABS(C1))   100, 100, 30
+C
+C
+C  Keep three 3j coefficients around MMATCH for comparison later
+C  with backward recursion values.
+C
+  100 CONTINUE
+C     MMATCH = M2 - 1
+      NSTEP2 = NFIN - LSTEP + 3
+      X1 = X
+      X2 = THRCOF(LSTEP-1)
+      X3 = THRCOF(LSTEP-2)
+C
+C  Starting backward recursion from M2MAX taking NSTEP2 steps, so
+C  that forwards and backwards recursion overlap at the three points
+C  M2 = MMATCH+1, MMATCH, MMATCH-1.
+C
+      NFINP1 = NFIN + 1
+      NFINP2 = NFIN + 2
+      NFINP3 = NFIN + 3
+      THRCOF(NFIN) = SRTINY
+      SUM2 = TINY
+C
+C
+C
+      M2 = M2MAX + TWO
+      LSTEP = 1
+  110 LSTEP = LSTEP + 1
+      M2 = M2 - ONE
+      M3 = - M1 - M2
+      OLDFAC = NEWFAC
+      A1S = (L2-M2+TWO) * (L2+M2-ONE) * (L3+M3+TWO) * (L3-M3-ONE)
+      NEWFAC = SQRT(A1S)
+      DV = (L1+L2+L3+ONE)*(L2+L3-L1) - (L2-M2+ONE)*(L3+M3+ONE)
+     1                               - (L2+M2-ONE)*(L3-M3-ONE)
+      C1 = - DV / NEWFAC
+      IF(LSTEP.GT.2)   GO TO 120
+C
+C  If M2 = M2MAX + 1 the third term in the recursion equation vanishes
+C
+      Y = SRTINY * C1
+      THRCOF(NFIN-1) = Y
+      IF(LSTEP.EQ.NSTEP2)   GO TO 200
+      SUMBAC = SUM2
+      SUM2 = SUM2 + Y*Y
+      GO TO 110
+C
+  120 C2 = - OLDFAC / NEWFAC
+C
+C  Recursion to the next 3j coefficient
+C
+      Y = C1 * THRCOF(NFINP2-LSTEP) + C2 * THRCOF(NFINP3-LSTEP)
+C
+      IF(LSTEP.EQ.NSTEP2)   GO TO 200
+C
+      THRCOF(NFINP1-LSTEP) = Y
+      SUMBAC = SUM2
+      SUM2 = SUM2 + Y*Y
+C
+C
+C  See if last 3j coefficient exceeds SRHUGE
+C
+      IF(ABS(Y).LT.SRHUGE)   GO TO 110
+C
+C  This is reached if last 3j coefficient larger than SRHUGE,
+C  so that the recursion series THRCOF(NFIN), ... , THRCOF(NFIN-LSTEP+1)
+C  has to be rescaled to prevent overflow.
+C
+C     MSCALE = MSCALE + 1
+      DO 111 I=1,LSTEP
+      INDEX = NFIN - I + 1
+      IF(ABS(THRCOF(INDEX)).LT.SRTINY)
+     1  THRCOF(INDEX) = ZERO
+  111 THRCOF(INDEX) = THRCOF(INDEX) / SRHUGE
+      SUM2 = SUM2 / HUGE
+      SUMBAC = SUMBAC / HUGE
+C
+      GO TO 110
+C
+C
+C
+C  The forward recursion 3j coefficients X1, X2, X3 are to be matched
+C  with the corresponding backward recursion values Y1, Y2, Y3.
+C
+  200 Y3 = Y
+      Y2 = THRCOF(NFINP2-LSTEP)
+      Y1 = THRCOF(NFINP3-LSTEP)
+C
+C
+C  Determine now RATIO such that YI = RATIO * XI  (I=1,2,3) holds
+C  with minimal error.
+C
+      RATIO = ( X1*Y1 + X2*Y2 + X3*Y3 ) / ( X1*X1 + X2*X2 + X3*X3 )
+      NLIM = NFIN - NSTEP2 + 1
+C
+      IF(ABS(RATIO).LT.ONE)   GO TO 211
+C
+      DO 210 N=1,NLIM
+  210 THRCOF(N) = RATIO * THRCOF(N)
+      SUMUNI = RATIO * RATIO * SUMFOR + SUMBAC
+      GO TO 230
+C
+  211 NLIM = NLIM + 1
+      RATIO = ONE / RATIO
+      DO 212 N=NLIM,NFIN
+  212 THRCOF(N) = RATIO * THRCOF(N)
+      SUMUNI = SUMFOR + RATIO*RATIO*SUMBAC
+      GO TO 230
+C
+  220 SUMUNI = SUM1
+C
+C
+C  Normalize 3j coefficients
+C
+  230 CNORM = ONE / SQRT((L1+L1+ONE) * SUMUNI)
+C
+C  Sign convention for last 3j coefficient determines overall phase
+C
+      SIGN1 = SIGN(ONE,THRCOF(NFIN))
+      SIGN2 = (-ONE) ** INT(ABS(L2-L3-M1)+EPS)
+      IF(SIGN1*SIGN2)  235,235,236
+  235 CNORM = - CNORM
+C
+  236 IF(ABS(CNORM).LT.ONE)   GO TO 250
+C
+      DO 240 N=1,NFIN
+  240 THRCOF(N) = CNORM * THRCOF(N)
+      RETURN
+C
+  250 THRESH = TINY / ABS(CNORM)
+      DO 251 N=1,NFIN
+      IF(ABS(THRCOF(N)).LT.THRESH)   THRCOF(N) = ZERO
+  251 THRCOF(N) = CNORM * THRCOF(N)
+C
+C
+C
+      RETURN
+      END
