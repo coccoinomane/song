@@ -322,7 +322,7 @@ extern "C" {
 
   /* Generic coupling coefficient, obtained as the product of two 3j-symbols */
   int coupling_general (
-    int l2, int l3, int m1,
+    int l2, int l3, int m1, int F,
     double * three_j_000, /* should be preallocated with at least l2_max doubles */
     double * three_j_mmm, /* should be preallocated with at least m1_max doubles */
     int * l1_min, int * l1_max,

@@ -630,10 +630,10 @@ int perturb2_indices_of_perturbs(
     ppt2->m[index_m] = ppr2->m[index_m];
 
 
-
-  /* Count source types and assign corresponding indices.  Also set
-  the flags has_cmb and has_lss. */
+  /* Count source types and assign corresponding indices (index_type).  Also set the flags has_cmb and has_lss,
+  and count the CMB fields (temperature, E-modes, B-modes...) that are needed using index_pf.  */
   int index_type = 0;
+  int index_pf = 0;
   ppt2->has_cmb = _FALSE_;
   ppt2->has_lss = _FALSE_;
 
@@ -649,6 +649,11 @@ int perturb2_indices_of_perturbs(
 
     ppt2->index_tp2_T = index_type;                  /* The first moment of the hierarchy is the monopole l=0, m=0 */
     index_type += ppt2->n_sources_T;                 /* Make space for l>0 moments of the hierarchy */
+
+    /* Increment the number of CMB fields to consider */
+    strcpy (ppt2->pf_labels[index_pf], "t");
+    ppt2->field_parity[index_pf] = _EVEN_;
+    ppt2->index_pf_t = index_pf++;
     
   }
   else {
@@ -669,6 +674,11 @@ int perturb2_indices_of_perturbs(
     ppt2->index_tp2_E = index_type;
     index_type += ppt2->n_sources_E;
 
+    /* Increment the number of CMB fields to consider */
+    strcpy (ppt2->pf_labels[index_pf], "e");
+    ppt2->field_parity[index_pf] = _EVEN_;
+    ppt2->index_pf_e = index_pf++;
+
 
     // *** B-MODES ***
     ppt2->has_source_B = _TRUE_;
@@ -680,6 +690,11 @@ int perturb2_indices_of_perturbs(
     ppt2->index_tp2_B = index_type;
     index_type += ppt2->n_sources_B;
 
+    /* Increment the number of CMB fields to consider */
+    strcpy (ppt2->pf_labels[index_pf], "b");
+    ppt2->field_parity[index_pf] = _ODD_;
+    ppt2->index_pf_b = index_pf++;
+
   }
   else {
     ppt2->has_source_E = _FALSE_;
@@ -689,7 +704,8 @@ int perturb2_indices_of_perturbs(
 
   /* Set the size of the sources to be stored */
   ppt2->tp2_size = index_type;
-
+  ppt2->pf_size = index_pf;
+  
   if (ppt2->perturbations2_verbose > 1) {
     printf ("     * will compute tp2_size=%d source terms ( ", ppt2->tp2_size);
     if (ppt2->has_cmb_temperature == _TRUE_) printf ("T=%d ", ppt2->n_sources_T);
@@ -1182,15 +1198,35 @@ int perturb2_get_lm_lists (
 
   /* Compute and store the more general coupling coefficients given by
   
-      (-1)^m * (2*l+1) * ( l1   l2  l ) * (  l1   l2   l  )
-                         ( 0    0   0 )   (  m1   m2  -m  )
+        prefactor * (-1)^m * (2*l+1) * ( l1   l2  l3  ) * (  l1   l2  l3  )
+                                       ( 0    F   -F  )   (  m1   m2  -m  )
 
-  in the array ppt2->coupling_coefficients[lm][l1][m1-m1_min][l2]. They are
-  exactly equivalent to a product of two Clebsch-Gordan coefficients.
-
-  These coefficients usually multiply two first-order perturbations
-  delta_l1*delta_l2. They are used to obtain the quadratic part of the
-  delta_tilde transformation. */
+  for F=0 (intensity) and F=2 (E and B-mode polarisation) in the arrays
+  ppt2->coupling_coefficients[index_pf][lm][l1][m1-m1_min][l2], where index_pf
+  refers to the considered field (T,E,B...). Without considering the prefactor,
+  the coupling coefficients are exactly equivalent to a product of two
+  Clebsch-Gordan coefficients.
+  
+  The prefactor for the B,E,T fields can be read, respectively, from Eqs. 3.6,
+  3.7 and 3.9 of arXiv:1401.3296, namely:
+  
+        prefactor(B) = +i^(L+1)
+        prefactor(E) = -i^L
+        prefactor(T) = 0.5 * i^L
+  
+  where L=l3-l1-l2. For the even-parity fields (T and E) L is always even, while
+  for the odd-parity ones (B) it is odd. Therefore, the prefactors are always
+  real-valued. The polarisation prefactors are 1 insteaed of 1/2 because both E and
+  B-modes contribute. 
+  
+  These coefficients are needed for the "delta_tilde" transformation that absorbs the
+  redshift term of Boltzmann equation in the polarised case (see Sec. 3.1 of
+  arXiv:1401.3296 and Hunag and Vernizzi 2013a). The coefficients always multiply two
+  first-order perturbations (Eqs. 3.6, 3.7 and 3.9 of arXiv:1401.3296):
+    delta_T(l1)*delta_T(l2) in the case of the temperature, and
+    delta_T(l1)*delta_E(l2) in the case of the both E and B-modes.
+  Note that there is no delta_B because we neglect the first-order B-modes. 
+  */
   
   /* We compute the coupling coefficients only up to ppr2->l_max_los_quadratic, because
   this is the maximum multipoles we are gonna consider for the delta_tilde transformation.
@@ -1210,37 +1246,42 @@ int perturb2_get_lm_lists (
   long int counter = 0;
   
   /* Allocate memory for the coupling coefficients */
-  class_alloc (ppt2->coupling_coefficients, n_multipoles*sizeof(double***), ppt2->error_message);
+  class_alloc (ppt2->coupling_coefficients, ppt2->pf_size*sizeof(double****), ppt2->error_message);
   
-  for (int l=0; l <= ppt2->largest_l; ++l) {
-    for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+  for (int index_pf=0; index_pf < ppt2->pf_size; ++index_pf) {
+
+    class_alloc (ppt2->coupling_coefficients[index_pf], n_multipoles*sizeof(double***), ppt2->error_message);
   
-      int m = ppr2->m[index_m];
+    for (int l=0; l <= ppt2->largest_l; ++l) {
+      for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
   
-      class_alloc (ppt2->coupling_coefficients[lm(l,m)],
-                   l1_size*sizeof(double**),
-                   ppt2->error_message);
-      
-      for (int l1=0; l1 <= ppt2->l1_max; ++l1) {
+        int m = ppr2->m[index_m];
   
-        class_alloc (ppt2->coupling_coefficients[lm(l,m)][l1],
-                     m1_size*sizeof(double*),
+        class_alloc (ppt2->coupling_coefficients[index_pf][lm(l,m)],
+                     l1_size*sizeof(double**),
                      ppt2->error_message);
+      
+        for (int l1=0; l1 <= ppt2->l1_max; ++l1) {
   
-        for (int m1=m1_min; m1 <= m1_max; ++m1) {
-  
-          class_calloc (ppt2->coupling_coefficients[lm(l,m)][l1][m1-m1_min],
-                       l2_size,
-                       sizeof(double),
+          class_alloc (ppt2->coupling_coefficients[index_pf][lm(l,m)][l1],
+                       m1_size*sizeof(double*),
                        ppt2->error_message);
   
-          counter += l2_size;        
+          for (int m1=m1_min; m1 <= m1_max; ++m1) {
 
-        } // end of for m1
-      } // end of for l1
-    } // end of for m
-  } // end of for l
+            class_calloc (ppt2->coupling_coefficients[index_pf][lm(l,m)][l1][m1-m1_min],
+                         l2_size,
+                         sizeof(double),
+                         ppt2->error_message);
   
+            counter += l2_size;        
+
+          } // end of for m1
+        } // end of for l1
+      } // end of for m
+    } // end of for l
+  } // end of for T,E,B...
+    
   if (ppt2->perturbations2_verbose > 1)
     printf ("     * allocated %ld doubles for the coupling coefficients\n", counter);
   
@@ -1256,63 +1297,109 @@ int perturb2_get_lm_lists (
   for (int l2=0; l2 < l_size_max; ++l2)
     class_alloc (temp[l2], l_size_max*sizeof(double), ppt2->error_message);
   
-  /* Compute the coupling coefficients */      
-  for (int l2=0; l2 <= ppt2->l2_max; ++l2) {
-    for (int l3=0; l3 <= ppt2->largest_l; ++l3) {
-      for (int m1=m1_min; m1 <= m1_max; ++m1) {
+  /* Compute the coupling coefficients */
+  for (int index_pf=0; index_pf < ppt2->pf_size; ++index_pf) {
+    
+    /* Determine the spin of the considered field, and the overall prefactor. These are determined using
+    Eqs. 3.6, 3.7 and 3.9 of arXiv:1401.3296. We will include the sign-factor (i^L and i^(L+1)) later. */
+    int F;
+    double prefactor;
+    
+    if ((ppt2->has_source_T == _TRUE_) && (index_pf == ppt2->index_pf_t)) {
+      F = 0;
+      prefactor = -0.5;
+    }
+    else if ((ppt2->has_source_E == _TRUE_) && (index_pf == ppt2->index_pf_e)) {
+      F = 2;
+      prefactor = -1;
+    }
+    else if ((ppt2->has_source_B == _TRUE_) && (index_pf == ppt2->index_pf_b)) {
+      F = 2;
+      prefactor = +1;
+    }
+    else 
+      class_stop (ppt2->error_message, "mumble mumble, what is index_pf=(%d,%s)?",
+        index_pf, ppt2->pf_labels[index_pf]);
+      
+    for (int l2=0; l2 <= ppt2->l2_max; ++l2) {
+      for (int l3=0; l3 <= ppt2->largest_l; ++l3) {
 
-        /* m1 must always be smaller than l1, whose upper limit is l2+l3 */
-        if (abs(m1)>l2+l3)
+        /* The absolute value of F must be always smaller than l2 and l3. This means
+        that the polarisation coefficient vanishes for for l2<2 and l3<2. */
+        if ((l2<abs(F)) || (l3<abs(F)))
           continue;
 
-        /* Compute the following coefficients for all values of l1 and m2: 
+        for (int m1=m1_min; m1 <= m1_max; ++m1) {
 
-        i^(l3-l1-l2) * (-1)^m3 * (2*l3+1) * ( l1   l2  l3 ) * (  l1   l2      l3  )
-                                            ( 0    0    0 )   (  m1   m2  -m1-m2  ) */
+          /* m1 must always be smaller than l1, whose upper limit is l2+l3 */
+          if (abs(m1)>l2+l3)
+            continue;
 
-        int l1_min_3j, l1_max_3j;
-        int m2_min_3j, m2_max_3j;
+          /* Compute the following coefficients for all values of l1 and m2: 
 
-        class_call (coupling_general(
-                      l2, l3, m1,
-                      three_j_000,
-                      three_j_mmm,
-                      &l1_min_3j, &l1_max_3j, /* out, allowed l values */
-                      &m2_min_3j, &m2_max_3j, /* out, allowed m values */
-                      temp,
-                      ppt2->error_message),
-          ppt2->error_message,
-          ppt2->error_message);
+          i^(l3-l1-l2) * (-1)^m3 * (2*l3+1) * ( l1  l2  l3 ) * (  l1   l2      l3  )
+                                              (  0   S  -S )   (  m1   m2  -m1-m2  ) */
+          int l1_min_3j, l1_max_3j;
+          int m2_min_3j, m2_max_3j;
 
-        /* Fill the coupling coefficient array, but only for the allowed values of l2 and m1 */
-        for (int l1=0; l1 <= ppt2->l1_max; ++l1) {
-          for (int index_m=0; index_m <= ppr2->index_m_max[l3]; ++index_m) {
+          class_call (coupling_general(
+                        l2, l3, m1, F,
+                        three_j_000,
+                        three_j_mmm,
+                        &l1_min_3j, &l1_max_3j, /* out, allowed l values */
+                        &m2_min_3j, &m2_max_3j, /* out, allowed m values */
+                        temp,
+                        ppt2->error_message),
+            ppt2->error_message,
+            ppt2->error_message);
 
-            /* What we need is
-
-            i^(l3-l1-l2) * (-1)^m3 * (2*l3+1) * ( l1   l2  l3 ) * (  l1   l2      l3  )
-                                                ( 0    0    0 )   (  m1   m3-m1  -m3  ) ,
-        
-            for all values of l1 and m3. We obtain it from what we have computed above by
-            defining m2=m3-m1 => m3=m1+m2. */
-            int m3 = ppr2->m[index_m];
-            int m2 = m3-m1;
-
-            /* Skip those configurations outside the triangular region and with abs(M)>L */
-            if ((l1<l1_min_3j) || (l1>l1_max_3j) || (m2<m2_min_3j) || (m2>m2_max_3j))
+          /* Fill the coupling coefficient array, but only for the allowed values of l2 and m1 */
+          for (int l1=0; l1 <= ppt2->l1_max; ++l1) {
+            
+            /* For even-parity fields (T and E), we skip the configurations where l1+l2+l3 is odd;
+            for odd-parity (B) fields, we skip the configurations where l1+l2+l3 is even */
+            int L = l3-l1-l2;
+                        
+            if ( ((L%2==0) && (ppt2->field_parity[index_pf]==_ODD_))
+              || ((L%2!=0) && (ppt2->field_parity[index_pf]==_EVEN_)) )
               continue;
+
+            /* For even-parity fields, the sign-factor is i^L. For sign-parity ones, it is i^(L+1).
+            In both cases, the exponent is even (see above), so that the sign-factor is real-valued */
+            if (ppt2->field_parity[index_pf]==_EVEN_)
+              prefactor *= alternating_sign (abs(L)/2);
+            else
+              prefactor *= alternating_sign (abs(L+1)/2);
+          
+            for (int index_m=0; index_m <= ppr2->index_m_max[l3]; ++index_m) {
+
+              /* What we need is
+
+              prefactor * (-1)^m3 * (2*l3+1) * ( l1  l2  l3 ) * (  l1   l2      l3  )
+                                               (  0   S  -S )   (  m1   m3-m1  -m3  ) ,
+        
+              for all values of l1 and m3. We obtain it from what we have computed above by
+              defining m2=m3-m1 => m3=m1+m2. */            
+              int m3 = ppr2->m[index_m];
+              int m2 = m3-m1;
+
+              /* Skip those configurations outside the triangular region, and those with abs(M)>L */
+              if ((l1<l1_min_3j) || (l1>l1_max_3j) || (m2<m2_min_3j) || (m2>m2_max_3j))
+                continue;
             
-            ppt2->coupling_coefficients[lm(l3,m3)][l1][m1-m1_min][l2] = temp[l1-l1_min_3j][m2-m2_min_3j];
+              ppt2->coupling_coefficients[index_pf]
+                [lm(l3,m3)][l1][m1-m1_min][l2] = prefactor * temp[l1-l1_min_3j][m2-m2_min_3j];
             
-            /* Debug - print out the values stored in ppt2->coupling_coefficients. */
-            // printf ("C(l1=%d,l2=%d,l3=%d,m1=%d,m2=%d,m3=%d)=%g\n",
-            //   l1, l2, l3, m1, m2, m3, ppt2->coupling_coefficients[lm(l3,m3)][l1][m1-m1_min][l2]);
+              /* Debug - print out the values stored in ppt2->coupling_coefficients. */
+              // printf ("C(l1=%d,l2=%d,l3=%d,m1=%d,m2=%d,m3=%d,F=%d)=%g\n",
+              //   l1, l2, l3, m1, m2, m3, F, ppt2->coupling_coefficients[index_bf][lm(l3,m3)][l1][m1-m1_min][l2]);
             
-          } // end of for m1
-        } // end of for l2
-      } // end of for l1
-    } // end of for m
-  } // end of for l
+            } // end of for m1
+          } // end of for l2
+        } // end of for l1
+      } // end of for m
+    } // end of for l
+  } // end of for T,E,B...
   
   /* Free memory */
   free (three_j_000);
@@ -2538,7 +2625,7 @@ int perturb2_timesampling_for_sources (
 
     double k_min = ppt2->k[0];
     double k_max = ppt2->k[ppt2->k_size-1];
-    printf("     * sources k1 and k2 sampling: %d times in the range k=(%g,%g), k/k_eq=(%g,%g)\n",
+    printf(" -> sources k1 and k2 sampling: %d times in the range k=(%.4g,%.4g), k/k_eq=(%.4g,%.4g)\n",
       ppt2->k_size, k_min, k_max, k_min/pba->k_eq, k_max/pba->k_eq);   
   }
 
@@ -6075,23 +6162,22 @@ int perturb2_vector_free(
 
 
 int perturb2_free(
+     struct precision2 * ppr2,
      struct perturbs2 * ppt2
      )
 {
-
-  int index_type,index_k1,index_k2,index_k3,l,n;
 
   if ((ppt2->has_perturbations2 == _TRUE_) && (ppt2->has_early_transfers1_only == _FALSE_)) {
     
     int k1_size = ppt2->k_size;
     
-    for (index_type = 0; index_type < ppt2->tp2_size; index_type++) {
+    for (int index_type = 0; index_type < ppt2->tp2_size; index_type++) {
 
       /* Free the k1 level only if we are neither loading nor storing the sources to disk.  The memory
         management in those two cases is handled separately, so that the sources are freed as soon
         as they are not needed anymore. */
       if ((ppt2->store_sources_to_disk==_FALSE_) && (ppt2->load_sources_from_disk==_FALSE_))
-        for (index_k1 = 0; index_k1 < k1_size; ++index_k1) {
+        for (int index_k1 = 0; index_k1 < k1_size; ++index_k1) {
 
           /* If the transfer2 module was loaded, ppt2->sources had already been freed  */
           if (ppt2->has_allocated_sources[index_k1] == _TRUE_)
@@ -6104,8 +6190,8 @@ int perturb2_free(
     } // End of for index_type
 
 
-    for (index_k1 = 0; index_k1 < k1_size; ++index_k1) {
-      for (index_k2 = 0; index_k2 <= index_k1; ++index_k2)
+    for (int index_k1 = 0; index_k1 < k1_size; ++index_k1) {
+      for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2)
         free (ppt2->k3[index_k1][index_k2]);
 
       free (ppt2->k3[index_k1]);
@@ -6127,21 +6213,48 @@ int perturb2_free(
     
     free(ppt2->tp2_labels);
 
+    /* Free memory for the general coupling coefficients */  
+    int m1_min = -ppt2->l1_max;
+    int m2_min = -ppt2->l2_max;
+    int m1_max = ppt2->l1_max;
+    int m2_max = ppt2->l2_max;
+    int l1_size = ppt2->l1_max+1;
+    int l2_size = ppt2->l2_max+1;
+    int m1_size = m1_max-m1_min+1;
+    int m2_size = m2_max-m2_min+1;
+    
+    for (int index_pf=0; index_pf < ppt2->pf_size; ++index_pf) {
+      for (int l=0; l <= ppt2->largest_l; ++l) {
+        for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+          int m = ppr2->m[index_m];
+          for (int l1=0; l1 <= ppt2->l1_max; ++l1) {  
+            for (int m1=m1_min; m1 <= m1_max; ++m1) {
+              free (ppt2->coupling_coefficients[index_pf][lm(l,m)][l1][m1-m1_min]);
+            } // end of for m1
+            free (ppt2->coupling_coefficients[index_pf][lm(l,m)][l1]);
+          } // end of for l1
+          free (ppt2->coupling_coefficients[index_pf][lm(l,m)]);
+        } // end of for m
+      } // end of for l
+    free (ppt2->coupling_coefficients[index_pf]);
+    } // end of for T,E,B...
+    free (ppt2->coupling_coefficients);
+
     free(ppt2->m);
     free(ppt2->corresponding_l);
     free(ppt2->corresponding_index_m);
     free(ppt2->index_monopole);
 
-    for (l=0; l <= ppt2->largest_l; ++l)
+    for (int l=0; l <= ppt2->largest_l; ++l)
       free(ppt2->lm_array[l]);
     free(ppt2->lm_array);
     
-    for (l=0; l <= ppt2->largest_l_quad; ++l)
+    for (int l=0; l <= ppt2->largest_l_quad; ++l)
       free(ppt2->lm_array_quad[l]);
     free(ppt2->lm_array_quad);
     
-    for (n=0; n <= 2; ++n) {
-      for (l=0; l <= 2; ++l) {
+    for (int n=0; n <= 2; ++n) {
+      for (int l=0; l <= 2; ++l) {
         if ((l!=n) && (l!=0)) continue;
         if ((l==0) && (n%2!=0)) continue;
         free(ppt2->nlm_array[n][l]); 
@@ -6150,13 +6263,14 @@ int perturb2_free(
     }
     free(ppt2->nlm_array);
     
+    
 
     /* Close sources files and associated arrays */
     if (ppt2->store_sources_to_disk == _TRUE_) {
     
       fclose(ppt2->sources_status_file);
     
-      for(index_k1=0; index_k1<ppt2->k_size; ++index_k1)
+      for(int index_k1=0; index_k1<ppt2->k_size; ++index_k1)
         free (ppt2->sources_run_paths[index_k1]);
     
       free (ppt2->sources_run_files);
@@ -7355,7 +7469,6 @@ int perturb2_quadratic_sources (
     pvec_quadcollision[index_qs2] = 0;
   }
  
- 
   // =====================================================================================
   // =                               Get first order moments                             =
   // =====================================================================================
@@ -8442,7 +8555,7 @@ int perturb2_source_terms (
   double * k1_m = ppw2->k1_m;
   double * k2_m = ppw2->k2_m;
   
-
+  double quad_coefficient = 2;
   
   // ======================================================================================
   // =                          Interpolate needed quantities                             =
@@ -8868,11 +8981,10 @@ int perturb2_source_terms (
         /* Here we code the sources of the quantity Delta_tilde = Delta - Delta*Delta/2, as described in
         Pettinari, Fidler et al, 2013 (http://arxiv.org/abs/1302.0832). This variable was first introduced
         by Huang & Vernizzi (2012). It is useful to use delta_tilde instead of the standard brightness
-        delta because then the redshift quadratic term disappears. */
+        delta because then the redshift quadratic term disappears. Note that in SONG we employ the
+        convention whereby X ~ X^(1) + 1/2 * X^(2), so that our quadratic sources appear multiplied
+        by a factor two with respect to those in Huang & Vernizzi (2012). */
         
-        /* Set this coefficient to 2 if you expanded the perturbations as X ~ X^(1) + 1/2 * X^(2). */
-        double quad_coefficient = 2;
-          
         if ((ppt2->use_delta_tilde_in_los == _TRUE_) && (ppt2->has_quadratic_sources == _TRUE_)) {
           
           /* We shall compute the (l,m) multipole of delta*delta and delta*collision */
@@ -8898,7 +9010,8 @@ int perturb2_source_terms (
                 int m2 = m-m1;
           
                 /* Coupling coefficient for this (l,l1,l2,m,m1,m2) */
-                double coupling = imaginary * ppt2->coupling_coefficients[lm(l,m)][l1][m1+ppt2->l1_max][l2];
+                double coupling = imaginary * ppt2->coupling_coefficients[ppt2->index_pf_t]
+                                              [lm(l,m)][l1][m1+ppt2->l1_max][l2];
           
                 /* Collision term, as appearing on the righ-hand-side of delta_dot */
                 double c_1=0, c_2=0;
@@ -8930,7 +9043,9 @@ int perturb2_source_terms (
             } // end of for(l2)
           } // end of for(l1)
           
-          /* Extra sources for delta tilde */
+          /* Extra sources for delta tilde. The factor 'quad_coefficient' accounts for the factorial in our
+          perturbative expansion. The factor 0.5 in delta_delta_lm accounts for the 1/2 factor in the
+          definition of delta_tilde. */
           source += - quad_coefficient * kappa_dot * 0.5*delta_delta_lm
                     - quad_coefficient * kappa_dot * delta_collision_lm;
           

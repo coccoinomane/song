@@ -15,10 +15,6 @@ enum bispectra_types {
   intrinsic_bispectrum
 };
 
-/* Possible parity states */
-#define _ODD_ 1
-#define _EVEN_ 0
-
 
 struct bispectra {
 

@@ -54,12 +54,17 @@ typedef char FileName[_FILENAMESIZE_];
 
 // ** MY MODIFICATIONS ***
 #define sign(a) (((a)>0) ? 1. : -1. )
+#define alternating_sign(m) ((m)%2 == 0 ? 1 : -1)
+
 #define _MINUSCULE_ 1.e-99
 
 #define _MAX_LENGTH_LABEL_ 64 /* Maximum length allowed for the label strings (e.g. for the perturbation variables such as 'phi', 'psi') */
 #define _MAX_NUM_BISPECTRA_ 32 /* Maximum number of bispectra that can be computed in any of the bispectra modules */    
 #define _MAX_NUM_FIELDS_ 2 /* Maximum number of fields (T, E, B...) that can be computed in any of the bispectra modules */    
-#define alternating_sign(m) ((m)%2 == 0 ? 1 : -1)
+
+/* Possible parity states */
+#define _ODD_ 1
+#define _EVEN_ 0
 
 #define _PI_SQUARED_ 9.869604401089358618834491
 #define _PI_CUBE_ 31.006276680299820175

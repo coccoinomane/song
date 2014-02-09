@@ -152,8 +152,8 @@ l_max_pol_g_quadsources = -1
 ### How many multipoles to keep in the 2nd-order line of sight integration? (minimum=2)
 
 # Temperature
-l_max_los_t = 8
-l_max_los_quadratic_t = 8
+l_max_los_t = 3
+l_max_los_quadratic_t = 3
 
 # Polarization
 l_max_los_p = 5

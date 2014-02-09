@@ -431,22 +431,25 @@ double coupling_d_plus (int l, int m1, int m) {
 /**
  * Compute the Gaunt-like coupling coefficient:
  * 
- * i^(l3-l1-l2) * (-1)^m3 * (2*l3+1) * ( l1  l2  l3 ) * (  l1   l2      l3  )
- *                                     ( 0    S  -S )   (  m1   m2  -m1-m2  )
+ *    (-1)^m3 * (2*l3+1) * ( l1  l2  l3 ) * (  l1   l2      l3  )
+ *                         ( 0    F  -F )   (  m1   m2  -m1-m2  )
+ *   
+ *     = ( l1  l2 | l3 ) * (  l1   l2  |    l3  )
+ *       ( 0    F |  F )   (  m1   m2  | m1+m2  )
  *
- * for all allowed values of l1 and m2, with m3=-m1-m2. The result is stored in 'result'
- * as result[l1-l1_min][m2-m2_min], which should be preallocated, where
+ * for all allowed values of l1 and m2, with m3=-m1-m2, where (   ) denotes
+ * a 3j symbol and (   | ) a Clebsch-Gordan coefficient. The result is stored in
+ * 'result' as result[l1-l1_min][m2-m2_min], which should be preallocated, where
  * l1_min and m2_min are outputs of this function.
  *
  */
 
 int coupling_general (
-  int l2, int l3, int m1,
+  int l2, int l3, int m1, int F,
   double * three_j_000, /* should be preallocated with at least l2_max doubles */
   double * three_j_mmm, /* should be preallocated with at least m1_max doubles */
   int * l1_min, int * l1_max,
   int * m2_min, int * m2_max,
-  // int S,
   double ** result,     /* should be preallocated with at least l2_max*m1_max doubles */
   ErrorMsg errmsg 
   )
@@ -454,16 +457,17 @@ int coupling_general (
   
   /* Test input */
   class_test (abs(m1)>l2+l3, errmsg, "m1 is out of bounds: abs(%d)>%d+%d", m1, l2, l3);
+  class_test ((l2<F) || (l3<F), errmsg, "l2 and l3 out of bounds, should be smaller than F=%d", F);
  
   /* Temporary values needed for the computation of the 3j symbol */
   int l1_size_3j, m2_size_3j;
 
   /* Compute 
   * (  l1  l2  l3  )
-  * (  0   0   0   )
+  * (  0   F   -F   )
   * for all allowed values of l2 */
   class_call (threej_l1 (
-                l2, l3, 0, 0,
+                l2, l3, F, -F,
                 l1_min, l1_max,
                 &three_j_000,
                 &l1_size_3j,
@@ -487,12 +491,9 @@ int coupling_general (
   /* LOOP ON L1 - made in such a way that it always respects the triangular condition */
   for (int l1=*l1_min; l1 <= *l1_max; ++l1) {
 
-    class_test (((l1+l2+l3)%2!=0) && (three_j_000_correct[l1-*l1_min]!=0),
+    class_test ((F==0) && ((l1+l2+l3)%2!=0) && (three_j_000_correct[l1-*l1_min]!=0),
       errmsg,
       "error in computation of 3j, odd is not zero! three_j(%d,%d,%d)=%g", l1, l2, l3, three_j_000_correct[l1-*l1_min]);
-
-    /* The coefficient i^(l-l1-l2) is equal to -1^((l-l1-l2)/2) */
-    int imaginary = alternating_sign (abs(l3-l1-l2)/2);
 
     /* Compute
     * (  l1   l2   l3       )
@@ -516,8 +517,6 @@ int coupling_general (
       /* Coupling coefficient for this (l1,l2,l3,m1,m2) */
       result[l1-*l1_min][m2-*m2_min] = 
         alternating_sign(m3) * (2*l3+1.) * three_j_000_correct[l1-*l1_min] * three_j_mmm[m2-*m2_min];
-      // result[l1-*l1_min][m2-*m2_min] = 
-      //   alternating_sign(m3) * (2*l3+1.) * imaginary * three_j_000_correct[l1-*l1_min] * three_j_mmm[m2-*m2_min];
   
       /* Debug - print result */
       // if ((l1==2)&&(l2==2)&&(l3==1)&&(m1==1)&&(m3==0))

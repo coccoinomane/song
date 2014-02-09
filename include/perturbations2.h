@@ -242,11 +242,9 @@ struct perturbs2
   int n_sources_B;                    /* Number of sources to be computed for photon B-polarization */
   int tp2_size;                       /* Number of source types that we need to compute */
 
-
   /* Array of strings that contain the labels of the various source types
   For example,  tp2_labels[index_tp2_phi] is equal to "phi" */
   char ** tp2_labels;
-
 
 
   /*   The following discussion is based on sec. 4.2 of http://arxiv.org/abs/1302.0832.
@@ -275,6 +273,26 @@ struct perturbs2
   short has_integration_by_parts_of_los;         /* Shall we perform integration by parts of the line-of-sight sources? */
 
 
+  // ===============================================================================
+  // =                                  CMB fields                                 =
+  // =============================================================================== 
+
+  /* Indices running on the CMB fields (temperature, E-modes, B-modes, Rayleigh...) considered
+  in the perturbation module. We will define similar indices also in the bispectrum module. It
+  might seem as a redundancy, but we need to do so as in the polarisation module one has consider
+  both types of polarisation at all times (E and B mix), while in the bispectrum module one can
+  ask for, e.g., only the E-mode polarisation bispectrum. */
+  int index_pf_t;
+  int index_pf_e;
+  int index_pf_b;
+  int pf_size;
+
+  /* Parity of the considered field. Even parity (T,E) is represented by zero, odd parity (B)
+  by 1. Indexed as field_parity[index_pf] */
+  int field_parity[_MAX_NUM_FIELDS_];
+
+  /* Array of strings that contain the text labels of the various fields */
+  char pf_labels[_MAX_NUM_FIELDS_][_MAX_LENGTH_LABEL_]; /* T,E,B... */
 
 
   // ==============================================================================
@@ -341,10 +359,12 @@ struct perturbs2
   double ** d_plus;
   double ** d_zero;
   
-  /* Gaunt coefficients, given by the product of two Clebsch-Gordan symbols. Indexed as
-  ppt2->coupling_coefficients[lm(l,m)][l1][m1+ppt2->l1_max][l2]. It vanishes for configurations
-  where the triangular inequality between l, l1 and l2 is not met. */
-  double **** coupling_coefficients;
+  /* Coupling coefficients in multipole space, given approximately by the product of two Clebsch-Gordan
+  symbols. Indexed as ppt2->coupling_coefficients[index_pf][lm(l,m)][l1][m1+ppt2->l1_max][l2]. They
+  vanish for configurations where the triangular inequality between l3, l1 and l2 is not met.
+  We define separate coefficients for temperature and polarization because the latter is spin-dependent
+  (compare Eqs. 3.6, 3.7 and 3.9 of arXiv:1401.3296). */
+  double ***** coupling_coefficients;
 
   /* Maximum values of l1 and l2 where we have computed the Gaunt coefficients. They are
   both determined by ppr2->l_max_los_quadratic and are used the truncate the summation
@@ -956,6 +976,7 @@ struct perturb2_parameters_and_workspace {
          );
 
     int perturb2_free(
+         struct precision2 * ppr2,
          struct perturbs2 * ppt2
          );
          
