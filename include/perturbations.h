@@ -392,6 +392,8 @@ struct perturbs
   int index_qs_shear_g;            
   int index_qs_monopole_g;
   int index_qs_monopole_E;           
+  int index_qs_monopole_collision_g;  /* First-order collision term for T */
+  int index_qs_monopole_collision_E;  /* First-order collision term for E */         
 
   int index_qs_delta_b;         
   int index_qs_theta_b;

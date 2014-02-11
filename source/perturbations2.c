@@ -1196,37 +1196,78 @@ int perturb2_get_lm_lists (
   // =                          Compute the general coefficients                          =
   // ======================================================================================
 
-  /* Compute and store the more general coupling coefficients given by
+  /* In general, a function P_ab in helicity space, can be decomposed in multipole space
+  into its intensity (I), E-mode polarisation (E) and B-mode polarisation (B) parts according
+  to eq. 2.10 of arXiv:1401.3296:
   
+    P_E(l,m) - i P_B(l,m)  =  P[-+](l,m)
+  
+    P_E(l,m) + i P_B(l,m)  =  P[+-](l,m)
+  
+    P_I(l,m)  =  1/2 * (P[++]+P[--])(l,m) . 
+  
+  If P_ab is a product in helicity space, 
+  
+    P_ab = 1/2 (X_ac Y_cb + Y_ac X_cb),
+  
+  then its I, E and B components can be inferred, respectively, by eq. 3.9, 3.7 and 3.6 of
+  the same reference:
+  
+    P_I(l3,m3) ->  + 0.5 * i^L * ( l1   l2 | l3  ) * (  l1   l2  | l3 )  
+                               ( 0    0  |  0  )   (  m1   m2  | m  ) 
+                         * [ X_I(l1,m1) Y_I(l2,m2) + Y_I(l1,m1) X_I(l2,m2) ] 
+  
+    P_E(l3,m3) ->  + 1 * i^L * ( l1   l2 | l3  ) * (  l1   l2  | l3 )  
+                               ( 0    2  |  2  )   (  m1   m2  | m  ) 
+                       * [ X_I(l1,m1) Y_E(l2,m2) + Y_I(l1,m1) X_E(l2,m2) ]  for L even, 0 otherwise
+  
+    P_B(l3,m3) ->  - 1 * i^(L+1) * ( l1   l2 | l3  ) * (  l1   l2  | l3 )  
+                                   ( 0    2  |  2  )   (  m1   m2  | m  ) 
+                       * [ X_I(l1,m1) Y_E(l2,m2) + Y_I(l1,m1) X_E(l2,m2) ]  for L odd, 0 otherwise
+  
+  where: 
+   * We are neglecting the first-order B-modes.
+   * The symbol (    | ) denotes a Clebsch-Gordan symbol.
+   * L = l3-l1-l2.
+   * The indices (l1,l2,m1,m2) are summed.
+   * The indices (l3,m3) are free.
+   * The sums in P_I and P_E vanish for odd values of L because the intensity and E-mode fields
+     have even parity. The B-mode field instead has odd parity. This property also ensures
+     that both the i^L and i^(L+1) factors are real-valued.
+   * With respect to arXiv:1401.3296 we have a -2 factor; this counters the fact that the expressions
+     in that reference were for the quadratic term -1/2*delta*delta rather than for a generic X*Y.
+     
+  In what follows, we compute the general coupling coefficients given by
+  
+        prefactor * ( l1   l2 | l3  ) * (  l1   l2 | l3  )
+                    ( 0    F  |  F  )   (  m1   m2 |  m  ) ,
+
+  for F=0 (intensity) and F=2 (E and B-mode polarisation). 
+  We store the result in the array ppt2->coupling_coefficients[index_pf][lm][l1][m1-m1_min][l2],
+  where 'index_pf' refers to the considered field (I,E,B...). Note that, in terms of 3j symbols,
+  the coefficients read: 
+        
         prefactor * (-1)^m * (2*l+1) * ( l1   l2  l3  ) * (  l1   l2  l3  )
                                        ( 0    F   -F  )   (  m1   m2  -m  )
-
-  for F=0 (intensity) and F=2 (E and B-mode polarisation) in the arrays
-  ppt2->coupling_coefficients[index_pf][lm][l1][m1-m1_min][l2], where index_pf
-  refers to the considered field (T,E,B...). Without considering the prefactor,
-  the coupling coefficients are exactly equivalent to a product of two
-  Clebsch-Gordan coefficients.
   
-  The prefactor for the B,E,T fields can be read, respectively, from Eqs. 3.6,
-  3.7 and 3.9 of arXiv:1401.3296, namely:
+  The prefactor for the I,E,B fields can be read from the equations shown above:
   
-        prefactor(B) = +i^(L+1)
-        prefactor(E) = -i^L
-        prefactor(T) = 0.5 * i^L
+        prefactor(I) = +1 * i^L
+        prefactor(E) = +2 * i^L
+        prefactor(B) = -2 * i^(L+1)
   
-  where L=l3-l1-l2. For the even-parity fields (T and E) L is always even, while
+  where L=l3-l1-l2. For the even-parity fields (I and E) L is always even, while
   for the odd-parity ones (B) it is odd. Therefore, the prefactors are always
-  real-valued. The polarisation prefactors are 1 insteaed of 1/2 because both E and
-  B-modes contribute. 
+  real-valued. The polarisation prefactors are 2 insteaed of 1 because they get
+  contributions from both E and B-modes contribute. 
   
   These coefficients are needed for the "delta_tilde" transformation that absorbs the
-  redshift term of Boltzmann equation in the polarised case (see Sec. 3.1 of
+  redshift term of Boltzmann equation in the polarised case (see Sec. 3.10 of
   arXiv:1401.3296 and Hunag and Vernizzi 2013a). The coefficients always multiply two
   first-order perturbations (Eqs. 3.6, 3.7 and 3.9 of arXiv:1401.3296):
-    delta_T(l1)*delta_T(l2) in the case of the temperature, and
-    delta_T(l1)*delta_E(l2) in the case of the both E and B-modes.
-  Note that there is no delta_B because we neglect the first-order B-modes. 
-  */
+    delta_I(l1)*delta_I(l2) in the case of the temperature, and
+    delta_I(l1)*delta_E(l2) in the case of the both E and B-modes.
+  Note that there is no delta_B because we neglect the first-order B-modes.  */
   
   /* We compute the coupling coefficients only up to ppr2->l_max_los_quadratic, because
   this is the maximum multipoles we are gonna consider for the delta_tilde transformation.
@@ -1245,7 +1286,10 @@ int perturb2_get_lm_lists (
   int m2_size = m2_max-m2_min+1;
   long int counter = 0;
   
-  /* Allocate memory for the coupling coefficients */
+  // --------------------------------------------------------------------------------
+  // -                        Allocate memory for the coefficients                  -
+  // --------------------------------------------------------------------------------
+  
   class_alloc (ppt2->coupling_coefficients, ppt2->pf_size*sizeof(double****), ppt2->error_message);
   
   for (int index_pf=0; index_pf < ppt2->pf_size; ++index_pf) {
@@ -1297,25 +1341,28 @@ int perturb2_get_lm_lists (
   for (int l2=0; l2 < l_size_max; ++l2)
     class_alloc (temp[l2], l_size_max*sizeof(double), ppt2->error_message);
   
-  /* Compute the coupling coefficients */
+  // ---------------------------------------------------------------------------------------
+  // -                              Compute the coefficients                               -
+  // ---------------------------------------------------------------------------------------
+  
   for (int index_pf=0; index_pf < ppt2->pf_size; ++index_pf) {
     
     /* Determine the spin of the considered field, and the overall prefactor. These are determined using
     Eqs. 3.6, 3.7 and 3.9 of arXiv:1401.3296. We will include the sign-factor (i^L and i^(L+1)) later. */
     int F;
-    double prefactor;
+    double sign, prefactor;
     
     if ((ppt2->has_source_T == _TRUE_) && (index_pf == ppt2->index_pf_t)) {
       F = 0;
-      prefactor = -0.5;
+      prefactor = +0.5;
     }
     else if ((ppt2->has_source_E == _TRUE_) && (index_pf == ppt2->index_pf_e)) {
       F = 2;
-      prefactor = -1;
+      prefactor = +1;
     }
     else if ((ppt2->has_source_B == _TRUE_) && (index_pf == ppt2->index_pf_b)) {
       F = 2;
-      prefactor = +1;
+      prefactor = -1;
     }
     else 
       class_stop (ppt2->error_message, "mumble mumble, what is index_pf=(%d,%s)?",
@@ -1337,8 +1384,8 @@ int perturb2_get_lm_lists (
 
           /* Compute the following coefficients for all values of l1 and m2: 
 
-          i^(l3-l1-l2) * (-1)^m3 * (2*l3+1) * ( l1  l2  l3 ) * (  l1   l2      l3  )
-                                              (  0   S  -S )   (  m1   m2  -m1-m2  ) */
+          (-1)^m3 * (2*l3+1) * ( l1  l2  l3 ) * (  l1   l2      l3  )
+                               (  0   F  -F )   (  m1   m2  -m1-m2  ) */
           int l1_min_3j, l1_max_3j;
           int m2_min_3j, m2_max_3j;
 
@@ -1355,40 +1402,40 @@ int perturb2_get_lm_lists (
 
           /* Fill the coupling coefficient array, but only for the allowed values of l2 and m1 */
           for (int l1=0; l1 <= ppt2->l1_max; ++l1) {
-            
+
+            int L = l3-l1-l2;
+
             /* For even-parity fields (T and E), we skip the configurations where l1+l2+l3 is odd;
             for odd-parity (B) fields, we skip the configurations where l1+l2+l3 is even */
-            int L = l3-l1-l2;
-                        
-            if ( ((L%2==0) && (ppt2->field_parity[index_pf]==_ODD_))
-              || ((L%2!=0) && (ppt2->field_parity[index_pf]==_EVEN_)) )
+            if ( ((abs(L)%2==0) && (ppt2->field_parity[index_pf]==_ODD_))
+              || ((abs(L)%2!=0) && (ppt2->field_parity[index_pf]==_EVEN_)) )
               continue;
-
+            
             /* For even-parity fields, the sign-factor is i^L. For sign-parity ones, it is i^(L+1).
             In both cases, the exponent is even (see above), so that the sign-factor is real-valued */
-            if (ppt2->field_parity[index_pf]==_EVEN_)
-              prefactor *= alternating_sign (abs(L)/2);
+            if (ppt2->field_parity[index_pf] == _EVEN_)
+              sign = alternating_sign (abs(L)/2);
             else
-              prefactor *= alternating_sign (abs(L+1)/2);
-          
-            for (int index_m=0; index_m <= ppr2->index_m_max[l3]; ++index_m) {
+              sign = alternating_sign (abs(L+1)/2);
+
+            for (int index_m3=0; index_m3 <= ppr2->index_m_max[l3]; ++index_m3) {
 
               /* What we need is
 
               prefactor * (-1)^m3 * (2*l3+1) * ( l1  l2  l3 ) * (  l1   l2      l3  )
-                                               (  0   S  -S )   (  m1   m3-m1  -m3  ) ,
+                                               (  0   F  -F )   (  m1   m3-m1  -m3  ) ,
         
               for all values of l1 and m3. We obtain it from what we have computed above by
               defining m2=m3-m1 => m3=m1+m2. */            
-              int m3 = ppr2->m[index_m];
+              int m3 = ppr2->m[index_m3];
               int m2 = m3-m1;
 
               /* Skip those configurations outside the triangular region, and those with abs(M)>L */
               if ((l1<l1_min_3j) || (l1>l1_max_3j) || (m2<m2_min_3j) || (m2>m2_max_3j))
                 continue;
-            
-              ppt2->coupling_coefficients[index_pf]
-                [lm(l3,m3)][l1][m1-m1_min][l2] = prefactor * temp[l1-l1_min_3j][m2-m2_min_3j];
+
+              ppt2->coupling_coefficients[index_pf][lm(l3,m3)][l1][m1-m1_min][l2]
+                = prefactor * sign * temp[l1-l1_min_3j][m2-m2_min_3j];
             
               /* Debug - print out the values stored in ppt2->coupling_coefficients. */
               // printf ("C(l1=%d,l2=%d,l3=%d,m1=%d,m2=%d,m3=%d,F=%d)=%g\n",
@@ -3515,6 +3562,7 @@ int perturb2_workspace_init_quadratic_sources (
   ppw2->index_qs2_monopole_g = index_qs2;
   index_qs2 += ppw2->n_hierarchy_g;
 
+
   // ----------------------------------------
   // -          Photon polarization         -
   // ----------------------------------------
@@ -3545,8 +3593,6 @@ int perturb2_workspace_init_quadratic_sources (
     index_qs2 += ppw2->n_hierarchy_ur;
   
   }
-
-
 
   // ---------------------------------------
   // -                Baryons              -
@@ -3589,9 +3635,7 @@ int perturb2_workspace_init_quadratic_sources (
   /* Set the size of the quadratic sources */
   ppw2->qs2_size = index_qs2;
 
-  /* Some debug */
-  // printf("ppw2->qs2_size = %d\n", ppw2->qs2_size);
-  // printf("ppw2->qs2_size = %d\n", ppw2->qs2_size);
+
 
 
   // ==========================================================================================
@@ -8554,7 +8598,10 @@ int perturb2_source_terms (
   double k1_dot_k2 = ppw2->k1_dot_k2;
   double * k1_m = ppw2->k1_m;
   double * k2_m = ppw2->k2_m;
-  
+
+  /* Set this coefficient to 2 if you expanded the perturbations as X ~ X^(1) + 1/2 * X^(2),
+  or to unity if you use X ~ X^(1) + X^(2) instead. This function is not fully implented
+  yet, hence for the time being keep it equal to 2 */
   double quad_coefficient = 2;
   
   // ======================================================================================
@@ -8974,19 +9021,26 @@ int perturb2_source_terms (
   
   
   
-        // ------------------------------------------------------------
-        // -                   Sources for Delta_tilde                -
-        // ------------------------------------------------------------
+        // -------------------------------------------------------------------------------------------
+        // -                             Sources for delta_tilde  (I)                                -
+        // -------------------------------------------------------------------------------------------
+  
+        /* Compute the line of sight sources of the quantity 
         
-        /* Here we code the sources of the quantity Delta_tilde = Delta - Delta*Delta/2, as described in
-        Pettinari, Fidler et al, 2013 (http://arxiv.org/abs/1302.0832). This variable was first introduced
-        by Huang & Vernizzi (2012). It is useful to use delta_tilde instead of the standard brightness
+          \tilde\Delta_{ab} = \Delta_{ab} - \Delta*\Delta/2
+  
+        in order to absorb the redshift term in the Boltzmann equation.  The \tilde\Delta
+        variable was first introduced in Huang & Vernizzi (2013). Here we follow the general
+        method in Fidler, Pettinari et al. (http://arxiv.org/abs/1401.3296) that includes
+        polarisation.
+  
+        It is useful to use \tilde\Delta instead of the standard brightness
         delta because then the redshift quadratic term disappears. Note that in SONG we employ the
         convention whereby X ~ X^(1) + 1/2 * X^(2), so that our quadratic sources appear multiplied
-        by a factor two with respect to those in Huang & Vernizzi (2012). */
+        by a factor two with respect to those in Huang & Vernizzi (2013). */
         
         if ((ppt2->use_delta_tilde_in_los == _TRUE_) && (ppt2->has_quadratic_sources == _TRUE_)) {
-          
+        
           /* We shall compute the (l,m) multipole of delta*delta and delta*collision */
           double delta_delta_lm = 0;
           double delta_collision_lm = 0;
@@ -8996,12 +9050,10 @@ int perturb2_source_terms (
             
             /* LOOP ON L2 - made in such a way that it always respects the triangular condition */
             for (int l2=abs(l1-l); l2 <= min(l1+l, ppr2->l_max_los_quadratic_t); ++l2) {
-              
+
+              /* The intensity field has even parity */
               if ((l1+l2+l)%2!=0)
                 continue;
-              
-              /* The coefficient i^(l-l1-l2) is equal to -1^((l-l1-l2)/2) */
-              int imaginary = alternating_sign (abs(l-l1-l2)/2);
               
               /* LOOP ON M1 */
               for (int m1 = -l1; m1 <= l1; ++m1) {
@@ -9010,35 +9062,42 @@ int perturb2_source_terms (
                 int m2 = m-m1;
           
                 /* Coupling coefficient for this (l,l1,l2,m,m1,m2) */
-                double coupling = imaginary * ppt2->coupling_coefficients[ppt2->index_pf_t]
-                                              [lm(l,m)][l1][m1+ppt2->l1_max][l2];
+                double coupling = ppt2->coupling_coefficients[ppt2->index_pf_t][lm(l,m)][l1][m1+ppt2->l1_max][l2];
           
-                /* Collision term, as appearing on the righ-hand-side of delta_dot */
-                double c_1=0, c_2=0;
-              
-                if (l2==0) {
-                  c_1 = 0;
-                  c_2 = 0;
-                }
-                if (l2==1) {
-                  c_1 = 4*V_b_1(m2) - I_1(l2,m2);
-                  c_2 = 4*V_b_2(m2) - I_2(l2,m2);
-                }
-                if (l2==2) {
-                  double Pi_1 = 0.1 * (I_1(2,m2) - sqrt_6*E_1(2,m2));
-                  double Pi_2 = 0.1 * (I_2(2,m2) - sqrt_6*E_2(2,m2));
-                  c_1 = - I_1(2,m2) + Pi_1;
-                  c_2 = - I_2(2,m2) + Pi_2;
-                }
-                if (l2>2) {
-                  c_1 = - I_1(l2,m2);
-                  c_2 = - I_2(l2,m2);
-                }
-                  
-                /* Increment the sums */
-                delta_delta_lm += coupling *  0.5 * (I_1(l1,m1)*I_2(l2,m2) + I_2(l1,m1)*I_1(l2,m2));
-                delta_collision_lm += coupling *  0.5 * (I_1(l1,m1)*c_2 + I_2(l1,m1)*c_1);
-                  
+                /* Collision term, as appearing on the righ-hand-side of delta_tilde_dot */
+                double c_1 = rot_1(l2,m2)*pvec_sources1[ppt->index_qs_monopole_collision_g+l2];
+                double c_2 = rot_2(l2,m2)*pvec_sources2[ppt->index_qs_monopole_collision_g+l2];
+                                
+                /* Increment delta*delta. There is no need to symmetrise with respect to k1<->k2 because,
+                for intensity, the coupling coefficient is symmetric with respect to an exchange of l1<->l2
+                (which for delta*delta, in turn, is equivalent to an echange in k1<->k2). The factor two comes
+                from the fact that delta_ab*delta_cb + delta_cb*delta_ab = 2*delta_ab*delta_cb. */
+                delta_delta_lm += coupling * 2 * I_1(l1,m1)*I_2(l2,m2);
+                
+                /* Increment delta*collision. The factor 0.5 comes from the symmetrisation with respect
+                to k1<->k2, while the factor 2 from the fact that the coupling coefficients are symmetric
+                with respect to l1<->l2 (which, for the intensity, is equivalent to exchange 'delta' and
+                'collision'). This can be seen from the intensity formula in the
+                section 'Compute the general coefficients' of the function 'perturb2_get_lm_lists'. */
+                delta_collision_lm += coupling * 2
+                  * 0.5 *(I_1(l1,m1)*c_2 + I_2(l1,m1)*c_1); /* k1 <-> k2 */
+        
+                /* Note that, in principle, the delta*collision term should be symmetrised with respect
+                to the exchange of 'delta_ab' and 'C_ab' (see Eq. 3.10 of http://arxiv.org/abs/1401.3296,
+                or the intensity equations in the section 'Compute the general coefficients' of the
+                function 'perturb2_get_lm_lists'). For the intensity sources, we can omit such symmetrisation
+                because of the symmetry of the coupling coefficients with respect to l1<->l2. You can prove
+                that the result does not change by commenting the above line and uncommenting the following lines. */
+                
+                // double c_k1_l1 = rot_1(l1,m1)*pvec_sources1[ppt->index_qs_monopole_collision_g+l1];
+                // double c_k1_l2 = rot_1(l2,m2)*pvec_sources1[ppt->index_qs_monopole_collision_g+l2];
+                // double c_k2_l1 = rot_2(l1,m1)*pvec_sources2[ppt->index_qs_monopole_collision_g+l1];
+                // double c_k2_l2 = rot_2(l2,m2)*pvec_sources2[ppt->index_qs_monopole_collision_g+l2];
+                //                 
+                // delta_collision_lm += coupling *  0.5 *
+                //   (I_1(l1,m1)*c_k2_l2 + I_2(l1,m1)*c_k1_l2
+                //   +c_k1_l1*I_2(l2,m2) + c_k2_l1*I_1(l2,m2));
+        
               } // end of for(m1)            
             } // end of for(l2)
           } // end of for(l1)
@@ -9049,58 +9108,8 @@ int perturb2_source_terms (
           source += - quad_coefficient * kappa_dot * 0.5*delta_delta_lm
                     - quad_coefficient * kappa_dot * delta_collision_lm;
           
-        } // end of sources for Delta_tilde (full)
-  
-  
-  
-        // --------------------------------------------------------------------
-        // -                   Approx. sources for Delta_tilde                -
-        // --------------------------------------------------------------------
-  
-        /* Here we assume that (I*I)_lm ~ I_00*I_00. This is only valid in the ultra-squeezed limit,
-        where one of the legs is always large scale. */
-  
-        else if ((ppt2->use_delta_tilde_approx_in_los == _TRUE_) && (ppt2->has_quadratic_sources == _TRUE_)) {
+        } // end of sources for delta_tilde (intensity)
 
-          /* Reset whatever term we might have added so far */
-          source = 0;
-        
-          /* Disable any subsequent integration by parts */
-          ppt2->has_sachs_wolfe_in_los = _FALSE_;
-          ppt2->has_integrated_sachs_wolfe_in_los = _FALSE_;
-  
-        
-          /* Monopole = Delta_00 + 4 Phi - 0.5 Delta_00 Delta_00 */
-          if (l==0) {
-        
-            /* SW */
-            source += I(0,0) + 4*psi;
-  
-            /* Approximated version of II_00 */
-            double II_00 = delta_g_1*delta_g_2;
-          
-            /* Quadratic */
-            source += - quad_coefficient * 1/2. * II_00;
-          
-          }
-  
-          /* Dipole = 4v_b - 4 v_b Delta_00 */
-          if (l==1) {
-        
-            /* Velocity */
-            source += 4*V_b(m);
-        
-            /* Quadratic velocity */
-            source += - quad_coefficient * 2 * (delta_g_1*V_b_2(m) + delta_g_2*V_b_1(m));
-          }
-        
-          /* Scattering from quadratic sources of the form multipole times baryon_velocity. Here we do not need the
-          quad_coefficient as the quadratic collision term was already computed assuming the X(1)+1/2*X^(2) perturbative
-          expansion. */
-          source += dI_qc2(l,m);
-          
-        } // end of sources for Delta_tilde (approx)
-  
   
         // ----------------------------------------------------------------
         // -                     Sum up the sources                       -
@@ -9191,6 +9200,68 @@ int perturb2_source_terms (
                     - E_1_tilde(l-1) * k_minus_21(l,m)*k2*(phi_2+psi_2);
   
 
+        // -------------------------------------------------------------------------------------------
+        // -                             Sources for delta_tilde  (E)                                -
+        // -------------------------------------------------------------------------------------------
+          
+        if ((ppt2->use_delta_tilde_in_los == _TRUE_) && (ppt2->has_quadratic_sources == _TRUE_)) {
+        
+          /* We shall compute the (l,m) multipole of delta*delta and delta*collision */
+          double delta_delta_lm = 0;
+          double delta_collision_lm = 0;
+                  
+          /* LOOP ON L1 */        
+          for (int l1=0; l1 <= ppr2->l_max_los_quadratic_p; ++l1) {
+            
+            /* LOOP ON L2 - made in such a way that it always respects the triangular condition */
+            for (int l2=abs(l1-l); l2 <= min(l1+l, ppr2->l_max_los_quadratic_p); ++l2) {
+              
+              /* The E-mode polarisation has even parity */
+              if ((l1+l2+l)%2!=0)
+                continue;
+              
+              /* LOOP ON M1 */
+              for (int m1 = -l1; m1 <= l1; ++m1) {
+          
+                /* Enforce m1 + m2 - m = 0 */
+                int m2 = m-m1;
+          
+                /* Coupling coefficient for this (l,l1,l2,m,m1,m2) */
+                double coupling = ppt2->coupling_coefficients[ppt2->index_pf_e][lm(l,m)][l1][m1+ppt2->l1_max][l2];
+          
+                /* Collision term, as appearing on the righ-hand-side of delta_tilde_dot.  */
+                double c_I_k1_l1 = rot_1(l1,m1)*pvec_sources1[ppt->index_qs_monopole_collision_g+l1];
+                double c_I_k1_l2 = rot_1(l2,m2)*pvec_sources1[ppt->index_qs_monopole_collision_g+l2];
+                double c_I_k2_l1 = rot_2(l1,m1)*pvec_sources2[ppt->index_qs_monopole_collision_g+l1];
+                double c_I_k2_l2 = rot_2(l2,m2)*pvec_sources2[ppt->index_qs_monopole_collision_g+l2];            
+                double c_E_k1_l1 = rot_1(l1,m1)*pvec_sources1[ppt->index_qs_monopole_collision_E+l1];
+                double c_E_k1_l2 = rot_1(l2,m2)*pvec_sources1[ppt->index_qs_monopole_collision_E+l2];
+                double c_E_k2_l1 = rot_2(l1,m1)*pvec_sources2[ppt->index_qs_monopole_collision_E+l1];
+                double c_E_k2_l2 = rot_2(l2,m2)*pvec_sources2[ppt->index_qs_monopole_collision_E+l2];
+                
+                /* Increment delta*delta. The factor 0.5 comes from the symmetrisation with respect to k1<->k2.
+                The factor 2 comes from the fact that delta_ab*delta_cb + delta_cb*delta_ab = 2*delta_ab*delta_cb.*/
+                delta_delta_lm += coupling *  2 * 0.5 * (I_1(l1,m1)*E_2(l2,m2) + I_2(l1,m1)*E_1(l2,m2));
+        
+                /* Increment delta*collision. The delta*collision contribution has twice the terms of delta*delta
+                because it is symmetric with respect to the exchange of delta<->collision. The 0.5 factor comes
+                from the syymetrisation with respect to k1<->k2 */
+                delta_collision_lm += coupling *  0.5 *
+                  (I_1(l1,m1)*c_E_k2_l2 + c_I_k1_l1*E_2(l2,m2)   /* delta<->collision */
+                  +I_2(l1,m1)*c_E_k1_l2 + c_I_k2_l1*E_1(l2,m2)); /* k1<->k2 */
+                  
+              } // end of for(m1)            
+            } // end of for(l2)
+          } // end of for(l1)
+          
+          /* Extra sources for delta tilde. The factor 'quad_coefficient' accounts for the factorial in our
+          perturbative expansion. The factor 0.5 in delta_delta_lm accounts for the 1/2 factor in the
+          definition of delta_tilde. */
+          source += - quad_coefficient * kappa_dot * 0.5*delta_delta_lm
+                    - quad_coefficient * kappa_dot * delta_collision_lm;
+          
+        } // end of sources for delta_tilde (E-modes)
+
   
         // ----------------------------------------------------------------
         // -                     Sum up the sources                       -
@@ -9267,7 +9338,67 @@ int perturb2_source_terms (
                     - E_1_tilde(l) * k_zero_21(l,m)*k2*(phi_2+psi_2);
 
 
+        // -------------------------------------------------------------------------------------------
+        // -                             Sources for delta_tilde  (B)                                -
+        // -------------------------------------------------------------------------------------------
+          
+        if ((ppt2->use_delta_tilde_in_los == _TRUE_) && (ppt2->has_quadratic_sources == _TRUE_)) {
+        
+          /* We shall compute the (l,m) multipole of delta*delta and delta*collision */
+          double delta_delta_lm = 0;
+          double delta_collision_lm = 0;
+                  
+          /* LOOP ON L1 */        
+          for (int l1=0; l1 <= ppr2->l_max_los_quadratic_p; ++l1) {
+            
+            /* LOOP ON L2 - made in such a way that it always respects the triangular condition */
+            for (int l2=abs(l1-l); l2 <= min(l1+l, ppr2->l_max_los_quadratic_p); ++l2) {
 
+              /* The B-mode polarisation has odd parity */
+              if ((l1+l2+l)%2==0)
+                continue;
+              
+              /* LOOP ON M1 */
+              for (int m1 = -l1; m1 <= l1; ++m1) {
+          
+                /* Enforce m1 + m2 - m = 0 */
+                int m2 = m-m1;
+          
+                /* Coupling coefficient for this (l,l1,l2,m,m1,m2) */
+                double coupling = ppt2->coupling_coefficients[ppt2->index_pf_b][lm(l,m)][l1][m1+ppt2->l1_max][l2];
+          
+                /* Collision term, as appearing on the righ-hand-side of delta_tilde_dot.  */
+                double c_I_k1_l1 = rot_1(l1,m1)*pvec_sources1[ppt->index_qs_monopole_collision_g+l1];
+                double c_I_k1_l2 = rot_1(l2,m2)*pvec_sources1[ppt->index_qs_monopole_collision_g+l2];
+                double c_I_k2_l1 = rot_2(l1,m1)*pvec_sources2[ppt->index_qs_monopole_collision_g+l1];
+                double c_I_k2_l2 = rot_2(l2,m2)*pvec_sources2[ppt->index_qs_monopole_collision_g+l2];            
+                double c_E_k1_l1 = rot_1(l1,m1)*pvec_sources1[ppt->index_qs_monopole_collision_E+l1];
+                double c_E_k1_l2 = rot_1(l2,m2)*pvec_sources1[ppt->index_qs_monopole_collision_E+l2];
+                double c_E_k2_l1 = rot_2(l1,m1)*pvec_sources2[ppt->index_qs_monopole_collision_E+l1];
+                double c_E_k2_l2 = rot_2(l2,m2)*pvec_sources2[ppt->index_qs_monopole_collision_E+l2];
+                
+                /* Increment delta*delta. The factor 0.5 comes from the symmetrisation with respect to k1<->k2.
+                The factor 2 comes from the fact that delta_ab*delta_cb + delta_cb*delta_ab = 2*delta_ab*delta_cb.*/
+                delta_delta_lm += coupling *  2 * 0.5 * (I_1(l1,m1)*E_2(l2,m2) + I_2(l1,m1)*E_1(l2,m2));
+        
+                /* Increment delta*collision. The delta*collision contribution has twice the terms of delta*delta
+                because it is symmetric with respect to the exchange of delta<->collision. The 0.5 factor comes
+                from the syymetrisation with respect to k1<->k2 */
+                delta_collision_lm += coupling *  0.5 *
+                  (I_1(l1,m1)*c_E_k2_l2 + c_I_k1_l1*E_2(l2,m2)   /* delta<->collision */
+                  +I_2(l1,m1)*c_E_k1_l2 + c_I_k2_l1*E_1(l2,m2)); /* k1<->k2 */
+                  
+              } // end of for(m1)            
+            } // end of for(l2)
+          } // end of for(l1)
+          
+          /* Extra sources for delta tilde. The factor 'quad_coefficient' accounts for the factorial in our
+          perturbative expansion. The factor 0.5 in delta_delta_lm accounts for the 1/2 factor in the
+          definition of delta_tilde. */
+          source += - quad_coefficient * kappa_dot * 0.5*delta_delta_lm
+                    - quad_coefficient * kappa_dot * delta_collision_lm;
+          
+        } // end of sources for delta_tilde (B-modes)
 
   
         // ----------------------------------------------------------------
@@ -9294,7 +9425,96 @@ int perturb2_source_terms (
   
   
   
+  // -------------------------------------------------------------------------------------------
+  // -                             Sources for \tilde\Delta                                     -
+  // -------------------------------------------------------------------------------------------
   
+  /* Compute the line of sight sources of the quantity 
+        
+    \tilde\Delta_{ab} = \Delta_{ab} - \Delta*\Delta/2
+  
+  in order to absorb the redshift term in the Boltzmann equation.  The \tilde\Delta
+  variable was first introduced in Huang & Vernizzi (2013). Here we follow the general
+  method in Fidler, Pettinari et al. (http://arxiv.org/abs/1401.3296) that includes
+  polarisation.
+  
+  It is useful to use \tilde\Delta instead of the standard brightness
+  delta because then the redshift quadratic term disappears. Note that in SONG we employ the
+  convention whereby X ~ X^(1) + 1/2 * X^(2), so that our quadratic sources appear multiplied
+  by a factor two with respect to those in Huang & Vernizzi (2013). */
+  
+  // if ((ppt2->use_delta_tilde_in_los == _TRUE_) && (ppt2->has_quadratic_sources == _TRUE_)) {
+  //   
+  //   /* We shall loop on the various CMB fields (I,E,B) */
+  //   int l_max_quad;
+  //   double *X_A, *X_B, *Y_A, *Y_B;
+  //   
+  //   for (int index_pf=0; index_pf < ppt2->pf_size; ++index_pf) {
+  // 
+  //     if ((ppt2->has_source_T == _TRUE_) && (index_pf == ppt2->index_pf_t)) {
+  //       
+  //       X_A = pvec_sources1[ppt->index_qs_monopole_g];
+  //       Y = pvec_sources1[ppt->index_qs_monopole_g];
+  //       
+  //       monopole_index = ppt->index_qs_monopole_g;
+  //       monopole_collision_index = ppt->index_qs_monopole_collision_g;
+  //       l_max_quad = ppr2->l_max_los_quadratic_t;
+  //     }
+  //     else if ((ppt2->has_source_E == _TRUE_) && (index_pf == ppt2->index_pf_e)) {
+  //       monopole_index = ppt->index_qs_monopole_E;
+  //       monopole_collision_index = ppt->index_qs_monopole_collision_E;
+  //       l_max_quad = ppr2->l_max_los_quadratic_p;
+  //     }
+  //     else if ((ppt2->has_source_B == _TRUE_) && (index_pf == ppt2->index_pf_b)) {
+  //       monopole_index = ppt->index_qs_monopole_g;
+  //       monopole_collision_index = ppt->index_qs_monopole_collision_g;
+  //       l_max_quad = ppr2->l_max_los_quadratic_p;
+  //     }
+  // 
+  //     /* We shall compute the (l,m) multipole of delta*delta and delta*collision */
+  //     double delta_delta_lm = 0;
+  //     double delta_collision_lm = 0;
+  //           
+  //     /* LOOP ON L1 */        
+  //     for (int l1=0; l1 <= l_max_quad; ++l1) {
+  //     
+  //       /* LOOP ON L2 - made in such a way that it always respects the triangular condition */
+  //       for (int l2=abs(l1-l); l2 <= min(l1+l, l_max_quad); ++l2) {
+  //       
+  //         if ((l1+l2+l)%2!=0)
+  //           continue;
+  //       
+  //         /* LOOP ON M1 */
+  //         for (int m1 = -l1; m1 <= l1; ++m1) {
+  //   
+  //           /* Enforce m1 + m2 - m = 0 */
+  //           int m2 = m-m1;
+  //   
+  //           /* Coupling coefficient for this (l,l1,l2,m,m1,m2) */
+  //           double coupling = ppt2->coupling_coefficients[index_pf][lm(l,m)][l1][m1+ppt2->l1_max][l2];
+  //   
+  //           /* Collision term, as appearing on the righ-hand-side of delta_dot */
+  //           double c_1 = rot_1(l2,m2)*pvec_sources1[ppt->index_qs_monopole_collision_g+l2];
+  //           double c_2 = rot_2(l2,m2)*pvec_sources2[ppt->index_qs_monopole_collision_g+l2];
+  //                         
+  //           /* Increment the sums. The factor 0.5 comes from the symmetrisation with 
+  //           respect to k1<->k2. */
+  //           delta_delta_lm += coupling *  0.5 * (I_1(l1,m1)*I_2(l2,m2) + I_2(l1,m1)*I_1(l2,m2));
+  //           delta_collision_lm += coupling *  0.5 * (I_1(l1,m1)*c_2 + I_2(l1,m1)*c_1);
+  //           
+  //         } // end of for(m1)            
+  //       } // end of for(l2)
+  //     } // end of for(l1)
+  //   
+  //     /* Extra sources for delta tilde. The factor 'quad_coefficient' accounts for the factorial in our
+  //     perturbative expansion. The factor 0.5 in delta_delta_lm accounts for the 1/2 factor in the
+  //     definition of delta_tilde. */
+  //     source += - quad_coefficient * kappa_dot * 0.5*delta_delta_lm
+  //               - quad_coefficient * kappa_dot * delta_collision_lm;
+  // 
+  //   } // end of for (I,E,B...)
+  // 
+  // } // end of if has_delta_tilde
   
   
   

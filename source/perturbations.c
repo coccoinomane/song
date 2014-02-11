@@ -7323,13 +7323,14 @@ int perturb_derivs(double tau,
       double quadrupole_g = 10*shear_g;
       double quadrupole_E = y[ppw->pv->index_pt_monopole_E + 2];
 
-      /* The Pi factor is what appears in eq. 2.19 of Beneke & Fidler (2011) and in eq. A.53 of Pitrou et al. (2010) */
-      Pi = 1/10. * (quadrupole_g - sqrt_6*quadrupole_E);
+      /* The Pi factor is what appears in eq. 2.19 of Beneke & Fidler (2011) and in eq. A.53 of Pitrou et al. (2010).
+      Here we exclude the factor 1/10 with respect to the above references to comply with CLASS conventions. */
+      Pi = quadrupole_g - sqrt_6*quadrupole_E;
     
       /* This is eq. 2.19 for l=2, m=0, where we used d_plus(2,0,0) = sqrt_5/7 */
       E      = y[ppw->pv->index_pt_monopole_E + 2];
       E_plus = y[ppw->pv->index_pt_monopole_E + 3];
-      dy[ppw->pv->index_pt_monopole_E + 2] = -k*sqrt_5/7*E_plus - kappa_dot*(E + sqrt_6*Pi);
+      dy[ppw->pv->index_pt_monopole_E + 2] = -k*sqrt_5/7*E_plus - kappa_dot*(E + sqrt_6 * Pi/10);
 
       // *** l>2 moments, excluding the last one
       for (l=3; l<l_max_E; ++l) {
@@ -7859,19 +7860,24 @@ int perturb_indices_of_perturbs_2nd_order_eqs(
 
       ppt->index_qs_shear_g = index_type++;
 
-      /* We store the photon temperature multipoles from ppt->index_qs_monopole_g to ppt->index_qs_monopole_g + l_max_g */
+      /* We store the photon temperature multipoles from 'ppt->index_qs_monopole_g' to
+      'ppt->index_qs_monopole_g + l_max_g' */
       ppt->index_qs_monopole_g = index_type++;
       index_type += ppr->l_max_g;
 
-      // /* We store the photon temperature multipoles from ppt->index_qs_monopole_g to ppt->index_qs_monopole_g + l_max_g */
-      // ppt->index_qs_monopole_g = index_type++;
-      // index_type += ppr->l_max_g;
+      /* Temperature collision term */
+      ppt->index_qs_monopole_collision_g = index_type++;
+      index_type += ppr->l_max_g;
 
       /* We store the photon polarization multipoles from index_qs_monopole_E to index_qs_monopole_E + l_max_pol_g - 2.
       Note that the l=0 and l=1 moments are going to be identically zero as E-modes do not have a monopole or a dipole. */
       if ((ppt->has_perturbations2 == _TRUE_) && (ppt->has_polarization2 == _TRUE_)) {
 
         ppt->index_qs_monopole_E = index_type++;
+        index_type += ppr->l_max_pol_g;
+
+        /* Polarisation collision term */
+        ppt->index_qs_monopole_collision_E = index_type++;
         index_type += ppr->l_max_pol_g;
       }
 
@@ -7965,8 +7971,6 @@ int perturb_source_terms_2nd_order_eqs(
               )
 {
 
-
-
   // ========================================
   // =        Rename structure fields       =
   // ========================================
@@ -8035,23 +8039,26 @@ int perturb_source_terms_2nd_order_eqs(
   // ===========================
   // = Sort out approximations =
   // ===========================
+
   /* Assign perturbations associated to photons and neutrinos according to the considered approximation. */
   double delta_g,theta_g,shear_g,l3_g;
   double delta_ur,theta_ur,shear_ur,l3_ur;
-  double monopole_g, dipole_g, quadrupole_g, octupole_g;
+  double Pi, Pi_prime;
+  double monopole_g, dipole_g, quadrupole_g, octupole_g, quadrupole_E;
   double monopole_b, dipole_b;
   double monopole_cdm, dipole_cdm;
   double monopole_ur, dipole_ur, quadrupole_ur, octupole_ur;  
   double pol0_g,pol1_g,pol2_g,pol3_g;
+  double phi,psi;
   int l;                  /* Will index all the multipoles with l>3 */
 
-  double phi,psi;
 
   // ******** PHOTONS **********
+
   /* Take care of photons.  We need to do this because, if the rsa approximation is on,
-    then delta_g won't be evolved and calling y[ppw->pv->index_pt_delta_g] may give
-    a segmentation fault.  Same argument for the tca approximation.
-    (Snippet taken from the print_variables function in vanilla CLASS) */
+  then delta_g won't be evolved and calling y[ppw->pv->index_pt_delta_g] may give
+  a segmentation fault.  Same argument for the tca approximation.
+  (Snippet taken from the print_variables function in vanilla CLASS) */
   if (ppw->approx[ppw->index_ap_rsa]==(int)rsa_off) {
     delta_g = y[ppw->pv->index_pt_delta_g];
     theta_g = y[ppw->pv->index_pt_theta_g];
@@ -8061,10 +8068,12 @@ int perturb_source_terms_2nd_order_eqs(
     theta_g = ppw->rsa_theta_g;
   }
   
-  /* Take care of moments with l>=2 */
+  /* Take care of moments with l>=2. */
   if (ppw->approx[ppw->index_ap_rsa]==(int)rsa_off) {
 
     if (ppw->approx[ppw->index_ap_tca]==(int)tca_on) {
+    	Pi = 5.*ppw->tca_shear_g; /* (2.5+0.5+2)shear_g */
+    	Pi_prime = 5.*ppw->tca_shear_g_prime; /* (2.5+0.5+2)shear_g_prime */
       shear_g = ppw->tca_shear_g;
       l3_g = 6./7.*k/ppw->pvecthermo[pth->index_th_dkappa]*ppw->tca_shear_g;
       pol0_g = 2.5*ppw->tca_shear_g;
@@ -8073,6 +8082,8 @@ int perturb_source_terms_2nd_order_eqs(
       pol3_g = 0.25*6./7.*k/ppw->pvecthermo[pth->index_th_dkappa]*ppw->tca_shear_g;
     }
     else {  /* if tca_off ... */
+    	Pi = y[ppw->pv->index_pt_pol0_g] + y[ppw->pv->index_pt_pol2_g] + 2.*y[ppw->pv->index_pt_shear_g];
+    	Pi_prime = dy[ppw->pv->index_pt_pol0_g] + dy[ppw->pv->index_pt_pol2_g] + 2.*dy[ppw->pv->index_pt_shear_g];
       shear_g = y[ppw->pv->index_pt_shear_g];
       l3_g = y[ppw->pv->index_pt_l3_g];
       pol0_g = y[ppw->pv->index_pt_pol0_g];
@@ -8082,30 +8093,45 @@ int perturb_source_terms_2nd_order_eqs(
     }
   }
   else {  /* if rsa_on ... */
+    Pi = 0;
+    Pi_prime = 0;
     shear_g = 0;
     l3_g = 0;
     pol0_g = 0;
     pol1_g = 0;
     pol2_g = 0;
-    pol3_g = 0.;
+    pol3_g = 0;
   }
 
+
+  /* IMPORTANT: Here we define Pi with an extra (2l+1)/10 factor 
+  with respect to the rest of CLASS. The 2l+1=5 factor accounts
+  for the fact that in SONG we deal with spherical transforms rather
+  than Legendre ones. The 1/10 factor is just a matter of definition,
+  since we follow Pitrou 2010 and Beneke 2010 where the 1/10 is 
+  included in Pi. */
+  Pi *= 0.5;
+  Pi_prime *= 0.5;
+  
+
   /* Convert the fluid variables evolved by CLASS into the first multipoles of the Boltzmann
-    hierarchy.  These I_lm moments are the projection of the brightness function on spherical harmonics.
-    The relation between these moments and the F_l moments defined in Ma & Bertschinger 1995, eq. 47
-    (which are projections on Legendre polynomials), is:
-    I_l0 = (2l+1)*F_l. */
+  hierarchy.  These I_lm moments are the projection of the brightness function on spherical harmonics.
+  The relation between these moments and the F_l moments defined in Ma & Bertschinger 1995, eq. 47
+  (which are projections on Legendre polynomials), is:
+  I_l0 = (2l+1)*F_l. */
   monopole_g      =     delta_g;
   dipole_g        =     4.*theta_g/k;      // I_1_0 = 3(w+1) theta/k
   quadrupole_g    =     10.*shear_g;       // I_2_0 = 15/2 (w+1) shear
   octupole_g      =     7*l3_g;            // this is just the 2l+1 factor
+  if (ppt->has_polarization2 == _TRUE_)
+    quadrupole_E = y[ppw->pv->index_pt_monopole_E + 2];
 
 
   // ******** BARYONS **********
   /* Convert fluid variables to Boltzmann multipoles. See comment for photons, above.
-    The difference here is that we do not have quadrupole and octupole because baryons
-    are a perfect fluid at first-order.  Moreover, w=0 so that the dipole gets a 
-    coefficient of 3 instead of 4. */
+  The difference here is that we do not have quadrupole and octupole because baryons
+  are a perfect fluid at first-order.  Moreover, w=0 so that the dipole gets a 
+  coefficient of 3 instead of 4. */
   monopole_b      =    y[ppw->pv->index_pt_delta_b];
   dipole_b        =    3*y[ppw->pv->index_pt_theta_b]/k;
 
@@ -8123,11 +8149,11 @@ int perturb_source_terms_2nd_order_eqs(
     (Taken from the print_variables function in vanilla CLASS) */
   if (pba->has_ur == _TRUE_) {
     if (ppw->approx[ppw->index_ap_rsa]==(int)rsa_off) {
-      // delta, theta, shear are evolved also in the ufa approximation
+      /* delta, theta, shear are evolved also in the ufa approximation */
       delta_ur = y[ppw->pv->index_pt_delta_ur];
       theta_ur = y[ppw->pv->index_pt_theta_ur];
       shear_ur = y[ppw->pv->index_pt_shear_ur];
-      // l3 is not evolved in the ufa approximation
+      /* l3 is not evolved in the ufa approximation */
       if (ppw->approx[ppw->index_ap_ufa]==(int)ufa_off)
         l3_ur = y[ppw->pv->index_pt_l3_ur];
     }
@@ -8160,7 +8186,6 @@ int perturb_source_terms_2nd_order_eqs(
     double theta_cdm;
     if (ppt->gauge != synchronous)
       theta_cdm = y[ppw->pv->index_pt_theta_cdm];
-
 
 
     // ******** SYNCHRONOUS GAUGE **********
@@ -8304,7 +8329,9 @@ int perturb_source_terms_2nd_order_eqs(
     }
 
     //******* PHOTONS TEMPERATURE *******
+
     // *** FLUID VARIABLES
+
     // delta_g
     quadsources[index_mode][index_ic*qs_size + ppt->index_qs_delta_g][time_and_wavemode_index] = delta_g;
     strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_delta_g],"delta_g");
@@ -8317,7 +8344,9 @@ int perturb_source_terms_2nd_order_eqs(
     // shear_g
     quadsources[index_mode][index_ic*qs_size + ppt->index_qs_shear_g][time_and_wavemode_index] = shear_g;
     strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_shear_g],"shear_g");
+
     // *** KINETIC HIERARCHY    
+
 		// Note that the 2*l+1  factors comes from the fact that at first order we computed the Legendre expansion of
 		// the distribution function, while at second order we need the spherical harmonic expansion.
     quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_g][time_and_wavemode_index] = monopole_g;
@@ -8331,25 +8360,79 @@ int perturb_source_terms_2nd_order_eqs(
     // l3_g
     quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_g+3][time_and_wavemode_index] = octupole_g;
     strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_monopole_g+3],"I3");      
+
     /* Moments with l>3.  All of these are non-zero only when both the tca and rsa approximations are turned off.
-		  Note that the 2*l+1  factors comes from the fact that at first order we computed the Legendre expansion of
-		  the distribution function, while at second order we need the spherical harmonic expansion. */
+		Note that the 2*l+1 factors comes from the fact that at first order we computed the Legendre expansion of
+		the distribution function, while at second order we need the spherical harmonic expansion. */
     if ((ppw->approx[ppw->index_ap_rsa]==(int)rsa_off) && (ppw->approx[ppw->index_ap_tca]==(int)tca_off)) {
-      for (l = 4; l <= ppr->l_max_g; l++) { 
-        quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_g+l][time_and_wavemode_index] = (2*l+1.) * y[ppw->pv->index_pt_delta_g+l];
+      for (int l = 4; l <= ppr->l_max_g; l++) { 
+        quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_g+l][time_and_wavemode_index]
+          = (2*l+1.) * y[ppw->pv->index_pt_delta_g+l];
         sprintf(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_monopole_g+l], "I%d", l);
       }
     }
 
+    /* Collision term */
+    for (int l=0; l <= ppr->l_max_g; ++l) {
+
+      /* The collision term for the monopole vanishes */
+      if (l==0)
+        continue;
+      
+      /* The dipole from derivs:
+    	dy[ppw->pv->index_pt_theta_g] =
+    	  k2*(delta_g/4.-shear_g)
+    	  + metric_euler
+    	  +pvecthermo[pth->index_th_dkappa]*(theta_b-theta_g); */
+      else if (l==1)
+        quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_collision_g+l][time_and_wavemode_index]
+          = - dipole_g + four_thirds*dipole_b;
+
+      /* The quadrupole from derivs:
+    	dy[ppw->pv->index_pt_shear_g] =
+    	  0.5*(8./15.*(theta_g+metric_shear)
+    	       -3./5.*k*y[ppw->pv->index_pt_l3_g]
+    	       -pvecthermo[pth->index_th_dkappa]*(2.*shear_g-1./10.*Pi)); */
+      else if (l==2)
+        quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_collision_g+l][time_and_wavemode_index]
+          = - quadrupole_g + Pi;
+      
+      else
+        quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_collision_g+l][time_and_wavemode_index]
+          = - (2*l+1.) * y[ppw->pv->index_pt_delta_g+l];
+        
+
+      sprintf(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_monopole_g+l], "C[I%d]", l);
+    }
 
 
     //******* PHOTONS E-MODE POLARIZATION *******
+
     if ((ppt->has_perturbations2 == _TRUE_) && (ppt->has_polarization2 == _TRUE_)) {
-      for (l=0; l <= ppr->l_max_pol_g; ++l) {
+
+      for (int l=2; l <= ppr->l_max_pol_g; ++l) {
         quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_E+l][time_and_wavemode_index] = y[ppw->pv->index_pt_monopole_E+l];
         sprintf(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_monopole_E+l], "E%d", l);
       }
+
+      /* Collision term */
+      for (int l=2; l <= ppr->l_max_pol_g; ++l) {
+
+        /* The quadrupole from derivs:
+        dy[ppw->pv->index_pt_monopole_E + 2] = -k*sqrt_5/7*E_plus - kappa_dot*(E + sqrt_6*Pi); */
+        if (l==2)
+          quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_collision_E+l][time_and_wavemode_index]
+            = - quadrupole_E - sqrt_6*Pi;
+
+        else
+          quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_collision_E+l][time_and_wavemode_index]
+            = - y[ppw->pv->index_pt_monopole_E+l];          
+
+        sprintf(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_monopole_E+l], "C[E%d]", l);
+      }
     }
+
+
     // // monopole_pol_g
     // quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_E][time_and_wavemode_index]   = pol0_g;
     // strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_monopole_E],"E0");
@@ -8364,7 +8447,7 @@ int perturb_source_terms_2nd_order_eqs(
     // strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_monopole_E+3],"E3");      
     // // Moments with l>3.  All of these are non-zero only when both the tca and rsa approximations are turned off.
     // if ((ppw->approx[ppw->index_ap_rsa]==(int)rsa_off) && (ppw->approx[ppw->index_ap_tca]==(int)tca_off)) {
-    //   for (l = 4; l <= ppr->l_max_pol_g; l++) { 
+    //   for (int l = 4; l <= ppr->l_max_pol_g; l++) { 
     //     quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_E+l][time_and_wavemode_index] = (2*l+1.) * y[ppw->pv->index_pt_pol0_g+l];
     //     sprintf(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_monopole_E+l], "E%d", l);
     //   }
@@ -8402,7 +8485,7 @@ int perturb_source_terms_2nd_order_eqs(
   		  Note that the 2*l+1  factors comes from the fact that at first order we computed the Legendre expansion of
   		  the distribution function, while at second order we need the spherical harmonic expansion. */
       if ((ppw->approx[ppw->index_ap_rsa]==(int)rsa_off) && (ppw->approx[ppw->index_ap_ufa]==(int)ufa_off)) {
-        for (l = 4; l <= ppr->l_max_ur; l++) { 
+        for (int l = 4; l <= ppr->l_max_ur; l++) { 
           quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_ur+l][time_and_wavemode_index] = (2.*l+1.) * y[ppw->pv->index_pt_delta_ur+l];
           sprintf(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_monopole_ur+l], "l%d_ur", l);
         }

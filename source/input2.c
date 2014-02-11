@@ -1217,7 +1217,7 @@ int input2_init (
       (ppt2->has_cmb_polarization==_TRUE_) && (ppr->compute_only_even_ls==_TRUE_) ||
       (ppt2->has_cmb_temperature==_TRUE_) && (ppr->compute_only_odd_ls==_TRUE_),
       errmsg,
-      "careful, your choice of parity might be wrong!");
+      "careful, if you are asking for B-modes bispectra, your choice of parity might be wrong!");
   }
   
 

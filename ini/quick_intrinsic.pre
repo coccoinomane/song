@@ -117,66 +117,20 @@ bispectra_interpolation = mesh_2d
 
 
 
-### How many multipoles should we evolve for each species/mode/type of observable? l_max = 70 is good enough up to tau=1000 and l=5.
-
-## CMBquick
-# l_max_g_2nd_order = 5
-# l_max_ur_2nd_order = 5
-# l_max_pol_g_2nd_order = 5
-
-## Christian
-# l_max_g_2nd_order = 15
-# l_max_ur_2nd_order = 15
-# l_max_pol_g_2nd_order = 15
-
-## Custom run
 l_max_g_2nd_order = 12
 l_max_ur_2nd_order = 8
 l_max_pol_g_2nd_order = 8
 
-
-### How many multipoles should we keep in the quadratic sources? Set to a negative value to keep all of them.
-
-## Christian
-# l_max_g_quadsources = 2
-# l_max_ur_quadsources = 2
-# l_max_pol_g_quadsources = 2
-
-## Custom run
 l_max_g_quadsources = -1
 l_max_ur_quadsources = -1
 l_max_pol_g_quadsources = -1
 
+l_max_los_t = 5
+l_max_los_quadratic_t = 5
 
-
-### How many multipoles to keep in the 2nd-order line of sight integration? (minimum=2)
-
-# Temperature
-l_max_los_t = 3
-l_max_los_quadratic_t = 3
-
-# Polarization
 l_max_los_p = 5
 l_max_los_quadratic_p = 5
 
-
-### First-order multipoles
-# As we do not want to introduce errors at first order, we set very high values 
-# for the various l_max parameters.
-# Note that, without ufa, delta_ur and theta_ur have reflection problems even
-# for l_max_ur = 50 at ktau ~ 100 (see fig. 6 Blas et al. 2010).
-
-## CMBquick
-# l_max_g = 8
-# l_max_pol_g = 8
-# l_max_ur = 8
-
-## Christian
-# l_max_g = 25
-# l_max_pol_g = 25
-# l_max_ur = 25
-
-## Custom run
 l_max_g = 15
 l_max_pol_g = 10
 l_max_ur = 10
