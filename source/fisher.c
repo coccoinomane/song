@@ -320,13 +320,13 @@ int fisher_indices (
   /* TODO: When choosing first l_max=1000 and then l_max=500, you get a slighly different
   result in the overlapping region. This happens with mesh_interpolation_2d but not with
   mesh_interpolation, suggesting an issue in the linear interpolation of l1. */
-  pfi->l1_min_global = max (pfi->l_min_estimator, pfi->l_min);
-  pfi->l2_min_global = max (pfi->l_min_estimator, pfi->l_min);
-  pfi->l3_min_global = max (pfi->l_min_estimator, pfi->l_min);
+  pfi->l1_min_global = MAX (pfi->l_min_estimator, pfi->l_min);
+  pfi->l2_min_global = MAX (pfi->l_min_estimator, pfi->l_min);
+  pfi->l3_min_global = MAX (pfi->l_min_estimator, pfi->l_min);
 
-  pfi->l1_max_global = min (pfi->l_max_estimator, pfi->l_max);
-  pfi->l2_max_global = min (pfi->l_max_estimator, pfi->l_max);
-  pfi->l3_max_global = min (pfi->l_max_estimator, pfi->l_max);
+  pfi->l1_max_global = MIN (pfi->l_max_estimator, pfi->l_max);
+  pfi->l2_max_global = MIN (pfi->l_max_estimator, pfi->l_max);
+  pfi->l3_max_global = MIN (pfi->l_max_estimator, pfi->l_max);
 
   /* Here we choose the 3D grid in (l1,l2,l3) over which to sum the estimator. For the mesh
   interpolation, where we interpolate the bispectra for all configurations, we need the full
@@ -590,7 +590,7 @@ int fisher_indices (
           continue;
         
         int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
-        int index_l3_max = min (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
+        int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
     
         /* Compute the actual 3j symbol for all allowed values of l3 */
         class_call (threej_l1 (
@@ -666,7 +666,7 @@ int fisher_indices (
     for (int index_l2=0; index_l2 <= index_l1; ++index_l2) {
       int l2 = pbi->l[index_l2];
       int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
-      int index_l3_max = min (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
+      int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
       for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3)
         if ((l1+l2+pbi->l[index_l3])%2!=0)
           count_wasted++;
@@ -840,8 +840,8 @@ int fisher_create_interpolation_mesh(
     pfi->l_turnover[0] = pbi->l[0];
   }
   /* Never use the coarse grid if the linstep (i.e. the largest possible step) is never used.
-  The max() is needed because the last point is fixed and does not depend on the grid spacing. */
-  else if (max(pbi->l[pbi->l_size-1]-pbi->l[pbi->l_size-2], pbi->l[pbi->l_size-2]-pbi->l[pbi->l_size-3]) < ppr->l_linstep) {
+  The MAX() is needed because the last point is fixed and does not depend on the grid spacing. */
+  else if (MAX(pbi->l[pbi->l_size-1]-pbi->l[pbi->l_size-2], pbi->l[pbi->l_size-2]-pbi->l[pbi->l_size-3]) < ppr->l_linstep) {
     pfi->l_turnover[0] = pbi->l[pbi->l_size-1] + 1;
   }
   else {
@@ -909,7 +909,7 @@ int fisher_create_interpolation_mesh(
 
           /* Determine the limits for l3, which come from the triangular inequality |l1-l2| <= l3 <= l1+l2 */
           int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
-          int index_l3_max = min (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
+          int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
   
           // ***  Rearrange the bispectra into 'values' ***
           for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {
@@ -1046,7 +1046,7 @@ int fisher_create_interpolation_mesh(
   /* Interpolation */
   // int L;
   //   
-  // for (L=max(2, abs(l1-l2)); L<=min(pbi->l[pbi->l_size-1], l1+l2); L+=2) {  
+  // for (L=MAX(2, abs(l1-l2)); L<=MIN(pbi->l[pbi->l_size-1], l1+l2); L+=2) {  
   //   
   //   double interpolated_bispectrum;
   //   
@@ -1065,7 +1065,7 @@ int fisher_create_interpolation_mesh(
   // 
   // for (L1=2; L1 <= L_MAX; L1+=delta) {
   //   for (L2=2; L2 <= L_MAX; L2+=delta) {
-  //     for (L3=max(2, abs(L1-L2)); L3 <= min(L_MAX, L1+L2); ++L3) {
+  //     for (L3=MAX(2, abs(L1-L2)); L3 <= MIN(L_MAX, L1+L2); ++L3) {
   //       
   //       counter++;
   //       
@@ -1567,7 +1567,7 @@ int fisher_cross_correlate_nodes (
         
         /* Determine the limits for l3, which come from the triangular inequality |l1-l2| <= l3 <= l1+l2 */
         int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
-        int index_l3_max = min (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
+        int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
         
         if (pfi->bispectra_interpolation == smart_interpolation) {
 
@@ -1765,7 +1765,7 @@ int fisher_interpolation_weights (
 
   /* Limits of our l3 sampling */
   int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
-  int index_l3_max = min (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
+  int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
       
   // -----------------------------------------------------------------------------------------
   // -                            Exclude points with l1+l2+l3 odd                           -
@@ -1844,17 +1844,17 @@ int fisher_interpolation_weights (
   /* We assign to those points outside our l3-sampling (but inside the triangular condition) the
   bispectrum-value in l3. To do so, however, we need to properly count which of these
   out-of-bounds points are even and odd */
-  for (int l3 = max(pfi->l_min, abs(l1-l2)); l3 < pbi->l[index_l3_min]; ++l3)
+  for (int l3 = MAX(pfi->l_min, abs(l1-l2)); l3 < pbi->l[index_l3_min]; ++l3)
     if((l1+l2+l3)%2==0)
       delta_l3[index_l3_min] += 1.;
   
-  for (int l3 = pbi->l[index_l3_max]+1; l3 <= min(l2,l1+l2); ++l3)
+  for (int l3 = pbi->l[index_l3_max]+1; l3 <= MIN(l2,l1+l2); ++l3)
     if((l1+l2+l3)%2==0)
       delta_l3[index_l3_max] += 1;
   
   /* Check that, for a function that always evaluates to one, the weights sum up to the number
   of even/odd points in the integration range. For a given pair of (l1,l2), the range goes
-  from max(2,|l1-l2|) to min(l2,l1+l2). 
+  from MAX(2,|l1-l2|) to MIN(l2,l1+l2). 
   Remember that now 'index_l3_min' and 'index_l3_max' have been modified with respect to those in
   pbi->index_l_triangular_min and pbi->index_l_triangular_max to be even/odd. */
   double sum = 0;
@@ -1862,7 +1862,7 @@ int fisher_interpolation_weights (
     sum += delta_l3[index_l3];
   
   int n_even=0, n_odd=0;
-  for (int l3 = max(pfi->l_min,abs(l1-l2)); l3 <= min(l2,l1+l2); ++l3) {
+  for (int l3 = MAX(pfi->l_min,abs(l1-l2)); l3 <= MIN(l2,l1+l2); ++l3) {
     if(l3%2==0) n_even++;
     else n_odd++;
   }
@@ -1978,7 +1978,7 @@ int fisher_cross_correlate_mesh (
 
       /* The triangular condition imposes l3 >= l1-l2, while the bound on the summation imposes l3 <= l2. Hence,
       the minimum allowed value for l2 is l1/2. */
-      int l2_min = max(l1/2,2);
+      int l2_min = MAX(l1/2,2);
 
       // ------------------------------------------------
       // -                  Sum over l2                 -
@@ -2002,7 +2002,7 @@ int fisher_cross_correlate_mesh (
           pfi->error_message,
           pfi->error_message);
   
-        int l3_min = max(l1-l2,2);
+        int l3_min = MAX(l1-l2,2);
 
         // ------------------------------------------------
         // -                  Sum over l3                 -

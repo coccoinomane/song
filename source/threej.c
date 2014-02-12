@@ -190,7 +190,7 @@ int threej_fill_matrices(
           m2 = m-m1;
 
           // When addressing an array with an 'm' index, always keep in mind that you should
-          // always use index_m = m - min(m), which in most cases is equal to m - (-l) = m+l
+          // always use index_m = m - MIN(m), which in most cases is equal to m - (-l) = m+l
           chi_ij[m+l][3*i + j] += sqrt(10./3.) * pow(-1,-m) * xi[m1+l1][i] * xi[m2+l2][j] * result[m1-m1_min];
 
 

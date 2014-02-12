@@ -1270,7 +1270,7 @@ int input_init(
     else {
       psp->z_max_pk = 0.;
       for (i=0; i<pop->z_pk_num; i++)
-	psp->z_max_pk = max(psp->z_max_pk,pop->z_pk[i]);
+	psp->z_max_pk = MAX(psp->z_max_pk,pop->z_pk[i]);
     }
   }
 
@@ -1675,7 +1675,7 @@ int input_init(
        be changed */
 
     ppt->k_scalar_kmax_for_pk 
-      = max(
+      = MAX(
 	    ppt->k_scalar_kmax_for_pk,
 	    ppr->k_scalar_max_for_pk_nl*pba->h);
 
@@ -1710,16 +1710,16 @@ int input_init(
       if (ppt->has_cl_cmb_temperature == _TRUE_ ||
           ppt->has_cl_cmb_polarization == _TRUE_||
           ppt->has_cl_cmb_lensing_potential == _TRUE_)
-	pbs->l_max=max(ppt->l_scalar_max,pbs->l_max);
+	pbs->l_max=MAX(ppt->l_scalar_max,pbs->l_max);
 
-      pbs->x_max=max(pbs->l_max*ppr->k_scalar_max_tau0_over_l_max,pbs->x_max);
+      pbs->x_max=MAX(pbs->l_max*ppr->k_scalar_max_tau0_over_l_max,pbs->x_max);
       
     }
     
     if (ppt->has_tensors == _TRUE_) {   
-      pbs->l_max=max(ppt->l_tensor_max,pbs->l_max);
+      pbs->l_max=MAX(ppt->l_tensor_max,pbs->l_max);
 
-      pbs->x_max=max(pbs->l_max*ppr->k_tensor_max_tau0_over_l_max,pbs->x_max);
+      pbs->x_max=MAX(pbs->l_max*ppr->k_tensor_max_tau0_over_l_max,pbs->x_max);
     }
   }
 
@@ -2121,7 +2121,7 @@ or 'linear_extrapolation'.", "");
     /* Maximum argument for the Bessel functions in the line of sight integration.  For the time being, we do
       set x_max  here, even if we shouldn't as tau0 cannot be accessed by this module.  This is why we define
       a superior limit for tau0. */
-    double x_max = max (pbs->x_max, k_max * max(tau0_sup, pbi->r_max));
+    double x_max = MAX (pbs->x_max, k_max * MAX(tau0_sup, pbi->r_max));
   
     printf("# Temporary message: Setting pbs->x_max from %g to %g\n",
       ((int)(pbs->x_max * 1.1 / pbs->x_step)+1)*pbs->x_step,
@@ -2509,7 +2509,7 @@ int input_default_params(
 
   /** - bessels structure */
 
-  pbs->l_max = max(ppt->l_scalar_max,ppt->l_tensor_max);
+  pbs->l_max = MAX(ppt->l_scalar_max,ppt->l_tensor_max);
   pbs->bessel_always_recompute = _TRUE_;
 
   /** - primordial structure */

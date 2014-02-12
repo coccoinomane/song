@@ -1206,13 +1206,13 @@ int transfer2_get_k3_size (
       k_max_tr += (extended_k3_range_right - physical_k3_range);    
 
     /* Never go beyond the maximum allowed value for k1 and k2 */
-    k_max_tr = min (k_max_tr, ppt2->k[ppt2->k_size-1]);
+    k_max_tr = MIN (k_max_tr, ppt2->k[ppt2->k_size-1]);
 
     if (physical_k3_range < extended_k3_range_left)
       k_min_tr -= (extended_k3_range_left - physical_k3_range);
 
     /* Never go below the smallest between the usual k-range and the physical bound. */
-    k_min_tr = max (k_min_tr, min(ppt2->k[0], k_min_pt));
+    k_min_tr = MAX (k_min_tr, MIN(ppt2->k[0], k_min_pt));
 
     /* If the user specifies a negative number of oscillations, then extend the integration
     range all the way to the minimum and maximum k's considered in the code */    
@@ -1286,7 +1286,7 @@ int transfer2_get_k3_size (
       "stopping to avoid segmentation fault, step=%g", first_physical_step);
 
     while (k < k_min_pt) {
-      k += min (k_step_max, n*first_physical_step);
+      k += MIN (k_step_max, n*first_physical_step);
       index_k_tr++;
     }
 
@@ -1320,7 +1320,7 @@ int transfer2_get_k3_size (
   add points beyond the physical limit dictated by the triangular condition. */
   while (k < k_max_tr) {
 
-    k += min (k_step_max, n*last_triangular_step);
+    k += MIN (k_step_max, n*last_triangular_step);
     index_k_tr++;
     
     /* Take note of where the physical regime ends */
@@ -1434,7 +1434,7 @@ int transfer2_get_k3_list (
   
     while (k < k_min_pt) {
 
-      k += min (k_step_max, n*first_physical_step);
+      k += MIN (k_step_max, n*first_physical_step);
       k3[index_k_tr] = k;
       index_k_tr++;    
     }
@@ -1463,7 +1463,7 @@ int transfer2_get_k3_list (
   /* Then, points spaced linearily with step k_step_max. Note that when using k3-extrapolation, we add points beyond the
   physical limit dictated by the triangular condition. */
   while ((index_k_tr < k_tr_size) && (k < k_max_tr)) {
-    k += min (k_step_max, n*last_triangular_step);
+    k += MIN (k_step_max, n*last_triangular_step);
     k3[index_k_tr] = k;
     index_k_tr++;
   }
@@ -1641,7 +1641,7 @@ int transfer2_get_k3_sizes (
 
   for (index_k1 = 0; index_k1 < ppt2->k_size; ++index_k1)
     for (index_k2 = 0; index_k2 <= index_k1; ++index_k2)
-      ptr2->k3_size_max = max (ptr2->k3_size_max, ptr2->k_size_k1k2[index_k1][index_k2]);
+      ptr2->k3_size_max = MAX (ptr2->k3_size_max, ptr2->k_size_k1k2[index_k1][index_k2]);
 
   if (ptr2->transfer2_verbose > 1)
     printf (" -> maximum size of k3-grid = %d\n", ptr2->k3_size_max);
@@ -2077,7 +2077,7 @@ int transfer2_integrate (
   
       /* The 3j symbols in the definition of J force the azimuthal number 'm' to be smaller than L */
       int L = pbs2->L[index_L];
-      if (abs(m) > min(L,l)) continue;
+      if (abs(m) > MIN(L,l)) continue;
       
       // *** Skip if J is negligible
       

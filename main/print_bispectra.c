@@ -390,7 +390,7 @@ int main(int argc, char **argv) {
   // 
   //     /* Determine the limits for l3, which come from the triangular inequality |l1-l2| <= l3 <= l1+l2 */
   //     int index_l3_min = bi.index_l_triangular_min[index_l1][index_l2];
-  //     int index_l3_max = min (index_l2, bi.index_l_triangular_max[index_l1][index_l2]);
+  //     int index_l3_max = MIN (index_l2, bi.index_l_triangular_max[index_l1][index_l2]);
   //     
   //     for (index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {  
   // 
@@ -751,7 +751,7 @@ int main(int argc, char **argv) {
         // -------------------------------------------------------------------------------------------------------
 
         /* Index of the current (l1,l2,l3) configuration */
-        int index_max_for_smallest = min (index_mid, bi.index_l_triangular_max[index_largest][index_mid]);
+        int index_max_for_smallest = MIN (index_mid, bi.index_l_triangular_max[index_largest][index_mid]);
         long int index_l1_l2_l3 = bi.index_l1_l2_l3[index_largest][index_largest-index_mid][index_max_for_smallest-index_smallest];
         
         /* Value of the bolometric temperature bispectrum in (l1,l2,l3) */

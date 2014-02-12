@@ -6,8 +6,8 @@
 /* Header and definitions needed to compile */
 // #include "math.h"
 // #include "stdio.h"
-// #define min(a,b) (((a)<(b)) ? (a) : (b) ) /**< the usual "min" function */
-// #define max(a,b) (((a)<(b)) ? (b) : (a) ) /**< the usual "max" function */
+// #define MIN(a,b) (((a)<(b)) ? (a) : (b) ) /**< the usual "min" function */
+// #define MAX(a,b) (((a)<(b)) ? (b) : (a) ) /**< the usual "max" function */
 // #define _SUCCESS_ 0
 // #define _FAILURE_ 0
 

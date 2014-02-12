@@ -112,15 +112,13 @@ extern "C" {
    *  besj_.
    *
    */
-  int besselj_l1(
-         float l,                          // In
-         float x,                          // In
-         int N,                             // In
-         float **result,                   // Out (array of size N)
-         ErrorMsg errmsg
-         );
-
-
+   int besselj_l1(
+          float l,                          // In
+          float x,                          // In
+          int N,                             // In
+          float **result,                   // Out (array of size N)
+          ErrorMsg errmsg
+          );
 
   /**      
    *  Given the arguments l >= 0.0D0, x >= 0.0D0, compute
@@ -135,13 +133,27 @@ extern "C" {
    *  besj_.
    *
    */
-  int besselJ_l1(
-         float l,                          // In
-         float x,                          // In
-         int N,                            // In
-         float * result,                   // Out (array of size N)
-         ErrorMsg errmsg
+   int besselJ_l1(
+          float l,                          // In
+          float x,                          // In
+          int N,                            // In
+          float * result,                   // Out (array of size N)
+          ErrorMsg errmsg
+          );
+ 
+  /**
+   * Compute spherical Bessel function j_l(x) for a given l and x.
+   *
+   * Inspired from Numerical Recipies. This is the same as the function
+   * bessel_j in the Bessel structure, but without requiring pbs as an
+   * argument, so that it can be called from anywhere.
+   */
+  double spherical_bessel_j(
+         int l,
+         double x
          );
+
+
 
 
 

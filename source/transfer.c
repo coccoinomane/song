@@ -792,7 +792,7 @@ int transfer_get_l_list(
   
     ptr->l_size[index_mode] = index_l+1;
 
-    ptr->l_size_max = max(ptr->l_size_max,ptr->l_size[index_mode]);
+    ptr->l_size_max = MAX(ptr->l_size_max,ptr->l_size[index_mode]);
 
   }
      

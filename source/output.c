@@ -165,7 +165,7 @@ int output_init(
   /* MY MODIFICATIONS */
   if (pfi->has_fisher == _TRUE_) {
 
-    class_call(output_fisher(pba,ppt,psp,ple,pbi,pfi,pop),
+    class_call(output_fisher(pbi,pfi,pop),
 	       pop->error_message,
 	       pop->error_message);
   
@@ -179,10 +179,6 @@ int output_init(
 
 
 int output_fisher(
-        struct background * pba,
-        struct perturbs * ppt,
-        struct spectra * psp,
-        struct lensing * ple,
         struct bispectra * pbi,
         struct fisher * pfi,
         struct output * pop

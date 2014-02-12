@@ -184,8 +184,8 @@ int main(int argc, char **argv) {
   char label[32];
 
   /* Print labels of transfer types */
-  for (index_tt = 0; index_tt < min(tt_size,n_columns); ++index_tt) {
-    for (index_l = 0; index_l < min(l_size,n_columns); ++index_l) {
+  for (index_tt = 0; index_tt < MIN(tt_size,n_columns); ++index_tt) {
+    for (index_l = 0; index_l < MIN(l_size,n_columns); ++index_l) {
       if (index_tt==tr.index_tt_t)
         sprintf (label, "T_%d", tr.l[index_l]);
       else if (index_tt==tr.index_tt_e)
@@ -205,8 +205,8 @@ int main(int argc, char **argv) {
     fprintf (stderr,"%+15e ", k);
       
     /* Columns from 3 to tt2_size+2 are the transfer functions */
-    for (index_tt = 0; index_tt < min(tt_size,n_columns); ++index_tt) {
-      for (index_l = 0; index_l < min(l_size,n_columns); ++index_l) {
+    for (index_tt = 0; index_tt < MIN(tt_size,n_columns); ++index_tt) {
+      for (index_l = 0; index_l < MIN(l_size,n_columns); ++index_l) {
   
         double var = tr.transfer[index_mode] 
           [((index_ic * tt_size + index_tt) * l_size + index_l) * k_size + index_k];

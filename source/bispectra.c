@@ -78,7 +78,7 @@ int bispectra_init (
   //   for (int index_l1 = 0; index_l1 < pbi->l_size; ++index_l1) {
   //     for (int index_l2 = 0; index_l2 <= index_l1; ++index_l2) {
   //       int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
-  //       int index_l3_max = min (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
+  //       int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
   //       for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {
   //         long int index_l1_l2_l3 = pbi->index_l1_l2_l3[index_l1][index_l1-index_l2][index_l3_max-index_l3];
   //         int l1 = pbi->l[index_l1]; int l2 = pbi->l[index_l2]; int l3 = pbi->l[index_l3];
@@ -544,8 +544,8 @@ int bispectra_indices (
         /* When the triangular condition is not compatible with index_l3<=index_l2, then index_l3_max < index_l3_min+1 will
         be either zero or negative. */ 
         int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
-        int index_l3_max = min (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
-        int l3_size = max (0, index_l3_max-index_l3_min+1);
+        int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
+        int l3_size = MAX (0, index_l3_max-index_l3_min+1);
         class_alloc (pbi->index_l1_l2_l3[index_l1][index_l1-index_l2], l3_size*sizeof(long int), pbi->error_message);
         
         /* The indexing of pbi->index_l1_l2_l3 reflects the l1>=l2>=l3 constraint */
@@ -1147,7 +1147,7 @@ int bispectra_harmonic (
      
               /* Determine the limits for l3, which come from the triangular inequality |l1-l2| <= l3 <= l1+l2 */
               int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
-              int index_l3_max = min (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
+              int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
      
               for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {
 
@@ -1188,7 +1188,7 @@ int bispectra_harmonic (
      
               /* Determine the limits for l3, which come from the triangular inequality |l1-l2| <= l3 <= l1+l2 */
               int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
-              int index_l3_max = min (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
+              int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
      
               for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {
 
@@ -1687,7 +1687,7 @@ int bispectra_separable_integrate_over_r (
   
         /* Determine the limits for l3, which come from the triangular inequality |l1-l2| <= l3 <= l1+l2 */
         int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
-        int index_l3_max = min (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
+        int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
   
         for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {  
 
@@ -2043,7 +2043,7 @@ int bispectra_analytical_init (
     
               /* Determine the limits for l3, which come from the triangular inequality |l1-l2| <= l3 <= l1+l2 */
               int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
-              int index_l3_max = min (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
+              int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
     
               for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {  
     
@@ -3179,7 +3179,7 @@ int bispectra_non_separable_integrate_over_k1 (
   
           /* Determine the limits for l1, which come from the triangular inequality |l3-l2| <= l1 <= l3+l2 */
           int index_l1_min = pbi->index_l_triangular_min[index_l3][index_l2];
-          int index_l1_max = min (index_l2, pbi->index_l_triangular_max[index_l3][index_l2]);
+          int index_l1_max = MIN (index_l2, pbi->index_l_triangular_max[index_l3][index_l2]);
   
           for (int index_l1=index_l1_min; index_l1<=index_l1_max; ++index_l1) {  
 
@@ -3409,7 +3409,7 @@ int bispectra_non_separable_integrate_over_r (
 
         /* Determine the limits for l3, which come from the triangular inequality |l1-l2| <= l3 <= l1+l2 */
         int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
-        int index_l3_max = min (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
+        int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
   
         for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {  
 

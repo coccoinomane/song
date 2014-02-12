@@ -191,7 +191,7 @@ int bispectra2_harmonic (
      
           /* Determine the limits for l3, which come from the triangular inequality |l1-l2| <= l3 <= l1+l2 */
           int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
-          int index_l3_max = min (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
+          int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
      
           for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {
       
@@ -737,7 +737,7 @@ int bispectra2_intrinsic_init (
       for (int index_l2 = 0; index_l2 <= index_l1; ++index_l2) {
     
         int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
-        int index_l3_max = min (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
+        int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
     
         for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {
     
@@ -2007,7 +2007,7 @@ int bispectra2_intrinsic_integrate_over_k1 (
           this is a different symmetry than the full (l2,l3,l1) symmetry of the bispectrum, which we shall
           enforce later. If you comment out the following line together with the next one outside the
           outermost loop, the result should not change. */
-          // index_l1_min = max (index_l2, index_l1_min);
+          // index_l1_min = MAX (index_l2, index_l1_min);
 
           /* Interpolate the integral I_l2_l3(k1,r) that we computed above in the integration grid of k1 */
           if (index_l1_max >= index_l1_min) {
@@ -2116,7 +2116,7 @@ int bispectra2_intrinsic_integrate_over_k1 (
   //       int index_l1_max = pbi->index_l_triangular_max[index_l3][index_l2];
   // 
   //       /* The following is equivalent to restrict the loop to l1<l2 */
-  //       index_l1_max = min (index_l2-1, index_l1_max);
+  //       index_l1_max = MIN (index_l2-1, index_l1_max);
   // 
   //       for (index_l1=index_l1_min; index_l1<=index_l1_max; ++index_l1) {
   // 

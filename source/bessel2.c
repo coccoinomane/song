@@ -255,9 +255,9 @@ int bessel2_init(
       /* m-level */
       for (int index_l=0; index_l<pbs->l_size; ++index_l) {
 
-        /* Only allocate those m's that satisfy the condition m<=min(L,l) */
+        /* Only allocate those m's that satisfy the condition m<=MIN(L,l) */
         // int m_size = ppr2->index_m_max[pbs2->L[index_L]] + 1;
-        int m_size = min (ppr2->index_m_max[pbs2->L[index_L]], ppr2->index_m_max[pbs->l[index_l]]) + 1;
+        int m_size = MIN (ppr2->index_m_max[pbs2->L[index_L]], ppr2->index_m_max[pbs->l[index_l]]) + 1;
 
         class_alloc (pbs2->index_xmin_J[index_J][index_L][index_l], m_size*sizeof(int), pbs2->error_message);
         class_alloc (pbs2->x_min_J[index_J][index_L][index_l], m_size*sizeof(double), pbs2->error_message);
@@ -294,7 +294,7 @@ int bessel2_init(
         
           /* There are two important consideration to take into account when dealing with
           the m!=0 case.  First, while (L,l) are independent, not all m-values are allowed.
-          In fact, abs(m) should be smaller than min(L,l).  Secondly, there is no need to
+          In fact, abs(m) should be smaller than MIN(L,l).  Secondly, there is no need to
           compute J_Llm(x) for negative m's. The projection functions for negative m's
           can be obtained by flipping the sign of the second line of one of the 3j's, thus
           yielding a (-1)^(l+l1+L) sign. The factor l+l1+L is even for the direct projection
@@ -309,7 +309,7 @@ int bessel2_init(
           J_BE_Ll-m = - J_BE_Llm.
 
           It follows from the above relations that for m=0, both J_EB and J_BE vanish.  */
-          int index_m_max = min (ppr2->index_m_max[pbs2->L[index_L]], ppr2->index_m_max[pbs->l[index_l]]);
+          int index_m_max = MIN (ppr2->index_m_max[pbs2->L[index_L]], ppr2->index_m_max[pbs->l[index_l]]);
         
           /* Loop on the external m-index */
           for (int index_m = 0; index_m <= index_m_max; ++index_m) {
@@ -318,9 +318,9 @@ int bessel2_init(
             int l = pbs->l[index_l];
             int m = pbs2->m[index_m];
   
-            class_test_parallel (abs(m) > min(L,l),
+            class_test_parallel (abs(m) > MIN(L,l),
               pbs2->error_message,
-              "abs(m) should always be smaller that min(L,l), check ppr2->index_m_max");
+              "abs(m) should always be smaller that MIN(L,l), check ppr2->index_m_max");
                        
             class_call_parallel (bessel2_J_for_Llm(
                       ppr,
@@ -347,7 +347,7 @@ int bessel2_init(
   for (int index_J = 0; index_J < pbs2->J_size; ++index_J)
     for (int index_L = 0; index_L < pbs2->L_size; ++index_L)
       for (int index_l = 0; index_l < pbs->l_size; ++index_l)
-        for (int index_m = 0; index_m < min(ppr2->index_m_max[pbs2->L[index_L]],ppr2->index_m_max[pbs->l[index_l]])+1; ++index_m)   
+        for (int index_m = 0; index_m < MIN(ppr2->index_m_max[pbs2->L[index_L]],ppr2->index_m_max[pbs->l[index_l]])+1; ++index_m)   
           if (pbs2->x_size_J[index_J][index_L][index_l][index_m] > pbs2->x_size_max_J)
             pbs2->x_size_max_J = pbs2->x_size_J[index_J][index_L][index_l][index_m];
   
@@ -384,7 +384,7 @@ int bessel2_init(
           #pragma omp for schedule (dynamic)
           for (int index_l = 0; index_l < pbs->l_size; ++index_l) {
 
-            int index_m_max = min (ppr2->index_m_max[pbs2->L[index_L]], ppr2->index_m_max[pbs->l[index_l]]);
+            int index_m_max = MIN (ppr2->index_m_max[pbs2->L[index_L]], ppr2->index_m_max[pbs->l[index_l]]);
         
             for (int index_m = 0; index_m <= index_m_max; ++index_m) {
 
@@ -484,7 +484,7 @@ int bessel2_free(
   
       for (index_l = 0; index_l < pbs->l_size; index_l++) {
   
-        int index_m_max = min (ppr2->index_m_max[pbs2->L[index_L]], ppr2->index_m_max[pbs->l[index_l]]);
+        int index_m_max = MIN (ppr2->index_m_max[pbs2->L[index_L]], ppr2->index_m_max[pbs->l[index_l]]);
   
         for (index_m = 0; index_m <= index_m_max; ++index_m) {
         
@@ -583,7 +583,7 @@ int bessel2_get_l1_list(
   Similarly, to compute the contribution to the bispectrum integral from a certain azimuthal number
   m, we will need to compute Bessel functions with order between |l-|m|| and l+|m|. Hence, we need
   to compute the spherical Bessels in an extended range that includes the l's that are within a range
-  of +/- max(pbs2->L_max, ppr2->m_max_second_order) from each member of pbs2->l.*/
+  of +/- MAX(pbs2->L_max, ppr2->m_max_second_order) from each member of pbs2->l.*/
     
   if (pbs2->bessels2_verbose > 2) {
     printf (" -> will compute %d l's in the range l=(%d,%d)\n", pbs->l_size, pbs->l[0], pbs->l[pbs->l_size-1]);    
@@ -599,7 +599,7 @@ int bessel2_get_l1_list(
   // *** Determine the number of elements in the extended list pbs2->l1
 
   /* The maximum number of elements pbs2->l1 can have is given by the maximum l in
-  pbs2->l plus L_max=max(pbs2->L_max, ppr2->m_max_2nd_order). See the long comment
+  pbs2->l plus L_max=MAX(pbs2->L_max, ppr2->m_max_2nd_order). See the long comment
   above for details. We use a logical array (i.e. an array of 1s and 0s) to keep track
   of which l1's are to be kept. */
   int L_max = pbs2->L_max;
@@ -749,7 +749,7 @@ int bessel2_J_Llm_at_x (
  * - the 'x' values are x=x_min_J+xx_step*index_x, where x_min_J is determined
  *   in this function through bisection, xx_step comes from the parameter file (default 0.3),
  *   and the number of steps is simply xx_size=xx_max-xx_min/(xx_step+1), with xx_max computed in
- *   input.c as k_max*max(tau-tau0) ~ k_max*tau0.
+ *   input.c as k_max*MAX(tau-tau0) ~ k_max*tau0.
  *
  *
  * @param ppr Input : pointer to precision structure

@@ -46,8 +46,8 @@ typedef char FileName[_FILENAMESIZE_];
 #define _HUGE_ 1.e99
 
 
-#define min(a,b) (((a)<(b)) ? (a) : (b) ) /**< the usual "min" function */
-#define max(a,b) (((a)<(b)) ? (b) : (a) ) /**< the usual "max" function */
+#define MIN(a,b) (((a)<(b)) ? (a) : (b) ) /**< the usual "min" function */
+#define MAX(a,b) (((a)<(b)) ? (b) : (a) ) /**< the usual "max" function */
     
 #define index_symmetric_matrix(i1,i2,N) (((i1)<=(i2)) ? (i2+N*i1-(i1*(i1+1))/2) : (i1+N*i2-(i2*(i2+1))/2)) /**< assigns an index from 0 to [N(N+1)/2-1] to the coefficients M_{i1,i2} of an N*N symmetric matrix; useful for converting a symmetric matrix to a vector, without loosing or double-counting any information */
 

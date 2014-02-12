@@ -105,10 +105,6 @@ extern "C" {
 
   /* MY MODIFICATIONS */
   int output_fisher(
-    struct background * pba,
-    struct perturbs * ppt,
-    struct spectra * psp,
-    struct lensing * ple,
     struct bispectra * pbi,
     struct fisher * pfi,
     struct output * pop

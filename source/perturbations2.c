@@ -940,12 +940,12 @@ int perturb2_get_lm_lists (
   ppt2->largest_l_quad = ppr->l_max_g;
   
   if (pba->has_ur == _TRUE_) {
-    ppt2->largest_l      = max(ppt2->largest_l, ppr2->l_max_ur_2nd_order);
-    ppt2->largest_l_quad = max(ppt2->largest_l_quad, ppr->l_max_ur);
+    ppt2->largest_l      = MAX(ppt2->largest_l, ppr2->l_max_ur_2nd_order);
+    ppt2->largest_l_quad = MAX(ppt2->largest_l_quad, ppr->l_max_ur);
   }
   if (ppt2->has_polarization2 == _TRUE_) {
-    ppt2->largest_l      = max(ppt2->largest_l, ppr2->l_max_pol_g_2nd_order);
-    ppt2->largest_l_quad = max(ppt2->largest_l_quad, ppr->l_max_pol_g);
+    ppt2->largest_l      = MAX(ppt2->largest_l, ppr2->l_max_pol_g_2nd_order);
+    ppt2->largest_l_quad = MAX(ppt2->largest_l_quad, ppr->l_max_pol_g);
   }
 
     
@@ -953,7 +953,7 @@ int perturb2_get_lm_lists (
   Newtonian gauge and 3 for synchronous gauge.  The same for the azimuthal number 'm'.
   The reason for this is that the angular dependence of the quadratic sources in
   Boltzmann equation is much more complex in synchronous gauge than in Newtonian gauge. */
-  ppt2->largest_l_quad = max (ppt2->largest_l_quad, ppt2->largest_l + ppt2->lm_extra);
+  ppt2->largest_l_quad = MAX (ppt2->largest_l_quad, ppt2->largest_l + ppt2->lm_extra);
 
 
   // ---------------------------------------------------------------------------------------
@@ -1012,7 +1012,7 @@ int perturb2_get_lm_lists (
     
     class_alloc (ppt2->nlm_array[n], (l_max+1)*sizeof(int*), ppt2->error_message);    
     
-    for (int l=0; l <= min(n_max,l_max); ++l) {
+    for (int l=0; l <= MIN(n_max,l_max); ++l) {
       
       if ((l!=n) && (l!=0)) continue;
       if ((l==0) && (n%2!=0)) continue;
@@ -1043,7 +1043,7 @@ int perturb2_get_lm_lists (
   by the preprocessor macro lm_quad(l,m), defined in common2.h. 
    
   TODO: given an l, there is no need to compute ppw2->rotation_1 and ppw2->rotation_2 for all allowed m's.
-        Just limit this computation to m = min (m_max,l). */
+        Just limit this computation to m = MIN (m_max,l). */
   class_alloc (ppt2->lm_array_quad, (ppt2->largest_l_quad+1)*sizeof(int*), ppt2->error_message);
   
   for(int l=0; l<=ppt2->largest_l_quad; ++l) {
@@ -1271,7 +1271,7 @@ int perturb2_get_lm_lists (
   
   /* We compute the coupling coefficients only up to ppr2->l_max_los_quadratic, because
   this is the maximum multipoles we are gonna consider for the delta_tilde transformation.
-  It is given by max(lmax_los_quadratic_t, lmax_los_quadratic_p). */
+  It is given by MAX(lmax_los_quadratic_t, lmax_los_quadratic_p). */
   ppt2->l1_max = ppr2->l_max_los_quadratic;
   ppt2->l2_max = ppr2->l_max_los_quadratic;
 
@@ -1331,8 +1331,8 @@ int perturb2_get_lm_lists (
   
   /* Allocate memory for the 3J arrays. The function used to compute the 3j symbols
   returns them for all the allowed values of l2, given l and l1, and regardless of what
-  is specified above for ppt2->l2_max. Since max(l) is ppt2->largest_l and max(l1)=ppt2->l1_max,
-  then the triangular condition imposes max(l2)=ppr2->largest_l+ppt2->l1_max. */
+  is specified above for ppt2->l2_max. Since MAX(l) is ppt2->largest_l and MAX(l1)=ppt2->l1_max,
+  then the triangular condition imposes MAX(l2)=ppr2->largest_l+ppt2->l1_max. */
   int l_size_max = (ppt2->largest_l + ppt2->l1_max) - abs(ppt2->largest_l - ppt2->l1_max) + 1;
   double *three_j_000, *three_j_mmm, **temp;
   class_alloc (three_j_000, l_size_max*sizeof(double), ppt2->error_message);
@@ -1562,7 +1562,7 @@ int perturb2_get_k_lists (
     // *** Determine size of the k-array ***
 
     /* We are going to sample the k-space on a 3D grid, with \vec{k1} + \vec{k2} = \vec{k3}. We constrain k3 to
-    have the range max(fabs(k1-k2), k_min) <= k3 <= min(k1+k2, k_max) where k_min and k_max are the limits of ppt2->k,
+    have the range MAX(fabs(k1-k2), k_min) <= k3 <= MIN(k1+k2, k_max) where k_min and k_max are the limits of ppt2->k,
     which we determined above. */
 
     while (k < k_max) {
@@ -1614,7 +1614,7 @@ int perturb2_get_k_lists (
   
     /* We do not want to overshoot k_max as pbs->x_max, that is the maximum argument for which the Bessel
       functions are computed, is determined using it */
-    ppt2->k[ppt2->k_size-1] = min (ppt2->k[ppt2->k_size-1], k_max);
+    ppt2->k[ppt2->k_size-1] = MIN (ppt2->k[ppt2->k_size-1], k_max);
   
   } // end of if(class_sources_k_sampling)
 
@@ -1653,7 +1653,7 @@ int perturb2_get_k_lists (
     // *****   Determine size of the k-array   *****
 
     /* We are going to sample the k-space on a 3D grid, with \vec{k1} + \vec{k2} = \vec{k3}. We
-    constrain k3 to have the range max(fabs(k1-k2), k_min) <= k3 <= min(k1+k2, k_max) where k_min
+    constrain k3 to have the range MAX(fabs(k1-k2), k_min) <= k3 <= MIN(k1+k2, k_max) where k_min
     and k_max are the limits of ppt2->k, which we determined above. */
 
     while (k < k_max) {
@@ -1668,10 +1668,10 @@ int perturb2_get_k_lists (
       /* Logarithmic step */
       double log_step = k * (ppr2->k_scalar_logstep_super_2nd_order - 1.);
   
-      class_test(min(lin_step*k_rec, log_step) / k < ppr->smallest_allowed_variation,
+      class_test(MIN(lin_step*k_rec, log_step) / k < ppr->smallest_allowed_variation,
         ppt2->error_message,
         "k step =%e < machine precision : leads either to numerical error or infinite loop",
-        min(lin_step*k_rec, log_step));
+        MIN(lin_step*k_rec, log_step));
   
       /* Use the smallest between the logarithmic and linear steps. If we are considering small enough
       scales, just use the linear step. */
@@ -1726,7 +1726,7 @@ int perturb2_get_k_lists (
 
     /* We do not want to overshoot k_max as pbs->x_max, that is the maximum argument for which the Bessel
       functions are computed, is determined using it */
-    ppt2->k[ppt2->k_size-1] = min (ppt2->k[ppt2->k_size-1], k_max);
+    ppt2->k[ppt2->k_size-1] = MIN (ppt2->k[ppt2->k_size-1], k_max);
   
   } // end of if(smart_sources_k_sampling)
   
@@ -1787,13 +1787,13 @@ int perturb2_get_k_lists (
       /* ULTRA DIRTY MODIFICATION */
       /* The differential system dies when k1=k2 and k3 is very small. These configurations are irrelevant,
       so we set a minimum ratio between k1=k2 and k3 */
-      k3_min = max (k3_min, (k1+k2)/_MIN_K3_RATIO_);
+      k3_min = MAX (k3_min, (k1+k2)/_MIN_K3_RATIO_);
 
       /* We take k3 in the same range as k1 and k2. Comment it out if you prefer a range that goes all the
       way to the limits of the triangular condition. If you do so, remember to double pbs2->xx_max
       in input2.c */
-      k3_min = max (k3_min, ppt2->k[0]);
-      k3_max = min (k3_max, ppt2->k[ppt2->k_size-1]);
+      k3_min = MAX (k3_min, ppt2->k[0]);
+      k3_max = MIN (k3_max, ppt2->k[ppt2->k_size-1]);
       
       
       /* Check that the chosen k3_min and k3_max make sense */
@@ -2514,7 +2514,7 @@ int perturb2_timesampling_for_sources (
                 ppt2->error_message,
                 "a variable starting integration time is not supported yet.  To implement it, you should first determine a starting integration time for the first-order system, maybe by using the bisection technique applied to k_min");
 
-    double tau_ini_quadsources = min (ppt2->tau_sampling[0], ppt2->tau_start_evolution);
+    double tau_ini_quadsources = MIN (ppt2->tau_sampling[0], ppt2->tau_start_evolution);
   
     /* We stop sampling the quadratic sources when we do not need the second-order sources */
     double tau_end_quadsources = ppt2->tau_sampling[ppt2->tau_size-1];
@@ -4377,7 +4377,7 @@ int perturb2_approximations (
     the 'is_recombination' condition should be first in the list. */
   if ( (past_recombination == _FALSE_) && (ppt2->tight_coupling_approximation != tca2_none) &&
        (tau_c/tau_h < ppt2->tight_coupling_trigger_tau_c_over_tau_h) &&
-       (tau_c/min(tau_k1,tau_k2) < ppt2->tight_coupling_trigger_tau_c_over_tau_k) ) {
+       (tau_c/MIN(tau_k1,tau_k2) < ppt2->tight_coupling_trigger_tau_c_over_tau_k) ) {
 
     ppw2->approx[ppw2->index_ap2_tca] = (int)tca_on;
          
@@ -4394,7 +4394,7 @@ int perturb2_approximations (
 
   /* Turn on the free streaming approximation only if both k1 and k2 are well inside the horizon
     and if we are after recombination */  
-  if ( (tau/max(tau_k1,tau_k2) > ppt2->radiation_streaming_trigger_tau_over_tau_k) &&
+  if ( (tau/MAX(tau_k1,tau_k2) > ppt2->radiation_streaming_trigger_tau_over_tau_k) &&
        (tau > pth->tau_free_streaming) && (ppt2->radiation_streaming_approximation != rsa2_none) ) {
 
     ppw2->approx[ppw2->index_ap2_rsa] = (int)rsa_on;
@@ -4412,7 +4412,7 @@ int perturb2_approximations (
     about recombination, hence the UFA can be turned on also during or before recombination */
   if (pba->has_ur == _TRUE_) {
 
-    if ( (tau/max(tau_k1,tau_k2) > ppt2->ur_fluid_trigger_tau_over_tau_k) &&
+    if ( (tau/MAX(tau_k1,tau_k2) > ppt2->ur_fluid_trigger_tau_over_tau_k) &&
          (ppt2->ur_fluid_approximation != ufa2_none)) {
 
       ppw2->approx[ppw2->index_ap2_ufa] = (int)ufa_on;
@@ -5260,7 +5260,7 @@ int perturb2_solve (
     /* Variables that simplify the notation */
     double aH = ppw2->pvecback[pba->index_bg_a]*ppw2->pvecback[pba->index_bg_H];
     double tau_c_over_tau_h = aH/ppw2->pvecthermo[pth->index_th_dkappa];
-    double tau_h_over_tau_k = max(k1,k2)/aH;
+    double tau_h_over_tau_k = MAX(k1,k2)/aH;
   
     class_test (tau_c_over_tau_h > ppr2->start_small_k_at_tau_c_over_tau_h_2nd_order,
                 ppt2->error_message,
@@ -5302,7 +5302,7 @@ int perturb2_solve (
          ppt2->error_message);
 
       aH = ppw2->pvecback[pba->index_bg_a]*ppw2->pvecback[pba->index_bg_H];
-      tau_h_over_tau_k = max(k1,k2)/aH;
+      tau_h_over_tau_k = MAX(k1,k2)/aH;
 
       /* Interpolate thermodynamical quantities */
       class_call (thermodynamics_at_z(pba,
@@ -5347,7 +5347,7 @@ int perturb2_solve (
   
     /* The initial integration time should be smaller than the lowest time were we need to sample
       the line-of-sight sources */
-    tau = min (ppt2->tau_start_evolution, ppt2->tau_sampling[0]);
+    tau = MIN (ppt2->tau_start_evolution, ppt2->tau_sampling[0]);
   
   } // end of if(ppt2->tau_start_evolution!=0)
 
@@ -6599,7 +6599,7 @@ int perturb2_derivs (
   // *** Add photon temperature quadratic terms
 
   if (ppt2->has_quadratic_sources == _TRUE_)
-    for (int l=0; l<=min(ppr2->l_max_g_quadsources,l_max_g); ++l)
+    for (int l=0; l<=MIN(ppr2->l_max_g_quadsources,l_max_g); ++l)
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m)
         dI(l,ppr2->m[index_m]) += dI_qs2(l,ppr2->m[index_m]);
 
@@ -6701,7 +6701,7 @@ int perturb2_derivs (
     // *** Add E-mode and B-mode quadratic terms.
     
     if (ppt2->has_quadratic_sources == _TRUE_) {
-      for (int l=2; l<=min(ppr2->l_max_pol_g_quadsources,l_max_pol_g); ++l) {
+      for (int l=2; l<=MIN(ppr2->l_max_pol_g_quadsources,l_max_pol_g); ++l) {
         for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
 
           int m = ppt2->m[index_m];
@@ -6789,7 +6789,7 @@ int perturb2_derivs (
     // *** Add neutrino quadratic terms
 
     if (ppt2->has_quadratic_sources == _TRUE_)
-      for (int l=0; l<=min(ppr2->l_max_ur_quadsources,l_max_ur); ++l)
+      for (int l=0; l<=MIN(ppr2->l_max_ur_quadsources,l_max_ur); ++l)
         for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m)
           dN(l,ppr2->m[index_m]) += dN_qs2(l,ppr2->m[index_m]);  
   
@@ -9049,7 +9049,7 @@ int perturb2_source_terms (
           for (int l1=0; l1 <= ppr2->l_max_los_quadratic_t; ++l1) {
             
             /* LOOP ON L2 - made in such a way that it always respects the triangular condition */
-            for (int l2=abs(l1-l); l2 <= min(l1+l, ppr2->l_max_los_quadratic_t); ++l2) {
+            for (int l2=abs(l1-l); l2 <= MIN(l1+l, ppr2->l_max_los_quadratic_t); ++l2) {
 
               /* The intensity field has even parity */
               if ((l1+l2+l)%2!=0)
@@ -9214,7 +9214,7 @@ int perturb2_source_terms (
           for (int l1=0; l1 <= ppr2->l_max_los_quadratic_p; ++l1) {
             
             /* LOOP ON L2 - made in such a way that it always respects the triangular condition */
-            for (int l2=abs(l1-l); l2 <= min(l1+l, ppr2->l_max_los_quadratic_p); ++l2) {
+            for (int l2=abs(l1-l); l2 <= MIN(l1+l, ppr2->l_max_los_quadratic_p); ++l2) {
               
               /* The E-mode polarisation has even parity */
               if ((l1+l2+l)%2!=0)
@@ -9352,7 +9352,7 @@ int perturb2_source_terms (
           for (int l1=0; l1 <= ppr2->l_max_los_quadratic_p; ++l1) {
             
             /* LOOP ON L2 - made in such a way that it always respects the triangular condition */
-            for (int l2=abs(l1-l); l2 <= min(l1+l, ppr2->l_max_los_quadratic_p); ++l2) {
+            for (int l2=abs(l1-l); l2 <= MIN(l1+l, ppr2->l_max_los_quadratic_p); ++l2) {
 
               /* The B-mode polarisation has odd parity */
               if ((l1+l2+l)%2==0)
@@ -9479,7 +9479,7 @@ int perturb2_source_terms (
   //     for (int l1=0; l1 <= l_max_quad; ++l1) {
   //     
   //       /* LOOP ON L2 - made in such a way that it always respects the triangular condition */
-  //       for (int l2=abs(l1-l); l2 <= min(l1+l, l_max_quad); ++l2) {
+  //       for (int l2=abs(l1-l); l2 <= MIN(l1+l, l_max_quad); ++l2) {
   //       
   //         if ((l1+l2+l)%2!=0)
   //           continue;
@@ -10326,9 +10326,8 @@ int perturb2_save_early_transfers (
   /* Limits for the tensor modes */
   if (ppr2->compute_m[2] == _TRUE_) {    
     kernel_gamma_m2 = ppw2->k1_ten_k2[4]/k_sq;
-    float j1_ktau;
-    besselJ_l1 (1+0.5, k*tau, 1, &j1_ktau, ppt2->error_message );
-    j1_ktau *= sqrt_pi_over_2/sqrt(k*tau);
+    double ktau = k*tau;
+    double j1_ktau = sin(ktau)/(ktau*ktau) - cos(ktau)/ktau;
     /* Here we omit a factor 1/2 coming from the fact that our gamma is half the one in eq. 2.6
     of Boubeker, Creminelli et al. 2009, and a factor 2 coming from the perturbative expansion
     X~X^1+1/2*X^2 */
@@ -10451,7 +10450,7 @@ int perturb2_save_early_transfers (
   }
   
   // *** Photon sources
-  int l_max_los_t = min(ppr2->l_max_los_t, ppt2->l_max_debug);
+  int l_max_los_t = MIN(ppr2->l_max_los_t, ppt2->l_max_debug);
   
   for (int l=0; l<=l_max_los_t; ++l) {
     for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
@@ -10728,7 +10727,7 @@ int perturb2_save_early_transfers (
   }
 
   // *** Photon temperature evolved variables
-  int l_max_g = min(ppw2->l_max_g, ppt2->l_max_debug);
+  int l_max_g = MIN(ppw2->l_max_g, ppt2->l_max_debug);
   
   for(int l=0; l<=l_max_g; ++l) {
     for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
@@ -10748,7 +10747,7 @@ int perturb2_save_early_transfers (
   // *** Photon polarization evolved variables
   if (ppt2->has_polarization2 == _TRUE_) {
   
-    int l_max_pol_g = min(ppw2->l_max_pol_g, ppt2->l_max_debug);
+    int l_max_pol_g = MIN(ppw2->l_max_pol_g, ppt2->l_max_debug);
   
     // E-mode polarization
     for(int l=2; l<=l_max_pol_g; ++l) {
@@ -10789,7 +10788,7 @@ int perturb2_save_early_transfers (
   // *** Neutrino evolved variables
   if (pba->has_ur == _TRUE_) {
   
-    int l_max_ur = min(ppw2->l_max_ur, ppt2->l_max_debug);
+    int l_max_ur = MIN(ppw2->l_max_ur, ppt2->l_max_debug);
   
     for(int l=0; l<=l_max_ur; ++l) {
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {

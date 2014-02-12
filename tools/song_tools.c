@@ -40,7 +40,7 @@ int threej_l1(
   /* The Slatec function DRC3JJ computes the 3j symbol for any allowed value
   of l1.  Here we compute the number of such values */     
   int m1 = -m2-m3;
-  *l1_min = max(abs(l2-l3),abs(m1)); 
+  *l1_min = MAX(abs(l2-l3),abs(m1)); 
   *l1_max = l2+l3;
   *result_size = (int)(*l1_max-*l1_min+1.);
 
@@ -109,8 +109,8 @@ int threej_m2(
          
   /*   The Slatec function DRC3JM computes the 3j symbol for any allowed value
      of m2.  Here we compute the number of such values */
-  *m2_min = max(-l2,-l3-m1); 
-  *m2_max = min(l2,l3-m1);
+  *m2_min = MAX(-l2,-l3-m1); 
+  *m2_max = MIN(l2,l3-m1);
   *result_size = (int)(*m2_max-*m2_min+1.);
 
   /*   This variable will contain the potential error message.
@@ -178,8 +178,8 @@ int sixj_l1(
     of l1.  Here we compute the number of such values and allocate memory
     for the result array.  */
      
-  *l1_min = max (abs(l2-l3), abs(l5-l6));
-  *l1_max = min (l2+l3, l5+l6);
+  *l1_min = MAX (abs(l2-l3), abs(l5-l6));
+  *l1_max = MIN (l2+l3, l5+l6);
   *result_size = (int)(*l1_max-*l1_min+1);
 
   /* This variable will contain the potential error message.
@@ -229,8 +229,6 @@ int sixj_l1(
 // ======================================================================
 // =                           Bessel functions                         =
 // ======================================================================
-
-
 
 /**      
  *  Given the arguments l >= 0.0D0, x >= 0.0D0, compute
@@ -317,6 +315,192 @@ int besselJ_l1(
   
 }
 
+
+/**
+ * Compute spherical Bessel function j_l(x) for a given l and x.
+ *
+ * Inspired from Numerical Recipies. This is the same as the function
+ * bessel_j in the Bessel structure, but without requiring pbs as an
+ * argument.
+ */
+
+#define _GAMMA1_ 2.6789385347077476336556
+#define _GAMMA2_ 1.3541179394264004169452
+
+double spherical_bessel_j(
+       int l,
+       double x
+       )
+{
+
+    double nu,nu2,beta,beta2;
+    double x2,sx,sx2,cx;
+    double cotb,cot3b,cot6b,secb,sec2b;
+    double trigarg,expterm,fl;
+    double l3,cosb;
+    double jl;
+    
+    if (l < 0) {
+      printf ("ERROR, %s: argument 'l' smaller than zero\n", __func__);
+      return -1;
+    };
+
+    if (x < 0) {
+      printf ("ERROR, %s: argument 'x' smaller than zero\n", __func__);
+      return -1;
+    };
+  
+    fl = (double)l;
+  
+    x2 = x*x;
+  
+    /************* Use closed form for l<7 **********/
+  
+    if (l < 7) {
+  
+      sx=sin(x);
+      cx=cos(x);
+  
+      if(l == 0) {
+        if (x > 0.1) jl=sx/x;
+        else jl=1.-x2/6.*(1.-x2/20.);
+        return jl;
+      }
+  
+      if(l == 1) {
+        if (x > 0.2) jl=(sx/x -cx)/x;
+        else jl=x/3.*(1.-x2/10.*(1.-x2/28.));
+        return jl;
+      }
+  
+      if (l == 2) {
+        if (x > 0.3) jl=(-3.*cx/x-sx*(1.-3./x2))/x;
+        else jl=x2/15.*(1.-x2/14.*(1.-x2/36.));
+        return jl;
+      }
+  
+      if (l == 3) {
+        if (x > 0.4) jl=(cx*(1.-15./x2)-sx*(6.-15./x2)/x)/x;
+        else jl=x*x2/105.*(1.-x2/18.*(1.-x2/44.));
+        return jl;
+      }
+  
+      if (l == 4) {
+        if (x > 0.6) jl=(sx*(1.-45./x2+105./x2/x2) +cx*(10.-105./x2)/x)/x;
+        else jl=x2*x2/945.*(1.-x2/22.*(1.-x2/52.));
+        return jl;
+      }
+      
+      if (l == 5) {
+        if (x > 1) jl=(sx*(15.-420./x2+945./x2/x2)/x -cx*(1.0-105./x2+945./x2/x2))/x;
+        else jl=x2*x2*x/10395.*(1.-x2/26.*(1.-x2/60.));
+        return jl;
+      }
+  
+      if (l == 6) {
+        if (x > 1) jl=(sx*(-1.+(210.-(4725.-10395./x2)/x2)/x2)+
+         cx*(-21.+(1260.-10395./x2)/x2)/x)/x;
+        else jl=x2*x2*x2/135135.*(1.-x2/30.*(1.-x2/68.));
+        return jl;
+      }
+  
+    }
+  
+    else {
+  
+      if (x <= 1.e-40) {
+        jl=0.0;
+        return jl;
+      }
+  
+      nu= fl + 0.5;
+      nu2=nu*nu;
+  
+      if ((x2/fl) < 0.5) {
+        jl=exp(fl*log(x/nu/2.)+nu*(1-log(2.))-(1.-(1.-3.5/nu2)/nu2/30.)/12./nu)
+  /nu*(1.-x2/(4.*nu+4.)*(1.-x2/(8.*nu+16.)*(1.-x2/(12.*nu+36.))));
+        return jl;
+      }
+  
+      if ((fl*fl/x) < 0.5) {
+  
+        beta = x - _PI_/2.*(fl+1.);
+        jl = (cos(beta)*(1.-(nu2-0.25)*(nu2-2.25)/8./x2*(1.-(nu2-6.25)*(nu2-12.25)/48./x2))
+       -sin(beta)*(nu2-0.25)/2./x* (1.-(nu2-2.25)*(nu2-6.25)/24./x2*(1.-(nu2-12.25)*(nu2-20.25)/80./x2)) )/x;
+        
+        return jl;
+  
+      }
+  
+      l3 = pow(nu,0.325);
+  
+      if (x < nu-1.31*l3) {
+  
+        cosb=nu/x;
+        sx=sqrt(nu2-x2);
+        cotb=nu/sx;
+        secb=x/nu;
+        beta=log(cosb+sx/x);
+        cot3b=cotb*cotb*cotb;
+        cot6b=cot3b*cot3b;
+        sec2b=secb*secb;
+        expterm=((2.+3.*sec2b)*cot3b/24.
+         - ((4.+sec2b)*sec2b*cot6b/16.
+     + ((16.-(1512.+(3654.+375.*sec2b)*sec2b)*sec2b)*cot3b/5760.
+        + (32.+(288.+(232.+13.*sec2b)*sec2b)*sec2b)*sec2b*cot6b/128./nu)*cot6b/nu)/nu)/nu;
+        jl=sqrt(cotb*cosb)/(2.*nu)*exp(-nu*beta+nu/cotb-expterm);
+  
+        return jl;
+  
+      }
+  
+      if (x > nu+1.48*l3) {
+  
+        cosb=nu/x;
+        sx=sqrt(x2-nu2);
+        cotb=nu/sx;
+        secb=x/nu;
+        beta=acos(cosb);
+        cot3b=cotb*cotb*cotb;
+        cot6b=cot3b*cot3b;
+        sec2b=secb*secb;
+        trigarg=nu/cotb-nu*beta-_PI_/4.
+  -((2.+3.*sec2b)*cot3b/24.
+    +(16.-(1512.+(3654.+375.*sec2b)*sec2b)*sec2b)*cot3b*cot6b/5760./nu2)/nu;
+        expterm=((4.+sec2b)*sec2b*cot6b/16.
+         -(32.+(288.+(232.+13.*sec2b)*sec2b)*sec2b)*sec2b*cot6b*cot6b/128./nu2)/nu2;
+        jl=sqrt(cotb*cosb)/nu*exp(-expterm)*cos(trigarg);
+  
+        return jl;
+      }
+      
+      /* last possible case */
+  
+      beta=x-nu;
+      beta2=beta*beta;
+      sx=6./x;
+      sx2=sx*sx;
+      secb=pow(sx,1./3.);
+      sec2b=secb*secb;
+      jl=(_GAMMA1_*secb + beta*_GAMMA2_*sec2b
+   -(beta2/18.-1./45.)*beta*sx*secb*_GAMMA1_
+   -((beta2-1.)*beta2/36.+1./420.)*sx*sec2b*_GAMMA2_
+   +(((beta2/1620.-7./3240.)*beta2+1./648.)*beta2-1./8100.)*sx2*secb*_GAMMA1_
+   +(((beta2/4536.-1./810.)*beta2+19./11340.)*beta2-13./28350.)*beta*sx2*sec2b*_GAMMA2_
+   -((((beta2/349920.-1./29160.)*beta2+71./583200.)*beta2-121./874800.)*
+     beta2+7939./224532000.)*beta*sx2*sx*secb*_GAMMA1_)*sqrt(sx)/12./sqrt(_PI_);
+  
+      // *** MY MODIFICATIONS
+      // printf("j_l(%d,%20.15g) = %15g\n", l, x, jl);
+  
+      return jl;
+  
+    }
+  
+    printf ("ERROR, %s: value of l=%d or x=%e out of bounds\n", __func__,l,x);
+    return -1;
+
+}
 
 // ====================================================================================
 // =                                Coupling factors                                  =
@@ -796,7 +980,7 @@ int multipole2offset_l_m(int l, int m, int m_max) {
  */
 int size_l_m(int l_max, int m_max) {
   
-  return multipole2offset_l_m(l_max, min(l_max,m_max), m_max) + 1;
+  return multipole2offset_l_m(l_max, MIN(l_max,m_max), m_max) + 1;
 
 }
 
@@ -890,7 +1074,7 @@ int multipole2offset_l_indexm (int L, int M, int * m_vec, int m_size) {
   int offset = 0;
 
 	for(l=0; l<=L; ++l) {
-		for(m=0; m<=min(l,m_max); ++m) {
+		for(m=0; m<=MIN(l,m_max); ++m) {
 
 			/* During the last cycle on the l's, do not consider m's larger than M */
 			if ( (l==L) && (m>M) ) continue;
@@ -1249,8 +1433,8 @@ int multipole2offset_unconstrained_n_l_m(int n, int l, int m, int l_max, int m_m
   for(n_i=0; n_i<n; ++n_i) {
     /* Each value 'n_i' of 'n' contributes with an lm hierarchy where l_max=n_i.
       However, we impose for l to be upper-limited by l_max, hence the actual
-      hierarchy stops at min(l_max,n_i) */
-    offset += size_l_m (min(n_i,l_max), m_max);
+      hierarchy stops at MIN(l_max,n_i) */
+    offset += size_l_m (MIN(n_i,l_max), m_max);
   }
   
   /* Note that if n=0, then we do not enter in the above loop and we recover the lm_offset */
@@ -1304,8 +1488,8 @@ int multipole2offset_n_l_m(int n, int l, int m, int l_max, int m_max) {
     return _FAILURE_;    
   }
 
-  if ( m>min(l,m_max) ) {
-    printf("ERROR, %s: m = %3d, l = %3d, m_max = %3d ---->  'm' must be smaller than min(l,m_max).\n",
+  if ( m>MIN(l,m_max) ) {
+    printf("ERROR, %s: m = %3d, l = %3d, m_max = %3d ---->  'm' must be smaller than MIN(l,m_max).\n",
       __func__, m, l, m_max);
     return _FAILURE_;
   }
@@ -1328,7 +1512,7 @@ int multipole2offset_n_l_m(int n, int l, int m, int l_max, int m_max) {
     
     /* l=n_i contribution */
     if(l_max>=n_i)
-      offset += min(m_max,n_i) + 1;
+      offset += MIN(m_max,n_i) + 1;
     
   }
   
@@ -1336,7 +1520,7 @@ int multipole2offset_n_l_m(int n, int l, int m, int l_max, int m_max) {
   if (n%2==0)  
     offset += 1;
   if (l==n)
-    offset += min(m,m_max) + 1;
+    offset += MIN(m,m_max) + 1;
   
   return offset;
   
@@ -1348,7 +1532,7 @@ int multipole2offset_n_l_m(int n, int l, int m, int l_max, int m_max) {
  */   
 int size_n_l_m (int n_max, int l_max, int m_max) {
  
-  return multipole2offset_n_l_m (n_max, min(l_max,n_max), min(l_max,m_max), l_max, m_max) + 1;
+  return multipole2offset_n_l_m (n_max, MIN(l_max,n_max), MIN(l_max,m_max), l_max, m_max) + 1;
   
 }
   
@@ -1423,7 +1607,7 @@ int multipole2offset_n_l_indexm(int N, int L, int M, int l_max, int * m_vec, int
 
   for (n=0; n<=N; ++n) {
 
-  	for (l=0; l<=min(n,l_max); ++l) {
+  	for (l=0; l<=MIN(n,l_max); ++l) {
       
 			/* During the last cycle on the n's, do not consider l's larger than L */
 			if ((n==N) && (l>L)) continue;
@@ -1471,7 +1655,7 @@ int size_n_l_indexm (int n_max, int l_max, int * m_vec, int m_size) {
   while (m_vec[index_m_max] > l_max) --index_m_max;
   int m_max = m_vec[index_m_max];
 
-  return multipole2offset_n_l_indexm(n_max, min(n_max,l_max), min(l_max,m_max), l_max, m_vec, m_size) + 1;
+  return multipole2offset_n_l_indexm(n_max, MIN(n_max,l_max), MIN(l_max,m_max), l_max, m_vec, m_size) + 1;
   
 }
   

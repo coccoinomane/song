@@ -254,12 +254,12 @@ int mesh_int (
   iz = floor(z/(safe*link_length*(1.+soft_coeff)));
 
   /* Start by considering only the boxes adjacent to the one which contains (x,y,z) */
-  int ixmin = (int) (max(0,ix-1));
-  int iymin = (int) (max(0,iy-1));
-  int izmin = (int) (max(0,iz-1));
-  int ixmax = (int) (min(n_boxes-1,ix+1));
-  int iymax = (int) (min(n_boxes-1,iy+1));
-  int izmax = (int) (min(n_boxes-1,iz+1));
+  int ixmin = (int) (MAX(0,ix-1));
+  int iymin = (int) (MAX(0,iy-1));
+  int izmin = (int) (MAX(0,iz-1));
+  int ixmax = (int) (MIN(n_boxes-1,ix+1));
+  int iymax = (int) (MIN(n_boxes-1,iy+1));
+  int izmax = (int) (MIN(n_boxes-1,iz+1));
   
 
   /* Some debug */
@@ -334,12 +334,12 @@ loop:
     // printf("Increasing Range!!! \n");
     #pragma omp atomic
     pw->count_range_extensions++;
-    ixmin = (int) max(0,ixmin-1);
-    iymin = (int) max(0,iymin-1);
-    izmin = (int) max(0,izmin-1);
-    ixmax = (int) min(n_boxes-1,ixmax+1);
-    iymax = (int) min(n_boxes-1,iymax+1);
-    izmax = (int) min(n_boxes-1,izmax+1);
+    ixmin = (int) MAX(0,ixmin-1);
+    iymin = (int) MAX(0,iymin-1);
+    izmin = (int) MAX(0,izmin-1);
+    ixmax = (int) MIN(n_boxes-1,ixmax+1);
+    iymax = (int) MIN(n_boxes-1,iymax+1);
+    izmax = (int) MIN(n_boxes-1,izmax+1);
     goto loop; 
   }
 

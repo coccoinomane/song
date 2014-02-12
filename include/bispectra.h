@@ -131,7 +131,7 @@ struct bispectra {
    where index_l1, index_l2, index_l3 are the indices for l1,l2,l3 in the pbi->l array; 'index_l3' has to be smaller
    than index_l3_max, which is given by:
    
-   index_l3_max = min (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]) */
+   index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]) */
   long int *** index_l1_l2_l3;
   
   /* Number of (l1,l2,l3) configurations that will be stored for each bispectrum */

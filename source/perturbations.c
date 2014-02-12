@@ -1325,9 +1325,9 @@ int perturb_get_k_list(
       /* Logarithmic step */
       double log_step = k * (ppr->k_scalar_logstep_super - 1.);
   
-      class_test(min(lin_step*k_rec, log_step) / k < ppr->smallest_allowed_variation,
+      class_test(MIN(lin_step*k_rec, log_step) / k < ppr->smallest_allowed_variation,
         ppt->error_message,
-        "k step =%e < machine precision : leads either to numerical error or infinite loop", min(lin_step*k_rec, log_step));
+        "k step =%e < machine precision : leads either to numerical error or infinite loop", MIN(lin_step*k_rec, log_step));
   
       /* Use the smallest between the logarithmic and linear steps. If we are considering small enough scales,
         just use the linear step. */
@@ -1582,10 +1582,10 @@ int perturb_selection_initialize(
     /* higher edge of bin */
  
     if (ppt->selection==gaussian) {
-      z = max(ppt->selection_mean[bin]-ppt->selection_width[bin]*ppr->selection_cut_at_sigma,0.);
+      z = MAX(ppt->selection_mean[bin]-ppt->selection_width[bin]*ppr->selection_cut_at_sigma,0.);
     }
     else {
-      z = max(ppt->selection_mean[bin]-ppt->selection_width[bin],0.);
+      z = MAX(ppt->selection_mean[bin]-ppt->selection_width[bin],0.);
     }
 
     class_call(background_tau_of_z(pba,
@@ -1611,7 +1611,7 @@ int perturb_selection_initialize(
      would not cause a variation of j_l(x) by more than one period,
      even for the largest k mode */
 
-  ppt->selection_delta_tau=min(ppt->selection_delta_tau,
+  ppt->selection_delta_tau=MIN(ppt->selection_delta_tau,
 			       2*_PI_*pba->conformal_age/ppt->l_scalar_max/ppr->k_scalar_max_tau0_over_l_max);
 
   class_test(ppt->selection_delta_tau<=0,
@@ -2214,7 +2214,7 @@ int perturb_solve(
   second-order one.  Not including the following lines will result in wrong second-order
   transfer functions. */
   if (ppt->has_perturbations2 == _TRUE_)
-    tau_upper = min (tau_upper, ppt->tau_sampling_quadsources[0]);
+    tau_upper = MIN (tau_upper, ppt->tau_sampling_quadsources[0]);
 
   // *** END OF MY MODIFICATIONS ***
 
@@ -4508,7 +4508,7 @@ int perturb_initial_conditions(struct precision * ppr,
   //     ppw->pv->y[ppw->pv->index_pt_delta_g], ppw->pv->y[ppw->pv->index_pt_delta_b], ppw->pv->y[ppw->pv->index_pt_delta_cdm]);
   //   if (ppt->has_polarization2 == _TRUE_) {
   //     int l;
-  //     for (l=2; l<=min(4,ppw->pv->l_max_E); ++l) {
+  //     for (l=2; l<=MIN(4,ppw->pv->l_max_E); ++l) {
   //       printf(" -> E%d = %g\n", l, ppw->pv->y[ppw->pv->index_pt_monopole_E+l]);
   //     }
   //   }      
@@ -4838,7 +4838,7 @@ int perturb_timescale(
     *timescale = tau_h;
 
     if ((ppw->approx[ppw->index_ap_rsa] == (int)rsa_off) || (pba->has_ncdm == _TRUE_))
-      *timescale = min(tau_k,*timescale);
+      *timescale = MIN(tau_k,*timescale);
 
     if (ppw->approx[ppw->index_ap_tca] == (int)tca_off) {
 
@@ -4858,7 +4858,7 @@ int perturb_timescale(
 
 	tau_c = 1./pvecthermo[pth->index_th_dkappa];
 
-	*timescale = min(tau_c,*timescale);
+	*timescale = MIN(tau_c,*timescale);
 
       }
     }
@@ -4869,7 +4869,7 @@ int perturb_timescale(
 
   if ((ppt->has_tensors == _TRUE_) && (pppaw->index_mode == ppt->index_md_tensors)) {
 
-    *timescale = min(tau_h,tau_k);
+    *timescale = MIN(tau_h,tau_k);
 
     if (ppw->approx[ppw->index_ap_tca] == (int)tca_off) {
 
@@ -4889,7 +4889,7 @@ int perturb_timescale(
 
 	tau_c = 1./pvecthermo[pth->index_th_dkappa];
 
-	*timescale = min(tau_c,*timescale);
+	*timescale = MIN(tau_c,*timescale);
 
       }
     }

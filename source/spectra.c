@@ -1607,7 +1607,7 @@ int spectra_cls(
       psp->l_max[index_mode] = ppt->l_tensor_max;
     }
 
-    psp->l_max_tot=max(psp->l_max_tot,psp->l_max[index_mode]);
+    psp->l_max_tot=MAX(psp->l_max_tot,psp->l_max[index_mode]);
 
     /** d) loop over initial conditions */
 
@@ -2766,8 +2766,8 @@ int spectra_matter_transfers(
 
 /*       if (ppt->has_cl_cmb_temperature) { */
 
-/* 	z_plus=min(z*(1.+ppr->pk_dz_over_z),z_max_pk); */
-/* 	z_minus=min(z*(1-ppr->pk_dz_over_z),0.); */
+/* 	z_plus=MIN(z*(1.+ppr->pk_dz_over_z),z_max_pk); */
+/* 	z_minus=MIN(z*(1-ppr->pk_dz_over_z),0.); */
 
 /* 	class_call(spectra_pk_at_z(pba, */
 /* 				 ppm, */

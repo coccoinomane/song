@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
   
-  // The array index corresponding to 'm' is just m-min(m), that is m+l
+  // The array index corresponding to 'm' is just m-MIN(m), that is m+l
   int index_m = m+l;
   
   // Print some info

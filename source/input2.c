@@ -1149,13 +1149,13 @@ int input2_init (
   ppr2->l_max_los_quadratic = 0;
   
   if (ppt2->has_cmb_temperature == _TRUE_) {
-    ppr2->l_max_los = max (ppr2->l_max_los, ppr2->l_max_los_t);
-    ppr2->l_max_los_quadratic = max (ppr2->l_max_los_quadratic, ppr2->l_max_los_quadratic_t);
+    ppr2->l_max_los = MAX (ppr2->l_max_los, ppr2->l_max_los_t);
+    ppr2->l_max_los_quadratic = MAX (ppr2->l_max_los_quadratic, ppr2->l_max_los_quadratic_t);
   }
 
   if (ppt2->has_cmb_polarization == _TRUE_) {
-    ppr2->l_max_los = max (ppr2->l_max_los, ppr2->l_max_los_p);
-    ppr2->l_max_los_quadratic = max (ppr2->l_max_los_quadratic, ppr2->l_max_los_quadratic_p);
+    ppr2->l_max_los = MAX (ppr2->l_max_los, ppr2->l_max_los_p);
+    ppr2->l_max_los_quadratic = MAX (ppr2->l_max_los_quadratic, ppr2->l_max_los_quadratic_p);
   }
 
   // =======================================================================================
@@ -1254,7 +1254,7 @@ int input2_init (
   integral (ppr2->m_max_2nd_order). 
   Must be after setting ppr2->l_max_los. */
   class_test (pbs->l_max==0., errmsg, "pbs->l_max=0. Did you forget to set ppt2->has_cls==_TRUE_ in input.c?");
-  int l_max = pbs->l_max + max (ppr2->l_max_los, ppr2->m_max_2nd_order);
+  int l_max = pbs->l_max + MAX (ppr2->l_max_los, ppr2->m_max_2nd_order);
   class_alloc (ppr2->index_m_max, (l_max+1)*sizeof(int), ppr2->error_message);
 
   /* Determine for each l (starting from 0) the position of its maximum m in ppr2->m. The resulting
@@ -1326,7 +1326,7 @@ int input2_init (
   /* Maximum argument for the Bessel functions in the line of sight integration.  For the time being, we do
   set x_max  here, even if we shouldn't as tau0 cannot be accessed by this module.  This is why we define
   a superior limit for tau0. */
-  double x_max = max (pbs->x_max, k_max * max(tau0_sup, pbi->r_max));
+  double x_max = MAX (pbs->x_max, k_max * MAX(tau0_sup, pbi->r_max));
   
 
   /* We could have done this way, but then it is not obvious how to include the r_max in the
@@ -1343,7 +1343,7 @@ int input2_init (
   //     being, we do set x_max here, even if we shouldn't as tau0 cannot be accessed by this module.  This is why
   //     we define a superior limit for tau0.  Note that we also include a 2 factor in x_max, because k_max_scalars
   //     refers to k1 and k2, while the maximum k-value needed will be k = k1+k2 (when cosk1k2 = 1). */
-  //   x_max = 2 * ppr2->k_max_scalars * max(tau0_sup, pbi->r_max);
+  //   x_max = 2 * ppr2->k_max_scalars * MAX(tau0_sup, pbi->r_max);
 
 
   /* Set the actual limit for x_max */
@@ -1374,7 +1374,7 @@ int input2_init (
   /* pbs2->L_max is used to determine the maximum value of L for which we should compute the
   projection functions in the second-order Bessel module. To explain the inclusion of
   ppr2->m_max_2nd_order, refer to the first long comment in bessel2_get_l1_list. */
-  pbs2->L_max = max (ppr2->l_max_los, ppr2->m_max_2nd_order);
+  pbs2->L_max = MAX (ppr2->l_max_los, ppr2->m_max_2nd_order);
 
   return _SUCCESS_;
 
