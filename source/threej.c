@@ -243,7 +243,7 @@ int threej_fill_matrices(
             // to zero the imaginary part of the element being accumulated if the two elements
             // of the difference are different less than 1 part in 1e16.
             sum_so_far = chi_ijk[m+l][3*3*i+3*j+k];            
-            if( (cimag(sum_so_far) != 0.) && ((fabs(1. + cimag(increment) / cimag(sum_so_far))) < DBL_EPSILON*100) ) {
+            if( (cimag(sum_so_far) != 0.) && ((fabs(1. + cimag(increment) / cimag(sum_so_far))) < DBL_SMALL_ILON*100) ) {
               if (p3j->threej_verbose>1) printf("l=%d, m=%d, i,j,k = (%d,%d,%d): set imaginary part to zero\n", l, m, i, j, k);
               chi_ijk[m+l][3*3*i+3*j+k] = creal(sum_so_far);
             } 
@@ -298,7 +298,7 @@ int threej_fill_matrices(
 
               // Account for numerical noise (see comment for the chi_ijk case)
               sum_so_far = chi_ijks[m+l][3*3*3*i+3*3*j+3*k+s];            
-              if( (cimag(sum_so_far) != 0.) && ((fabs(1. + cimag(increment) / cimag(sum_so_far))) < DBL_EPSILON*100) ) {
+              if( (cimag(sum_so_far) != 0.) && ((fabs(1. + cimag(increment) / cimag(sum_so_far))) < DBL_SMALL_ILON*100) ) {
                 if (p3j->threej_verbose>1) printf("l=%d, m=%d, i,j,k,s = (%d,%d,%d,%d): set imaginary part to zero\n", l, m, i, j, k, s);
                 chi_ijks[m+l][3*3*3*i+3*3*j+3*k+s] = creal(sum_so_far);
               } 

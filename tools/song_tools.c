@@ -6,6 +6,7 @@
  */
 
 #include "song_tools.h"
+#include "slatec_3j_C.h"
 #include "math.h"
 
 // ==============================================================================
@@ -631,7 +632,9 @@ double coupling_d_plus (int l, int m1, int m) {
 int coupling_general (
   int l2, int l3, int m1, int F,
   double * three_j_000, /* should be preallocated with at least l2_max doubles */
+  int three_j_000_size,
   double * three_j_mmm, /* should be preallocated with at least m1_max doubles */
+  int three_j_mmm_size,
   int * l1_min, int * l1_max,
   int * m2_min, int * m2_max,
   double ** result,     /* should be preallocated with at least l2_max*m1_max doubles */
@@ -645,20 +648,25 @@ int coupling_general (
  
   /* Temporary values needed for the computation of the 3j symbol */
   int l1_size_3j, m2_size_3j;
+  double l1_min_D, l1_max_D;
+  double m2_min_D, m2_max_D;
 
   /* Compute 
   * (  l1  l2  l3  )
   * (  0   F   -F   )
   * for all allowed values of l2 */
-  class_call (threej_l1 (
+  class_call (drc3jj (
                 l2, l3, F, -F,
-                l1_min, l1_max,
-                &three_j_000,
-                &l1_size_3j,
+                &l1_min_D, &l1_max_D,
+                three_j_000,
+                three_j_000_size,
                 errmsg       
                 ),
     errmsg,
     errmsg);
+    
+  *l1_min = (int)(l1_min_D+_EPS_);
+  *l1_max = (int)(l1_max_D+_EPS_);
     
   /* Adjust the range of l1, so to exclude from the output those values of l1 that are
   smaller than the requested m1. Note that even after increasing l1_min, it will always be
@@ -683,15 +691,18 @@ int coupling_general (
     * (  l1   l2   l3       )
     * (  m1   m2   -m1-m2  )
     * for all allowed values of m2 */
-    class_call (threej_m2 (
+    class_call (drc3jm (
                   l1, l2, l3, m1,
-                  m2_min, m2_max,
-                  &three_j_mmm,
-                  &m2_size_3j,
+                  &m2_min_D, &m2_max_D,
+                  three_j_mmm,
+                  three_j_mmm_size,
                   errmsg       
                   ),
       errmsg,
       errmsg);
+
+    *m2_min = (int)(m2_min_D + _EPS_);
+    *m2_max = (int)(m2_max_D + _EPS_);
 
     /* LOOP ON M2 */
     for (int m2 = *m2_min; m2 <= *m2_max; ++m2) {

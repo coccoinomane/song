@@ -5,7 +5,7 @@
 
 #include "lensing.h"
 #include "spectra.h"
-
+#include "slatec_3j_C.h"
 
 /* Allowed types of bispectra */
 enum bispectra_types {

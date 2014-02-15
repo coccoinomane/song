@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "song_tools.h"      /* A bunch of functions needed by SONG */
+#include "slatec_3j_C.h"
 
 
 #ifndef __COMMON2__
@@ -10,7 +11,7 @@
 #define _SONG_VERSION_ "v1.0"
 
 /* Constant used to make floating point comparisons */
-#define _EPS_ ppr->smallest_allowed_variation*1e6
+#define _SMALL_ (ppr->smallest_allowed_variation*1e6)
 
 /* The differential system at second-order has to be solved for a set of three wavemodes
 (k1,k2,k3) whereby k3 has to be in the range |k1-k2|<=k3<=k1+k1. When k3 is too close

@@ -570,7 +570,7 @@ int fisher_indices (
       values when l1=l2=l_max, with the +1 accounting for the l=0 case. */
     double * temporary_three_j;
     class_alloc (temporary_three_j, (2*pfi->l_max+1)*sizeof(double), pfi->error_message);
-    int l3_min, l3_max, temporary_three_j_size;
+    double l3_min_D, l3_max_D;
              
     /* Fill the I_l1_l2_l3 array */
     /* TODO:   parallelize the loop by creating a 3j array per thread */
@@ -591,17 +591,19 @@ int fisher_indices (
         
         int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
         int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
-    
+
         /* Compute the actual 3j symbol for all allowed values of l3 */
-        class_call (threej_l1 (
+        class_call (drc3jj (
                       l1, l2, 0, 0,
-                      &l3_min, &l3_max,
-                      &temporary_three_j,
-                      &temporary_three_j_size,
+                      &l3_min_D, &l3_max_D,
+                      temporary_three_j,
+                      (2*pfi->l_max+1),
                       pfi->error_message       
                       ),
           pfi->error_message,
           pfi->error_message);
+
+        int l3_min = (int)(l3_min_D+_EPS_);
     
         /* Fill the 3j array */
         for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {
@@ -639,18 +641,21 @@ int fisher_indices (
   // 
   // double * temporary_three_j;
   // class_alloc (temporary_three_j, (l1+l2+1)*sizeof(double), pfi->error_message);
-  // int l3_min, l3_max, temporary_three_j_size;
+  // double l3_min_D, l3_max_D, temporary_three_j_size;
   // 
-  // class_call (threej_l1 (
-  //               1200, 1500, 0, 0,
-  //               &l3_min, &l3_max,
-  //               &temporary_three_j,
-  //               &temporary_three_j_size,
+  // class_call (drc3jj (
+  //               l1, l2, 0, 0,
+  //               &l3_min_D, &l3_max_D,
+  //               temporary_three_j,
+  //               (2*pfi->l_max+1),
   //               pfi->error_message       
   //               ),
   //   pfi->error_message,
   //   pfi->error_message);
   //   
+  // int l3_min = (int)(l3_min_D+_EPS_);
+  // int l3_max = (int)(l3_max_D+_EPS_);
+  //  
   // for (int l3=l3_min; l3<=l3_max; ++l3)
   //   printf ("I(%d,%d,%d)=%.15g\n", l1,l2,l3,temporary_three_j[l3-l3_min]);
 
@@ -1945,7 +1950,7 @@ int fisher_cross_correlate_mesh (
 
     /* The temporary array will contain at most 2*l_max+1 values when l1=l2=l_max, with the +1
     accounting for the l=0 case. */
-    int l3_min_3j, l3_max_3j, temporary_three_j_size;
+    double l3_min_3j_D, l3_max_3j_D;
     class_alloc_parallel (temporary_three_j[thread], (2*pfi->l_max+1)*sizeof(double ****), pfi->error_message);
 
     /* As many interpolations as the total number of bispectra (pbi->bt_size * pbi->bf_size^3) */
@@ -1990,18 +1995,19 @@ int fisher_cross_correlate_mesh (
           continue;
       
         double C_l2 = pbi->cls[pfi->index_ct_window][l2-2];
-      
+
         /* Compute the actual 3j symbol for all allowed values of l3 */
-        class_call_parallel (threej_l1 (
+        class_call_parallel (drc3jj (
                       l1, l2, 0, 0,
-                      &l3_min_3j, &l3_max_3j,
-                      &temporary_three_j[thread],
-                      &temporary_three_j_size,
+                      &l3_min_3j_D, &l3_max_3j_D,
+                      temporary_three_j[thread],
+                      (2*pfi->l_max+1),
                       pfi->error_message       
                       ),
           pfi->error_message,
           pfi->error_message);
   
+        int l3_min_3j = (int)(l3_min_3j_D+_EPS_);
         int l3_min = MAX(l1-l2,2);
 
         // ------------------------------------------------

@@ -97,7 +97,7 @@ FISHER = fisher.o
 NONLINEAR = trg.o nonlinear.o
 LENSING = lensing.o
 OUTPUT = output.o
-SONG_TOOLS = $(TOOLS) song_tools.o slatec_3j_f90.o mesh_interpolation.o
+SONG_TOOLS = $(TOOLS) song_tools.o slatec_3j_C.o slatec_3j_f90.o mesh_interpolation.o
 
 
 

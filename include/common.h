@@ -44,6 +44,7 @@ typedef char FileName[_FILENAMESIZE_];
 #define _TOLVAR_ 100. /**< The minimum allowed variation is the machine precision times this number */
 
 #define _HUGE_ 1.e99
+#define _EPS_ 0.01 /**< Constant used to cast a float to an integer. Must be smaller than 0.5 */
 
 
 #define MIN(a,b) (((a)<(b)) ? (a) : (b) ) /**< the usual "min" function */

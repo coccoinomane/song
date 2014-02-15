@@ -1009,9 +1009,9 @@ int bispectra2_intrinsic_workspace_init (
 
     /* Check that the rescaling coefficient is unity for m=0, sqrt(2) for m=1,
     and 8/sqrt(24) for m=2 */
-    class_test (((M3==0) && (fabs(1-pwb->M3_coefficient[index_M3]/1)>_EPS_))
-      || ((M3==1) && (fabs(1-pwb->M3_coefficient[index_M3]/sqrt_2)>_EPS_))
-      || ((M3==2) && (fabs(1-pwb->M3_coefficient[index_M3]/(8./sqrt(24)))>_EPS_)),
+    class_test (((M3==0) && (fabs(1-pwb->M3_coefficient[index_M3]/1)>_SMALL_))
+      || ((M3==1) && (fabs(1-pwb->M3_coefficient[index_M3]/sqrt_2)>_SMALL_))
+      || ((M3==2) && (fabs(1-pwb->M3_coefficient[index_M3]/(8./sqrt(24)))>_SMALL_)),
       pbi->error_message,
       "error in the computation of the transfer rescaling");
   }
@@ -1295,7 +1295,7 @@ int bispectra2_intrinsic_integrate_over_k3 (
             the same as assuming that the bispectrum is small with respect to A_s*A_s). */
             /* TODO: It is a good idea to have this check, but here probably it's not the best place.
             Maybe we can move the check in the perturbations module. There, the order of the perturbations
-            is O(1) hence we could just use _EPS_ as an absolute epsilon. */
+            is O(1) hence we could just use _SMALL_ as an absolute epsilon. */
             if ((index_k1==index_k2) && (pwb->abs_M3%2!=0)) {
               double characteristic_scale = ppm->A_s*ppm->A_s;
               double epsilon = 1e-4*characteristic_scale;
@@ -2393,18 +2393,24 @@ int bispectra2_intrinsic_geometrical_factors (
     if (L3 > (l3+abs_M3))
       continue;
   
+    /* Temporary variables to hold the limits of the 3j's in double precision format */
+    double min_D, max_D;
+  
     /* Compute the three-j symbol (l3,L3,M3)(M3,0,-M3) for all allowed values of L3.
     Mind the column positions! */
-    class_call_parallel (threej_l1 (
+    class_call_parallel (drc3jj (
                            abs_M3, l3, -M3, M3,
-                           &min[thread][l3_L3_M3],
-                           &max[thread][l3_L3_M3],
-                           &value[thread][l3_L3_M3],
-                           &size[thread][l3_L3_M3],
+                           &min_D, &max_D,
+                           value[thread][l3_L3_M3],
+                           (2*pbi->l_max+1),
                            pbi->error_message       
                            ),
       pbi->error_message,
       pbi->error_message);
+  
+    min[thread][l3_L3_M3] = (int)(min_D + _EPS_);
+    max[thread][l3_L3_M3] = (int)(max_D + _EPS_);
+    size[thread][l3_L3_M3] = max[thread][l3_L3_M3] - min[thread][l3_L3_M3] + 1;
   
     class_test_parallel ((L3 - min[thread][l3_L3_M3]) >= size[thread][l3_L3_M3],
       pbi->error_message,
@@ -2446,28 +2452,34 @@ int bispectra2_intrinsic_geometrical_factors (
       If we are dealing with an odd bispectrum, compute (l1,l2,l3)(2,0,-2) instead */      
       int F = ((pwb->bispectrum_parity == _EVEN_) ? 0:2);
 
-      class_call_parallel (threej_l1 (
+      class_call_parallel (drc3jj (
                              l2, l3, F, -F,
-                             &min[thread][l1_l2_l3],
-                             &max[thread][l1_l2_l3],
-                             &value[thread][l1_l2_l3],
-                             &size[thread][l1_l2_l3],
+                             &min_D, &max_D,
+                             value[thread][l1_l2_l3],
+                             (2*pbi->l_max+1),
                              pbi->error_message       
                              ),
         pbi->error_message,
         pbi->error_message);
 
+      min[thread][l1_l2_l3] = (int)(min_D + _EPS_);
+      max[thread][l1_l2_l3] = (int)(max_D + _EPS_);
+      size[thread][l1_l2_l3] = max[thread][l1_l2_l3] - min[thread][l1_l2_l3] + 1;
+
       /* Compute the three-j symbol (L1,l2,L3)(0,0,0) for all allowed values of L1 */
-      class_call_parallel (threej_l1 (
+      class_call_parallel (drc3jj (
                              l2, L3, 0, 0,
-                             &min[thread][L1_l2_L3],
-                             &max[thread][L1_l2_L3],
-                             &value[thread][L1_l2_L3],
-                             &size[thread][L1_l2_L3],
+                             &min_D, &max_D,
+                             value[thread][L1_l2_L3],
+                             (2*pbi->l_max+1),
                              pbi->error_message       
                              ),
         pbi->error_message,
         pbi->error_message);
+      
+      min[thread][L1_l2_L3] = (int)(min_D + _EPS_);
+      max[thread][L1_l2_L3] = (int)(max_D + _EPS_);
+      size[thread][L1_l2_L3] = max[thread][L1_l2_L3] - min[thread][L1_l2_L3] + 1;
       
       /* Allowed values of l1 */
       int index_l1_min = pbi->index_l_triangular_min[index_l3][index_l2];
@@ -2535,16 +2547,19 @@ int bispectra2_intrinsic_geometrical_factors (
         //       L1, l2, L3, FACTOR_L1_l2_L3);
 
         /* Compute the three-j symbol (l1,L1,M3)(0,0,0) for all allowed values of L1 */
-        class_call_parallel (threej_l1 (
+        class_call_parallel (drc3jj (
                                l1, abs_M3, 0, 0,
-                               &min[thread][l1_L1_M3],
-                               &max[thread][l1_L1_M3],
-                               &value[thread][l1_L1_M3],
-                               &size[thread][l1_L1_M3],
+                               &min_D, &max_D,
+                               value[thread][l1_L1_M3],
+                               (2*pbi->l_max+1),
                                pbi->error_message       
                                ),
           pbi->error_message,
           pbi->error_message);        
+        
+        min[thread][l1_L1_M3] = (int)(min_D + _EPS_);
+        max[thread][l1_L1_M3] = (int)(max_D + _EPS_);
+        size[thread][l1_L1_M3] = max[thread][l1_L1_M3] - min[thread][l1_L1_M3] + 1;
         
         /* Value of l1_L1_M3 in L1 */
         class_test_parallel ((L1 - min[thread][l1_L1_M3]) >= size[thread][l1_L1_M3],
@@ -2559,17 +2574,20 @@ int bispectra2_intrinsic_geometrical_factors (
 
         /* Compute the six-j symbol {l1,l3,l2}{L3,L1,|M3|} for all allowed values of L1. In order to fit
         it in the Slatec function, we recast it as {L1,L3,l2}{l3,l1,|M3|} */
-        class_call_parallel (sixj_l1 (
+        class_call_parallel (drc6j (
                                /*L1,*/ L3, l2, l3, l1, abs_M3,
-                               &min[thread][l1_l3_l2_L3_L1_M3],
-                               &max[thread][l1_l3_l2_L3_L1_M3],
-                               &value[thread][l1_l3_l2_L3_L1_M3],
-                               &size[thread][l1_l3_l2_L3_L1_M3],
+                               &min_D, &max_D,
+                               value[thread][l1_l3_l2_L3_L1_M3],
+                               (2*pbi->l_max+1),
                                pbi->error_message       
                                ),
           pbi->error_message,
           pbi->error_message);
-        
+
+        min[thread][l1_l3_l2_L3_L1_M3] = (int)(min_D + _EPS_);
+        max[thread][l1_l3_l2_L3_L1_M3] = (int)(max_D + _EPS_);
+        size[thread][l1_l3_l2_L3_L1_M3] = max[thread][l1_l3_l2_L3_L1_M3] - min[thread][l1_l3_l2_L3_L1_M3] + 1;
+
         /* Value of {l1,l3,l2}{L3,L1,|M3|} in L1 */
         class_test_parallel ((L1 - min[thread][l1_l3_l2_L3_L1_M3]) >= size[thread][l1_l3_l2_L3_L1_M3],
           pbi->error_message,

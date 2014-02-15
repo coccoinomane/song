@@ -1221,7 +1221,7 @@ int perturb2_get_lm_lists (
                                ( 0    2  |  2  )   (  m1   m2  | m  ) 
                        * [ X_I(l1,m1) Y_E(l2,m2) + Y_I(l1,m1) X_E(l2,m2) ]  for L even, 0 otherwise
   
-    P_B(l3,m3) ->  - 1 * i^(L+1) * ( l1   l2 | l3  ) * (  l1   l2  | l3 )  
+    P_B(l3,m3) ->  + 1 * i^(L-1) * ( l1   l2 | l3  ) * (  l1   l2  | l3 )  
                                    ( 0    2  |  2  )   (  m1   m2  | m  ) 
                        * [ X_I(l1,m1) Y_E(l2,m2) + Y_I(l1,m1) X_E(l2,m2) ]  for L odd, 0 otherwise
   
@@ -1233,7 +1233,7 @@ int perturb2_get_lm_lists (
    * The indices (l3,m3) are free.
    * The sums in P_I and P_E vanish for odd values of L because the intensity and E-mode fields
      have even parity. The B-mode field instead has odd parity. This property also ensures
-     that both the i^L and i^(L+1) factors are real-valued.
+     that both the i^L and i^(L-1) factors are real-valued.
    * With respect to arXiv:1401.3296 we have a -2 factor; this counters the fact that the expressions
      in that reference were for the quadratic term -1/2*delta*delta rather than for a generic X*Y.
      
@@ -1254,7 +1254,7 @@ int perturb2_get_lm_lists (
   
         prefactor(I) = +1 * i^L
         prefactor(E) = +2 * i^L
-        prefactor(B) = -2 * i^(L+1)
+        prefactor(B) = +2 * i^(L-1)
   
   where L=l3-l1-l2. For the even-parity fields (I and E) L is always even, while
   for the odd-parity ones (B) it is odd. Therefore, the prefactors are always
@@ -1348,7 +1348,7 @@ int perturb2_get_lm_lists (
   for (int index_pf=0; index_pf < ppt2->pf_size; ++index_pf) {
     
     /* Determine the spin of the considered field, and the overall prefactor. These are determined using
-    Eqs. 3.6, 3.7 and 3.9 of arXiv:1401.3296. We will include the sign-factor (i^L and i^(L+1)) later. */
+    Eqs. 3.6, 3.7 and 3.9 of arXiv:1401.3296. We will include the sign-factor (i^L and i^(L-1)) later. */
     int F;
     double sign, prefactor;
     
@@ -1362,7 +1362,7 @@ int perturb2_get_lm_lists (
     }
     else if ((ppt2->has_source_B == _TRUE_) && (index_pf == ppt2->index_pf_b)) {
       F = 2;
-      prefactor = -1;
+      prefactor = +1;
     }
     else 
       class_stop (ppt2->error_message, "mumble mumble, what is index_pf=(%d,%s)?",
@@ -1391,8 +1391,8 @@ int perturb2_get_lm_lists (
 
           class_call (coupling_general(
                         l2, l3, m1, F,
-                        three_j_000,
-                        three_j_mmm,
+                        three_j_000, l_size_max,
+                        three_j_mmm, l_size_max,
                         &l1_min_3j, &l1_max_3j, /* out, allowed l values */
                         &m2_min_3j, &m2_max_3j, /* out, allowed m values */
                         temp,
@@ -1411,12 +1411,12 @@ int perturb2_get_lm_lists (
               || ((abs(L)%2!=0) && (ppt2->field_parity[index_pf]==_EVEN_)) )
               continue;
             
-            /* For even-parity fields, the sign-factor is i^L. For sign-parity ones, it is i^(L+1).
+            /* For even-parity fields, the sign-factor is i^L. For sign-parity ones, it is i^(L-1).
             In both cases, the exponent is even (see above), so that the sign-factor is real-valued */
             if (ppt2->field_parity[index_pf] == _EVEN_)
               sign = alternating_sign (abs(L)/2);
             else
-              sign = alternating_sign (abs(L+1)/2);
+              sign = alternating_sign (abs(L-1)/2);
 
             for (int index_m3=0; index_m3 <= ppr2->index_m_max[l3]; ++index_m3) {
 
@@ -4852,21 +4852,21 @@ int perturb2_geometrical_corner (
     int m = ppr2->m[index_m];
 
     double k1_ten_k2_cminus = (k1*k2*c_minus_12(2,m));
-    class_test_permissive (fabs (k1_ten_k2_cminus - ppw2->k1_ten_k2[m+2]) > _EPS_,
+    class_test_permissive (fabs (k1_ten_k2_cminus - ppw2->k1_ten_k2[m+2]) > _SMALL_,
       ppt2->error_message,
       "mode (%g,%g,%g,%g), m=%d, k1_ten_k2 check failed!\n%20.12g != %20.12g, diff = %g",
       k1, k2, k, cosk1k2, m, k1_ten_k2_cminus, ppw2->k1_ten_k2[m+2],
       fabs (1-(k1_ten_k2_cminus)/(ppw2->k1_ten_k2[m+2])));
 
     double k1_ten_k1_cminus = (k1*k1*c_minus_11(2,m));
-    class_test_permissive (fabs (k1_ten_k1_cminus - ppw2->k1_ten_k1[m+2]) > _EPS_,
+    class_test_permissive (fabs (k1_ten_k1_cminus - ppw2->k1_ten_k1[m+2]) > _SMALL_,
       ppt2->error_message,
       "mode (%g,%g,%g,%g), m=%d, k1_ten_k1 check failed!\n%20.12g != %20.12g, diff = %g",
       k1, k2, k, cosk1k2, m, k1_ten_k1_cminus, ppw2->k1_ten_k1[m+2],
       fabs (1-(k1_ten_k1_cminus)/(ppw2->k1_ten_k1[m+2])));
 
     double k2_ten_k2_cminus = (k2*k2*c_minus_22(2,m));
-    class_test_permissive (fabs (k2_ten_k2_cminus - ppw2->k2_ten_k2[m+2]) > _EPS_,
+    class_test_permissive (fabs (k2_ten_k2_cminus - ppw2->k2_ten_k2[m+2]) > _SMALL_,
       ppt2->error_message,
       "mode (%g,%g,%g,%g), m=%d, k2_ten_k2 check failed!\n%20.12g != %20.12g, diff = %g",
       k1, k2, k, cosk1k2, m, k2_ten_k2_cminus, ppw2->k2_ten_k2[m+2],
@@ -4911,8 +4911,8 @@ int perturb2_geometrical_corner (
 
   /* Nice check on the geometry of the system: k1*sin(theta_1) = k2*sin(theta_2). Since
   the quantities can be very close to zero, we only ask for a moderate precision */
-  // class_test (fabs (1 - (k1*sink1k)/(k2*sink2k)) > 1e4*_EPS_,
-  class_test ((k1*sink1k - k2*sink2k) > 1e4*_EPS_,
+  // class_test (fabs (1 - (k1*sink1k)/(k2*sink2k)) > 1e4*_SMALL_,
+  class_test ((k1*sink1k - k2*sink2k) > 1e4*_SMALL_,
     ppt2->error_message,
     "geometry check failed!\n%20.12g != %20.12g, diff = %g, sink1k=%g, sink2k=%g",
     k2/k1, sink1k/sink2k, fabs (1-(k2/k1)/(sink1k/sink2k)), sink1k, sink2k);
@@ -4923,7 +4923,7 @@ int perturb2_geometrical_corner (
   double kz2 = k2*cosk2k;
 
   class_test (
-    fabs(k - (kz1+kz2)) > _EPS_,
+    fabs(k - (kz1+kz2)) > _SMALL_,
     ppt2->error_message,
     "mode (%.17f,%.17f,%.17f): kz1 + kz2 != k (%.17f + %.17f != %.17f), there must be an error in the computation of the wavemodes angles.", 
       ppw2->k1, ppw2->k2, ppw2->k, kz1, kz2, k);
@@ -4934,7 +4934,7 @@ int perturb2_geometrical_corner (
   double kx2 = -k2*sqrt(1.-cosk2k*cosk2k);
 
   class_test (
-    fabs(kx1+kx2) > _EPS_,
+    fabs(kx1+kx2) > _SMALL_,
     ppt2->error_message,
     "mode (%.17f,%.17f,%.17f): kx1 != -kx2 (kx1=%.17f, kx2=%.17f), there must be an error in the computation of the wavemodes angles.", 
       ppw2->k1, ppw2->k2, ppw2->k, kx1, kx2);
@@ -4954,8 +4954,8 @@ int perturb2_geometrical_corner (
   }
   
   class_test(
-    fabs(1-k1_0_cartesian/k1_0) > _EPS_ || fabs(1-k1_P1_cartesian/k1_P1) > _EPS_ ||
-    fabs(1-k2_0_cartesian/k2_0) > _EPS_ || fabs(1-k2_P1_cartesian/k2_P1) > _EPS_,  
+    fabs(1-k1_0_cartesian/k1_0) > _SMALL_ || fabs(1-k1_P1_cartesian/k1_P1) > _SMALL_ ||
+    fabs(1-k2_0_cartesian/k2_0) > _SMALL_ || fabs(1-k2_P1_cartesian/k2_P1) > _SMALL_,  
     ppt2->error_message,
     "mode (%.17f,%.17f,%.17f): the L=1 rotation coefficient are not correct.",
       ppw2->k1, ppw2->k2, ppw2->k);
@@ -4969,7 +4969,7 @@ int perturb2_geometrical_corner (
   double k1_dot_k2_spherical = k1_0*k2_0 - k1_M1*k2_P1 - k1_P1*k2_M1;
   
   class_test (
-    fabs(k1_dot_k2_spherical - ppw2->k1_dot_k2) > _EPS_,
+    fabs(k1_dot_k2_spherical - ppw2->k1_dot_k2) > _SMALL_,
     ppt2->error_message,
     "mode (%.17f,%.17f,%.17f): the scalar product k1.k2 changes between spherical and cartesian coordinates (%.17f != %.17f).",
     ppw2->k1, ppw2->k2, ppw2->k, ppw2->k1_dot_k2, k1_dot_k2_spherical);
@@ -4979,7 +4979,7 @@ int perturb2_geometrical_corner (
 
   /* Check the monopole of the 'plegendre_lm' routine.  The monopole is not affected by the rotation,
   hence rotation_1[0] should be equal to one regardless of the considered wavemodes. */
-  class_test(fabs(ppw2->rotation_1[lm_quad(0,0)]-1.) > _EPS_,
+  class_test(fabs(ppw2->rotation_1[lm_quad(0,0)]-1.) > _SMALL_,
     ppt2->error_message,
     "mode (%.17f,%.17f,%.17f): the L=0 rotation coefficient is different from 1 (%.17f != %.17f). There must be a mistake in the way the geometrical quantities are computed.",
       ppw2->k1, ppw2->k2, ppw2->k, ppw2->rotation_1[lm_quad(0,0)], 1.);
@@ -4990,7 +4990,7 @@ int perturb2_geometrical_corner (
   be true, otherwise the monopole hierarchy would be coupled to the l=-1 moment. */
   if (ppr2->compute_m[0]==_TRUE_)
     class_test (
-      (fabs(ppw2->c_minus_product_12[lm(0,0)])>_EPS_) || (fabs(ppw2->c_minus_product_21[lm(0,0)])>_EPS_),
+      (fabs(ppw2->c_minus_product_12[lm(0,0)])>_SMALL_) || (fabs(ppw2->c_minus_product_21[lm(0,0)])>_SMALL_),
       ppt2->error_message,
       "mode (%.17f,%.17f,%.17f): found c_minus(l=0,m=0) !=  0 (%.17f != 0 or %.17f != 0). There must be a mistake in the way the geometrical quantities are computed.",
         ppw2->k1, ppw2->k2, ppw2->k, ppw2->c_minus_product_12[lm(0,0)], ppw2->c_minus_product_21[lm(0,0)]);
@@ -5001,8 +5001,8 @@ int perturb2_geometrical_corner (
   has to be the case because c_minus(1,m1,0) != 0 only if m1 = 0. */
   if (ppr2->compute_m[0]==_TRUE_)
     class_test (
-      (fabs(1-ppw2->c_minus_product_12[lm(1,0)]/(ppw2->rotation_1[lm_quad(1,0)]*ppw2->rotation_2[lm_quad(0,0)]))>_EPS_) ||
-      (fabs(1-ppw2->c_minus_product_21[lm(1,0)]/(ppw2->rotation_2[lm_quad(1,0)]*ppw2->rotation_1[lm_quad(0,0)]))>_EPS_),
+      (fabs(1-ppw2->c_minus_product_12[lm(1,0)]/(ppw2->rotation_1[lm_quad(1,0)]*ppw2->rotation_2[lm_quad(0,0)]))>_SMALL_) ||
+      (fabs(1-ppw2->c_minus_product_21[lm(1,0)]/(ppw2->rotation_2[lm_quad(1,0)]*ppw2->rotation_1[lm_quad(0,0)]))>_SMALL_),
       ppt2->error_message,
       "mode (%.17f,%.17f,%.17f): found wrong value for c_minus(l=1,m=0). There must be a mistake in the way the geometrical quantities are computed.",
         ppw2->k1, ppw2->k2, ppw2->k);
@@ -5015,7 +5015,7 @@ int perturb2_geometrical_corner (
   if (ppr2->compute_m[0]==_TRUE_)
     if (ppt2->has_polarization2 == _TRUE_)
       for(l=0; l<=ppt2->largest_l; ++l)
-        class_test ( fabs(ppw2->d_zero_product_12[lm(l,0)]) > _EPS_,
+        class_test ( fabs(ppw2->d_zero_product_12[lm(l,0)]) > _SMALL_,
           ppt2->error_message,
           "mode (%.17f,%.17f,%.17f): found d_zero_product(l,0) != 0. There must be a mistake in the way the geometrical quantities are computed.",
           ppw2->k1, ppw2->k2, ppw2->k);
@@ -5053,7 +5053,7 @@ int perturb2_geometrical_corner (
       double k1_ten_k2_unrescaled = ppw2->k1_ten_k2[m+2] * pow (sink1k, m);
 
       if (fabs(k1_ten_k2_unrescaled) > _MINUSCULE_)
-        class_test (fabs (k1_ten_k2[m+2] - k1_ten_k2_unrescaled) > _EPS_,
+        class_test (fabs (k1_ten_k2[m+2] - k1_ten_k2_unrescaled) > _SMALL_,
           ppt2->error_message,
           "check failed!\n%20.12g != %20.12g, diff = %g",
           k1_ten_k2[m+2], k1_ten_k2_unrescaled,
@@ -9231,12 +9231,8 @@ int perturb2_source_terms (
           
                 /* Collision term, as appearing on the righ-hand-side of delta_tilde_dot.  */
                 double c_I_k1_l1 = rot_1(l1,m1)*pvec_sources1[ppt->index_qs_monopole_collision_g+l1];
-                double c_I_k1_l2 = rot_1(l2,m2)*pvec_sources1[ppt->index_qs_monopole_collision_g+l2];
                 double c_I_k2_l1 = rot_2(l1,m1)*pvec_sources2[ppt->index_qs_monopole_collision_g+l1];
-                double c_I_k2_l2 = rot_2(l2,m2)*pvec_sources2[ppt->index_qs_monopole_collision_g+l2];            
-                double c_E_k1_l1 = rot_1(l1,m1)*pvec_sources1[ppt->index_qs_monopole_collision_E+l1];
                 double c_E_k1_l2 = rot_1(l2,m2)*pvec_sources1[ppt->index_qs_monopole_collision_E+l2];
-                double c_E_k2_l1 = rot_2(l1,m1)*pvec_sources2[ppt->index_qs_monopole_collision_E+l1];
                 double c_E_k2_l2 = rot_2(l2,m2)*pvec_sources2[ppt->index_qs_monopole_collision_E+l2];
                 
                 /* Increment delta*delta. The factor 0.5 comes from the symmetrisation with respect to k1<->k2.
@@ -9369,12 +9365,8 @@ int perturb2_source_terms (
           
                 /* Collision term, as appearing on the righ-hand-side of delta_tilde_dot.  */
                 double c_I_k1_l1 = rot_1(l1,m1)*pvec_sources1[ppt->index_qs_monopole_collision_g+l1];
-                double c_I_k1_l2 = rot_1(l2,m2)*pvec_sources1[ppt->index_qs_monopole_collision_g+l2];
                 double c_I_k2_l1 = rot_2(l1,m1)*pvec_sources2[ppt->index_qs_monopole_collision_g+l1];
-                double c_I_k2_l2 = rot_2(l2,m2)*pvec_sources2[ppt->index_qs_monopole_collision_g+l2];            
-                double c_E_k1_l1 = rot_1(l1,m1)*pvec_sources1[ppt->index_qs_monopole_collision_E+l1];
                 double c_E_k1_l2 = rot_1(l2,m2)*pvec_sources1[ppt->index_qs_monopole_collision_E+l2];
-                double c_E_k2_l1 = rot_2(l1,m1)*pvec_sources2[ppt->index_qs_monopole_collision_E+l1];
                 double c_E_k2_l2 = rot_2(l2,m2)*pvec_sources2[ppt->index_qs_monopole_collision_E+l2];
                 
                 /* Increment delta*delta. The factor 0.5 comes from the symmetrisation with respect to k1<->k2.

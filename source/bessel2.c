@@ -871,6 +871,7 @@ int bessel2_J_for_Llm (
   class_alloc (bessel_3j_data->bessels, (2*pbs2->L_max+1)*sizeof(double), pbs2->error_message);
   class_alloc (bessel_3j_data->first_3j, (2*pbs2->L_max+1)*sizeof(double), pbs2->error_message);
   class_alloc (bessel_3j_data->second_3j, (2*pbs2->L_max+1)*sizeof(double), pbs2->error_message);
+  double l1_min_D, l1_max_D;
 
   /* Compute the 3j symbol
     (    l     l1      L   )
@@ -879,15 +880,19 @@ int bessel2_J_for_Llm (
     (   l1      L      l   )
     (    0      S     -S   )
   */  
-  class_call (threej_l1(
+  class_call (drc3jj(
                 L, l, S, -S,
-                &(bessel_3j_data->l1_min), &(bessel_3j_data->l1_max),
-                &(bessel_3j_data->first_3j),
-                &(bessel_3j_data->l1_size),
+                &l1_min_D, &l1_max_D,
+                bessel_3j_data->first_3j,
+                (2*pbs2->L_max+1),
                 pbs2->error_message       
                 ),
     pbs2->error_message,
     pbs2->error_message);
+
+  bessel_3j_data->l1_min = (int)(l1_min_D + _EPS_);
+  bessel_3j_data->l1_max = (int)(l1_max_D + _EPS_);
+  bessel_3j_data->l1_size = bessel_3j_data->l1_max - bessel_3j_data->l1_min + 1;
 
   /*   Compute the 3j symbol
      (    l     l1      L   )
@@ -898,19 +903,18 @@ int bessel2_J_for_Llm (
   Careful here: we compute the second 3j only if it is different from the first one
   */
   if ((S!=0) || (m!=0)) {
-    class_call (threej_l1(
+    class_call (drc3jj(
                   L, l, -m, m,
-                  &(bessel_3j_data->l1_min), &(bessel_3j_data->l1_max),
-                  &(bessel_3j_data->second_3j),
-                  &(bessel_3j_data->l1_size),
+                  &l1_min_D, &l1_max_D,
+                  bessel_3j_data->second_3j,
+                  (2*pbs2->L_max+1),
                   pbs2->error_message       
                   ),
       pbs2->error_message,
       pbs2->error_message);
   }
   else {
-    int index_l1;
-    for(index_l1=0; index_l1<bessel_3j_data->l1_size; ++index_l1)
+    for(int index_l1=0; index_l1<bessel_3j_data->l1_size; ++index_l1)
       bessel_3j_data->second_3j[index_l1] = bessel_3j_data->first_3j[index_l1];
   }
 
