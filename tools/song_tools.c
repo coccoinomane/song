@@ -647,7 +647,6 @@ int coupling_general (
   class_test ((l2<F) || (l3<F), errmsg, "l2 and l3 out of bounds, should be smaller than F=%d", F);
  
   /* Temporary values needed for the computation of the 3j symbol */
-  int l1_size_3j, m2_size_3j;
   double l1_min_D, l1_max_D;
   double m2_min_D, m2_max_D;
 
@@ -701,8 +700,8 @@ int coupling_general (
       errmsg,
       errmsg);
 
-    *m2_min = (int)(m2_min_D + _EPS_);
-    *m2_max = (int)(m2_max_D + _EPS_);
+    *m2_min = (int)(m2_min_D + sign(m2_min_D)*_EPS_);
+    *m2_max = (int)(m2_max_D + sign(m2_max_D)*_EPS_);
 
     /* LOOP ON M2 */
     for (int m2 = *m2_min; m2 <= *m2_max; ++m2) {
