@@ -1162,6 +1162,9 @@ int bispectra2_intrinsic_integrate_over_k3 (
   /* Initialize counter for the number of integrals computed */
   pwb->count_memorised_for_integral_over_k3 = 0;
   
+  /* We shall keep track of the average size of the integration grid in k3, which is (k1,k2) dependent */
+  double average_k3_grid_size = 0;
+  
   /* We compute the integral over k3 for all possible l-values */
   for (int index_l3 = 0; index_l3 < pbi->l_size; ++index_l3) {
 
@@ -1199,7 +1202,7 @@ int bispectra2_intrinsic_integrate_over_k3 (
     if (pbi->bispectra_verbose > 2)
       printf("     * computing the k3 integral for l3=%d, index_l3=%d, L3=%d, index_L3=%d\n",
         l3, index_l3, pbs2->l1[index_L3], index_L3);
-  
+
     abort = _FALSE_;
     #pragma omp parallel shared (abort) private (thread)
     {
@@ -1316,7 +1319,10 @@ int bispectra2_intrinsic_integrate_over_k3 (
             T(\vec{k1},\vec{k2},\vec{3}) + T(\vec{k2},\vec{k1},\vec{3}) */
             pwb->integral_over_k3[index_l3][index_r][index_k1][index_k2] *= 2;
 
-            /* Update the counter */
+            /* Update the counters */
+            #pragma omp atomic
+            average_k3_grid_size += k3_size; 
+
             #pragma omp atomic
             ++pwb->count_memorised_for_integral_over_k3;
               
@@ -1363,8 +1369,9 @@ int bispectra2_intrinsic_integrate_over_k3 (
   } // end of for(index_l3);
     
   if (pbi->bispectra_verbose > 2)
-    printf("     * memorised ~ %.3g MB (%ld doubles) for the k3-integral array\n",
-      pwb->count_memorised_for_integral_over_k3*sizeof(double)/1e6, pwb->count_memorised_for_integral_over_k3);
+    printf("     * memorised ~ %.3g MB (%ld doubles) for the k3-integral array (<k3_size>=%g)\n",
+      pwb->count_memorised_for_integral_over_k3*sizeof(double)/1e6,
+      pwb->count_memorised_for_integral_over_k3, average_k3_grid_size/pwb->count_memorised_for_integral_over_k3);
 
   /* Check that we correctly filled the array */
   class_test (pwb->count_memorised_for_integral_over_k3 != pwb->count_allocated_for_integral_over_k3,
@@ -1724,8 +1731,9 @@ int bispectra2_intrinsic_integrate_over_k2 (
   } if (abort == _TRUE_) return _FAILURE_;  // end of parallel region
   
   if (pbi->bispectra_verbose > 2)
-    printf("     * memorised ~ %.3g MB (%ld doubles) for the k2-integral array\n",
-      pwb->count_memorised_for_integral_over_k2*sizeof(double)/1e6, pwb->count_memorised_for_integral_over_k2);
+    printf("     * memorised ~ %.3g MB (%ld doubles) for the k2-integral array (k2_size=%d)\n",
+      pwb->count_memorised_for_integral_over_k2*sizeof(double)/1e6, pwb->count_memorised_for_integral_over_k2,
+      k_tr_size);
   
   /* Check that we correctly filled the array */
   class_test (pwb->count_memorised_for_integral_over_k2 != pwb->count_allocated_for_integral_over_k2,
@@ -2105,7 +2113,7 @@ int bispectra2_intrinsic_integrate_over_k1 (
       } // end of for(index_l3)
     } // end of for(index_r)
   } if (abort == _TRUE_) return _FAILURE_;  // end of parallel region
-  
+
   /* DISABLED:  While the optimization makes sense, the way we implement it below leads to nan's. Investigate. */
   /* Take care of the case when l1 < l2 */
   // for (index_r = 0; index_r < pwb->r_size; ++index_r) {
@@ -2133,6 +2141,11 @@ int bispectra2_intrinsic_integrate_over_k1 (
   //     }
   //   }
   // }
+
+  if (pbi->bispectra_verbose > 2)
+    printf("     * memorised ~ %.3g MB (%ld doubles) for the k1-integral array (k1_size=%d)\n",
+      pwb->count_memorised_for_integral_over_k1*sizeof(double)/1e6, pwb->count_memorised_for_integral_over_k1,
+      k_tr_size);
   
   /* Check that we correctly filled the array */
   class_test (pwb->count_memorised_for_integral_over_k1 != pwb->count_allocated_for_integral_over_k1,

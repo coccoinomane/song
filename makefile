@@ -18,8 +18,7 @@ FC       = /usr/local/bin/gfortran
 # The fastest combination seems to be -O3 -ffast-math, whic delivers a speed-up of ~3.
 # Note that (i) the flag -ffast-math will produce different results at the 1 permille level,
 # and that (ii) debug won't work if the optimization is on.
-OPTFLAG         = -O
-FORTRAN_OPTFLAG = -O
+OPTFLAG         = -O4
 
 # Openmp flag (comment for compiling without openmp)
 CCFLAG     = -fopenmp -std=c99
@@ -55,21 +54,18 @@ LIBRARIES           = -lgfortran -fopenmp -lm
 
 
 
-
-
-
 # =========================================================================
 # =                          Compilation rules                            =
 # =========================================================================
 
 %.o:  %.c .base
-	cd $(WRKDIR);$(CC) $(OPTFLAG) $(CCFLAG) $(INCLUDES) -c ../$< -o $*.o
+	cd $(WRKDIR); $(CC) $(OPTFLAG) $(CCFLAG) $(INCLUDES) -c ../$< -o $*.o
 
 %.o:  %.f90 .base
-	cd $(WRKDIR);$(FC) $(FFLAGS) $(FORTRAN_OPTFLAG) -c ../$< -o $*.o
+	cd $(WRKDIR); $(FC) $(FFLAGS) $(FORTRAN_OPTFLAG) -c ../$< -o $*.o
 
 %.o:  %.f .base
-	cd $(WRKDIR);$(FC) $(FFLAGS) $(FORTRAN_OPTFLAG) -c ../$< -o $*.o
+	cd $(WRKDIR); $(FC) $(FFLAGS) $(FORTRAN_OPTFLAG) -c ../$< -o $*.o
 
 
 
@@ -78,6 +74,7 @@ LIBRARIES           = -lgfortran -fopenmp -lm
 # ==========================================================================
 
 TOOLS = growTable.o dei_rkck.o sparse.o evolver_rkck.o evolver_ndf15.o arrays.o parser.o quadrature.o
+SONG_TOOLS = $(TOOLS) song_tools.o slatec_3j_C.o slatec_3j_f90.o mesh_interpolation.o
 INPUT = input.o
 INPUT2 = input2.o
 PRECISION = precision.o
@@ -97,7 +94,6 @@ FISHER = fisher.o
 NONLINEAR = trg.o nonlinear.o
 LENSING = lensing.o
 OUTPUT = output.o
-SONG_TOOLS = $(TOOLS) song_tools.o slatec_3j_C.o slatec_3j_f90.o mesh_interpolation.o
 
 
 
@@ -176,10 +172,11 @@ song: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) 
 print_params: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PRINT_PARAMS)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-print_sources1: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2) $(TRANSFER) $(TRANSFER2) $(PRINT_SOURCES1)
+print_sources1: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2) \
+	$(TRANSFER) $(TRANSFER2) $(PRINT_SOURCES1)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-print_sources2: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2)\
+print_sources2: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2) \
 	$(PRINT_SOURCES2)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
@@ -192,7 +189,8 @@ print_transfers2: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PER
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_bispectra: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2)\
-	$(BESSEL) $(BESSEL2) $(TRANSFER) $(TRANSFER2) $(PRIMORDIAL) $(SPECTRA) $(BISPECTRA) $(BISPECTRA2) $(FISHER) $(PRINT_BISPECTRA)
+	$(BESSEL) $(BESSEL2) $(TRANSFER) $(TRANSFER2) $(PRIMORDIAL) $(SPECTRA) $(BISPECTRA) $(BISPECTRA2) $(FISHER)\
+	$(PRINT_BISPECTRA)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_background: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PRINT_BACKGROUND)
@@ -210,7 +208,8 @@ print_k_2nd_order: $(SONG_TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATION
 print_tau_2nd_order: $(SONG_TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PRINT_TAU_2ND_ORDER)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-print_initial_conditions_2nd_order: $(SONG_TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PRINT_INITIAL_CONDITIONS_2ND_ORDER)
+print_initial_conditions_2nd_order: $(SONG_TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) \
+	$(PRINT_INITIAL_CONDITIONS_2ND_ORDER)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm	
 
 print_kernel: $(SONG_TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PRINT_KERNEL)

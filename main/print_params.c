@@ -46,7 +46,8 @@ int main(int argc, char **argv) {
   // printf("* Flags & switches\n");
   // printf("\tpt2.has_cls = %d\n", pt2.has_cls);
   // printf("\tpt2.has_cmb_temperature = %d\n", pt2.has_cmb_temperature);    
-  // printf("\tpt2.has_cmb_polarization = %d\n", pt2.has_cmb_polarization);    
+  // printf("\tpt2.has_cmb_polarization_e = %d\n", pt2.has_cmb_polarization_e);
+  // printf("\tpt2.has_cmb_polarization_b = %d\n", pt2.has_cmb_polarization_b);
   // printf("\tpt2.has_perturbations2 = %d\n", pt2.has_perturbations2);
   // printf("\tpt.has_perturbations2 = %d\n", pt.has_perturbations2);  
   // printf("\tpt2.has_polarization2 = %d\n", pt2.has_polarization2);

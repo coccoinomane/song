@@ -75,10 +75,10 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
-  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
-    printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
-    return _FAILURE_;
-  }
+  // if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
+  //   printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
+  //   return _FAILURE_;
+  // }
 
   /* Compute only the first-order transfer functions, no matter what is specified in the input files */
   pt2.has_early_transfers1_only = _TRUE_;

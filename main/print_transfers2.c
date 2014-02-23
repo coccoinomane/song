@@ -100,12 +100,24 @@ int main (int argc, char **argv) {
       return _FAILURE_;
     }
   }
-  else if ((type == 'E') || (type == 'B')) {
-    if (pt2.has_cmb_polarization==_FALSE_) {
-      printf ("ERROR: you cannot ask for E or B-modes if you don't compute them first");
+  else if (type == 'E') {
+    if (pt2.has_cmb_polarization_e==_FALSE_) {
+      printf ("ERROR: you cannot ask for E-modes if you don't compute them first");
       return _FAILURE_;
     }
   }
+  else if (type == 'B') {
+    if (pt2.has_cmb_polarization_b==_FALSE_) {
+      printf ("ERROR: you cannot ask for B-modes if you don't compute them first");
+      return _FAILURE_;
+    }
+  }
+  
+  /* Print unrescaled transfer functions, i.e. without the sin(theta)^m factor. This will be
+  ignored if loading from disk. Any bispectrum result (which is not loaded from disk) will be
+  wrong */
+  pt2.rescale_quadsources = _FALSE_;
+  
 
   if (background_init(&pr,&ba) == _FAILURE_) {
     printf("\n\nError running background_init \n=>%s\n",ba.error_message);

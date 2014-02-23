@@ -1,6 +1,6 @@
 # Arguments
 # root: should be in the format path/file_name without extension.
-#       example: -e "root='/Users/coccoinomane/data/song/runs_from_honda/r+z/wmap7_better_t+p/squeezed_small_6_intrinsic'"
+#       example: gnuplot analytic_approx_script.gnuplot -e "root='<run dir>/squeezed_small_6_intrinsic'"
 
 # Determine parameters
 types = "ttt tte tet ett eet ete tee eee"

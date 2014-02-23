@@ -103,7 +103,10 @@ int bessel2_init(
     
   }
 
-  if (ppt2->has_cmb_polarization==_TRUE_) {
+  /* We compute the projection functions for both the E and B-modes, regardless of
+  which polarisation type is requested, because free streaming makes the two types
+  of polarisation mix in the line of sight integral */
+  if ((ppt2->has_cmb_polarization_e == _TRUE_) || (ppt2->has_cmb_polarization_b == _TRUE_)) {
 
     /* E->E projection function (equal to B->B) */
     pbs2->has_J_EE = _TRUE_;

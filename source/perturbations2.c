@@ -454,9 +454,9 @@ int perturb2_init (
               ppt2->error_message,
               ppt2->error_message);
 
-      }  // end of for(index_k3)
+      }  // end of for (index_k3)
 
-    } // end of for(index_k2)
+    } // end of for (index_k2)
 
     /* Save sources to disk, if requested */
     if (ppt2->store_sources_to_disk == _TRUE_) {
@@ -474,7 +474,7 @@ int perturb2_init (
     
     #pragma omp flush(abort)
     
-  }  // end of for(index_k1) and parallel region
+  }  // end of for (index_k1) and parallel region
   
   if (abort == _TRUE_) return _FAILURE_;
 
@@ -552,7 +552,8 @@ int perturb2_indices_of_perturbs(
   /* We need to compute something, don't we? :-) */
   class_test (
     (ppt2->has_cmb_temperature == _FALSE_) &&
-    (ppt2->has_cmb_polarization == _FALSE_),
+    (ppt2->has_cmb_polarization_e == _FALSE_) &&
+    (ppt2->has_cmb_polarization_b == _FALSE_),
     ppt2->error_message, "please specify a probe");
 
   /* E-modes and B-modes start from l=2 */
@@ -595,7 +596,7 @@ int perturb2_indices_of_perturbs(
       ppt2->error_message,
       "you chose to compute more line-of-sight sources than evolved multipoles at first order. Make sure that l_max_los_t is smaller or equal than l_max_g.");
 
-  if (ppt2->has_cmb_polarization)
+  if ((ppt2->has_cmb_polarization_e == _TRUE_) || (ppt2->has_cmb_polarization_b == _TRUE_))
     class_test (ppr2->l_max_los_p > ppr2->l_max_pol_g_2nd_order,
       ppt2->error_message,
       "you chose to compute more line-of-sight sources than evolved multipoles at first order. Make sure that l_max_los_p is smaller or equal than l_max_pol_g_2nd_order.");
@@ -608,7 +609,7 @@ int perturb2_indices_of_perturbs(
       ppt2->error_message,
       "you chose to compute more line-of-sight quadratic sources than evolved multipoles at first order. Make sure that l_max_los_quadratic_t is smaller or equal than l_max_g.");
 
-  if (ppt2->has_cmb_polarization)
+  if ((ppt2->has_cmb_polarization_e == _TRUE_) || (ppt2->has_cmb_polarization_b == _TRUE_))
     class_test (ppr2->l_max_los_quadratic_p > ppr->l_max_pol_g,
       ppt2->error_message,
       "you chose to compute more line-of-sight quadratic sources than evolved multipoles at first order. Make sure that l_max_los_quadratic_p is smaller or equal than l_max_pol_g.");
@@ -623,21 +624,25 @@ int perturb2_indices_of_perturbs(
 
   /* Allocate and fill the m-array, which contains the azimuthal moments to evolve.  We just copy
   it from the precision structure. */
-  int index_m;
   ppt2->m_size = ppr2->m_size;
   class_alloc (ppt2->m, ppt2->m_size*sizeof(int), ppt2->error_message);
-  for (index_m=0; index_m<ppt2->m_size; ++index_m)
+  for (int index_m=0; index_m<ppt2->m_size; ++index_m)
     ppt2->m[index_m] = ppr2->m[index_m];
 
-
-  /* Count source types and assign corresponding indices (index_type).  Also set the flags has_cmb and has_lss,
-  and count the CMB fields (temperature, E-modes, B-modes...) that are needed using index_pf.  */
+  /* Count source types and assign corresponding indices (index_type).  Also set the flags to their default
+  values and count the CMB fields (temperature, E-modes, B-modes...) that are needed using index_pf.  */
   int index_type = 0;
   int index_pf = 0;
   ppt2->has_cmb = _FALSE_;
   ppt2->has_lss = _FALSE_;
+  ppt2->has_source_T = _FALSE_;
+  ppt2->has_source_E = _FALSE_;
+  ppt2->has_source_B = _FALSE_;
 
-  // *** Photons temperature sources
+  // --------------------------------------------------------------------------
+  // -                       Photons temperature sources                      -
+  // --------------------------------------------------------------------------
+  
   if (ppt2->has_cmb_temperature == _TRUE_) {
 
     ppt2->has_source_T = _TRUE_;
@@ -656,13 +661,17 @@ int perturb2_indices_of_perturbs(
     ppt2->index_pf_t = index_pf++;
     
   }
-  else {
-    ppt2->has_source_T = _FALSE_;
-  }
 
 
-  // *** Photon polarization sources
-  if (ppt2->has_cmb_polarization == _TRUE_) {
+  // -------------------------------------------------------------------------
+  // -                      Photon polarization sources                      -
+  // -------------------------------------------------------------------------
+    
+  /* We compute the source functions for both the E and B-modes, regardless of
+  which polarisation type is requested, because free streaming makes the two types
+  of polarisation mix in the line of sight integral */
+
+  if ((ppt2->has_cmb_polarization_e == _TRUE_) || (ppt2->has_cmb_polarization_b == _TRUE_)) {
 
     // *** E-MODES ***
     ppt2->has_source_E = _TRUE_;
@@ -696,10 +705,6 @@ int perturb2_indices_of_perturbs(
     ppt2->index_pf_b = index_pf++;
 
   }
-  else {
-    ppt2->has_source_E = _FALSE_;
-    ppt2->has_source_B = _FALSE_;
-  }
 
 
   /* Set the size of the sources to be stored */
@@ -708,9 +713,12 @@ int perturb2_indices_of_perturbs(
   
   if (ppt2->perturbations2_verbose > 1) {
     printf ("     * will compute tp2_size=%d source terms ( ", ppt2->tp2_size);
-    if (ppt2->has_cmb_temperature == _TRUE_) printf ("T=%d ", ppt2->n_sources_T);
-    if (ppt2->has_cmb_polarization == _TRUE_) printf ("E=%d ", ppt2->n_sources_E);
-    if (ppt2->has_cmb_polarization == _TRUE_) printf ("B=%d ", ppt2->n_sources_B);
+    if (ppt2->has_cmb_temperature == _TRUE_)
+      printf ("T=%d ", ppt2->n_sources_T);
+    if ((ppt2->has_cmb_polarization_e == _TRUE_) || (ppt2->has_cmb_polarization_b == _TRUE_)) {
+      printf ("E=%d ", ppt2->n_sources_E);
+      printf ("B=%d ", ppt2->n_sources_B);
+    }
     printf (")\n");
   }  
   
@@ -803,7 +811,7 @@ int perturb2_indices_of_perturbs(
       if (sources_dir_exists) {
 
         if (ppt2->perturbations2_verbose > 1)
-          printf ("     * found source functions folder.\n");
+          printf (" -> found source functions folder.\n");
 
         ppt2->load_sources_from_disk = _TRUE_;
       }
@@ -841,7 +849,7 @@ int perturb2_indices_of_perturbs(
     class_alloc (ppt2->sources_run_files, ppt2->k_size*sizeof(FILE *), ppt2->error_message);
     class_alloc (ppt2->sources_run_paths, ppt2->k_size*sizeof(char *), ppt2->error_message);
 
-    for(index_k1=0; index_k1<ppt2->k_size; ++index_k1) {
+    for (index_k1=0; index_k1<ppt2->k_size; ++index_k1) {
       
       /* The name of each sources file will have the k1 index in it */
       class_alloc (ppt2->sources_run_paths[index_k1], _FILENAMESIZE_*sizeof(char), ppt2->error_message);
@@ -983,9 +991,9 @@ int perturb2_get_lm_lists (
       // printf ("(l,m) = (%d,%d) corresponds to an offset of %d\n",
       //   l, ppt2->m[index_m], ppt2->lm_array[l][index_m]);
         
-    } // end of for(index_m)
+    } // end of for (index_m)
 
-  } // end of for(l)
+  } // end of for (l)
 
 
   // --------------------------------------------------------------------------------------
@@ -1046,11 +1054,11 @@ int perturb2_get_lm_lists (
         Just limit this computation to m = MIN (m_max,l). */
   class_alloc (ppt2->lm_array_quad, (ppt2->largest_l_quad+1)*sizeof(int*), ppt2->error_message);
   
-  for(int l=0; l<=ppt2->largest_l_quad; ++l) {
+  for (int l=0; l<=ppt2->largest_l_quad; ++l) {
   
     class_calloc (ppt2->lm_array_quad[l], l+1, sizeof(int), ppt2->error_message);
   
-    for(int m=0; m<=l; ++m)
+    for (int m=0; m<=l; ++m)
       ppt2->lm_array_quad[l][m] = multipole2offset_l_m (l,m,l+1);
   }
 
@@ -1144,7 +1152,7 @@ int perturb2_get_lm_lists (
       //   ppt2->m[ppt2->corresponding_index_m[index_tp]],
       //   ppt2->tp2_labels[index_tp], ppt2->index_monopole[index_tp]);
     }
-  } // end of for(index_tp)    
+  } // end of for (index_tp)    
 
 
   // ======================================================================================
@@ -1214,7 +1222,7 @@ int perturb2_get_lm_lists (
   the same reference:
   
     P_I(l3,m3) ->  + 0.5 * i^L * ( l1   l2 | l3  ) * (  l1   l2  | l3 )  
-                               ( 0    0  |  0  )   (  m1   m2  | m  ) 
+                                 ( 0    0  |  0  )   (  m1   m2  | m  ) 
                          * [ X_I(l1,m1) Y_I(l2,m2) + Y_I(l1,m1) X_I(l2,m2) ] 
   
     P_E(l3,m3) ->  + 1 * i^L * ( l1   l2 | l3  ) * (  l1   l2  | l3 )  
@@ -1487,9 +1495,6 @@ int perturb2_get_k_lists (
           )
 {
 
-  /* Cycle variable */
-  int index_k;
-
 
   // ============================================================================================
   // =                              Determine grid for k1 and k2                                =
@@ -1733,7 +1738,7 @@ int perturb2_get_k_lists (
 
   /* Some debug - print out the k-list */
   // printf ("# ~~~ k-sampling for k1 and k2 (size=%d) ~~~\n", ppt2->k_size);
-  // for (index_k=0; index_k < ppt2->k_size; ++index_k) {
+  // for (int index_k=0; index_k < ppt2->k_size; ++index_k) {
   //   printf ("%17d %17.7g\n", index_k, ppt2->k[index_k]);
   // }
   
@@ -1748,9 +1753,6 @@ int perturb2_get_k_lists (
   /* Initialize counter of total k-configurations */
   ppt2->count_k_configurations = 0;
   
-  /* Cycle variables */
-  int index_k1, index_k2, index_k3;
-
   /* Allocate k1 level */
   int k1_size = ppt2->k_size;
 
@@ -1759,7 +1761,7 @@ int perturb2_get_k_lists (
   if (ppt2->k3_sampling == smart_k3_sampling)
     class_alloc (ppt2->index_k3_min, k1_size*sizeof(int *), ppt2->error_message);
 
-  for (index_k1=0; index_k1 < ppt2->k_size; ++index_k1) {
+  for (int index_k1=0; index_k1 < ppt2->k_size; ++index_k1) {
     
     double k1 = ppt2->k[index_k1];
     
@@ -1771,7 +1773,7 @@ int perturb2_get_k_lists (
     if (ppt2->k3_sampling == smart_k3_sampling)
       class_alloc (ppt2->index_k3_min[index_k1], k2_size*sizeof(int), ppt2->error_message);
     
-    for (index_k2=0; index_k2 <= index_k1; ++index_k2) {
+    for (int index_k2=0; index_k2 <= index_k1; ++index_k2) {
       
       /* Remember that, given our loop choice, k2 is always smaller than k1 */
       double k2 = ppt2->k[index_k2];
@@ -1811,7 +1813,8 @@ int perturb2_get_k_lists (
 
       if ((ppt2->k3_sampling == lin_k3_sampling) || (ppt2->k3_sampling == log_k3_sampling)) {
 
-        /* The size of the k3 array is the same for every (k1,k2) configuration, and is read from the precision structure */
+        /* The size of the k3 array is the same for every (k1,k2) configuration, and is read from
+        the precision structure */
         ppt2->k3_size[index_k1][index_k2] = ppr2->k3_size;
         class_alloc (ppt2->k3[index_k1][index_k2], ppr2->k3_size*sizeof(double), ppt2->error_message);
 
@@ -1841,7 +1844,8 @@ int perturb2_get_k_lists (
 
       else if (ppt2->k3_sampling == theta13_k3_sampling) {
 
-        /* The size of the k3 array is the same for every (k1,k2) configuration, and is read from the precision structure */
+        /* The size of the k3 array is the same for every (k1,k2) configuration, and is read from the
+        precision structure */
         ppt2->k3_size[index_k1][index_k2] = ppr2->k3_size;
         class_alloc (ppt2->k3[index_k1][index_k2], ppr2->k3_size*sizeof(double), ppt2->error_message);
 
@@ -1862,7 +1866,7 @@ int perturb2_get_k_lists (
           theta_step = (theta12_max - theta12_min)/(ppt2->k3_size[index_k1][index_k2]-1);
         }
 
-        for (index_k3=0; index_k3 < ppt2->k3_size[index_k1][index_k2]; ++index_k3) {
+        for (int index_k3=0; index_k3 < ppt2->k3_size[index_k1][index_k2]; ++index_k3) {
 
           double cosk1k2 = cos (theta12_min + index_k3*theta_step);
           
@@ -1943,14 +1947,14 @@ int perturb2_get_k_lists (
           /* Fill the k3-grid making sure to include k3_min and k3_max */
           ppt2->k3[index_k1][index_k2][0] = k3_min;
           
-          for (index_k3=0; index_k3 < n_triangular; ++index_k3)
+          for (int index_k3=0; index_k3 < n_triangular; ++index_k3)
             ppt2->k3[index_k1][index_k2][index_k3+1] = ppt2->k[index_k3_min+index_k3];
           
           ppt2->k3[index_k1][index_k2][ppt2->k3_size[index_k1][index_k2]-1] = k3_max;
           
           /* Shift the starting point of the array if we included k3_min twice */
           if (ppt2->k3[index_k1][index_k2][0] == ppt2->k3[index_k1][index_k2][1]) {
-            for (index_k3=0; index_k3 < (ppt2->k3_size[index_k1][index_k2]-1); ++index_k3)
+            for (int index_k3=0; index_k3 < (ppt2->k3_size[index_k1][index_k2]-1); ++index_k3)
               ppt2->k3[index_k1][index_k2][index_k3] = ppt2->k3[index_k1][index_k2][index_k3+1];
             ppt2->k3_size[index_k1][index_k2]--;
           }
@@ -1975,18 +1979,20 @@ int perturb2_get_k_lists (
       ppt2->count_k_configurations += ppt2->k3_size[index_k1][index_k2];
 
       /* Some debug - print out the k3 list for a special configuration */      
-      // if ((index_k1==69) && (index_k2==69)) {
+      // if ((index_k1==1) && (index_k2==0)) {
+      // 
       //   fprintf (stderr, "k1[%d]=%.17f, k2[%d]=%.17f, k3_size=%d, k3_min=%.17f, k3_max=%.17f\n",
       //     index_k1, k1, index_k2, k2, ppt2->k3_size[index_k1][index_k2], k3_min, k3_max);
-      //   for (index_k3=0; index_k3 < ppt2->k3_size[index_k1][index_k2]; ++index_k3)
-      //     fprintf(stderr, "%d %.17f /\\ ", index_k3, ppt2->k3[index_k1][index_k2][index_k3]);
+      // 
+      //   for (int index_k3=0; index_k3 < ppt2->k3_size[index_k1][index_k2]; ++index_k3)
+      //     fprintf(stderr, "%d %.17f\n", index_k3, ppt2->k3[index_k1][index_k2][index_k3]);
       //       
       //   fprintf (stderr, "\n\n");
       // }
 
-    } // end of for(index_k2)
+    } // end of for (index_k2)
 
-  } // end of for(index_k1)
+  } // end of for (index_k1)
 
 
 
@@ -2006,20 +2012,14 @@ int perturb2_get_k_lists (
   ppt->k_size_cl[0] = ppt2->k_size;
 
   class_alloc (ppt->k, sizeof(double *), ppt2->error_message);
-  ppt->k[0] = ppt2->k;    
+  class_alloc (ppt->k[0], ppt->k_size[0]*sizeof(double), ppt2->error_message);
+  for (int index_k=0; index_k < ppt2->k_size; ++index_k)
+    ppt->k[0][index_k] = ppt2->k[index_k];
 
   /* Some debug - print first-order k-sampling */
   // for (index_k=0; index_k < ppt->k_size[ppt->index_md_scalars]; ++index_k) {
   //   printf ("%5d %10g\n", index_k, ppt->k[ppt->index_md_scalars][index_k]);
   // }
-
-  /* Some debug - print a particular wavemode configuration */
-  // int index_k1 = 20;
-  // int index_k2 = 85;
-  // int index_k3 = 22;
-  // printf ("k1=%.20f, k2=%.20f, k3=%.20f\n", ppt2->k[index_k1], ppt2->k[index_k2],
-  //   ppt2->k3[index_k1][index_k2][index_k3]);
-
 
   return _SUCCESS_;
 
@@ -2422,7 +2422,7 @@ int perturb2_timesampling_for_sources (
           break;
         }
 
-      } // end of for(index_tau)
+      } // end of for (index_tau)
 
 
       /* Some debug */
@@ -3651,14 +3651,14 @@ int perturb2_workspace_init_quadratic_sources (
   ppw2->quadsources_table[index_qs2_type][index_tau]. */
   class_calloc (ppw2->quadsources_table, ppw2->qs2_size, sizeof(double), ppt2->error_message);  
 
-  for(index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
+  for (index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
     class_calloc (ppw2->quadsources_table[index_qs2], ppt->tau_size_quadsources, sizeof(double), ppt2->error_message);
 
   /* Allocate the arrays that will contain the second-derivative of the table arrays, in view of
   spline interpolation */
   class_calloc (ppw2->dd_quadsources_table, ppw2->qs2_size, sizeof(double), ppt2->error_message);  
 
-  for(index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
+  for (index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
     class_calloc (ppw2->dd_quadsources_table[index_qs2], ppt->tau_size_quadsources, sizeof(double), ppt2->error_message);
 
   /* Allocate the temporary arrays that will contain the interpolated values of the quadratic sources
@@ -3762,7 +3762,7 @@ int perturb2_workspace_free (
   free(ppw2->pvec_quadcollision);
 
   /* Free quadratic sources table */
-  for(int index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
+  for (int index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
     free(ppw2->quadsources_table[index_qs2]);
   free(ppw2->quadsources_table);
 
@@ -3945,7 +3945,7 @@ int perturb2_find_approximation_number(
     /* Some debug */
     // printf("interval_number_of[%d] = %d\n", index_ap, interval_number_of[index_ap]);
 
-  } // end of for(index_ap)
+  } // end of for (index_ap)
   
   
   
@@ -4200,7 +4200,7 @@ int perturb2_find_approximation_switches (
 
       } // end of if(verbose)
 
-    } // end of for(index_switch)
+    } // end of for (index_switch)
   
     free(unsorted_tau_switch);
 
@@ -4594,9 +4594,9 @@ int perturb2_geometrical_corner (
    
   // *** Fill the rotation arrays
    
-  for(l=0; l<=ppt2->largest_l_quad; ++l) {
+  for (l=0; l<=ppt2->largest_l_quad; ++l) {
     
-    for(m=0; m<=l; ++m) {
+    for (m=0; m<=l; ++m) {
 
       /* The rotation coefficients for the first-order quantities are defined as
       sqrt(4pi/(2l+1)) Y_lm(theta,phi)
@@ -4731,7 +4731,7 @@ int perturb2_geometrical_corner (
   f_{lm}(\vec{k}) = \sqrt(4\pi/(2l+1)) Y_{lm}(\vec{k}) \tilde{f}(k) ,
   where \tilde{f}(k) is f as computed with \vec{k} aligned with the zenith. */
 
-  for(l=0; l<=ppt2->largest_l; ++l) {
+  for (l=0; l<=ppt2->largest_l; ++l) {
     for (index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
 
       int m = ppt2->m[index_m];
@@ -4800,7 +4800,7 @@ int perturb2_geometrical_corner (
           ppw2->d_zero_product_22[lm(l,m)]  += rot_2(1,m2) * rot_2(l,m1) * d_zero;
           
         }
-      } // end of for(m2)
+      } // end of for (m2)
 
       /* The R couplings (eq. 142 of BF 2010) are obtained from the C ones */
       ppw2->r_minus_product_12[lm(l,m)] =  (l-1) * ppw2->c_minus_product_12[lm(l,m)];
@@ -4838,8 +4838,8 @@ int perturb2_geometrical_corner (
       //    printf("\n");
       // }
 
-    } // end of for(m)
-  } // end of for(l)
+    } // end of for (m)
+  } // end of for (l)
 
 
   /* Test the c_minus factor when l=2 by checking that the equality
@@ -5014,7 +5014,7 @@ int perturb2_geometrical_corner (
   eq. 2.17 of BFK. */
   if (ppr2->compute_m[0]==_TRUE_)
     if (ppt2->has_polarization2 == _TRUE_)
-      for(l=0; l<=ppt2->largest_l; ++l)
+      for (l=0; l<=ppt2->largest_l; ++l)
         class_test ( fabs(ppw2->d_zero_product_12[lm(l,0)]) > _SMALL_,
           ppt2->error_message,
           "mode (%.17f,%.17f,%.17f): found d_zero_product(l,0) != 0. There must be a mistake in the way the geometrical quantities are computed.",
@@ -5600,7 +5600,7 @@ int perturb2_solve (
       ppt2->error_message);
 
 
-  } // end of for(index_interval)
+  } // end of for (index_interval)
 
 
 
@@ -6314,7 +6314,7 @@ int perturb2_free(
     
       fclose(ppt2->sources_status_file);
     
-      for(int index_k1=0; index_k1<ppt2->k_size; ++index_k1)
+      for (int index_k1=0; index_k1<ppt2->k_size; ++index_k1)
         free (ppt2->sources_run_paths[index_k1]);
     
       free (ppt2->sources_run_files);
@@ -6709,8 +6709,8 @@ int perturb2_derivs (
           dE(l,m) += dE_qs2(l,m);
           dB(l,m) += dB_qs2(l,m);                
 
-        } // end of for(m)
-      } // end of for(l)
+        } // end of for (m)
+      } // end of for (l)
     } // end of if(has_quadratic_sources)
 
   }  // end of if(has_polarization2)
@@ -7001,7 +7001,7 @@ int perturb2_derivs (
   // 
   //     /* Show content of y, dy and dy_quadsources */
   //     int index_pt;
-  //     for(int index_pt=0; index_pt<ppw2->pv->pt2_size; ++index_pt)
+  //     for (int index_pt=0; index_pt<ppw2->pv->pt2_size; ++index_pt)
   //       printf("y[%3d] = %+12.3g,  dy[%3d] = %+12.3g,   dy_quadsources[%3d] = %+12.3g\n",
   //         index_pt, y[index_pt], index_pt, dy[index_pt], index_pt, ppw2->pv->dy_quadsources[index_pt]);
   // 
@@ -7390,7 +7390,7 @@ int perturb2_quadratic_sources_for_k1k2k (
       )
 {
 
-  for(int index_tau=0; index_tau<ppt->tau_size_quadsources; ++index_tau) {
+  for (int index_tau=0; index_tau<ppt->tau_size_quadsources; ++index_tau) {
     
     double tau = ppt->tau_sampling_quadsources[index_tau];
 
@@ -7439,7 +7439,7 @@ int perturb2_quadratic_sources_for_k1k2k (
     for (int index_qs2=0; index_qs2 < ppw2->qs2_size; ++index_qs2)
       ppw2->quadsources_table[index_qs2][index_tau] = ppw2->pvec_quadsources[index_qs2];
 
-  } // end of for(index_tau)
+  } // end of for (index_tau)
 
   /* Compute second-order derivatives of the quadratic sources in view of spline interpolation */
   if (ppr->quadsources_time_interpolation == cubic_interpolation) {
@@ -7936,8 +7936,8 @@ int perturb2_quadratic_sources (
           /* Account for the fact that in BF2010 the Liouville operator appears on the left-hand-side */
           dI_qs2(l,m) *= -1;
       
-        } // end of for(index_m)
-      } // end of for(l)
+        } // end of for (index_m)
+      } // end of for (l)
 
    
       // ----------------------------------------
@@ -7975,8 +7975,8 @@ int perturb2_quadratic_sources (
             dE_qs2(l,m) *= -1;
             dB_qs2(l,m) *= -1;
  
-          } // end of for(index_m)
-        } // end of for(l)
+          } // end of for (index_m)
+        } // end of for (l)
       } // end of if(has_polarization2)
  
  
@@ -8092,8 +8092,8 @@ int perturb2_quadratic_sources (
             /* Account for the fact that in BF2010 the Liouville operator appears on the left-hand-side */
             dN_qs2(l,m) *= -1;
       
-          } // end of for(index_m)
-        } // end of for(l)
+          } // end of for (index_m)
+        } // end of for (l)
       } // end of if(has_ur) 
       
     }  // end of if(newtonian)
@@ -8365,8 +8365,8 @@ int perturb2_quadratic_sources (
                       + c_minus_21(l,m) * v_0_2 * I_1_tilde(l-1)
                       - c_plus_21(l,m)  * v_0_2 * I_1_tilde(l+1);
  
-      } // end of for(index_m)
-    } // end of for(l)
+      } // end of for (index_m)
+    } // end of for (l)
  
  
  
@@ -8442,8 +8442,8 @@ int perturb2_quadratic_sources (
                          - d_plus_21(l,m)  * v_0_2 * E_1_tilde(l+1);
 
       
-        } // end of for(index_m)
-      } // end of for(l)
+        } // end of for (index_m)
+      } // end of for (l)
       
  
       // -------------------------------------------
@@ -8471,8 +8471,8 @@ int perturb2_quadratic_sources (
                           + d_zero_21(l,m) * v_0_2 * E_1_tilde(l);
 
           
-        } // end of for(index_m)
-      } // end of for(l)
+        } // end of for (index_m)
+      } // end of for (l)
  
     } // end of if(has_polarization2)
  
@@ -9098,9 +9098,9 @@ int perturb2_source_terms (
                 //   (I_1(l1,m1)*c_k2_l2 + I_2(l1,m1)*c_k1_l2
                 //   +c_k1_l1*I_2(l2,m2) + c_k2_l1*I_1(l2,m2));
         
-              } // end of for(m1)            
-            } // end of for(l2)
-          } // end of for(l1)
+              } // end of for (m1)            
+            } // end of for (l2)
+          } // end of for (l1)
           
           /* Extra sources for delta tilde. The factor 'quad_coefficient' accounts for the factorial in our
           perturbative expansion. The factor 0.5 in delta_delta_lm accounts for the 1/2 factor in the
@@ -9128,8 +9128,8 @@ int perturb2_source_terms (
         #pragma omp atomic
         ++ppt2->count_memorised_sources;
   
-      }  // end for(m)
-    } // end for(l)
+      }  // end for (m)
+    } // end for (l)
   } // end of temperature sources
 
   
@@ -9246,9 +9246,9 @@ int perturb2_source_terms (
                   (I_1(l1,m1)*c_E_k2_l2 + c_I_k1_l1*E_2(l2,m2)   /* delta<->collision */
                   +I_2(l1,m1)*c_E_k1_l2 + c_I_k2_l1*E_1(l2,m2)); /* k1<->k2 */
                   
-              } // end of for(m1)            
-            } // end of for(l2)
-          } // end of for(l1)
+              } // end of for (m1)            
+            } // end of for (l2)
+          } // end of for (l1)
           
           /* Extra sources for delta tilde. The factor 'quad_coefficient' accounts for the factorial in our
           perturbative expansion. The factor 0.5 in delta_delta_lm accounts for the 1/2 factor in the
@@ -9276,8 +9276,8 @@ int perturb2_source_terms (
         #pragma omp atomic
         ++ppt2->count_memorised_sources;
 
-      }  // end for(m)
-    } // end for(l)
+      }  // end for (m)
+    } // end for (l)
   } // end of E-mode sources
 
   
@@ -9380,9 +9380,9 @@ int perturb2_source_terms (
                   (I_1(l1,m1)*c_E_k2_l2 + c_I_k1_l1*E_2(l2,m2)   /* delta<->collision */
                   +I_2(l1,m1)*c_E_k1_l2 + c_I_k2_l1*E_1(l2,m2)); /* k1<->k2 */
                   
-              } // end of for(m1)            
-            } // end of for(l2)
-          } // end of for(l1)
+              } // end of for (m1)            
+            } // end of for (l2)
+          } // end of for (l1)
           
           /* Extra sources for delta tilde. The factor 'quad_coefficient' accounts for the factorial in our
           perturbative expansion. The factor 0.5 in delta_delta_lm accounts for the 1/2 factor in the
@@ -9410,8 +9410,8 @@ int perturb2_source_terms (
         #pragma omp atomic
         ++ppt2->count_memorised_sources;
 
-      }  // end for(m)
-    } // end for(l)
+      }  // end for (m)
+    } // end for (l)
   } // end of B-mode sources
   
   
@@ -9494,9 +9494,9 @@ int perturb2_source_terms (
   //           delta_delta_lm += coupling *  0.5 * (I_1(l1,m1)*I_2(l2,m2) + I_2(l1,m1)*I_1(l2,m2));
   //           delta_collision_lm += coupling *  0.5 * (I_1(l1,m1)*c_2 + I_2(l1,m1)*c_1);
   //           
-  //         } // end of for(m1)            
-  //       } // end of for(l2)
-  //     } // end of for(l1)
+  //         } // end of for (m1)            
+  //       } // end of for (l2)
+  //     } // end of for (l1)
   //   
   //     /* Extra sources for delta tilde. The factor 'quad_coefficient' accounts for the factorial in our
   //     perturbative expansion. The factor 0.5 in delta_delta_lm accounts for the 1/2 factor in the
@@ -9645,7 +9645,7 @@ int perturb2_sources (
               
               }
 
-            } // end of for(index_tau)
+            } // end of for (index_tau)
       
           } // end of if(has_sw)
     
@@ -9697,7 +9697,7 @@ int perturb2_sources (
               //     tau, 4*exp_minus_kappa*(psi_prime + phi_prime), psi, psi_prime, phi_prime, exp_minus_kappa);
               // }
   
-            } // end of for(index_tau)
+            } // end of for (index_tau)
   
           } // end of if(has_ISW)
           
@@ -10441,18 +10441,49 @@ int perturb2_save_early_transfers (
     fprintf(file_qs, format_value, Y);
   }
   
-  // *** Photon sources
+  // *** Photon temperature sources
   int l_max_los_t = MIN(ppr2->l_max_los_t, ppt2->l_max_debug);
   
   for (int l=0; l<=l_max_los_t; ++l) {
     for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
       int m = ppr2->m[index_m];
-      sprintf(buffer, "S_%d_%d_g", l, m);
+      sprintf(buffer, "I_%d_%d", l, m);
       if (index_tau==0) {
        fprintf(file_tr, format_label, buffer, index_print_tr++);
       }
       else {
-       fprintf(file_tr, format_value, sources(ppt2->index_tp2_T+lm(l,m)));
+       fprintf(file_tr, format_value, sources(ppt2->index_tp2_T+lm(l,m))/kappa_dot);
+      }
+    }
+  }
+  
+  // *** Photon E-mode polarisation sources
+  int l_max_los_p = MIN(ppr2->l_max_los_p, ppt2->l_max_debug);
+  
+  for (int l=2; l<=l_max_los_p; ++l) {
+    for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+      int m = ppr2->m[index_m];
+      sprintf(buffer, "E_%d_%d", l, m);
+      if (index_tau==0) {
+       fprintf(file_tr, format_label, buffer, index_print_tr++);
+      }
+      else {
+       fprintf(file_tr, format_value, sources(ppt2->index_tp2_E+lm(l,m))/kappa_dot);
+      }
+    }
+  }
+  
+  // *** Photon B-mode polarisation sources
+  for (int l=2; l<=l_max_los_p; ++l) {
+    for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+      int m = ppr2->m[index_m];
+      if (m==0) continue;
+      sprintf(buffer, "B_%d_%d", l, m);
+      if (index_tau==0) {
+       fprintf(file_tr, format_label, buffer, index_print_tr++);
+      }
+      else {
+       fprintf(file_tr, format_value, sources(ppt2->index_tp2_B+lm(l,m))/kappa_dot);
       }
     }
   }
@@ -10721,7 +10752,7 @@ int perturb2_save_early_transfers (
   // *** Photon temperature evolved variables
   int l_max_g = MIN(ppw2->l_max_g, ppt2->l_max_debug);
   
-  for(int l=0; l<=l_max_g; ++l) {
+  for (int l=0; l<=l_max_g; ++l) {
     for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
       int m = ppr2->m[index_m];
       sprintf(buffer, "I_%d_%d", l, m);
@@ -10742,7 +10773,7 @@ int perturb2_save_early_transfers (
     int l_max_pol_g = MIN(ppw2->l_max_pol_g, ppt2->l_max_debug);
   
     // E-mode polarization
-    for(int l=2; l<=l_max_pol_g; ++l) {
+    for (int l=2; l<=l_max_pol_g; ++l) {
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
         int m = ppr2->m[index_m];
         sprintf(buffer, "E_%d_%d", l, m);
@@ -10758,7 +10789,7 @@ int perturb2_save_early_transfers (
     }
    
     // B-mode polarization
-    for(int l=2; l<=l_max_pol_g; ++l) {
+    for (int l=2; l<=l_max_pol_g; ++l) {
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
         int m = ppr2->m[index_m];
         sprintf(buffer, "B_%d_%d", l, m);
@@ -10782,7 +10813,7 @@ int perturb2_save_early_transfers (
   
     int l_max_ur = MIN(ppw2->l_max_ur, ppt2->l_max_debug);
   
-    for(int l=0; l<=l_max_ur; ++l) {
+    for (int l=0; l<=l_max_ur; ++l) {
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
         int m = ppr2->m[index_m];
         sprintf(buffer, "N_%d_%d", l, m);
@@ -11111,9 +11142,9 @@ int perturb2_load_sources_from_disk(
         #pragma omp atomic
         ppt2->count_memorised_sources += n_to_read;
 
-    } // end of for(index_k2)
+    } // end of for (index_k2)
     
-  } // end of for(index_type)
+  } // end of for (index_type)
   
   /* Close file */
   fclose(ppt2->sources_run_files[index_k1]);
@@ -11147,7 +11178,7 @@ int perturb2_save_sources_to_disk(
 
   /* Print some debug */
   if (ppt2->perturbations2_verbose > 1)
-    printf("     * writing sources for index_k1=%d ...\n", index_k1);
+    printf("     \\ writing sources for index_k1=%d ...\n", index_k1);
   
   for (index_type = 0; index_type < ppt2->tp2_size; ++index_type) {
   
@@ -11164,9 +11195,9 @@ int perturb2_save_sources_to_disk(
                 ppt2->sources_run_files[index_k1]
                 );
 
-    } // end of for(index_k2)
+    } // end of for (index_k2)
     
-  } // end of for(index_type)
+  } // end of for (index_type)
   
   /* Close file */
   fclose(ppt2->sources_run_files[index_k1]);
@@ -11222,7 +11253,7 @@ int perturb2_allocate_k1_level(
       (index_k1+1) * sizeof(double *),
       ppt2->error_message);
 
-    for(index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
+    for (index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
 
       /* Allocate k3-tau level. Use calloc as we rely on the array to be initialised to zero. */
       class_calloc (
@@ -11235,8 +11266,8 @@ int perturb2_allocate_k1_level(
       ppt2->count_allocated_sources += ppt2->tau_size*ppt2->k3_size[index_k1][index_k2];
       count += ppt2->tau_size*ppt2->k3_size[index_k1][index_k2];
 
-    } // end of for(index_k2)
-  } // end of for(index_type)
+    } // end of for (index_k2)
+  } // end of for (index_type)
 
   /* Print some debug information on memory consumption */
   if (ppt2->perturbations2_verbose > 2)
@@ -11278,7 +11309,7 @@ int perturb2_free_k1_level(
   
     free(ppt2->sources[index_type][index_k1]);
   
-  } // end of for(index_type)
+  } // end of for (index_type)
 
 
   /* We succesfully freed the k1 level of ppt2->sources */

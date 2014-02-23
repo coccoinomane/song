@@ -858,10 +858,9 @@ int bessel_get_l_list(
   }
 
 
-
   /* Print some information on the multipoles to be computed */
   if (pbs->bessels_verbose > 0)
-    printf(" -> we shall compute %d %smultipoles ranging from l=%d to %d\n",
+    printf (" -> we shall compute %d %smultipoles ranging from l=%d to %d\n",
       pbs->l_size, (ppr->compute_only_even_ls==_TRUE_?"EVEN ":""), pbs->l[0], pbs->l[pbs->l_size-1]);
 
   /* Print the full l-list */

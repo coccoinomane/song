@@ -261,6 +261,11 @@ int bispectra_indices (
   
   int index_bf = 0;
   
+  pbi->has_bispectra_t = _FALSE_;
+  pbi->has_bispectra_e = _FALSE_;
+  pbi->has_bispectra_b = _FALSE_;
+  pbi->has_bispectra_r = _FALSE_;
+    
   if (ppt->has_cl_cmb_temperature == _TRUE_) {
     pbi->has_bispectra_t = _TRUE_;
     strcpy (pbi->bf_labels[index_bf], "t");
@@ -670,7 +675,7 @@ int bispectra_indices (
       if (bispectra_dir_exists) {
 
         if (pbi->bispectra_verbose > 1)
-          printf ("     * bispectra folder found.\n");
+          printf (" -> found bispectra folder.\n");
 
         pbi->load_bispectra_from_disk = _TRUE_;
       }

@@ -87,7 +87,8 @@ struct perturbs2
   /* These flags are initialised in the input2.c module and are used by all other modules to determine
   which probes (T,E,B...) to compute */
   short has_cmb_temperature;          /* Do we need to compute spectra or bispectra for the CMB temperature? */
-  short has_cmb_polarization;       /* Do we need to compute spectra or bispectra for the CMB E or B-modes? */
+  short has_cmb_polarization_e;       /* Do we need to compute spectra or bispectra for the CMB E-modes? */
+  short has_cmb_polarization_b;       /* Do we need to compute spectra or bispectra for the CMB B-modes? */
   short has_pk_matter;                /* Do we need the second-order matter Fourier spectrum? */
 
   /* TODO: I am not sure we really need these two */

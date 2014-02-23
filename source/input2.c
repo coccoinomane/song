@@ -190,15 +190,14 @@ int input2_init (
     errmsg);
 
 
-  /* The requested fields (temperature, polarisation...) were read in input.c. Here we just
-  copy the relevant flags from the first-order to the second-order structure */
-  if (ppt->has_cl_cmb_temperature == _TRUE_)
-    ppt2->has_cmb_temperature = _TRUE_;
-
-  if (ppt->has_cl_cmb_polarization == _TRUE_)
-    ppt2->has_cmb_polarization = _TRUE_;
+  // /* The requested fields (temperature, polarisation...) were read in input.c. Here we just
+  // copy the relevant flags from the first-order to the second-order structure */
+  // if (ppt->has_cl_cmb_temperature == _TRUE_)
+  //   ppt2->has_cmb_temperature = _TRUE_;
+  // 
+  // if (ppt->has_cl_cmb_polarization == _TRUE_)
+  //   ppt2->has_cmb_polarization = _TRUE_;
   
-
   // ========================================================
   // =                      Parse output                    =
   // ========================================================
@@ -208,27 +207,49 @@ int input2_init (
     errmsg);
 
   if (flag1 == _TRUE_) {
+
+
+    if ((strstr(string1,"tBisp") != NULL) || (strstr(string1,"tBispectrum") != NULL) || (strstr(string1,"tB") != NULL)) {
+      ppt2->has_cmb_temperature = _TRUE_;  
+    }
+    
+    if ((strstr(string1,"pBisp") != NULL) || (strstr(string1,"pBispectrum") != NULL) || (strstr(string1,"pBisp") != NULL)) {
+      ppt2->has_cmb_polarization_e = _TRUE_;  
+    }
+
+    if ((strstr(string1,"bBisp") != NULL) || (strstr(string1,"bBispectrum") != NULL) || (strstr(string1,"bBisp") != NULL)) {
+      ppt2->has_cmb_polarization_b = _TRUE_;
+    }
+
+    if ((strstr(string1,"rBisp") != NULL) || (strstr(string1,"rBispectrum") != NULL) || (strstr(string1,"rB") != NULL)) {
+      pth->has_rayleigh_scattering = _TRUE_;
+      ppt->has_cl_cmb_rayleigh = _TRUE_;
+      ppt->has_cl_cmb_temperature = _TRUE_;  
+      ppt->has_perturbations = _TRUE_;  
+      ppt->has_cls = _TRUE_;
+      pbi->has_bispectra = _TRUE_;
+    }
     
     /* Compute only first-order transfer functions */
     if (strstr(string1,"early_transfers1") != NULL) {
       ppt2->has_early_transfers1_only = _TRUE_;
       ppt2->has_perturbations2 = _TRUE_;    
-    }
-    
-    
+    }    
+
     /* Compute only second-order early transfer functions */
-    if (strstr(string1,"early_transfers2") != NULL) {    
+    if (strstr(string1,"early_transfers2") != NULL) {
       ppt2->has_early_transfers2_only = _TRUE_;
       ppt2->has_perturbations2 = _TRUE_;      
       ppt2->has_cls = _FALSE_;
     }
-    else
+    else {
       /* Compute only second-order transfer functions today */
       if (strstr(string1,"transfers2") != NULL) {
         ptr2->has_transfers2_only = _TRUE_;
         ppt2->has_perturbations2 = _TRUE_;
         ppt2->has_cls = _TRUE_;
       }
+    }
     
   } // end of output parsing
 
@@ -455,10 +476,13 @@ int input2_init (
   class_call(parser_read_string(pfc,"polarization_second_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
      
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL))) {
-    ppt->has_polarization2 = _TRUE_;
     ppt2->has_polarization2 = _TRUE_;
   }
 
+  /* This fires up if the used did not specify a value for 'polarization_second_order', which by
+  default is true. */
+  if (ppt2->has_polarization2 == _TRUE_)
+    ppt->has_polarization2 = _TRUE_;
   
 
   // *** Set ppt2->has_perfect_baryons
@@ -652,7 +676,8 @@ int input2_init (
 
 
   /* Doesn't make sense not to have polarisation, if you want to compute polarisation */
-  class_test ((ppt2->has_polarization2 == _FALSE_) && (ppt2->has_cmb_polarization == _TRUE_),
+  class_test ((ppt2->has_polarization2 == _FALSE_) &&
+    ((ppt2->has_cmb_polarization_e == _TRUE_) || ((ppt2->has_cmb_polarization_b == _TRUE_))),
     errmsg,
     "please make sure that 'polarization_second_order' is set to 'yes' if you want to compute E-modes or B-modes");
 
@@ -1153,7 +1178,7 @@ int input2_init (
     ppr2->l_max_los_quadratic = MAX (ppr2->l_max_los_quadratic, ppr2->l_max_los_quadratic_t);
   }
 
-  if (ppt2->has_cmb_polarization == _TRUE_) {
+  if ((ppt2->has_cmb_polarization_e == _TRUE_) || (ppt2->has_cmb_polarization_b == _TRUE_)) {
     ppr2->l_max_los = MAX (ppr2->l_max_los, ppr2->l_max_los_p);
     ppr2->l_max_los_quadratic = MAX (ppr2->l_max_los_quadratic, ppr2->l_max_los_quadratic_p);
   }
@@ -1214,10 +1239,11 @@ int input2_init (
     // ppr->compute_only_odd_ls = _TRUE_;
 
     class_test_permissive (
-      (ppt2->has_cmb_polarization==_TRUE_) && (ppr->compute_only_even_ls==_TRUE_) ||
-      (ppt2->has_cmb_temperature==_TRUE_) && (ppr->compute_only_odd_ls==_TRUE_),
+      ((ppt2->has_cmb_polarization_b==_TRUE_) && (ppr->compute_only_even_ls==_TRUE_)) ||
+      ((ppt2->has_cmb_polarization_e==_TRUE_) && (ppr->compute_only_odd_ls==_TRUE_)) ||
+      ((ppt2->has_cmb_temperature==_TRUE_) && (ppr->compute_only_odd_ls==_TRUE_)),
       errmsg,
-      "careful, if you are asking for B-modes bispectra, your choice of parity might be wrong!");
+      "careful, your choice of parity is be wrong!");
   }
   
 
@@ -1478,7 +1504,8 @@ int input2_default_params (
 
   /* Possible outputs at 2nd order */
   ppt2->has_cmb_temperature = _FALSE_;
-  ppt2->has_cmb_polarization = _FALSE_; 
+  ppt2->has_cmb_polarization_e = _FALSE_; 
+  ppt2->has_cmb_polarization_b = _FALSE_; 
   ppt2->has_pk_matter = _FALSE_;
   
   ppt2->has_cls = _FALSE_;

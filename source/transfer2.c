@@ -463,7 +463,6 @@ int transfer2_init(
             // ----------------------------------------------------------------------
             // -                    Compute transfer functions                      -
             // ----------------------------------------------------------------------
-          
 
             /* Compute the transfer function for this (k1,k2,k). Note that index_tt is needed by the function
             for (i) find the type index corresponding to index_tt in ppt2->sources, (ii) store the result in
@@ -666,31 +665,23 @@ int transfer2_indices_of_transfers(
           )
 {
 
-
-  int index_l, index_m;
-
-
   /* Get l values using transfer2_get_l_list() (same for all modes) */
-  class_call (transfer2_get_l_list (ppr,ppr2,ppt2,pbs,pbs2,ptr2),
+  class_call (transfer2_get_l_list(ppr,ppr2,ppt2,pbs,pbs2,ptr2),
     ptr2->error_message,
     ptr2->error_message);
   
-
   /* Copy the m array from ppr->m */
   ptr2->m_size = ppr2->m_size;
   class_alloc (ptr2->m, ptr2->m_size*sizeof(int), ptr2->error_message);
-  for (index_m=0; index_m<ptr2->m_size; ++index_m)
+  for (int index_m=0; index_m<ptr2->m_size; ++index_m)
     ptr2->m[index_m] = ppr2->m[index_m];
-
-
-
 
 
   // ======================================================================================
   // =                            What transfers to compute?                              =
   // ======================================================================================
 
-
+  /* Index that will keep track of the trasfer-function type to compute */
   int index_tt = 0;
 
   /* Number of transfer functions that need to be computed for each source type (temperature,
@@ -699,24 +690,26 @@ int transfer2_indices_of_transfers(
   ptr2->n_transfers = size_indexl_indexm (ptr2->l, ptr2->l_size_max, ppr2->m, ppr2->m_size);
 
 
-  // *** Photons temperature transfer functions
+  /* Photon temperature transfer functions */
   if (ppt2->has_cmb_temperature == _TRUE_) {
   
     ptr2->index_tt2_T = index_tt;
-    index_tt += ptr2->n_transfers;
-    
+    index_tt += ptr2->n_transfers; 
   }
 
-
-  // *** Photon E-mode and B-mode polarisation transfer functions
-  if (ppt2->has_cmb_polarization == _TRUE_) {
+  /* Photon E-mode polarisation transfer functions */
+  if (ppt2->has_cmb_polarization_e == _TRUE_) {
   
     ptr2->index_tt2_E = index_tt;
-    index_tt += ptr2->n_transfers;
-    
+    index_tt += ptr2->n_transfers;    
+  }
+
+  /* Photon B-mode polarisation transfer functions */
+  if (ppt2->has_cmb_polarization_b == _TRUE_) {
+  
     ptr2->index_tt2_B = index_tt;
     index_tt += ptr2->n_transfers;
-    
+        
   }
 
   /* Total number of transfer functions to compute */
@@ -724,25 +717,22 @@ int transfer2_indices_of_transfers(
 
   /* Allocate memory for the labels of the transfer types */
   class_alloc(ptr2->tt2_labels, ptr2->tt2_size*sizeof(char *), ptr2->error_message);
-  for (index_tt=0; index_tt<ptr2->tt2_size; ++index_tt)
+  for (int index_tt=0; index_tt<ptr2->tt2_size; ++index_tt)
     class_alloc(ptr2->tt2_labels[index_tt], 64*sizeof(char), ptr2->error_message);
 
 
   if (ptr2->transfer2_verbose > 1) {
     printf ("     * will compute tt2_size=%d transfer functions ( ", ptr2->tt2_size);
     if (ppt2->has_cmb_temperature == _TRUE_) printf ("T=%d ", ptr2->n_transfers);
-    if (ppt2->has_cmb_polarization == _TRUE_) printf ("E=%d ", ptr2->n_transfers);
-    if (ppt2->has_cmb_polarization == _TRUE_) printf ("B=%d ", ptr2->n_transfers);
+    if (ppt2->has_cmb_polarization_e == _TRUE_) printf ("E=%d ", ptr2->n_transfers);
+    if (ppt2->has_cmb_polarization_b == _TRUE_) printf ("B=%d ", ptr2->n_transfers);
     printf (")\n");
   }  
 
   
-
-
   // ==============================================================================
   // =                            Fill (l,m) arrays                               =
   // ==============================================================================
-
 
   class_call (transfer2_get_lm_lists (
                 ppr,
@@ -809,7 +799,7 @@ int transfer2_indices_of_transfers(
       if (transfers_dir_exists) {
 
         if (ptr2->transfer2_verbose > 1)
-          printf ("     * found transfer functions folder.\n");
+          printf (" -> found transfer functions folder.\n");
 
         ptr2->load_transfers_from_disk = _TRUE_;
       }
@@ -891,7 +881,7 @@ int transfer2_indices_of_transfers(
   /* Allocate level that will address k1.  The ptr2->transfer array has also a k and a k2
   levels, which we do not allocate here.  They will be allocated later in transfer2_init,
   but only if the user did not ask to load the transfer functions from a run directory */
-  for (index_tt = 0; index_tt < ptr2->tt2_size; ++index_tt) {
+  for (int index_tt = 0; index_tt < ptr2->tt2_size; ++index_tt) {
   
     int k1_size = ppt2->k_size;
     
@@ -933,7 +923,7 @@ int transfer2_indices_of_transfers(
  * @return the error status
  */
 
-int transfer2_get_l_list(
+int transfer2_get_l_list (
       struct precision * ppr,
       struct precision2 * ppr2,
       struct perturbs2 * ppt2,
@@ -951,8 +941,7 @@ int transfer2_get_l_list(
   /* Copy the l's from pbs->l into ptr2->l up to ptr2->l_size_max (original CLASS) */
   class_alloc(ptr2->l, ptr2->l_size_max*sizeof(int), ptr2->error_message);
 
-  int index_l;
-  for (index_l=0; index_l < ptr2->l_size_max; index_l++) {
+  for (int index_l=0; index_l < ptr2->l_size_max; index_l++) {
     ptr2->l[index_l] = pbs->l[index_l];
 
     // *** Some debug
@@ -984,20 +973,10 @@ int transfer2_get_lm_lists (
         )
 { 
 
+  // =========================================================================================
+  // =                                (l,m) indexing of arrays                               =
+  // =========================================================================================
 
-
-  /* Cycle variables */
-  int index_tt, index_l, index_m;
-
-
-
-
-  // ********************           (l,m) indexing of arrays        *******************
-
-
-
-  // *** Fill the lm_array
-   
   /* Fill ptr2->lm_array, that contains the index associated with a given (l,m) couple.
   lm_array is useful every time you need a specific (l,m) value from the transfer
   function array: ptr2->transfer[index_type + lm_array[index_l][index_m].
@@ -1005,7 +984,7 @@ int transfer2_get_lm_lists (
   defined in common2.h. */
   class_calloc(ptr2->lm_array, ptr2->l_size, sizeof(int*), ptr2->error_message);    
   
-  for (index_l=0; index_l<ptr2->l_size; ++index_l) {
+  for (int index_l=0; index_l<ptr2->l_size; ++index_l) {
   
     class_calloc (ptr2->lm_array[index_l],
                   ppr2->index_m_max[ptr2->l[index_l]]+1,
@@ -1014,7 +993,7 @@ int transfer2_get_lm_lists (
 
     /* We enter the loop only if index_m_max >= 0. This is false if l<ptr2->m[0],
     for example for l=2 and m_min=3 */
-    for (index_m=0; index_m <= ppr2->index_m_max[ptr2->l[index_l]]; ++index_m) {
+    for (int index_m=0; index_m <= ppr2->index_m_max[ptr2->l[index_l]]; ++index_m) {
 
       ptr2->lm_array[index_l][index_m] = multipole2offset_indexl_indexm (
                                            ptr2->l[index_l],
@@ -1034,8 +1013,9 @@ int transfer2_get_lm_lists (
 
 
 
-  // **********        Correspondence between transfer and source types          ************
-
+  // ======================================================================================
+  // =                          Transfers - Sources correspondence                        =
+  // ======================================================================================
 
   /* In the transfer2 module a transfer function type (index_tt) encloses both the
   multipole (l,m) and the source type (temperature, polarization, etc). Here, we
@@ -1052,14 +1032,14 @@ int transfer2_get_lm_lists (
   class_alloc (ptr2->index_tt2_monopole, ptr2->tt2_size*sizeof(int), ptr2->error_message);
   class_alloc (ptr2->index_pt2_monopole, ptr2->tt2_size*sizeof(int), ptr2->error_message);
 
-  for (index_tt = 0; index_tt < ptr2->tt2_size; index_tt++) {
+  for (int index_tt = 0; index_tt < ptr2->tt2_size; index_tt++) {
     
     /* Initialise the vectors to -1 */
     ptr2->corresponding_index_l[index_tt] = -1;
     ptr2->corresponding_index_m[index_tt] = -1;
 
     // *** Photon temperature ***
-    if ((ppt2->has_cmb_temperature==_TRUE_)
+    if ((ppt2->has_source_T==_TRUE_)
        && (index_tt >= ptr2->index_tt2_T) && (index_tt < ptr2->index_tt2_T+ptr2->n_transfers)) {
 
       /* Find the position of the monopole of the same type as index_tp */
@@ -1749,7 +1729,7 @@ int transfer2_compute (
   // =                     E-mode polarisation transfer function                         =
   // =====================================================================================
   
-  else if ((ppt2->has_cmb_polarization==_TRUE_) && (transfer_type==ptr2->index_tt2_E)) {
+  else if ((ppt2->has_cmb_polarization_e==_TRUE_) && (transfer_type==ptr2->index_tt2_E)) {
 
     /* Number of multipole sources to consider */
     pw->L_max = ppr2->l_max_los_p;
@@ -1811,7 +1791,7 @@ int transfer2_compute (
   // =                     B-mode polarisation transfer function                         =
   // =====================================================================================
   
-  else if ((ppt2->has_cmb_polarization==_TRUE_) && (transfer_type==ptr2->index_tt2_B)) {
+  else if ((ppt2->has_cmb_polarization_b==_TRUE_) && (transfer_type==ptr2->index_tt2_B)) {
 
     /* Number of multipole sources to consider */
     pw->L_max = ppr2->l_max_los_p;
@@ -2729,7 +2709,7 @@ int transfer2_save_transfers_to_disk(
 
   /* Print some info */
   if (ptr2->transfer2_verbose > 1)
-    printf("     * writing transfer function for index_k1=%d ...\n", index_k1);
+    printf("     \\ writing transfer function for index_k1=%d ...\n", index_k1);
           
   for (index_tt = 0; index_tt < ptr2->tt2_size; index_tt++) {
     

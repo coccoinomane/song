@@ -771,7 +771,7 @@ int input_init(
       pbi->has_bispectra = _TRUE_;
     }
     
-    if ((strstr(string1,"pBisp") != NULL) || (strstr(string1,"pBispectrum") != NULL) || (strstr(string1,"eBisp") != NULL)) {
+    if ((strstr(string1,"pBisp") != NULL) || (strstr(string1,"pBispectrum") != NULL) || (strstr(string1,"pBisp") != NULL)) {
       ppt->has_cl_cmb_polarization = _TRUE_;  
       ppt->has_perturbations = _TRUE_;  
       ppt->has_cls = _TRUE_;
