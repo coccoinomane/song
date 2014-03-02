@@ -147,7 +147,11 @@ extern "C" {
 			    struct output * pop,
 			    FILE * clfile,
 			    double l,
-			    double * cl,
+          double * cl,
+          // *** MY MODIFICATIONS ***
+          double * cl_2,
+          double factor,
+          // *** END OF MY MODIFICATIONS ***
 			    int ct_size
 			    );
 

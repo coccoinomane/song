@@ -45,7 +45,7 @@ typedef char FileName[_FILENAMESIZE_];
 
 #define _HUGE_ 1.e99
 #define _EPS_ 0.01 /**< Constant used to cast a float to an integer. Must be smaller than 0.5 */
-
+#define _SMALL_ (ppr->smallest_allowed_variation*1e6) /* Constant used to make floating point comparisons */
 
 #define MIN(a,b) (((a)<(b)) ? (a) : (b) ) /**< the usual "min" function */
 #define MAX(a,b) (((a)<(b)) ? (b) : (a) ) /**< the usual "max" function */

@@ -110,7 +110,6 @@ int main(int argc, char **argv) {
   // printf("\tpt2.has_redshift_in_los = %d\n", pt2.has_redshift_in_los);
   // printf("\tpt2.has_lensing_in_los = %d\n", pt2.has_lensing_in_los);
   // printf("\tpt2.use_delta_tilde_in_los = %d\n", pt2.use_delta_tilde_in_los);
-  // printf("\tpt2.use_delta_tilde_approx_in_los = %d\n", pt2.use_delta_tilde_approx_in_los);
   // printf("\tpt2.has_sachs_wolfe_in_los = %d*\n", pt2.has_sachs_wolfe_in_los);
   // printf("\tpt2.has_integrated_sachs_wolfe_in_los = %d*\n", pt2.has_integrated_sachs_wolfe_in_los);  
   // printf("\tpt2.has_recombination_only = %d\n", pt2.has_recombination_only);

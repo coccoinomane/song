@@ -221,12 +221,12 @@ int output_fisher(
   char label[256];
   
   fprintf (fisher_lmax, "%20s ", "l_max");
-  for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt) {
-    sprintf (label, "SN_%s", pbi->bt_labels[index_bt]);
+  for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+    sprintf (label, "SN_%s", pbi->bt_labels[index_ft]);
     fprintf (fisher_lmax, "%20s ", label);
   }
-  for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt) {
-    sprintf (label, "SN_cum_%s", pbi->bt_labels[index_bt]);
+  for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+    sprintf (label, "SN_cum_%s", pbi->bt_labels[index_ft]);
     fprintf (fisher_lmax, "%20s ", label);
   }
   fprintf (fisher_lmax, "\n");
@@ -235,12 +235,12 @@ int output_fisher(
       (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
     
     fprintf (fisher_lmin, "%20s ", "l_min");
-    for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt) {
-      sprintf (label, "SN_%s", pbi->bt_labels[index_bt]);
+    for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+      sprintf (label, "SN_%s", pbi->bt_labels[index_ft]);
       fprintf (fisher_lmin, "%20s ", label);
     }
-    for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt) {
-      sprintf (label, "SN_cum_%s", pbi->bt_labels[index_bt]);
+    for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+      sprintf (label, "SN_cum_%s", pbi->bt_labels[index_ft]);
       fprintf (fisher_lmin, "%20s ", label);
     }
     fprintf (fisher_lmin, "\n");
@@ -258,11 +258,11 @@ int output_fisher(
     
     fprintf (fisher_lmax, "%20d ", pfi->l1[index_l1]);
 
-    for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt)
-      fprintf (fisher_lmax, "%20.7g ", sqrt(pfi->fisher_matrix_l1[index_l1][index_bt][index_bt]));
+    for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
+      fprintf (fisher_lmax, "%20.7g ", sqrt(pfi->fisher_matrix_l1[index_l1][index_ft][index_ft]));
 
-    for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt)
-      fprintf (fisher_lmax, "%20.7g ", sqrt(pfi->fisher_matrix_lmax[index_l1][index_bt][index_bt]));
+    for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
+      fprintf (fisher_lmax, "%20.7g ", sqrt(pfi->fisher_matrix_lmax[index_l1][index_ft][index_ft]));
 
     fprintf (fisher_lmax, "\n");
 
@@ -276,11 +276,11 @@ int output_fisher(
     
       fprintf (fisher_lmin, "%20d ", pfi->l3[index_l3]);
 
-      for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt)
-        fprintf (fisher_lmin, "%20.7g ", sqrt(pfi->fisher_matrix_l3[index_l3][index_bt][index_bt]));
+      for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
+        fprintf (fisher_lmin, "%20.7g ", sqrt(pfi->fisher_matrix_l3[index_l3][index_ft][index_ft]));
 
-      for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt)
-        fprintf (fisher_lmin, "%20.7g ", sqrt(pfi->fisher_matrix_lmin[index_l3][index_bt][index_bt]));
+      for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
+        fprintf (fisher_lmin, "%20.7g ", sqrt(pfi->fisher_matrix_lmin[index_l3][index_ft][index_ft]));
 
       fprintf (fisher_lmin, "\n");
 
@@ -371,6 +371,26 @@ int output_cl(
 	      psp->md_size*sizeof(double *),
 	      pop->error_message);
 
+  // *** MY MODIFICATIONS ***
+
+  /* Allocate array for derivatives of C_l's */
+  double ** dcl_md;
+  double ** dcl_md_ic;
+  
+  if (psp->compute_cl_derivative == _TRUE_) {
+
+    class_alloc(dcl_md_ic,
+  	      psp->md_size*sizeof(double *),
+  	      pop->error_message);
+
+    class_alloc(dcl_md,
+  	      psp->md_size*sizeof(double *),
+  	      pop->error_message);
+  }
+
+  // *** END MY MODIFICATIONS ***    
+
+
   for (index_mode = 0; index_mode < ppt->md_size; index_mode++) {
 
     class_alloc(out_md_ic[index_mode],
@@ -397,6 +417,20 @@ int output_cl(
 	      psp->ct_size*sizeof(double),
 	      pop->error_message);
 
+  // *** MY MODIFICATIONS ***
+
+  /* Allocate array for derivatives of C_l's */
+  double * dcl_tot;
+  
+  if (psp->compute_cl_derivative == _TRUE_) {
+
+    class_alloc(dcl_tot,
+  	      psp->ct_size*sizeof(double),
+  	      pop->error_message);
+          
+  }
+
+  // *** END MY MODIFICATIONS ***    
 
   if (ple->has_lensed_cls == _TRUE_) {
     
@@ -412,6 +446,29 @@ int output_cl(
 	       pop->error_message,
 	       pop->error_message);
   }
+
+
+  // *** MY MODIFICATIONS ***
+
+  /* Create file for derivatives of C_l's */
+  FILE * out_dcl;
+  
+  if (psp->compute_cl_derivative == _TRUE_) {
+
+    sprintf(file_name,"%s%s",pop->root,"dcl.dat");
+    
+    class_call(output_open_cl_file(psp,
+				   pop,
+				   &out_dcl,
+				   file_name,
+           "total dln(l*l*C_l)/dln(l*l)",
+				   ple->l_lensed_max
+				   ),
+	       pop->error_message,
+	       pop->error_message);          
+  }
+  // *** END MY MODIFICATIONS ***    
+
 
   if (ppt->md_size > 1) {
 
@@ -444,6 +501,20 @@ int output_cl(
       class_alloc(cl_md[index_mode],
 		  psp->ct_size*sizeof(double),
 		  pop->error_message);
+
+    // *** MY MODIFICATIONS ***
+
+    /* Allocate array for derivatives of C_l's */
+    if (psp->compute_cl_derivative == _TRUE_) {
+
+      class_alloc(dcl_md[index_mode],
+		  psp->ct_size*sizeof(double),
+		  pop->error_message);
+  
+    }
+
+    // *** END MY MODIFICATIONS ***    
+
 
     }
   }
@@ -594,6 +665,17 @@ int output_cl(
       class_alloc(cl_md_ic[index_mode],
 		  psp->ic_ic_size[index_mode]*psp->ct_size*sizeof(double),
 		  pop->error_message);
+      
+      /* Allocate array for derivatives of C_l's */
+      if (psp->compute_cl_derivative == _TRUE_) {
+
+        class_alloc(dcl_md_ic[index_mode],
+  		  psp->ic_ic_size[index_mode]*psp->ct_size*sizeof(double),
+  		  pop->error_message);
+  
+      }
+
+      
     }
   }
 
@@ -603,13 +685,40 @@ int output_cl(
 
   for (l = 2; l <= psp->l_max_tot; l++) {  
 
+    /* Factor multiplying all outputted C_l's */
+    double factor = l*(l+1)/2./_PI_;
+
     class_call(spectra_cl_at_l(psp,(double)l,cl_tot,cl_md,cl_md_ic),
 	       psp->error_message,
 	       pop->error_message);
 
-    class_call(output_one_line_of_cl(pba,psp,pop,out,(double)l,cl_tot,psp->ct_size),
+
+    class_call(output_one_line_of_cl(pba,psp,pop,out,(double)l,cl_tot,NULL,factor,psp->ct_size),
 	       pop->error_message,
 	       pop->error_message);
+
+
+    // *** MY MODIFICATIONS ***
+
+    /* Interpolate array with the derivatives of C_l's and output to file */
+  
+    if (psp->compute_cl_derivative == _TRUE_) { 
+
+      /* The logarithmic derivative should never be multiplied by any factor,
+      as it is naturally of order one */
+      double factor = 1;
+      
+      class_call(spectra_dcl_at_l(psp,(double)l,dcl_tot,dcl_md,dcl_md_ic),
+  	       psp->error_message,
+  	       pop->error_message);
+
+      class_call(output_one_line_of_cl(pba,psp,pop,out_dcl,(double)l,cl_tot,dcl_tot,factor,psp->ct_size),
+  	       pop->error_message,
+  	       pop->error_message);      
+    }
+
+    // *** END OF MY MODIFICATIONS ***
+
 
     if ((ple->has_lensed_cls == _TRUE_) && (l<=ple->l_lensed_max)) {
 
@@ -619,7 +728,7 @@ int output_cl(
 		 ple->error_message,
 		 pop->error_message);
 
-      class_call(output_one_line_of_cl(pba,psp,pop,out_lensed,l,cl_tot,psp->ct_size),
+      class_call(output_one_line_of_cl(pba,psp,pop,out_lensed,l,cl_tot,NULL,factor,psp->ct_size),
 		 pop->error_message,
 		 pop->error_message);
     }
@@ -628,7 +737,7 @@ int output_cl(
       for (index_mode = 0; index_mode < ppt->md_size; index_mode++) {
 	if (l <= psp->l_max[index_mode]) {
 
-	  class_call(output_one_line_of_cl(pba,psp,pop,out_md[index_mode],l,cl_md[index_mode],psp->ct_size),
+	  class_call(output_one_line_of_cl(pba,psp,pop,out_md[index_mode],l,cl_md[index_mode],NULL,factor,psp->ct_size),
 		     pop->error_message,
 		     pop->error_message);
 	}
@@ -640,7 +749,7 @@ int output_cl(
 	for (index_ic1_ic2 = 0; index_ic1_ic2 < psp->ic_ic_size[index_mode]; index_ic1_ic2++) {
 	  if (psp->is_non_zero[index_mode][index_ic1_ic2] == _TRUE_) {
 
-	    class_call(output_one_line_of_cl(pba,psp,pop,out_md_ic[index_mode][index_ic1_ic2],l,&(cl_md_ic[index_mode][index_ic1_ic2*psp->ct_size]),psp->ct_size),
+	    class_call(output_one_line_of_cl(pba,psp,pop,out_md_ic[index_mode][index_ic1_ic2],l,&(cl_md_ic[index_mode][index_ic1_ic2*psp->ct_size]),NULL,factor,psp->ct_size),
 		       pop->error_message,
 		       pop->error_message);
 	  }
@@ -671,6 +780,11 @@ int output_cl(
   if (ple->has_lensed_cls == _TRUE_) {
     fclose(out_lensed);
   }
+  // *** MY MODIFICATIONS ***
+  if (psp->compute_cl_derivative == _TRUE_) {
+    fclose (out_dcl);
+  }
+  // *** END OF MY MODIFICATIONS ***
   free(cl_tot);
   for (index_mode = 0; index_mode < ppt->md_size; index_mode++) {
     free(out_md_ic[index_mode]);
@@ -679,7 +793,7 @@ int output_cl(
   free(cl_md_ic);
   free(out_md);
   free(cl_md);
-
+      
   return _SUCCESS_;
 
 } 
@@ -1506,14 +1620,41 @@ int output_one_line_of_cl(
 			  FILE * clfile,
 			  double l,
 			  double * cl, /* array with argument cl[index_ct] */
+        // *** MY MODIFICATIONS ***
+        double * dcl,
+        double factor,
+        // *** END OF MY MODIFICATIONS ***
 			  int ct_size
 			  ) {
-  int index_ct;
-  double factor;
 
-  factor = l*(l+1)/2./_PI_;
+  int index_ct;
 
   fprintf(clfile,"%4d",(int)l);
+
+  // *** MY MODIFICATIONS ***
+
+  /* Moved the following variable to the argument list. */
+  // factor = l*(l+1)/2./_PI_;
+
+  /* Added the logarithmic derivative of the C_l's, which is the same regardless of the required output
+  format (no dimension involved). Note that the result will blow for mixed C_l's such as TE, because
+  they cross the zero line. */
+  if ((psp->compute_cl_derivative == _TRUE_) && (dcl != NULL)) {
+
+    for (index_ct=0; index_ct < ct_size; index_ct++) {
+      fprintf(clfile," %16.10e",factor*dcl[index_ct]/(l*cl[index_ct]));
+    }
+    fprintf(clfile,"\n");	
+
+    return _SUCCESS_;    
+  }
+
+
+  // *** END OF MY MODIFICATIONS ***
+
+
+
+
 
   if (pop->output_format == class_format) {
 

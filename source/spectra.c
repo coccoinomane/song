@@ -218,7 +218,7 @@ int spectra_cl_at_l(
 
 /* Same as 'spectra_cl_at_l', but for the logarithmic derivative of the C_l's. (Note that, with
 respect to 'spectra_cl_at_l', this function is a simple find and replace of psp->cl and psp->ddcl.) */
-int spectra_dlogcl_at_l(
+int spectra_dcl_at_l(
 		    struct spectra * psp,
 		    double l,
 		    double * cl_tot,    /* array with argument cl_tot[index_ct] (must be already allocated) */
@@ -244,8 +244,8 @@ int spectra_dlogcl_at_l(
 
       class_call(array_interpolate_spline(psp->l,
 					  psp->l_size[index_mode],
-					  psp->dlog_lsq_cl[index_mode],
-					  psp->spline_dlog_lsq_cl[index_mode],
+					  psp->d_lsq_cl[index_mode],
+					  psp->spline_d_lsq_cl[index_mode],
 					  psp->ct_size,
 					  l,
 					  &last_index,
@@ -277,8 +277,8 @@ int spectra_dlogcl_at_l(
 
 	  class_call(array_interpolate_spline(psp->l,
 					      psp->l_size[index_mode],
-					      psp->dlog_lsq_cl[index_mode],
-					      psp->spline_dlog_lsq_cl[index_mode],
+					      psp->d_lsq_cl[index_mode],
+					      psp->spline_d_lsq_cl[index_mode],
 					      psp->ic_ic_size[index_mode]*psp->ct_size,
 					      l,
 					      &last_index,
@@ -322,8 +322,8 @@ int spectra_dlogcl_at_l(
 
 	  class_call(array_interpolate_spline(psp->l,
 					      psp->l_size[index_mode],
-					      psp->dlog_lsq_cl[index_mode],
-					      psp->spline_dlog_lsq_cl[index_mode],
+					      psp->d_lsq_cl[index_mode],
+					      psp->spline_d_lsq_cl[index_mode],
 					      psp->ct_size,
 					      l,
 					      &last_index,
@@ -354,8 +354,8 @@ int spectra_dlogcl_at_l(
 
 	      class_call(array_interpolate_spline(psp->l,
 						  psp->l_size[index_mode],
-						  psp->dlog_lsq_cl[index_mode],
-						  psp->spline_dlog_lsq_cl[index_mode],
+						  psp->d_lsq_cl[index_mode],
+						  psp->spline_d_lsq_cl[index_mode],
 						  psp->ic_ic_size[index_mode]*psp->ct_size,
 						  l,
 						  &last_index,
@@ -1214,8 +1214,7 @@ int spectra_free(
 	  free(psp->lsq_cl[index_mode]);
 	  free(psp->d_lsq_cl[index_mode]);
 	  free(psp->dd_lsq_cl[index_mode]);
-	  free(psp->dlog_lsq_cl[index_mode]);
-	  free(psp->spline_dlog_lsq_cl[index_mode]);
+	  free(psp->spline_d_lsq_cl[index_mode]);
 	}
   // *** END OF MY MODIFICATION ***	
   
@@ -1231,8 +1230,7 @@ int spectra_free(
     	  free(psp->lsq_cl);
     	  free(psp->d_lsq_cl);
     	  free(psp->dd_lsq_cl);
-    	  free(psp->dlog_lsq_cl);
-    	  free(psp->spline_dlog_lsq_cl);
+    	  free(psp->spline_d_lsq_cl);
   	  }
       // *** END OF MY MODIFICATION ***	
 
@@ -1551,8 +1549,7 @@ int spectra_cls(
     class_alloc(psp->lsq_cl,sizeof(double *)*psp->md_size,psp->error_message);
     class_alloc(psp->d_lsq_cl,sizeof(double *)*psp->md_size,psp->error_message);
     class_alloc(psp->dd_lsq_cl,sizeof(double *)*psp->md_size,psp->error_message);
-    class_alloc(psp->dlog_lsq_cl,sizeof(double *)*psp->md_size,psp->error_message);
-    class_alloc(psp->spline_dlog_lsq_cl,sizeof(double *)*psp->md_size,psp->error_message);
+    class_alloc(psp->spline_d_lsq_cl,sizeof(double *)*psp->md_size,psp->error_message);
   }
   // *** END OF MY MODIFICATION ***	
 
@@ -1585,8 +1582,7 @@ int spectra_cls(
       class_alloc(psp->lsq_cl[index_mode],sizeof(double)*psp->l_size[index_mode]*psp->ct_size*psp->ic_ic_size[index_mode],psp->error_message);
       class_alloc(psp->d_lsq_cl[index_mode],sizeof(double)*psp->l_size[index_mode]*psp->ct_size*psp->ic_ic_size[index_mode],psp->error_message);
       class_alloc(psp->dd_lsq_cl[index_mode],sizeof(double)*psp->l_size[index_mode]*psp->ct_size*psp->ic_ic_size[index_mode],psp->error_message);
-      class_alloc(psp->dlog_lsq_cl[index_mode],sizeof(double)*psp->l_size[index_mode]*psp->ct_size*psp->ic_ic_size[index_mode],psp->error_message);
-      class_alloc(psp->spline_dlog_lsq_cl[index_mode],sizeof(double)*psp->l_size[index_mode]*psp->ct_size*psp->ic_ic_size[index_mode],psp->error_message);
+      class_alloc(psp->spline_d_lsq_cl[index_mode],sizeof(double)*psp->l_size[index_mode]*psp->ct_size*psp->ic_ic_size[index_mode],psp->error_message);
     }
     // *** END OF MY MODIFICATION ***
     
@@ -1793,24 +1789,21 @@ int spectra_cls(
               double lsq_cl = psp->lsq_cl[index_mode][(index_l * psp->ic_ic_size[index_mode] + index_ic1_ic2) * psp->ct_size + index_ct];
               double d_lsq_cl = psp->d_lsq_cl[index_mode][(index_l * psp->ic_ic_size[index_mode] + index_ic1_ic2) * psp->ct_size + index_ct];
               
-              psp->dlog_lsq_cl[index_mode][(index_l * psp->ic_ic_size[index_mode] + index_ic1_ic2) * psp->ct_size + index_ct] =
-                l * d_lsq_cl / lsq_cl;
-        	    
         	  }
 	        }
         }
       }
 
-      /* Compute second derivative of dlog_lsq_cl in view of spline interpolation */
+      /* Compute second derivative of d_lsq_cl in view of spline interpolation */
       class_call(array_spline_table_lines(psp->l,
-  					psp->l_size[index_mode],
-  					psp->dlog_lsq_cl[index_mode],
-  					psp->ic_ic_size[index_mode]*psp->ct_size,
-  					psp->spline_dlog_lsq_cl[index_mode],
-  					_SPLINE_EST_DERIV_,
-  					psp->error_message),
-  	       psp->error_message,
-  	       psp->error_message);
+            psp->l_size[index_mode],
+            psp->d_lsq_cl[index_mode],
+            psp->ic_ic_size[index_mode]*psp->ct_size,
+            psp->spline_d_lsq_cl[index_mode],
+            _SPLINE_EST_DERIV_,
+            psp->error_message),
+           psp->error_message,
+           psp->error_message);
   	  
   	} // end of(compute_cl_derivative)
   	

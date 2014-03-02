@@ -108,6 +108,7 @@ struct perturbs
   short has_perturbations; /**< do we need to compute perturbations at all ? */
 
   short has_cls; /**< do we need any harmonic space spectrum C_l (and hence Bessel functions, transfer functions, ...)? */
+  short has_bispectra; /**< do we need any harmonic space bispectrum C_l (and hence Bessel functions, transfer functions, ...)? */
 
   short has_scalars; /**< do we need scalars? */
   short has_vectors; /**< do we need vectors? */
@@ -124,7 +125,12 @@ struct perturbs
   short has_cl_cmb_temperature;       /**< do we need Cl's for CMB temperature? */
   short has_cl_cmb_polarization;      /**< do we need Cl's for CMB polarization? */
   // *** MY MODIFICATIONS ***
-  short has_cl_cmb_rayleigh;          /**< do we need Cl's for the Rayleigh scattering? */
+
+  short has_bi_cmb_temperature;       /**< do we need bispectra for CMB temperature? */
+  short has_bi_cmb_polarization;      /**< do we need bispectra for CMB polarization? */
+  short has_bi_cmb_rayleigh;          /**< do we need bispectra for CMB Rayleigh scattering? */
+
+  short has_cl_cmb_rayleigh;          /**< do we need Cl's for the CMB Rayleigh scattering? */
   short has_cl_cmb_zeta;              /**< do we need Cl's for the primordial curvature perturbation zeta?
                                            This is needed to reproduce the analytical approximation of the
                                            squeezed temperature bispectrum in Lewis

@@ -104,15 +104,16 @@ struct spectra {
 
   // *** MY MODIFICATIONS ***
 
-  /* Should we compute and store the derivative with respect to L of L^2*C_L? Needed by the bispectrum
+  /* Should we compute and store the derivative d(l*l*C_l)/dl? Needed by the bispectrum
   module to compute the analytical approximations in Creminelli, Pitrou, Vernizzi (2011) and Lewis
-  (2012). Note that only dlog_lsq_cl is used outside this module. */
+  (2012). Note that only d_lsq_cl is used outside this module, and that 
+  dln(l*l*C_l)/dln(l) = d(l*l*C_l)/dl / (l*C_l);
+  . */
   short compute_cl_derivative;
   double ** lsq_cl;
   double ** d_lsq_cl;
   double ** dd_lsq_cl;
-  double ** dlog_lsq_cl;
-  double ** spline_dlog_lsq_cl;
+  double ** spline_d_lsq_cl;
 
   // *** END OF MY MODIFICATIONS *** 
 
@@ -207,7 +208,7 @@ extern "C" {
           );
         
   /* MY MODIFICATIONS */
-  int spectra_dlogcl_at_l(
+  int spectra_dcl_at_l(
           struct spectra * psp,
           double l,
           double * cl,

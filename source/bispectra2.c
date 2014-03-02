@@ -170,80 +170,85 @@ int bispectra2_harmonic (
   Comment the loop if you want to use the brightness bispectrum rather than the bolometric temperature
   one. */
 
-  /* TODO: update this for polarization, both E and B-modes. The best way to do this is to define
-  another non-Fisher bispectrum type index_bt_temp_correction */
+  for (int index_bt = 0; index_bt < pbi->bt_size; ++index_bt) {
 
-  if ((pbi->bf_size == 1) && (ppt->has_cl_cmb_temperature == _TRUE_)) {
+    /* Skip the bispectrum if it not of the non-separable type */
+    if (pbi->bispectrum_type[index_bt] != intrinsic_bispectrum)
+      continue;
 
-    for (int index_bt = 0; index_bt < pbi->bt_size; ++index_bt) {
-  
-      /* Skip the bispectrum if it not of the non-separable type */
-      if (pbi->bispectrum_type[index_bt] != intrinsic_bispectrum)
-        continue;
-  
-      for (int index_l1 = 0; index_l1 < pbi->l_size; ++index_l1) {
-        
-        double C_l1 = pbi->cls[psp->index_ct_tt][pbi->l[index_l1]-2];
-        
-        for (int index_l2 = 0; index_l2 <= index_l1; ++index_l2) {
-     
-          double C_l2 = pbi->cls[psp->index_ct_tt][pbi->l[index_l2]-2];
-     
-          /* Determine the limits for l3, which come from the triangular inequality |l1-l2| <= l3 <= l1+l2 */
-          int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
-          int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
-     
-          for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {
+    for (int X=0; X < pbi->bf_size; ++X) {
+      for (int Y=0; Y < pbi->bf_size; ++Y) {
+        for (int Z=0; Z < pbi->bf_size; ++Z) {
+
+          for (int index_l1 = 0; index_l1 < pbi->l_size; ++index_l1) {
       
-            double C_l3 = pbi->cls[psp->index_ct_tt][pbi->l[index_l3]-2];
-  
-            /* Index of the current (l1,l2,l3) configuration */
-            long int index_l1_l2_l3 = pbi->index_l1_l2_l3[index_l1][index_l1-index_l2][index_l3_max-index_l3];
-  
-            /* By default, we assume the standard correction to convert brightness temperature
-            in bolometric temperature */              
-            double bolometric_correction = - 3 * (C_l1*C_l2 + C_l1*C_l3 + C_l2*C_l3);
-          
-            /* We assume that when the quadratic sources are not included, the user is trying to run the
-            code as a first-order one, and hence we turn off the bolometric temperature correction. */
-            if (ppt2->has_quadratic_sources == _FALSE_)
-              bolometric_correction = 0;
-  
-            /* If the transfer functions are for delta_tilde, and not delta, we need a different correction to obtain the bolometric
-            temperature (see Huang & Vernizzi 2012) */
-            else if ((ppt2->use_delta_tilde_in_los == _TRUE_) || (ppt2->use_delta_tilde_approx_in_los == _TRUE_))
-              bolometric_correction = C_l1*C_l2 + C_l1*C_l3 + C_l2*C_l3;
-  
-            /* Add the correction */
-            pbi->bispectra[index_bt][0][0][0][index_l1_l2_l3] += bolometric_correction;
-  
-            /* Update the counter */
-            #pragma omp atomic
-            pbi->count_memorised_for_bispectra++;
-  
-            /* Check against nan's */
-            if (isnan(pbi->bispectra[index_bt][0][0][0][index_l1_l2_l3]))
-              printf ("\n### WARNING ###\nb(%d,%d,%d) = %g!!!\n\n",
-              pbi->l[index_l1], pbi->l[index_l2], pbi->l[index_l3], pbi->bispectra[index_bt][0][0][0][index_l1_l2_l3]);
-  
-          } // end of for(index_l3)
-        } // end of for(index_l2)
-      } // end of for(index_l1)
-    } // end of for(index_bt)
+            int l1 = pbi->l[index_l1];
+            double C_l1 = pbi->cls[psp->index_ct_tt][pbi->l[index_l1]-2];
+      
+            for (int index_l2 = 0; index_l2 <= index_l1; ++index_l2) {
 
-    /* Check that we correctly filled the bispectra array */
-    class_test_permissive (pbi->count_allocated_for_bispectra != pbi->count_memorised_for_bispectra,
-      pbi->error_message,
-      "there is a mismatch between allocated (%ld) and used (%ld) space!",
-      pbi->count_allocated_for_bispectra, pbi->count_memorised_for_bispectra);
-  
-    /* Print information on memory usage */
-    if (pbi->bispectra_verbose > 1)
-      printf(" -> memorised ~ %.3g MB (%ld doubles) in the bispectra array\n",
-        pbi->count_memorised_for_bispectra*sizeof(double)/1e6, pbi->count_memorised_for_bispectra);
+              int l2 = pbi->l[index_l2];     
+              double C_l2 = pbi->cls[psp->index_ct_tt][pbi->l[index_l2]-2];
+                   
+              /* Determine the limits for l3, which come from the triangular inequality |l1-l2| <= l3 <= l1+l2 */
+              int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
+              int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
+                   
+              for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {
+                    
+                int l3 = pbi->l[index_l3];  
+                double C_l3 = pbi->cls[psp->index_ct_tt][pbi->l[index_l3]-2];
+                
+                /* Index of the current (l1,l2,l3) configuration */
+                long int index_l1_l2_l3 = pbi->index_l1_l2_l3[index_l1][index_l1-index_l2][index_l3_max-index_l3];
+                
+                /* By default, we assume the standard correction to convert brightness temperature
+                in bolometric temperature */              
+                double bolometric_correction = - 3/8. * pbi->bispectra[pbi->index_bt_quadratic][X][Y][Z][index_l1_l2_l3];
+                
+                /* If the transfer functions are for delta_tilde, and not delta, we need a different correction to
+                obtain the bolometric temperature (see Huang & Vernizzi 2012, Fidler, Pettinari et al. 2014) */
+                double delta_tilde_correction = 0;
+                          
+                if (ppt2->use_delta_tilde_in_los == _TRUE_)
+                  delta_tilde_correction = + 4/8. * pbi->bispectra[pbi->index_bt_quadratic][X][Y][Z][index_l1_l2_l3];
+                
+                /* We assume that when the quadratic sources are not included, the user is trying to run the
+                code as a first-order one, and hence we turn off the bolometric temperature correction. */
+                if (ppt2->has_quadratic_sources == _FALSE_)
+                  bolometric_correction = delta_tilde_correction = 0;
+                
+                /* Add the correction */
+                pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3] += bolometric_correction + delta_tilde_correction;
+              
+                /* Update the counter */
+                #pragma omp atomic
+                pbi->count_memorised_for_bispectra++;
 
-  } // end of if temperature only 
-  
+                /* Check against nan's */
+                if (isnan(pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3]))
+                  printf ("\n### WARNING ###\nb(%d,%d,%d) = %g!!!\n\n",
+                  pbi->l[index_l1], pbi->l[index_l2], pbi->l[index_l3], pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3]);
+
+              } // end of for(index_l3)
+            } // end of for(index_l2)
+          } // end of for(index_l1)
+        } // end of for(field X)
+      } // end of for(field Y)
+    } // end of for(field X) 
+  } // end of for(index_bt)
+
+  /* Check that we correctly filled the bispectra array */
+  class_test_permissive (pbi->count_allocated_for_bispectra != pbi->count_memorised_for_bispectra,
+    pbi->error_message,
+    "there is a mismatch between allocated (%ld) and used (%ld) space!",
+    pbi->count_allocated_for_bispectra, pbi->count_memorised_for_bispectra);
+
+  /* Print information on memory usage */
+  if (pbi->bispectra_verbose > 1)
+    printf(" -> memorised ~ %.3g MB (%ld doubles) in the bispectra array\n",
+      pbi->count_memorised_for_bispectra*sizeof(double)/1e6, pbi->count_memorised_for_bispectra);
+
   
   // ============================================================================================
   // =                                   Save bispectra to disk                                 =

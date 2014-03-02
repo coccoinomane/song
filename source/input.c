@@ -765,25 +765,32 @@ int input_init(
     // ========================================================================================
     
     if ((strstr(string1,"tBisp") != NULL) || (strstr(string1,"tBispectrum") != NULL) || (strstr(string1,"tB") != NULL)) {
-      ppt->has_cl_cmb_temperature = _TRUE_;  
+      ppt->has_cl_cmb_temperature = _TRUE_;
+      ppt->has_bi_cmb_temperature = _TRUE_;  
       ppt->has_perturbations = _TRUE_;  
       ppt->has_cls = _TRUE_;
+      ppt->has_bispectra = _TRUE_;
       pbi->has_bispectra = _TRUE_;
     }
     
-    if ((strstr(string1,"pBisp") != NULL) || (strstr(string1,"pBispectrum") != NULL) || (strstr(string1,"pBisp") != NULL)) {
-      ppt->has_cl_cmb_polarization = _TRUE_;  
+    if ((strstr(string1,"pBisp") != NULL) || (strstr(string1,"pBispectrum") != NULL) || (strstr(string1,"PBISP") != NULL)
+      ||(strstr(string1,"eBisp") != NULL) || (strstr(string1,"eBispectrum") != NULL) || (strstr(string1,"EBISP") != NULL)) {
+      ppt->has_cl_cmb_polarization = _TRUE_;
+      ppt->has_bi_cmb_polarization = _TRUE_;  
       ppt->has_perturbations = _TRUE_;  
       ppt->has_cls = _TRUE_;
+      ppt->has_bispectra = _TRUE_;
       pbi->has_bispectra = _TRUE_;
     }
 
     if ((strstr(string1,"rBisp") != NULL) || (strstr(string1,"rBispectrum") != NULL) || (strstr(string1,"rB") != NULL)) {
       pth->has_rayleigh_scattering = _TRUE_;
-      ppt->has_cl_cmb_rayleigh = _TRUE_;
       ppt->has_cl_cmb_temperature = _TRUE_;  
+      ppt->has_cl_cmb_rayleigh = _TRUE_;
+      ppt->has_bi_cmb_rayleigh = _TRUE_;
       ppt->has_perturbations = _TRUE_;  
       ppt->has_cls = _TRUE_;
+      ppt->has_bispectra = _TRUE_;
       pbi->has_bispectra = _TRUE_;
     }
 
@@ -2177,7 +2184,7 @@ less than %d values for 'experiment_beam_fwhm'", _N_FREQUENCY_CHANNELS_MAX_);
 
 
   /* Read the TEMPERATURE noise for the experiment in uK*arcminutes, and convert it to the actual noise */
-  if ((pfi->has_fisher == _TRUE_) && (ppt->has_cl_cmb_temperature == _TRUE_)) {
+  if ((pfi->has_fisher == _TRUE_) && (ppt->has_bi_cmb_temperature == _TRUE_)) {
 
     class_call (parser_read_list_of_doubles (pfc,
                  "experiment_noise_t",
@@ -2479,6 +2486,9 @@ int input_default_params(
   ppt->has_cl_cmb_polarization = _FALSE_;
   // *** MY MODIFICATIONS ***
   ppt->has_cl_cmb_rayleigh = _FALSE_;
+  ppt->has_bi_cmb_temperature = _FALSE_;
+  ppt->has_bi_cmb_polarization = _FALSE_;
+  ppt->has_bi_cmb_rayleigh = _FALSE_;
   // *** END OF MY MODIFICATIONS ***
   ppt->has_cl_cmb_lensing_potential = _FALSE_;
   ppt->has_cl_density = _FALSE_;
@@ -2637,6 +2647,7 @@ int input_default_params(
   /* Compute zeta variable? */
   ppt->has_cl_cmb_zeta = _FALSE_;
 
+  ppt->has_bispectra = _FALSE_;
 
   // ==========================================================
   // =                 Perturbed recombination                =

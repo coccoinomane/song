@@ -5102,9 +5102,12 @@ int perturb2_wavemode_info (
   sprintf(line, "Cosmological parameters:");
   sprintf(info, "%s%s %s\n", info, comment, line);
 
-  sprintf(line, "a_equality = %g, Omega_b = %g, Tcmb = %g, Omega_cdm = %g, Omega_lambda = %g, Omega_ur = %g, Omega_fld = %g, h = %g, tau0 = %g",
-    pba->a_eq, pba->Omega0_b, pba->T_cmb, pba->Omega0_cdm, pba->Omega0_lambda, pba->Omega0_ur, pba->Omega0_fld, pba->h, pba->conformal_age);
-
+  sprintf(line, "a_equality = %g, Omega_b = %g, Tcmb = %g, Omega_cdm = %g, Omega_lambda = %g,\
+Omega_ur = %g, Omega_r = %g, Omega_fld = %g, h = %g, tau0 = %g",
+    pba->a_eq, pba->Omega0_b, pba->T_cmb, pba->Omega0_cdm, pba->Omega0_lambda,
+    pba->Omega0_ur, pba->Omega0_g+pba->Omega0_ur, pba->Omega0_fld, pba->h, pba->conformal_age);
+  sprintf(info, "%s%s %s\n", info, comment, line);
+  
   sprintf(line, "Omega_b = %g, Tcmb = %g, Omega_cdm = %g, omega_lambda = %g, Omega_ur = %g, Omega_fld = %g",
     pba->Omega0_b, pba->T_cmb, pba->Omega0_cdm, pba->Omega0_lambda, pba->Omega0_ur, pba->Omega0_fld);
   sprintf(info, "%s%s %s\n", info, comment, line);

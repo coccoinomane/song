@@ -758,7 +758,10 @@ int main(int argc, char **argv) {
         double bolometric_T;
 
         /* Since we computed the bispectra only for l1>=l2>=l3, we obtain the values outside that range using
-        the symmetry of the bispectrum wrt to permutations of (l1,l2,l3) */
+        the symmetry of the bispectrum with respect to permutations of (l1,l2,l3). This approach won't work
+        for the squeezed-limit approximations of the i_squeezed and l_squeezed bispectra (see comment above at
+        the beginning of l3 loop), but in that case the values of l1,l2 and l3 in this loop are constrained
+        to satisfy l1<=l2<=l3. */
              if ((l1>=l2) && (l2>=l3))
           bolometric_T = bi.bispectra[index_bt][X][Y][Z][index_l1_l2_l3];
         else if ((l1>=l3) && (l3>=l2))
@@ -830,8 +833,10 @@ int main(int argc, char **argv) {
         } // end of if(squeezed_pitrou)
           
         // ****  SQUEEZED_SMALL_SCALE CASE  ****        
+
         /* We choose the long wavemode to be l1, which is associated to the field X. The short wavemodes
         will be l2 and l3, associated respectively to Y and Z */
+        
         else if ((PRINT_SQUEEZED_SMALL_SCALE == _TRUE_) && (l1==l_long) && (l2==l3)) {
             
           l = l3;
@@ -931,10 +936,10 @@ int main(int argc, char **argv) {
           /* Here we compute the approximations in eq. 4.1 and 4.2 of Lewis 2012. This is the general
           formula that includes polarisation. With respect to Lewis' formula, i->X, j->Y, k->Z and
           greek zeta -> z. */
-          double dcl_YZ_short = bi.dlog_cls[bi.index_ct_of_bf[Y][Z]][l_short-2];
+          double dcl_YZ_short = bi.d_lsq_cls[bi.index_ct_of_bf[Y][Z]][l_short-2];
           
           /* Ricci focussing in Lewis 2012 (eq. 4.1) */
-          double bolometric_T_lewis_ricci = normalization * (- cl_Xz_long * cl_YZ_short * dcl_YZ_short);
+          double bolometric_T_lewis_ricci = normalization * (- cl_Xz_long * dcl_YZ_short/l_short);
           
           /* Redshift modulation in Lewis 2012 (eq. 4.2). This exists only if Y=Z=temperature */
           double bolometric_T_lewis_redshift = 0;
@@ -957,7 +962,7 @@ int main(int argc, char **argv) {
           /* Lensing contribution, that is eq. 4.3 in CPV2011 */
           double cos_theta = (l*l - l_long*l_long - l_short*l_short)/(2.*l_long*l_short);
           double cos_2_theta = cos_theta*cos_theta - (1-cos_theta*cos_theta);
-          double bolometric_T_cpv_lensing = normalization * 6*cl_XX_long*cl_XX_short*(2*cos_2_theta - (1 + cos_2_theta)*dcl_YZ_short);
+          double bolometric_T_cpv_lensing = normalization * 6*cl_XX_long*(cl_XX_short*2*cos_2_theta - (1 + cos_2_theta)*dcl_YZ_short/l_short);
           
           // -------------------------------------------------------
           // -                 Print extra columns                 -

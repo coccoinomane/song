@@ -719,7 +719,7 @@ int array_spline_table_lines(
 
 /**
  * Compute the first derivative of all the columns of an array (y_array) with respect to x,
- * using the precomputed  second derivative array (ddy_array), and store the result into an
+ * using the precomputed second derivative array (ddy_array), and store the result into an
  * output array (dy_array). The number of columns of the input array must be given by y_size.
  *
  */
@@ -732,7 +732,7 @@ int array_spline_derive_table_lines(
 			     int y_size,
 			     double * dy_array, /* array of size x_size*y_size, output */
 			     ErrorMsg errmsg) {
-	  
+
   int index_x, index_y;
 
   double h;

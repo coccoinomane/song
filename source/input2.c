@@ -189,14 +189,6 @@ int input2_init (
     errmsg,
     errmsg);
 
-
-  // /* The requested fields (temperature, polarisation...) were read in input.c. Here we just
-  // copy the relevant flags from the first-order to the second-order structure */
-  // if (ppt->has_cl_cmb_temperature == _TRUE_)
-  //   ppt2->has_cmb_temperature = _TRUE_;
-  // 
-  // if (ppt->has_cl_cmb_polarization == _TRUE_)
-  //   ppt2->has_cmb_polarization = _TRUE_;
   
   // ========================================================
   // =                      Parse output                    =
@@ -208,26 +200,23 @@ int input2_init (
 
   if (flag1 == _TRUE_) {
 
-
     if ((strstr(string1,"tBisp") != NULL) || (strstr(string1,"tBispectrum") != NULL) || (strstr(string1,"tB") != NULL)) {
       ppt2->has_cmb_temperature = _TRUE_;  
     }
     
-    if ((strstr(string1,"pBisp") != NULL) || (strstr(string1,"pBispectrum") != NULL) || (strstr(string1,"pBisp") != NULL)) {
+    if (((strstr(string1,"pBisp") != NULL) || (strstr(string1,"pBispectrum") != NULL) || (strstr(string1,"PBISP") != NULL))
+       ||(strstr(string1,"eBisp") != NULL) || (strstr(string1,"eBispectrum") != NULL) || (strstr(string1,"EBISP") != NULL)) {
+      ppt->has_cl_cmb_temperature = _TRUE_; /* The intensity C_l's are needed for the delta_tilde transformation */
       ppt2->has_cmb_polarization_e = _TRUE_;  
     }
 
     if ((strstr(string1,"bBisp") != NULL) || (strstr(string1,"bBispectrum") != NULL) || (strstr(string1,"bBisp") != NULL)) {
+      ppt->has_cl_cmb_temperature = _TRUE_;
       ppt2->has_cmb_polarization_b = _TRUE_;
     }
 
     if ((strstr(string1,"rBisp") != NULL) || (strstr(string1,"rBispectrum") != NULL) || (strstr(string1,"rB") != NULL)) {
-      pth->has_rayleigh_scattering = _TRUE_;
-      ppt->has_cl_cmb_rayleigh = _TRUE_;
-      ppt->has_cl_cmb_temperature = _TRUE_;  
-      ppt->has_perturbations = _TRUE_;  
-      ppt->has_cls = _TRUE_;
-      pbi->has_bispectra = _TRUE_;
+      /* Second order Rayleigh is not supported (and not needed because we only compute <T^(2)R^(1)R^(1)>) */
     }
     
     /* Compute only first-order transfer functions */
@@ -596,13 +585,6 @@ int input2_init (
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
     ppt2->use_delta_tilde_in_los = _TRUE_;
 
-  // *** Set ppt2->use_delta_tilde_approx_in_los
-  class_call(parser_read_string(pfc,"use_delta_tilde_approx_in_los",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
-  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-    ppt2->use_delta_tilde_approx_in_los = _TRUE_;
-
-
   /* Metric sources exist only for temperature */
   if (ppt2->has_cmb_temperature == _TRUE_) {
 
@@ -682,17 +664,9 @@ int input2_init (
     "please make sure that 'polarization_second_order' is set to 'yes' if you want to compute E-modes or B-modes");
 
   /* When delta_tilde is activated, the redshift term is automatically included  */
-  class_test (((ppt2->use_delta_tilde_in_los==_TRUE_) || (ppt2->use_delta_tilde_approx_in_los==_TRUE_))
-             && (ppt2->has_redshift_in_los==_TRUE_),
+  class_test ((ppt2->use_delta_tilde_in_los==_TRUE_) && (ppt2->has_redshift_in_los==_TRUE_),
     errmsg,
     "the delta_tilde options are not compatible with 'include_redshift_in_los_2nd_order'");
-
-  /* We can have only one between delta_tilde and delta_tilde_approx */
-  class_test (((ppt2->use_delta_tilde_in_los==_TRUE_) && (ppt2->use_delta_tilde_approx_in_los==_TRUE_)),
-    errmsg,
-    "please choose one between 'use_delta_tilde_in_los' and 'use_delta_tilde_approx_in_los'");
- 
-
 		
 	/* This option should be last. If true, compute only the test source term */
   class_call(parser_read_string(pfc,"use_test_source",&(string1),&(flag1),errmsg),errmsg,errmsg);
@@ -1225,7 +1199,12 @@ int input2_init (
     _MAX_NUM_AZIMUTHAL_);
 
   /* For m>0 we cannot compute the reduced bispectrum when l1+l2+l3 is odd */
-  if ((pbi->has_intrinsic==_TRUE_) && (ppr2->m_max_2nd_order>0)) {
+  if ((pbi->has_intrinsic==_TRUE_) && (
+    (ppr2->m_max_2nd_order>0) ||
+    (ppt2->has_cmb_polarization_e) ||
+    (ppt2->has_cmb_polarization_b))) {
+  // if ((pbi->has_intrinsic==_TRUE_) && (
+  //   (ppr2->m_max_2nd_order>0) ||
   // if (pbi->has_intrinsic==_TRUE_) {
        
     printf ("\n");
@@ -1243,9 +1222,8 @@ int input2_init (
       ((ppt2->has_cmb_polarization_e==_TRUE_) && (ppr->compute_only_odd_ls==_TRUE_)) ||
       ((ppt2->has_cmb_temperature==_TRUE_) && (ppr->compute_only_odd_ls==_TRUE_)),
       errmsg,
-      "careful, your choice of parity is be wrong!");
+      "careful, your choice of parity is wrong!");
   }
-  
 
   /* Find out the index in ppr2->m corresponding to a given m. */
   class_alloc (ppr2->index_m, (ppr2->m_max_2nd_order+1)*sizeof(int), errmsg);
@@ -1490,7 +1468,6 @@ int input2_default_params (
   ppt2->has_lensing_in_los = _FALSE_;
 
   ppt2->use_delta_tilde_in_los = _FALSE_;
-  ppt2->use_delta_tilde_approx_in_los = _FALSE_;
   
   ppt2->has_integration_by_parts_of_los = _FALSE_;
   ppt2->has_sachs_wolfe_in_los = _FALSE_;

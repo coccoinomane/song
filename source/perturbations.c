@@ -169,6 +169,10 @@ int perturb_init(
         ppt->error_message,
         "your tight_coupling_approximation is set to %d, out of range defined in perturbations.h",ppr->tight_coupling_approximation);
 
+  class_test((ppt->gauge == synchronous) && (ppt->has_cl_cmb_zeta == _TRUE_),
+       ppt->error_message,
+       "Zeta perturbation sources not implemented yet in synchronous gauge");
+
   // *** END OF MY MODIFICATIONS ***
 
 
@@ -2545,10 +2549,6 @@ int perturb_solve(
 
 
 
-
-
-
-
   /** - free quantitites allocated at the beginning of the routine */
 
   class_call(perturb_vector_free(ppw->pv),
@@ -2571,15 +2571,15 @@ int perturb_solve(
   //          index_ic,
   //          index_k,
   //          ppw);
-  class_call(perturb_sources(ppr,
-           pba,
-           ppt,
-           index_mode,
-           index_ic,
-           index_k,
-           ppw),
-       ppt->error_message,
-       ppt->error_message);
+  class_call (perturb_sources(ppr,
+                pba,
+                ppt,
+                index_mode,
+                index_ic,
+                index_k,
+                ppw),
+    ppt->error_message,
+    ppt->error_message);
 
   return _SUCCESS_;
 }
@@ -5782,7 +5782,7 @@ int perturb_source_terms_1st_order(
       /* Curvature perturbation zeta (see Lewis 2012) */
 
       if ((ppt->has_source_zeta == _TRUE_) && (index_type == ppt->index_tp_zeta)) {
-	
+
         if (ppt->gauge == newtonian) {
 
           class_call(background_at_tau(pba,
@@ -7507,7 +7507,7 @@ int perturb_derivs(double tau,
 
 
 
-int perturb_sources(
+int perturb_sources (
         struct precision * ppr,
         struct background * pba,
         struct perturbs * ppt,
@@ -7517,19 +7517,16 @@ int perturb_sources(
         struct perturb_workspace * ppw
         )
 {
-
-
-  class_call(perturb_sources_1st_order(ppr,pba,ppt,index_mode,index_ic,index_k,ppw),
+  
+  class_call (perturb_sources_1st_order(ppr,pba,ppt,index_mode,index_ic,index_k,ppw),
     ppt->error_message,
-    ppt->error_message
-    );
+    ppt->error_message);
 
   if (ppt->has_perturbations2 == _TRUE_) {
     
-    class_call(perturb_sources_2nd_order_eqs(ppr,pba,ppt,index_mode,index_ic,index_k,ppw),
+    class_call (perturb_sources_2nd_order_eqs(ppr,pba,ppt,index_mode,index_ic,index_k,ppw),
       ppt->error_message,
-      ppt->error_message
-      );
+      ppt->error_message);
   }
 
 }
@@ -8526,59 +8523,26 @@ int perturb_sources_2nd_order_eqs (
         )
 {
 
-  // ********      Compute 2nd-order derivatives for later spline interpolation      ********
-  
+  /* We already stored the second-order source terms in perturb_sources.
+  Here we shall just fill the table containing the second-derivatives of the sources, 
+  useful for later interpolation. */  
   if (ppr->quadsources_time_interpolation == cubic_interpolation)
-    /* We already stored the second-order source terms in perturb_sources.
-      Here we shall just fill the table containing the second-derivatives of the sources, 
-      useful for later interpolation. */
     class_call (spline_sources_derivs(
-               ppt->tau_sampling_quadsources,
-               ppt->tau_size_quadsources,
-               ppt->quadsources,
-               ppt->qs_size[index_mode],
-               ppt->dd_quadsources,
-               _SPLINE_EST_DERIV_,
-               // _SPLINE_NATURAL_,
-               index_mode,
-               index_ic,
-               index_k,
-               ppt->k_size[index_mode],
-               ppt->error_message
-               ),
-            ppt->error_message,
-            ppt->error_message);
-            
-  
-
-
-
-  // ************           Compute derivatives of perturbations             *************
-
-  /* Compute psi_prime for the 2nd-order ISW effect */
-  // if (ppt->gauge == newtonian) {
-  //       
-  //   /* Compute the conformal time derivative of psi */
-  //   class_call(array_derive1_order2_table_line_to_line(
-  //                  ppt->tau_sampling,
-  //                  ppt->tau_size,
-  //                  ppw->source_term_table[index_type],
-  //                  ppw->st_size,
-  //                  ppw->index_st_psi,
-  //                  ppw->index_st_psi_prime,
-  //                  ppt->error_message),
-  //        ppt->error_message,
-  //        ppt->error_message);      
-  // 
-  //   for (index_tau=0; index_tau < ppt->tau_size; ++index_tau) {
-  // 
-  //     ppt->quadsources[index_mode][index_ic * ppt->qs_size[index_mode] + ppt->index_qs_psi_prime][index_tau * ppt->k_size[index_mode] + index_k] =
-  //       psi_prime;
-  // 
-  //   } // end of for(index_tau)
-  // 
-  // } // end of if(gauge==newtonian)
-
+                  ppt->tau_sampling_quadsources,
+                  ppt->tau_size_quadsources,
+                  ppt->quadsources,
+                  ppt->qs_size[index_mode],
+                  ppt->dd_quadsources,
+                  _SPLINE_EST_DERIV_,
+                  // _SPLINE_NATURAL_,
+                  index_mode,
+                  index_ic,
+                  index_k,
+                  ppt->k_size[index_mode],
+                  ppt->error_message
+                  ),
+      ppt->error_message,
+      ppt->error_message);
   
   return _SUCCESS_;
   

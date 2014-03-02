@@ -22,7 +22,6 @@ struct bispectra {
   // =                                     Indices of bispectra                                      =
   // =================================================================================================
 
-
   /* Should we compute any bispectra at all? */
   short has_bispectra;
 
@@ -48,6 +47,7 @@ struct bispectra {
   int index_bt_local_squeezed;        /* Index for the local-model bispectrum in the squeezed limit */  
   int index_bt_cosine;                /* Index for the oscillating bispectrum */  
   int index_bt_isw_lensing;           /* Index for the bispectrum of isw-lensing */  
+  int index_bt_quadratic;             /* Index for the bispectrum induced by a quadratic correction to the distribution function */  
   int bt_size;                        /* Total number of bispectra types requested */
 
   /* Array of strings that contain the text labels of the various bispectra */
@@ -86,6 +86,10 @@ struct bispectra {
   /* Parity of the considered field. Even parity (T,E) is represented by zero, odd parity
   by 1. Indexed as field_parity[index_bf] */
   int field_parity[_MAX_NUM_FIELDS_];
+  
+  /* Spin of the considered field; this is equal to 2 for polarisation and 0 for
+  intensity (see, e.g., Hu & White 1997) */
+  int field_spin[_MAX_NUM_FIELDS_];
 
   /* Array that relates the bispectrum field indices (T,E,B) to the index of the transfer functions */
   int index_tt_of_bf[_MAX_NUM_FIELDS_];
@@ -110,7 +114,7 @@ struct bispectra {
   // =                                           Sampling in l                                        =
   // ==================================================================================================
 
-  int * l;                                /* List of multipole values l1[index_l1] */
+  int * l;                                /* List of multipole values pbi->l[index_l] */
   int l_size;                             /* Number of l's where we compute the bispectrum */
   int l_max;                              /* Maximum value in pbi->l */
   int full_l_size;                        /* Total number of l's, given by l_max - 2 + 1 */
@@ -137,12 +141,11 @@ struct bispectra {
   /* Number of (l1,l2,l3) configurations that will be stored for each bispectrum */
   long int n_independent_configurations;
 
-  /* Multi array where the bispectra will be stored.  It must be indexed as
+  /* Multi-array where the bispectra will be stored.  It must be indexed as
     bispectra [index_bt][i][j][k][index_l1_l2_l3]
   where i,j,k=T,E,B are indexed by the 'pbi->index_bf' indices, and
   'index_l1_l2_l3' is described above. */          
   double ***** bispectra;
-
 
   // ============================================================================================================
   // =                                              Filter functions                                            =
@@ -200,7 +203,7 @@ struct bispectra {
   IMPORTANT: these arrays are computed for all l's between 2 and pbi->l_max, hence they have to be
   indexed as cls[index_ct][l-2] */
   double ** cls;
-  double ** dlog_cls;        /* Logarithmic derivative of the C_l's, as in Lewis 2012 */
+  double ** d_lsq_cls;        /* Logarithmic derivative of the C_l's, as in Lewis 2012 */
 
   /* Array that contains the measure for the trapezoidal integration over k of the first-order transfer
   functions. It is defined as ptr->k[i+1] - ptr->k[i-1]. */

@@ -67,6 +67,22 @@ struct fisher {
   int * l3;
   int l3_size;
   
+  /* Indices of the bispectra types to be included in the Fisher matrix */
+  int index_ft_local;                 /* Index for the bispectrum for a local model */
+  int index_ft_equilateral;           /* Index for the bispectrum for a equilateral model */
+  int index_ft_orthogonal;            /* Index for the bispectrum for a orthogonal model */
+  int index_ft_galileon_gradient;     /* Index for the bispectrum for the pi_dot*pi_grad^2 term in Galileon inflation */
+  int index_ft_galileon_time;         /* Index for the bispectrum for the pi_dot^3 term in Galileon inflation */
+  int index_ft_intrinsic;             /* Index for the bispectrum induced by nonlinear dynamics */
+  int index_ft_intrinsic_squeezed;    /* Index for the intrinsic bispectrum in the squeezed limit */  
+  int index_ft_local_squeezed;        /* Index for the local-model bispectrum in the squeezed limit */  
+  int index_ft_cosine;                /* Index for the oscillating bispectrum */  
+  int index_ft_isw_lensing;           /* Index for the bispectrum of isw-lensing */  
+  int fisher_size;                         /* Total number of bispectra types requested */
+
+  /* Correspondence between rows of the Fisher matrix and bispectra stored in pbi->bispectra[index_bt] */
+  int index_bt_of_ft[_MAX_NUM_BISPECTRA_];
+  
   /* Contribution to the Fisher matrix coming from a given l1 and for a given XYZ bispectrum,
   where XYZ=TTT,TTE,TET, etc. This is the sum over l2, l3, A, B, C of
   b^XYZ(l1,l2,l3) * b^ABC(l1,l2,l3) * cov^XYZABC(l1,l2,l3), with l1>=l2>=l3.

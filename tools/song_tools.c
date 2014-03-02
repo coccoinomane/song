@@ -13,6 +13,70 @@
 // =                                3J and 6J symbols                           =
 // ==============================================================================
 
+// ==============================================================================
+// =                                3J and 6J symbols                           =
+// ==============================================================================
+
+/** 
+ * Compute the 3j symbol
+ * (    l1     l2     l3   )
+ * ( -m2-m3    m2     m3   )
+ * 
+ * The result shall be stored into 'threej'.
+ *
+ */
+int threej_single(
+       int l1, int l2, int l3, int m2, int m3, // In
+       double *threej,                         // Out
+       ErrorMsg errmsg       
+       )
+{
+
+  /* Limits from the triangular condition */
+  int l1_min = abs(l2-l3);
+  int l1_max = l2+l3;
+
+	/* Check input */
+	class_test (l1>l1_max || l1<l1_min,
+    errmsg,
+		"'l1' should be between %d and %d.\n", __func__, l1_min, l1_max);
+
+  /* The Slatec function DRC3JJ computes the 3j symbol for any allowed value
+  of l1.  Here we compute the number of such values and allocate memory
+  for the result array. */
+  int out_size = l1_max - l1_min + 1;
+  double *result = (double*)calloc(out_size,sizeof(double));
+
+  /* Do the actual computation */
+  double l1_min_D;
+  double l1_max_D;
+  
+  class_call (drc3jj (
+                l2, l3, m2, m3,
+                &l1_min_D, &l1_max_D,
+                result,
+                out_size,
+                errmsg       
+                ),
+    errmsg,
+    errmsg);
+    
+  l1_min = (int)(l1_min_D+_EPS_);
+
+  /* Find the index corresponding to the requested l1 */
+  *threej = result[l1-l1_min];
+  
+  free (result);
+  
+  /* Print the result */
+  // printf("3J(%d,%g,%g)(%g,%g,%g) = %g\n", l1,l2,l3,m1,m2,m3,result[l1-l1_min]);
+  
+  return _SUCCESS_;
+  
+}
+
+
+
 /** 
  * Compute the 3j symbol
  * (    l1     l2     l3   )

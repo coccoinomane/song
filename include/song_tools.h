@@ -32,6 +32,21 @@ extern "C" {
   int is_triangular_double (double l1, double l2, double l3);
 
 
+  /** 
+   * Compute the 3j symbol
+   * (    l1     l2     l3   )
+   * ( -m2-m3    m2     m3   )
+   * 
+   * The result shall be stored into 'threej'.
+   *
+   */
+  int threej_single(
+         int l1, int l2, int l3, int m2, int m3, // In
+         double *threej,                         // Out
+         ErrorMsg errmsg       
+         );
+
+
 
   /** 
    *  Compute the 3j symbol

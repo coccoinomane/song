@@ -220,8 +220,7 @@ struct perturbs2
   short has_redshift_in_los;                  /* Shall we include the redshift term for photons in the LOS sources? */
   short has_lensing_in_los;                   /* Shall we include the lensing term for photons in the LOS sources? */
 
-  short use_delta_tilde_in_los;               /* Shall we speficy the LOS sources for Delta-Delta*Delta/2 (see Huang & Vernizzi 2012)? */
-  short use_delta_tilde_approx_in_los;        /* Shall we speficy approx. sources for Delta-Delta*Delta/2 (see Huang & Vernizzi 2012)? */
+  short use_delta_tilde_in_los;               /* Shall we speficy the LOS sources for Delta-Delta*Delta/2 (see Huang & Vernizzi 2012, Fidler, Pettinari et al. 2014)? */
 
   /* Sachs-Wolfe (SW) and integrated Sachs-Wolfe (ISW) sources. These sources arise from the integration
   by parts of the purely second-order redshift term. */

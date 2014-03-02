@@ -18,7 +18,7 @@ FC       = /usr/local/bin/gfortran
 # The fastest combination seems to be -O3 -ffast-math, whic delivers a speed-up of ~3.
 # Note that (i) the flag -ffast-math will produce different results at the 1 permille level,
 # and that (ii) debug won't work if the optimization is on.
-OPTFLAG         = -O4
+OPTFLAG         = -O
 
 # Openmp flag (comment for compiling without openmp)
 CCFLAG     = -fopenmp -std=c99
@@ -28,7 +28,6 @@ CCFLAG     = -fopenmp -std=c99
 # =========================================================================
 # =                        Directories locations                          =
 # =========================================================================
-
 
 # Source files
 vpath %.c source:tools:main:test
@@ -152,6 +151,7 @@ PRINT_SOURCES1 = print_sources1.o
 PRINT_SOURCES2 = print_sources2.o
 PRINT_TRANSFERS1 = print_transfers1.o
 PRINT_TRANSFERS2 = print_transfers2.o
+PRINT_CLS = print_cls.o
 PRINT_BISPECTRA = print_bispectra.o
 PRINT_BACKGROUND = print_background.o
 PRINT_THERMO = print_thermo.o
@@ -186,6 +186,10 @@ print_transfers1: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PER
 
 print_transfers2: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2)\
 	$(BESSEL) $(BESSEL2) $(TRANSFER) $(TRANSFER2) $(PRINT_TRANSFERS2)
+	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+
+print_cls: $(SONG_TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(BESSEL) $(TRANSFER) $(PRIMORDIAL)\
+	$(SPECTRA) $(BISPECTRA) $(FISHER) $(LENSING) $(NONLINEAR) $(OUTPUT) $(PRINT_CLS)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_bispectra: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2)\
