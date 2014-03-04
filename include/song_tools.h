@@ -22,7 +22,11 @@
 extern "C" {
 #endif
 
-
+  /** 
+   * Identity function.
+   * 
+   */  
+  double identity_double (double x);
 
   /** 
    * Check whether a triad of numbers (l1,l2,l3) satisfies the triangular condition

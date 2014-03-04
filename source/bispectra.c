@@ -2089,15 +2089,54 @@ int bispectra_analytical_init (
     printf (" -> computing analytic bispectra\n");
 
   /* Parallelization variables */
+  int number_of_threads = 1;
+  int thread = 0;
   int abort = _FALSE_;
+  
+  #pragma omp parallel
+  {
+    #ifdef _OPENMP
+    number_of_threads = omp_get_num_threads();
+    #endif
+  }
 
-  /* Arrays needed to compute the three-j symbols */
-  int three_j_size = 2*pbi->l_max+1;
-  double *three_j_1, *three_j_2;
-  // class_calloc (three_j_1, three_j_size, sizeof(double), pbi->error_message);
-  // class_calloc (three_j_2, three_j_size, sizeof(double), pbi->error_message);
+  // ===================================================================================
+  // =                           Allocate three-j symbols                              =
+  // ===================================================================================
 
-  /* Main loop */
+  /* Allocate arrays needed to compute the three-j symbols. These are only needed to obtain 
+  the quadratic correction bispectrum. For details on why we compute these three-j symbols,
+  refer to the very long comment in the innermost loop, below. We will need 7 different
+  combination of 3j symbols */
+  enum {
+    l1_l2_l3_F_X3_mF_X3,
+    l1_l2_l3_0_mF_X3,
+    l2_l3_l1_F_X1_mF_X1,
+    l2_l3_l1_0_mF_X1,
+    l3_l1_l2_F_X2_mF_X2,
+    l3_l1_l2_0_mF_X2,
+    l1_l2_l3_0_0,
+  };  
+  int n_geometrical_factors = 7;
+  int size[number_of_threads][n_geometrical_factors];
+  int min[number_of_threads][n_geometrical_factors];
+  int max[number_of_threads][n_geometrical_factors];
+  double *** value;
+
+  if (pbi->has_intrinsic == _TRUE_) {  
+    /* Temporary arrays and values needed to store the results of the 3j and 6j computations */
+    class_alloc (value, number_of_threads*sizeof(double **), pbi->error_message);
+    for (int thread=0; thread < number_of_threads; ++thread) {
+      class_alloc (value[thread], n_geometrical_factors*sizeof(double *), pbi->error_message);
+      for (int i=0; i < n_geometrical_factors; ++i)
+        class_alloc (value[thread][i], (2*pbi->l_max+1)*sizeof(double), pbi->error_message);
+    }
+  }
+
+  // ===================================================================================
+  // =                                   Main loop                                     =
+  // ===================================================================================
+
   for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt) {
     
     if (pbi->bispectrum_type[index_bt] != analytical_bispectrum)
@@ -2112,8 +2151,12 @@ int bispectra_analytical_init (
               pbi->bt_labels[index_bt], pbi->bfff_labels[X][Y][Z]);
     
           /* We parallelize the outer loop over 'l1'. */
-          #pragma omp parallel for shared (ppt,pbs,ptr,ppm,pbi,abort)
+          #pragma omp parallel for shared (ppt,pbs,ptr,ppm,pbi,abort) private (thread)
           for (int index_l1 = 0; index_l1 < pbi->l_size; ++index_l1) {
+      
+            #ifdef _OPENMP
+            thread = omp_get_thread_num();
+            #endif
       
             int l1 = pbi->l[index_l1];
             double C_l1 = pbi->cls[psp->index_ct_tt][l1-2];
@@ -2130,7 +2173,7 @@ int bispectra_analytical_init (
               /* Determine the limits for l3, which come from the triangular inequality |l1-l2| <= l3 <= l1+l2 */
               int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
               int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
-    
+
               for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {  
     
                 int l3 = pbi->l[index_l3];
@@ -2150,73 +2193,114 @@ int bispectra_analytical_init (
                 // ---------------------------------------------------------------------------------------------
         
                 /* Here we compute the approximations in eq. 4.1 and 4.2 of Lewis 2012. This is the general
-                formula that includes polarisation. With respect to Lewis' formula, i->X, j->Y, k->Z and
-                Greek zeta -> z. */
+                formula that includes polarisation. With respect to Lewis' formula, (i,l1)->(Z,l3), (j,l2)->(X,l1),
+                (k,l3)->(Y,l2) and \zeta -> z. It is crucial that l3 is associated with the C_l that correlates
+                with the comoving curvature perturbation (zeta), because l3 in this loop is the smallest multipole,
+                which describes the long wavelength mode. Also, l3 must be associated with Z because our convention
+                for the bispectrum is <X_l1 Y_l2 Z_l3>. If you associate l3 with another field, then the Fisher matrix
+                estimator will associate to that field the wrong covariance matrix, and the result will change
+                drastically. */
                 if ((pbi->has_intrinsic_squeezed == _TRUE_) && (index_bt == pbi->index_bt_intrinsic_squeezed)) {
     
-                  /* Determine which field has to be correlated with the comoving curvature perturbation zeta.
-                  The resulting C_l^Xzeta always gets the largest scale multipole */
-                  int index_ct_Xz;
-    
-                  if ((pbi->has_bispectra_t == _TRUE_) && (X == pbi->index_bf_t))
-                    index_ct_Xz = psp->index_ct_tz;
-                  else if ((pbi->has_bispectra_e == _TRUE_) && (X == pbi->index_bf_e))
-                    index_ct_Xz = psp->index_ct_ez;
+                  /* Determine which field has to be correlated with the comoving curvature perturbation 'z'.
+                  The resulting C_l^Zz always gets the largest scale multipole */
+                  int index_ct_Zz;
+                      
+                  if ((pbi->has_bispectra_t == _TRUE_) && (Z == pbi->index_bf_t))
+                    index_ct_Zz = psp->index_ct_tz;
+                  else if ((pbi->has_bispectra_e == _TRUE_) && (Z == pbi->index_bf_e))
+                    index_ct_Zz = psp->index_ct_ez;
                   else {
-                    index_ct_Xz = 0;
-                    printf ("WARNING: C_l's for <X * zeta> where X=%s not found. Do not trust squeezed approximation.\n",
-                    pbi->bf_labels[X]);
+                    index_ct_Zz = 0;
+                    printf ("WARNING: Could not find C_l's for <Z * zeta> with Z=%s not found. Do not trust squeezed approximation.\n",
+                    pbi->bf_labels[Z]);
                   }
-    
-                  /* We take l3 to be the long wavelength and l1 and l2 the short ones. That is, we
-                  assume l3 < l1~l2 */
-                  double cl3_Xz = pbi->cls[index_ct_Xz][l3-2];
-                  double cl1_YZ = pbi->cls[pbi->index_ct_of_bf[Y][Z]][l1-2];
-                  double dcl1_YZ = pbi->d_lsq_cls[pbi->index_ct_of_bf[Y][Z]][l1-2];
-                  double cl2_YZ = pbi->cls[pbi->index_ct_of_bf[Y][Z]][l2-2];
-                  double dcl2_YZ = pbi->d_lsq_cls[pbi->index_ct_of_bf[Y][Z]][l2-2];
-          
+                      
+                  /* We take l3 to be the long wavelength and l1 and l2 the short ones. This is the only sensible
+                  choice as the l-loop we are into is constructed to have l1>=l2>=l3  */
+                  double cl3_Zz = pbi->cls[index_ct_Zz][l3-2];
+                  double dcl1_XY = pbi->d_lsq_cls[pbi->index_ct_of_bf[X][Y]][l1-2];
+                  double dcl2_XY = pbi->d_lsq_cls[pbi->index_ct_of_bf[X][Y]][l2-2];
+                            
                   /* Ricci focussing in Lewis 2012 (eq. 4.1). It should be noted that this expression
                   is NOT symmetric with respect to a simultaneous exchange of (l1,X) <-> (l2,Y),
-                  (l1,X) <-> (l3,Z) or (l2,Y) <-> (l3,Z), contrary to the other bispectra, which are
-                  computed as <X_l1 Y_l2 Z_l3>.  Therefore, for this bispectrum one cannot obtain the
-                  configurations outside l1>=l2>=l3 by permuting the XYZ indices, as it is done, for example,
-                  in the print_bispectra function. */
-                  double bolometric_T_lewis_ricci = - 0.5 * cl3_Xz * (dcl1_YZ/l1 + dcl2_YZ/l2);
-          
+                  (l1,X) <-> (l3,Z), contrary to the other bispectra, which are computed as <X_l1 Y_l2 Z_l3>.
+                  Therefore, for this bispectrum one cannot obtain the configurations outside l1>=l2>=l3 by
+                  permuting the XYZ indices, as it is done, for example, in the print_bispectra function. */
+                  double bolometric_T_lewis_ricci = - 0.5 * cl3_Zz * (dcl1_XY/l1 + dcl2_XY/l2);
+                  
                   /* Redshift modulation in Lewis 2012 (eq. 4.2). This exists only if Y=Z=temperature */
                   double bolometric_T_lewis_redshift = 0;
-          
+                            
                   if (pbi->has_bispectra_t == _TRUE_) {
-                    double cl3_Xt_long = 0; double cl1_Yt_short = 0; double cl2_Zt_short = 0;
-                    cl3_Xt_long = pbi->cls[pbi->index_ct_of_bf[X][pbi->index_bf_t]][l3-2];
-                    if (Z == pbi->index_bf_t) cl1_Yt_short = pbi->cls[pbi->index_ct_of_bf[Y][pbi->index_bf_t]][l1-2];
-                    if (Y == pbi->index_bf_t) cl2_Zt_short = pbi->cls[pbi->index_ct_of_bf[Z][pbi->index_bf_t]][l2-2];
-                    bolometric_T_lewis_redshift = cl3_Xt_long * (cl1_Yt_short + cl2_Zt_short);
+                    double cl3_Zt_long = 0; double cl1_Xt_short = 0; double cl2_Yt_short = 0;
+                    cl3_Zt_long = pbi->cls[pbi->index_ct_of_bf[Z][pbi->index_bf_t]][l3-2];
+                    if (Y == pbi->index_bf_t) cl1_Xt_short = pbi->cls[pbi->index_ct_of_bf[X][pbi->index_bf_t]][l1-2];
+                    if (X == pbi->index_bf_t) cl2_Yt_short = pbi->cls[pbi->index_ct_of_bf[Y][pbi->index_bf_t]][l2-2];
+                    bolometric_T_lewis_redshift = cl3_Zt_long * (cl1_Xt_short + cl2_Yt_short);
                   }
-          
+                            
+                  class_test_parallel ((pbi->has_bispectra_e == _TRUE_) &&
+                    ((X == pbi->index_bf_e) && (Y == pbi->index_bf_e))
+                    && (bolometric_T_lewis_redshift!=0),
+                    pbi->error_message,
+                    "anisotropic redshifting should vanish (eq. 4.2 of Lewis 2012)", bolometric_T_lewis_redshift);
+                            
                   /* Sum of Ricci focussing and redshift modulation */
                   pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3] = bolometric_T_lewis_ricci + bolometric_T_lewis_redshift;
 
-                  /* At some point you might want to symmetrise the analytic approximation. Not sure it would
-                  make a lot of sense, though. */
-                  // double C_l1_tz = pbi->cls[psp->index_ct_tz][l1-2];
-                  // double dlog_lsq_cl_l1 = pbi->dlog_cls[psp->index_ct_tt][l1-2];
+                  /* At some point you might want to symmetrise the analytic approximation with respect to the
+                  exchanges (l1,X) <-> (l2,Y) and (l1,X) <-> (l3,Z). Not sure it would make
+                  a lot of sense, because one would include in a given (l1,l2,l3) configurations contributions
+                  where the analytical approximation is not valid, i.e. one would have the short mode in the
+                  C_l with the zeta correlation and the long mode in the C_l derivative.  */
+                  /* Determine which field has to be correlated with the comoving curvature perturbation zeta.
+                  The resulting C_l^Xzeta always gets the largest scale multipole */
+                  // int index_ct_Xz;
+                  // int index_ct_Yz;
+                  // int index_ct_Zz;
+                  //     
+                  // if (pbi->has_bispectra_t == _TRUE_) {
+                  //   if (X == pbi->index_bf_t) index_ct_Xz = psp->index_ct_tz;
+                  //   if (Y == pbi->index_bf_t) index_ct_Yz = psp->index_ct_tz;
+                  //   if (Z == pbi->index_bf_t) index_ct_Zz = psp->index_ct_tz;
+                  // }
+                  // else if (pbi->has_bispectra_e == _TRUE_) {
+                  //   if (X == pbi->index_bf_e) index_ct_Xz = psp->index_ct_ez;
+                  //   if (Y == pbi->index_bf_e) index_ct_Yz = psp->index_ct_ez;
+                  //   if (Z == pbi->index_bf_e) index_ct_Zz = psp->index_ct_ez;
+                  // }
+                  // else {
+                  //   index_ct_Xz = 0;
+                  //   printf ("WARNING: C_l's for <X * zeta> where X=%s not found. Do not trust squeezed approximation.\n",
+                  //   pbi->bf_labels[X]);
+                  // }
                   // 
-                  // double C_l2_tz = pbi->cls[psp->index_ct_tz][l2-2];
-                  // double dlog_lsq_cl_l2 = pbi->dlog_cls[psp->index_ct_tt][l2-2];
+                  // double cl1_Xz = pbi->cls[index_ct_Xz][l1-2];
+                  // double cl2_Yz = pbi->cls[index_ct_Yz][l2-2];
+                  // double cl3_Zz = pbi->cls[index_ct_Zz][l3-2];
                   // 
-                  // double C_l3_tz = pbi->cls[psp->index_ct_tz][l3-2];
-                  // double dlog_lsq_cl_l3 = pbi->dlog_cls[psp->index_ct_tt][l3-2];
+                  // double dcl1_XZ = pbi->d_lsq_cls[pbi->index_ct_of_bf[X][Z]][l1-2];
+                  // double dcl1_YX = pbi->d_lsq_cls[pbi->index_ct_of_bf[Y][X]][l1-2];
+                  // double dcl2_YZ = pbi->d_lsq_cls[pbi->index_ct_of_bf[Y][Z]][l2-2];
+                  // double dcl2_YX = pbi->d_lsq_cls[pbi->index_ct_of_bf[Y][X]][l2-2];
+                  // double dcl3_YZ = pbi->d_lsq_cls[pbi->index_ct_of_bf[Y][Z]][l3-2];
+                  // double dcl3_XZ = pbi->d_lsq_cls[pbi->index_ct_of_bf[X][Z]][l3-2];
                   // 
-                  // /* Redshift (local modulation) */
-                  // pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3] += (C_l1*C_l2 + C_l1*C_l3 + C_l2*C_l3);
-                  //               
-                  // /* Ricci focussing (scale redefinition) */
-                  // pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3] += - 0.5 *
-                  //   (C_l1_tz * (C_l2*dlog_lsq_cl_l2) + C_l2_tz * (C_l1*dlog_lsq_cl_l1) +
-                  //    C_l1_tz * (C_l3*dlog_lsq_cl_l3) + C_l3_tz * (C_l1*dlog_lsq_cl_l1) +
-                  //    C_l2_tz * (C_l3*dlog_lsq_cl_l3) + C_l3_tz * (C_l2*dlog_lsq_cl_l2));    
+                  // /* The following formula is redundant (it can be reduced to three terms), but in this
+                  // way it is clearer */
+                  // double bolometric_T_lewis_ricci =
+                  //   (- 0.5 * cl1_Xz * (dcl2_YZ/l2 + dcl3_YZ/l3)      /* <X_l1 Y_l2 Z_l3> */
+                  //    - 0.5 * cl1_Xz * (dcl3_YZ/l3 + dcl2_YZ/l2)      /* <X_l1 Z_l3 Y_l2> */
+                  //                                                    
+                  //    - 0.5 * cl2_Yz * (dcl1_XZ/l1 + dcl3_XZ/l3)      /* <Y_l2 X_l1 Z_l3> */
+                  //    - 0.5 * cl2_Yz * (dcl3_XZ/l3 + dcl1_XZ/l1)      /* <Y_l2 X_l1 Z_l3> */
+                  //                                                    
+                  //    - 0.5 * cl3_Zz * (dcl1_YX/l1 + dcl2_YX/l2)      /* <Z_l3 X_l1 Y_l2> */
+                  //    - 0.5 * cl3_Zz * (dcl2_YX/l2 + dcl1_YX/l1))/6;  /* <Z_l3 Y_l2 X_l1> */
+                  // 
+                  // pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3] = bolometric_T_lewis_ricci;
+
                 }
     
                 // ---------------------------------------------------------------------------------------------
@@ -2257,117 +2341,270 @@ int bispectra_analytical_init (
               
                 }
             
-                // ---------------------------------------------------------------------------------------------
-                // -                                   Quadratic correction                                    -
-                // ---------------------------------------------------------------------------------------------
+                /* Update the counter */
+                #pragma omp atomic
+                pbi->count_memorised_for_bispectra++;
+    
+              } // end of for(index_l3)
               
-                /* The CMB temperature is obtained from the second-order distribution function by adding to it
-                a quadratic term (see Eq. 3.12 of arXiv:1401.3296).
-                At the bispectrum level this extra term translates to a four-point function in the first-order
-                perturbations, which in turn is expressed in terms of products of C_l's.
-                The same correction term appears for the delta_tilde transformation (see Eq. 3.5 of arXiv:1401.3296).
-                The correction in both cases has this form (see Eq. 3.6, 3.7 and 3.9 of same paper):
+              // ---------------------------------------------------------------------------------------------
+              // -                                   Quadratic correction                                    -
+              // ---------------------------------------------------------------------------------------------
+            
+              /* The CMB temperature is obtained from the second-order distribution function by adding to it
+              a quadratic term (see Eq. 3.12 of arXiv:1401.3296).
+              At the bispectrum level this extra term translates to a four-point function in the first-order
+              perturbations, which in turn is expressed in terms of products of C_l's.
+              The same correction term appears for the delta_tilde transformation (see Eq. 3.5 of arXiv:1401.3296).
+              The correction in both cases has this form (see Eq. 3.6, 3.7 and 3.9 of same paper):
+              
+                QC_{l1 l2 l3} = S_X3 * i^(L+V_X3) * ( l'  l''  |    l3 ) * (  l'  l'' | l3 )  
+                                                    ( 0   F_X3 | -F_X3 )   (  m'  m'' | m3  ) 
+                                * <a^X1_l1m1 * a^X2_l2m2 * a^I_l'm' * a^T_X3_l''m''> + 2 permutations (1->2->3)
                 
-                  QC_{l1 l2 l3} = S_X3 * i^(L+V_X3) * ( l'  l''  |    l3 ) * (  l'  l'' | l3 )  
-                                                      ( 0   F_X3 | -F_X3 )   (  m'  m'' | m3  ) 
-                                  * <a^X1_l1m1 * a^X2_l2m2 * a^I_l'm' * a^T_X3_l''m''> + 2 permutations (1->2->3)
+              where L=l3-l'-l'', all the a_lm's are first-order and, in this loop, X1=X, X2=Y and X3=Z. The
+              permutations go over 1->2->3 and refer to the position of the second-order perturbation in
+              the bispectrum; in the formula above, the positioning is <a^(1)X1_l1m1 * a^(1)X2_l2m2 * a^(2)X3_l3m3>.
+              The coefficients take different values according to which field is X3:
+
+                X3=I -> F=0, S=1, V_X3=0,  T_X3=I
+                X3=E -> F=2, S=2, V_X3=0,  T_X3=E
+                X3=B -> F=2, S=2, V_X3=-1, T_X3=E
+              
+              For X3=E-modes, the sum over l' and l'' only includes EVEN values of l3-l'-l'', for X3=B-modes
+              only includes ODD values of l3-l'-l''.
+
+              By employing Wick's theorem, the above can be expressed in terms of the angular power spectrum
+              of the CMB, C_l = <a_lm a^*_lm> (note that the a_lm's already include the 1/4 factor):
+              
+                QC_{l1 l2 l3} = 4 * B_{l1 l2 l3} * i^V_X3 * G^m1m2m3_l1l2l3 * S_X3 * [ 
+                                                   ( l1    l2     l3 ) * C^{X1,I}_l1 * C^{X2,X3}_l2
+                                                   ( 0   F_X3  -F_X3 )
+                                                 + (   l1  l2     l3 ) * C^{X1,X3}_l1 * C^{X2,I}_l2
+                                                   ( F_X3   0  -F_X3 )
+                                                                          ] + 2 permutations (1->2->3) ,
+              
+              where
+              
+                B_{l1 l2 l3} = sqrt((2*l1+1)*(2*l2+1)*(2*l3+1)/(4*_PI_)) * ( l1    l2   l3 )
+                                                                           ( m1    m2   m3 ) .
+              
+              Below we compute the quadratic correction term using this general formula and store it in
+              pbi->bispectra[index_bt_quadratic].
+              
+              For intensity (X1=X2=X3=I), the formula reduces to 8 * [ C_l1*C_l2 + C_l1*C_l2 + C_l1*C_l2 ], while             
+              any contribution form the second-order B-modes has the V_X=-1 and is therefore purely imaginary.
+              Furthermore, the B-mode contribution only includes one term, theone where a^B_lm is second order,
+              as we ignore the first-order B-modes. In any case, we do not compute the quadratic term for a B-mode
+              spectrum.
+              
+              */
+
+              if ((pbi->has_intrinsic == _TRUE_) && (index_bt == pbi->index_bt_quadratic)) {
+              
+                // ---------------------------------------------------------------
+                // -                  Determine field coefficients               -
+                // ---------------------------------------------------------------
+                
+                /* Relabel X,Y,Z to match the notation in the long comment above */
+                int X1=X, X2=Y, X3=Z;
+                
+                /* The spin of the fields is either 0 or 2, and we have stored in in the 'indices' function */
+                int F_X1 = pbi->field_spin[X1];
+                int F_X2 = pbi->field_spin[X2];
+                int F_X3 = pbi->field_spin[X3];
+                
+                /* Determine the amplitude S_X of the term in QC that involves the second-order part of X,
+                Also determine the field that goes in the C_l's, T_X, which is computed as T_I=I, T_E=E, T_B=E.  */
+                double S_X1, S_X2, S_X3;
+                int T_X1, T_X2, T_X3;
+                
+                /* Index of the cross power spectrum between X1, X2, X3 and I. It has to be set by hand,
+                rather than using the array pbi->index_ct_of_bf because pbi->index_ct_of_bf only contains
+                information on the fields appearing in one of the requested bispectrum. For example,
+                if you only request EEE, then pbi->index_ct_of_bf does not contain information about <ET> */
+                int index_ct_X1_I, index_ct_X2_I, index_ct_X3_I;
+                
+                if (pbi->has_bispectra_t == _TRUE_) {
+                  if (X1 == pbi->index_bf_t) {S_X1 = 1; T_X1 = pbi->index_bf_t; index_ct_X1_I = psp->index_ct_tt;}
+                  if (X2 == pbi->index_bf_t) {S_X2 = 1; T_X2 = pbi->index_bf_t; index_ct_X2_I = psp->index_ct_tt;}
+                  if (X3 == pbi->index_bf_t) {S_X3 = 1; T_X3 = pbi->index_bf_t; index_ct_X3_I = psp->index_ct_tt;}
+                }
+                if (pbi->has_bispectra_r == _TRUE_) {
+                  if (X1 == pbi->index_bf_r) {S_X1 = 1; T_X1 = pbi->index_bf_r; index_ct_X1_I = psp->index_ct_tr;}
+                  if (X2 == pbi->index_bf_r) {S_X2 = 1; T_X2 = pbi->index_bf_r; index_ct_X2_I = psp->index_ct_tr;}
+                  if (X3 == pbi->index_bf_r) {S_X3 = 1; T_X3 = pbi->index_bf_r; index_ct_X3_I = psp->index_ct_tr;}
+                }
+                if (pbi->has_bispectra_e == _TRUE_) {
+                  if (X1 == pbi->index_bf_e) {S_X1 = 2; T_X1 = pbi->index_bf_e; index_ct_X1_I = psp->index_ct_te;}
+                  if (X2 == pbi->index_bf_e) {S_X2 = 2; T_X2 = pbi->index_bf_e; index_ct_X2_I = psp->index_ct_te;}
+                  if (X3 == pbi->index_bf_e) {S_X3 = 2; T_X3 = pbi->index_bf_e; index_ct_X3_I = psp->index_ct_te;}
+                }
+                if (pbi->has_bispectra_b == _TRUE_) { /* Note that <TB> vanishes, hence the negative values */
+                  if (X1 == pbi->index_bf_b) {S_X1 = 2; T_X1 = pbi->index_bf_e; index_ct_X1_I = -1;}
+                  if (X2 == pbi->index_bf_b) {S_X2 = 2; T_X2 = pbi->index_bf_e; index_ct_X2_I = -1;}
+                  if (X3 == pbi->index_bf_b) {S_X3 = 2; T_X3 = pbi->index_bf_e; index_ct_X3_I = -1;}
+                }
+              
+                // -----------------------------------------------------------------------------------
+                // -                             Compute three-j symbols                             -
+                // -----------------------------------------------------------------------------------
+                
+                /* Compute the three-j symbols. We want to do it outside the loop on l3 as our
+                function for the 3j's computes them for all allowed values of l3 */
+              
+                double min_D, max_D;
+              
+                //                        l1,      l2,    l3,
+                //                        /*0,*/ F_X3, -F_X3,
+                class_call_parallel (drc3jj (
+                                       l1, l2, 0, F_X3,
+                                       &min_D, &max_D,
+                                       value[thread][l1_l2_l3_F_X3_mF_X3],
+                                       (2*pbi->l_max+1),
+                                       pbi->error_message       
+                                       ),
+                  pbi->error_message,
+                  pbi->error_message);
+              
+                min[thread][l1_l2_l3_F_X3_mF_X3] = (int)(min_D + _EPS_);
+                max[thread][l1_l2_l3_F_X3_mF_X3] = (int)(max_D + _EPS_);
+                size[thread][l1_l2_l3_F_X3_mF_X3] = max[thread][l1_l2_l3_F_X3_mF_X3] - min[thread][l1_l2_l3_F_X3_mF_X3] + 1;
+                
+                //                        l1,      l2,    l3,
+                //                        /*F_X3*/, 0, -F_X3,
+                class_call_parallel (drc3jj (
+                                       l1, l2, F_X3, 0,
+                                       &min_D, &max_D,
+                                       value[thread][l1_l2_l3_0_mF_X3],
+                                       (2*pbi->l_max+1),
+                                       pbi->error_message       
+                                       ),
+                  pbi->error_message,
+                  pbi->error_message);
+              
+                min[thread][l1_l2_l3_0_mF_X3] = (int)(min_D + _EPS_);
+                max[thread][l1_l2_l3_0_mF_X3] = (int)(max_D + _EPS_);
+                size[thread][l1_l2_l3_0_mF_X3] = max[thread][l1_l2_l3_0_mF_X3] - min[thread][l1_l2_l3_0_mF_X3] + 1;
+                
+                //                        l2,      l3,    l1,
+                //                        /*0*/, F_X1, -F_X1,
+                class_call_parallel (drc3jj (
+                                       l1, l2, -F_X1, 0,
+                                       &min_D, &max_D,
+                                       value[thread][l2_l3_l1_F_X1_mF_X1],
+                                       (2*pbi->l_max+1),
+                                       pbi->error_message       
+                                       ),
+                  pbi->error_message,
+                  pbi->error_message);
+              
+                min[thread][l2_l3_l1_F_X1_mF_X1] = (int)(min_D + _EPS_);
+                max[thread][l2_l3_l1_F_X1_mF_X1] = (int)(max_D + _EPS_);
+                size[thread][l2_l3_l1_F_X1_mF_X1] = max[thread][l2_l3_l1_F_X1_mF_X1] - min[thread][l2_l3_l1_F_X1_mF_X1] + 1;
+              
+                //                        l2,      l3,    l1,
+                //                        /*F_X1*/, 0, -F_X1,
+                class_call_parallel (drc3jj (
+                                       l1, l2, -F_X1, F_X1,
+                                       &min_D, &max_D,
+                                       value[thread][l2_l3_l1_0_mF_X1],
+                                       (2*pbi->l_max+1),
+                                       pbi->error_message       
+                                       ),
+                  pbi->error_message,
+                  pbi->error_message);
+              
+                min[thread][l2_l3_l1_0_mF_X1] = (int)(min_D + _EPS_);
+                max[thread][l2_l3_l1_0_mF_X1] = (int)(max_D + _EPS_);
+                size[thread][l2_l3_l1_0_mF_X1] = max[thread][l2_l3_l1_0_mF_X1] - min[thread][l2_l3_l1_0_mF_X1] + 1;  
+              
+                //                        l3,      l1,    l2,
+                //                        /*0*/, F_X2, -F_X2,
+                class_call_parallel (drc3jj (
+                                       l1, l2, F_X2, -F_X2,
+                                       &min_D, &max_D,
+                                       value[thread][l3_l1_l2_F_X2_mF_X2],
+                                       (2*pbi->l_max+1),
+                                       pbi->error_message       
+                                       ),
+                  pbi->error_message,
+                  pbi->error_message);
+              
+                min[thread][l3_l1_l2_F_X2_mF_X2] = (int)(min_D + _EPS_);
+                max[thread][l3_l1_l2_F_X2_mF_X2] = (int)(max_D + _EPS_);
+                size[thread][l3_l1_l2_F_X2_mF_X2] = max[thread][l3_l1_l2_F_X2_mF_X2] - min[thread][l3_l1_l2_F_X2_mF_X2] + 1;
+                
+                //                        l3,      l1,    l2,
+                //                        /*F_X2*/, 0, -F_X2,
+                class_call_parallel (drc3jj (
+                                       l1, l2, 0, -F_X2,
+                                       &min_D, &max_D,
+                                       value[thread][l3_l1_l2_0_mF_X2],
+                                       (2*pbi->l_max+1),
+                                       pbi->error_message       
+                                       ),
+                  pbi->error_message,
+                  pbi->error_message);
+              
+                min[thread][l3_l1_l2_0_mF_X2] = (int)(min_D + _EPS_);
+                max[thread][l3_l1_l2_0_mF_X2] = (int)(max_D + _EPS_);
+                size[thread][l3_l1_l2_0_mF_X2] = max[thread][l3_l1_l2_0_mF_X2] - min[thread][l3_l1_l2_0_mF_X2] + 1;
+              
+                //                        l1,   l2, l3,
+                //                        /*0*/, 0,  0,
+                class_call_parallel (drc3jj (
+                                       l1, l2, 0, 0,
+                                       &min_D, &max_D,
+                                       value[thread][l1_l2_l3_0_0],
+                                       (2*pbi->l_max+1),
+                                       pbi->error_message       
+                                       ),
+                  pbi->error_message,
+                  pbi->error_message);
+              
+                min[thread][l1_l2_l3_0_0] = (int)(min_D + _EPS_);
+                max[thread][l1_l2_l3_0_0] = (int)(max_D + _EPS_);
+                size[thread][l1_l2_l3_0_0] = max[thread][l1_l2_l3_0_0] - min[thread][l1_l2_l3_0_0] + 1;
+              
+                // -----------------------------------------------------------------------------------
+                // -                                    Loop over l3                                 -
+                // -----------------------------------------------------------------------------------
+                
+                for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {  
                   
-                where L=l3-l'-l'', all the a_lm's are first-order and, in this loop, X1=X, X2=Y and X3=Z. The
-                permutations go over 1->2->3 and refer to the position of the second-order perturbation in
-                the bispectrum; in the formula above, the positioning is <a^(1)X1_l1m1 * a^(1)X2_l2m2 * a^(2)X3_l3m3>.
-                The coefficients take different values according to which field is X3:
-
-                  X3=I -> F=0, S=1, V_X3=0,  T_X3=I
-                  X3=E -> F=2, S=2, V_X3=0,  T_X3=E
-                  X3=B -> F=2, S=2, V_X3=-1, T_X3=E
+                  int l3 = pbi->l[index_l3];
+                  double C_l3 = pbi->cls[psp->index_ct_tt][l3-2];
                 
-                For X3=E-modes, the sum over l' and l'' only includes EVEN values of l3-l'-l'', for X3=B-modes
-                only includes ODD values of l3-l'-l''.
-
-                By employing Wick's theorem, the above can be expressed in terms of the angular power spectrum
-                of the CMB, C_l = <a_lm a^*_lm> (note that the a_lm's already include the 1/4 factor):
-                
-                  QC_{l1 l2 l3} = 4 * B_{l1 l2 l3} * i^V_X3 * G^m1m2m3_l1l2l3 * S_X3 * [ 
-                                                     ( l1    l2     l3 ) * C^{X1,I}_l1 * C^{X2,X3}_l2
-                                                     ( 0   F_X3  -F_X3 )
-                                                   + (   l1  l2     l3 ) * C^{X1,X3}_l1 * C^{X2,I}_l2
-                                                     ( F_X3   0  -F_X3 )
-                                                                            ] + 2 permutations (1->2->3) ,
-                
-                where
-                
-                  B_{l1 l2 l3} = sqrt((2*l1+1)*(2*l2+1)*(2*l3+1)/(4*_PI_)) * ( l1    l2   l3 )
-                                                                             ( m1    m2   m3 ) .
-                
-                Below we compute the quadratic correction term using this general formula and store it in
-                pbi->bispectra[index_bt_quadratic].
-                
-                For intensity (X1=X2=X3=I), the formula reduces to 8 * [ C_l1*C_l2 + C_l1*C_l2 + C_l1*C_l2 ], while             
-                any contribution form the second-order B-modes has the V_X=-1 and is therefore purely imaginary.
-                Furthermore, the B-mode contribution only includes one term, theone where a^B_lm is second order,
-                as we ignore the first-order B-modes. In any case, we do not compute the quadratic term for a B-mode
-                spectrum.
-                
-                */
-
-                if ((pbi->has_intrinsic == _TRUE_) && (index_bt == pbi->index_bt_quadratic)) {
+                  /* Parity of the considered configuration */
+                  int L = l3-l1-l2;
+                  
+                  /* Index of the current (l1,l2,l3) configuration */
+                  long int index_l1_l2_l3 = pbi->index_l1_l2_l3[index_l1][index_l1-index_l2][index_l3_max-index_l3];
                 
                   /* If only TTT is needed, compute the quadratic (reduced) bispectrum in the simple way */
                   if ((pbi->has_bispectra_t == _TRUE_) && (pbi->bf_size == 1)) {
                     pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3] = 8 * (C_l1*C_l2 + C_l1*C_l3 + C_l2*C_l3);
                     goto end_of_quadratic_bispectrum; 
                   }
-                
+              
+                  /* Take into account that the contribution from E^(2) only exists when l3-l1-l2 is even,
+                  while that from B^(2) only when l3-l1-l2 is odd. */
+                  if ((pbi->has_bispectra_e == _TRUE_) && (L%2!=0)) {
+                    if (X1 == pbi->index_bf_e) S_X1 = 0;
+                    if (X2 == pbi->index_bf_e) S_X2 = 0;
+                    if (X3 == pbi->index_bf_e) S_X3 = 0;
+                  }
+                  if ((pbi->has_bispectra_b == _TRUE_) && (L%2==0)) {
+                    if (X1 == pbi->index_bf_b) S_X1 = 0;
+                    if (X2 == pbi->index_bf_b) S_X2 = 0;
+                    if (X3 == pbi->index_bf_b) S_X3 = 0;
+                  }
+                          
                   /* B-mode bispectrum not implemented yet */
                   class_test_parallel (pbi->has_bispectra_b == _TRUE_,
                     pbi->error_message,
                     "quadratic correction for B-mode bispectrum not implemented yet.");
-                
-                  // ---------------------------------------------------------------
-                  // -                  Determine field coefficients               -
-                  // ---------------------------------------------------------------
-                  
-                  /* Relabel X,Y,Z to match the notation in the long comment above */
-                  int X1=X, X2=Y, X3=Z;
-                  
-                  /* The spin of the fields is either 0 or 2, and we have stored in in the 'indices' function */
-                  int F_X1 = pbi->field_spin[X1];
-                  int F_X2 = pbi->field_spin[X2];
-                  int F_X3 = pbi->field_spin[X3];
-                  
-                  /* Determine the amplitude S_X of the term in QC that involves the second-order part of X,
-                  taking into account that the contribution from E^(2) only exists when l3-l1-l2 is even,
-                  while that from B^(2) only when l3-l1-l2 is odd. Also determine the field that goes in the
-                  C_l's, T_X, which is computed as T_I=I, T_E=E, T_B=E.  */
-                  double S_X1, S_X2, S_X3;
-                  int T_X1, T_X2, T_X3;
-                  
-                  /* Index of the cross power spectrum between X1, X2, X3 and I. It has to be set by hand,
-                  rather than using the array pbi->index_ct_of_bf because pbi->index_ct_of_bf only contains
-                  information on the fields appearing in one of the requested bispectrum. For example,
-                  if you only request EEE, then pbi->index_ct_of_bf does not contain information about <ET> */
-                  int index_ct_X1_I, index_ct_X2_I, index_ct_X3_I;
-                  
-                  if (pbi->has_bispectra_t == _TRUE_) {
-                    if (X1 == pbi->index_bf_t) {S_X1 = 1; T_X1 = pbi->index_bf_t; index_ct_X1_I = psp->index_ct_tt;}
-                    if (X2 == pbi->index_bf_t) {S_X2 = 1; T_X2 = pbi->index_bf_t; index_ct_X2_I = psp->index_ct_tt;}
-                    if (X3 == pbi->index_bf_t) {S_X3 = 1; T_X3 = pbi->index_bf_t; index_ct_X3_I = psp->index_ct_tt;}
-                  }
-                  if (pbi->has_bispectra_r == _TRUE_) {
-                    if (X1 == pbi->index_bf_r) {S_X1 = 1; T_X1 = pbi->index_bf_r; index_ct_X1_I = psp->index_ct_tr;}
-                    if (X2 == pbi->index_bf_r) {S_X2 = 1; T_X2 = pbi->index_bf_r; index_ct_X2_I = psp->index_ct_tr;}
-                    if (X3 == pbi->index_bf_r) {S_X3 = 1; T_X3 = pbi->index_bf_r; index_ct_X3_I = psp->index_ct_tr;}
-                  }
-                  if (pbi->has_bispectra_e == _TRUE_) {
-                    if (X1 == pbi->index_bf_e) {S_X1 = ((L%2==0)?2:0); T_X1 = pbi->index_bf_e; index_ct_X1_I = psp->index_ct_te;}
-                    if (X2 == pbi->index_bf_e) {S_X2 = ((L%2==0)?2:0); T_X2 = pbi->index_bf_e; index_ct_X2_I = psp->index_ct_te;}
-                    if (X3 == pbi->index_bf_e) {S_X3 = ((L%2==0)?2:0); T_X3 = pbi->index_bf_e; index_ct_X3_I = psp->index_ct_te;}
-                  }
-                  if (pbi->has_bispectra_b == _TRUE_) { /* Note that <TB> vanishes, hence the negative values */
-                    if (X1 == pbi->index_bf_b) {S_X1 = ((L%2!=0)?2:0); T_X1 = pbi->index_bf_e; index_ct_X1_I = -1;}
-                    if (X2 == pbi->index_bf_b) {S_X2 = ((L%2!=0)?2:0); T_X2 = pbi->index_bf_e; index_ct_X2_I = -1;}
-                    if (X3 == pbi->index_bf_b) {S_X3 = ((L%2!=0)?2:0); T_X3 = pbi->index_bf_e; index_ct_X3_I = -1;}
-                  }
                   
                   /* Get the C_l's. When implementing the B-modes, remember to 
                   set the C_l's to zero, so that the only contribution comes from the
@@ -2376,7 +2613,7 @@ int bispectra_analytical_init (
                   double C_l1_X1_I   = pbi->cls[index_ct_X1_I][l1-2];
                   double C_l1_X1_TX2 = pbi->cls[pbi->index_ct_of_bf[ X1 ][ T_X2 ]][l1-2];
                   double C_l1_X1_TX3 = pbi->cls[pbi->index_ct_of_bf[ X1 ][ T_X3 ]][l1-2];
-
+              
                   double C_l2_X2_I   = pbi->cls[index_ct_X2_I][l2-2];
                   double C_l2_X2_TX1 = pbi->cls[pbi->index_ct_of_bf[ X2 ][ T_X1 ]][l2-2];
                   double C_l2_X2_TX3 = pbi->cls[pbi->index_ct_of_bf[ X2 ][ T_X3 ]][l2-2];
@@ -2388,77 +2625,24 @@ int bispectra_analytical_init (
                   /* The sum includes three terms, corresponding to the three possible types
                   of second-order perturbations. The T_X1_term, for example, refers to the
                   term where a^X1_lm is second order. */
-                  double T_X3_term, T_X2_term, T_X1_term, three_j_1, three_j_2;
-                  
-                  class_call_parallel (threej_single (
-                                         l1, l2, l3, F_X3, -F_X3,
-                                         &three_j_1,
-                                         pbi->error_message       
-                                         ),
-                    pbi->error_message,
-                    pbi->error_message);
-
-                  class_call_parallel (threej_single (
-                                         l1, l2, l3, 0, -F_X3,
-                                         &three_j_2,
-                                         pbi->error_message       
-                                         ),
-                    pbi->error_message,
-                    pbi->error_message);
-
-                  T_X3_term = 4 * S_X3 * (three_j_1*C_l1_X1_I*C_l2_X2_TX3 + three_j_2*C_l1_X1_TX3*C_l2_X2_I);
-
-                  class_call_parallel (threej_single (
-                                         l2, l3, l1, F_X1, -F_X1,
-                                         &three_j_1,
-                                         pbi->error_message       
-                                         ),
-                    pbi->error_message,
-                    pbi->error_message);
-
-                  class_call_parallel (threej_single (
-                                         l2, l3, l1, 0, -F_X1,
-                                         &three_j_2,
-                                         pbi->error_message       
-                                         ),
-                    pbi->error_message,
-                    pbi->error_message);
-
-                  T_X1_term = 4 * S_X1 * (three_j_1*C_l2_X2_I*C_l3_X3_TX1 + three_j_2*C_l2_X2_TX1*C_l3_X3_I);
-
-                  class_call_parallel (threej_single (
-                                         l3, l1, l2, F_X2, -F_X2,
-                                         &three_j_1,
-                                         pbi->error_message       
-                                         ),
-                    pbi->error_message,
-                    pbi->error_message);
-
-                  class_call_parallel (threej_single (
-                                         l3, l1, l2, 0, -F_X2,
-                                         &three_j_2,
-                                         pbi->error_message       
-                                         ),
-                    pbi->error_message,
-                    pbi->error_message);
-
-                  T_X2_term = 4 * S_X2 * (three_j_1*C_l3_X3_I*C_l1_X1_TX2 + three_j_2*C_l3_X3_TX2*C_l1_X1_I);
-
-                  /* Perform the sum over the position of the second-order perturbation */
+              
+                  double threej_F_X3_mF_X3 = value[thread][l1_l2_l3_F_X3_mF_X3][l3 - min[thread][l1_l2_l3_F_X3_mF_X3]];
+                  double threej_0_mF_X3 = value[thread][l1_l2_l3_0_mF_X3][l3 - min[thread][l1_l2_l3_0_mF_X3]];
+                  double T_X3_term = 4 * S_X3 * (threej_F_X3_mF_X3*C_l1_X1_I*C_l2_X2_TX3 + threej_0_mF_X3*C_l1_X1_TX3*C_l2_X2_I);
+              
+                  double threej_F_X1_mF_X1 = value[thread][l2_l3_l1_F_X1_mF_X1][l3 - min[thread][l2_l3_l1_F_X1_mF_X1]];
+                  double threej_0_mF_X1 = value[thread][l2_l3_l1_0_mF_X1][l3 - min[thread][l2_l3_l1_0_mF_X1]];
+                  double T_X1_term = 4 * S_X1 * (threej_F_X1_mF_X1*C_l2_X2_I*C_l3_X3_TX1 + threej_0_mF_X1*C_l2_X2_TX1*C_l3_X3_I);
+              
+                  double three_j_F_X2_mF_X2 = value[thread][l3_l1_l2_F_X2_mF_X2][l3 - min[thread][l3_l1_l2_F_X2_mF_X2]];
+                  double three_j_0_mF_X2 = value[thread][l3_l1_l2_0_mF_X2][l3 - min[thread][l3_l1_l2_0_mF_X2]];
+                  double T_X2_term = 4 * S_X2 * (three_j_F_X2_mF_X2*C_l3_X3_I*C_l1_X1_TX2 + three_j_0_mF_X2*C_l3_X3_TX2*C_l1_X1_I);
+              
+                  /* Perform the sum over the three possible positions of the second-order perturbation */
                   pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3] = (T_X3_term + T_X2_term + T_X1_term);
                   
                   /* Comupte the reduced bispectrum */
-                  class_call_parallel (threej_single (
-                                         l1, l2, l3, 0, 0,
-                                         &three_j_1,
-                                         pbi->error_message       
-                                         ),
-                    pbi->error_message,
-                    pbi->error_message);
-                  
-                  double factor = sqrt((2*l1+1)*(2*l2+1)*(2*l3+1)/(4*_PI_));
-                  
-                  pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3] /= three_j_1;
+                  pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3] /= value[thread][l1_l2_l3_0_0][l3 - min[thread][l1_l2_l3_0_0]];
                 
                   /* Check that for <TTT> the correction is equal to 8 * (C_l1*C_l2 + C_l1*C_l3 + C_l2*C_l3) */
                   if ((pbi->has_bispectra_t==_TRUE_) && (X==pbi->index_bf_t) && (X==Y) && (X==Z)) {
@@ -2471,20 +2655,19 @@ int bispectra_analytical_init (
                   }
                   
                   end_of_quadratic_bispectrum: ;
-                  
+              
+                  /* Update the counter */
+                  #pragma omp atomic
+                  pbi->count_memorised_for_bispectra++;
+              
                   /* Debug. Print the quadratic contribution */
                   // printf ("B_quadratic_%3s[%3d,%3d,%3d] = %g\n",
                   //   pbi->bfff_labels[X][Y][Z], l1, l2, l3,
                   //   pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3]);
                 
-                } // end of quadratic correction
-              
-
-                /* Update the counter */
-                #pragma omp atomic
-                pbi->count_memorised_for_bispectra++;
-    
-              } // end of for(index_l3)
+                } // end of for(index_l3)
+                
+              } // end of quadratic correction
               
             } // end of for(index_l2)
     
@@ -2500,8 +2683,15 @@ int bispectra_analytical_init (
 
   } // end of for(index_bt)
 
-  // free (three_j_1);
-  // free (three_j_2);
+  /* Free 3j values array */
+  if (pbi->has_intrinsic == _TRUE_) {
+    for (thread=0; thread < number_of_threads; ++thread) {
+      for (int i=0; i < n_geometrical_factors; ++i)
+        free (value[thread][i]);
+      free (value[thread]);
+    }
+    free (value);
+  }
 
   return _SUCCESS_;
 

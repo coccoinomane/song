@@ -775,6 +775,9 @@ int main(int argc, char **argv) {
         else if ((l3>=l2) && (l2>=l1))
           bolometric_T = bi.bispectra[index_bt][Z][Y][X][index_l1_l2_l3];
         
+        /* ADD BY HAND THE QUADRATIC CORRECTIONS (temp + redshift) */
+        // bolometric_T += (4-3)/8. * bi.bispectra[bi.index_bt_quadratic][X][Y][Z][index_l1_l2_l3];
+        
         /* Corrective factor to convert the BOLOMETRIC TEMPERATURE bispectrum to the BRIGHTNESS TEMPERATURE bispectrum.
         These are related by: BRIGHTNESS = BOLOMETRIC + 3*(Cl1*Cl2 + Cl2*Cl3 + Cl1*Cl3). See, e.g., Pitrou et al. 2010
         or eq. 2.14 Nitta et al. 2009.

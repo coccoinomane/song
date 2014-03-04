@@ -2016,7 +2016,7 @@ or 'linear_extrapolation'.", "");
     else if (strstr(string1,"sum") != NULL)
       pfi->bispectra_interpolation = sum_over_all_multipoles;
   
-    else if (strcmp(string1,"mesh") == 0)
+    else if ((strcmp(string1,"mesh") == 0) || (strcmp(string1,"mesh_3d") == 0))
       pfi->bispectra_interpolation = mesh_interpolation;
   
     else if ((strcmp(string1,"mesh_2d") == 0) || (strcmp(string1,"mesh_2D") == 0))

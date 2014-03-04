@@ -1,6 +1,5 @@
 # Makefile for Song.
-# Last edited by Guido Walter Pettinari on 27/10/2013.
-
+# Created by Guido Walter Pettinari on 2010.
 
 # =========================================================================
 # =                         Compilers and flags                           =

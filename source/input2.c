@@ -1542,10 +1542,10 @@ int input2_default_params (
   // *** Technical parameters
 
   ppt2->has_debug_files = _FALSE_;
-  strcpy(ppt2->transfers_filename,"out/transfers2.txt");
-  strcpy(ppt2->quadsources_filename,"out/quadsources.txt");
-  strcpy(ppt2->quadliouville_filename,"out/quadliouville.txt");
-  strcpy(ppt2->quadcollision_filename,"out/quadcollision.txt");
+  strcpy(ppt2->transfers_filename,"output/transfers2.txt");
+  strcpy(ppt2->quadsources_filename,"output/quadsources.txt");
+  strcpy(ppt2->quadliouville_filename,"output/quadliouville.txt");
+  strcpy(ppt2->quadcollision_filename,"output/quadcollision.txt");
 
   ppt2->index_k1_debug = 0;
   ppt2->index_k2_debug = 0;

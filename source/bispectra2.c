@@ -152,10 +152,7 @@ int bispectra2_harmonic (
       pbi->error_message);
   
   }
-  
-  
-  
-  
+
   
     
   // ===================================================================================
@@ -2388,7 +2385,7 @@ int bispectra2_intrinsic_geometrical_factors (
   int max[number_of_threads][n_geometrical_factors];
   double *** value;
   class_alloc (value, number_of_threads*sizeof(double **), pbi->error_message);
-  for (thread=0; thread < number_of_threads; ++thread) {
+  for (int thread=0; thread < number_of_threads; ++thread) {
     class_alloc (value[thread], n_geometrical_factors*sizeof(double *), pbi->error_message);
     for (int ii=0; ii < n_geometrical_factors; ++ii)
       class_alloc (value[thread][ii], (2*pbi->l_max+1)*sizeof(double), pbi->error_message);

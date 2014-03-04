@@ -1384,14 +1384,21 @@ int fisher_compute (
         for (int Z = 0; Z < pbi->bf_size; ++Z) {
 
           /* Contribution from this l1 to the total (X+Y+Z) Fisher matrix */
-          pfi->fisher_matrix_l1[index_l1][index_ft_1][index_ft_2] += pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft_1][index_ft_2];
+          double l1_contribution = pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft_1][index_ft_2];
+          
+          /* Include the interpolation weight for the l1 direction, if needed */
+          if (pfi->bispectra_interpolation == mesh_interpolation_2d)
+            l1_contribution *= pwf->delta_l[index_l1];
+          
+          /* Sum over  all possible XYZ */
+          pfi->fisher_matrix_l1[index_l1][index_ft_1][index_ft_2] += l1_contribution;
 
           /* Contribution of all the l's smaller than l1 to the total (X+Y+Z) Fisher matrix */
-          accumulator += pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft_1][index_ft_2];
+          accumulator += l1_contribution;
           pfi->fisher_matrix_lmax[index_l1][index_ft_1][index_ft_2] = accumulator;
 
           /* Contribution of all the l's smaller than l1 to the Fisher matrix of XYZ */
-          accumulator_XYZ[X][Y][Z] += pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft_1][index_ft_2];
+          accumulator_XYZ[X][Y][Z] += l1_contribution;
           pfi->fisher_matrix_XYZ_lmax[X][Y][Z][index_l1][index_ft_1][index_ft_2] = accumulator_XYZ[X][Y][Z];
 
           /* Symmetrize */
@@ -1433,14 +1440,17 @@ int fisher_compute (
         for (int Z = 0; Z < pbi->bf_size; ++Z) {
 
           /* Contribution from this l3 to the total (X+Y+Z) Fisher matrix */
-          pfi->fisher_matrix_l3[index_l3][index_ft_1][index_ft_2] += pfi->fisher_matrix_XYZ_l3[X][Y][Z][index_l3][index_ft_1][index_ft_2];
+          double l3_contribution = pfi->fisher_matrix_XYZ_l3[X][Y][Z][index_l3][index_ft_1][index_ft_2];
+
+          /* Contribution from this l3 to the total (X+Y+Z) Fisher matrix */
+          pfi->fisher_matrix_l3[index_l3][index_ft_1][index_ft_2] += l3_contribution;
           
           /* Contribution of all the l's larger than l3 to the total (X+Y+Z) Fisher matrix */
-          accumulator += pfi->fisher_matrix_XYZ_l3[X][Y][Z][index_l3][index_ft_1][index_ft_2];
+          accumulator += l3_contribution;
           pfi->fisher_matrix_lmin[index_l3][index_ft_1][index_ft_2] = accumulator;
 
           /* Contribution of all the l's larger than l1 to the Fisher matrix of XYZ */
-          accumulator_XYZ[X][Y][Z] += pfi->fisher_matrix_XYZ_l3[X][Y][Z][index_l3][index_ft_1][index_ft_2];
+          accumulator_XYZ[X][Y][Z] += l3_contribution;
           pfi->fisher_matrix_XYZ_lmin[X][Y][Z][index_l3][index_ft_1][index_ft_2] = accumulator_XYZ[X][Y][Z];
 
           /* Symmetrize */
@@ -1677,6 +1687,15 @@ int fisher_cross_correlate_nodes (
                                 
           if ((l3 < pfi->l3_min_global) || (l3 > pfi->l3_max_global))
             continue;
+
+          /* Uncomment to restrict the approximation to squeezed configurations, as in Sec. 6 of Creminelli,
+          Pitrou & Vernizzi 2011. Note that in our case the smallest mode is l3, while in that paper it
+          is l1. */
+          // if (!((l3<=100) && (l2>=20*l3))) {
+          //   #pragma omp atomic
+          //   counter++;
+          //   continue;
+          // }
         
           /* Parity invariance enforces that the contribution of the modes with odd l1+l2+l3 is zero. Even if you
           comment this out, the result won't change as the I_l1_l2_l3 coefficient would vanish in that case. */
@@ -2109,11 +2128,11 @@ int fisher_cross_correlate_mesh (
           /* Uncomment to restrict the approximation to squeezed configurations, as in Sec. 6 of Creminelli,
           Pitrou & Vernizzi 2011. Note that in our case the smallest mode is l3, while in that paper it
           is l1. */
-          if (!((l3<=100) && (l2>=20*l3))) {
-            #pragma omp atomic
-            counter++;
-            continue;
-          }
+          // if (!((l3<=100) && (l2>=20*l3))) {
+          //   #pragma omp atomic
+          //   counter++;
+          //   continue;
+          // }
 
           // ---------------------------------------------------------------------------
           // -                            Interpolate bispectra                        -
@@ -2238,25 +2257,23 @@ int fisher_cross_correlate_mesh (
   /* Multiply the resulting Fisher matrix by interpolation factors and sky fraction */
   for (int index_l1=0; index_l1<pfi->l1_size; ++index_l1) {
     for (int X = 0; X < pbi->bf_size; ++X) {
-    for (int Y = 0; Y < pbi->bf_size; ++Y) {
-    for (int Z = 0; Z < pbi->bf_size; ++Z) {
+      for (int Y = 0; Y < pbi->bf_size; ++Y) {
+        for (int Z = 0; Z < pbi->bf_size; ++Z) {
       
-      for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
-        for (int index_ft_2=index_ft_1; index_ft_2 < pfi->fisher_size; ++index_ft_2) {
+          for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
+            for (int index_ft_2=index_ft_1; index_ft_2 < pfi->fisher_size; ++index_ft_2) {
     
-          /* Include sky coverage */
-          pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft_1][index_ft_2] *= pfi->f_sky;
+              /* Include sky coverage */
+              pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft_1][index_ft_2] *= pfi->f_sky;
                   
-          /* Include the interpolation weight for the l1 direction, if needed */
-          if (pfi->bispectra_interpolation == mesh_interpolation_2d)
-            pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft_1][index_ft_2] *= pwf->delta_l[index_l1];
-        
-          /* The Fisher matrix is symmetric */
-          pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft_2][index_ft_1] =
-            pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft_1][index_ft_2];   
+              /* The Fisher matrix is symmetric */
+              pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft_2][index_ft_1] =
+                pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft_1][index_ft_2];   
+            }
+          }
         }
       }
-    }}}
+    }
   } // end of for(index_l1)
 
   /* Do the same for the Fisher matrix as a function of the smallest multipole. Note that since the
@@ -2264,21 +2281,23 @@ int fisher_cross_correlate_mesh (
   to be multiplied by the interpolation coefficients. */ 
   for (int index_l3=0; index_l3<pfi->l3_size; ++index_l3) {
     for (int X = 0; X < pbi->bf_size; ++X) {
-    for (int Y = 0; Y < pbi->bf_size; ++Y) {
-    for (int Z = 0; Z < pbi->bf_size; ++Z) {
+      for (int Y = 0; Y < pbi->bf_size; ++Y) {
+        for (int Z = 0; Z < pbi->bf_size; ++Z) {
       
-      for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
-        for (int index_ft_2=index_ft_1; index_ft_2 < pfi->fisher_size; ++index_ft_2) {
+          for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
+            for (int index_ft_2=index_ft_1; index_ft_2 < pfi->fisher_size; ++index_ft_2) {
     
-          /* Include sky coverage */
-          pfi->fisher_matrix_XYZ_l3[X][Y][Z][index_l3][index_ft_1][index_ft_2] *= pfi->f_sky;
+              /* Include sky coverage */
+              pfi->fisher_matrix_XYZ_l3[X][Y][Z][index_l3][index_ft_1][index_ft_2] *= pfi->f_sky;
                   
-          /* The Fisher matrix is symmetric */
-          pfi->fisher_matrix_XYZ_l3[X][Y][Z][index_l3][index_ft_2][index_ft_1] =
-            pfi->fisher_matrix_XYZ_l3[X][Y][Z][index_l3][index_ft_1][index_ft_2];          
+              /* The Fisher matrix is symmetric */
+              pfi->fisher_matrix_XYZ_l3[X][Y][Z][index_l3][index_ft_2][index_ft_1] =
+                pfi->fisher_matrix_XYZ_l3[X][Y][Z][index_l3][index_ft_1][index_ft_2];          
+            }
+          }
         }
       }
-    }}}
+    }
   } // end of for(index_l3)
     
   return _SUCCESS_;
