@@ -47,7 +47,9 @@ int main(int argc, char **argv) {
 
   }
 
-  /****** all calculations done, now free the structures ******/
+  // =================================================================================
+  // =                                  Free memory                                  =
+  // =================================================================================
 
   if (background_free(&ba) == _FAILURE_) {
     printf("\n\nError in background_free \n=>%s\n",ba.error_message);

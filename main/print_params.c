@@ -38,8 +38,6 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
   
-  int i;
-  
   printf("~~~~~ Value of my parameters: ~~~~~\n");
 
   /* Flags */
@@ -171,18 +169,19 @@ int main(int argc, char **argv) {
   // printf("\tpt2.primordial_local_fnl_phi = %g\n", pt2.primordial_local_fnl_phi);
 
   /* Bispectrum */
-  // printf("* Bispectrum parameters\n");
-  // printf("\tpt2.has_bispectra = %d\n", pt2.has_bispectra);
-  // printf("\tbi.has_bispectra = %d\n", bi.has_bispectra);
-  // printf("\tbi.r_min = %g\n", bi.r_min);
-  // printf("\tbi.r_max = %g\n", bi.r_max);
-  // printf("\tbi.r_size = %d\n", bi.r_size);  
-  // printf("\tbi.has_local_model = %d\n", bi.has_local_model);
-  // printf("\tbi.has_equilateral_model = %d\n", bi.has_equilateral_model);
-  // printf("\tbi.has_orthogonal_model = %d\n", bi.has_orthogonal_model);
-  // printf("\tbi.has_galileon_model = %d\n", bi.has_galileon_model);
-  // printf("\tbi.has_intrinsic = %d\n", bi.has_intrinsic);
-  // printf("\tbi.has_intrinsic_squeezed = %d\n", bi.has_intrinsic_squeezed);
+  printf("* Bispectrum parameters\n");
+  printf("\tpt2.has_bispectra = %d\n", pt2.has_bispectra);
+  printf("\tbi.has_bispectra = %d\n", bi.has_bispectra);
+  printf("\tbi.r_min = %g\n", bi.r_min);
+  printf("\tbi.r_max = %g\n", bi.r_max);
+  printf("\tbi.r_size = %d\n", bi.r_size);  
+  printf("\tbi.has_local_model = %d\n", bi.has_local_model);
+  printf("\tbi.has_equilateral_model = %d\n", bi.has_equilateral_model);
+  printf("\tbi.has_orthogonal_model = %d\n", bi.has_orthogonal_model);
+  printf("\tbi.has_galileon_model = %d\n", bi.has_galileon_model);
+  printf("\tbi.has_intrinsic = %d\n", bi.has_intrinsic);
+  printf("\tbi.has_intrinsic_squeezed = %d\n", bi.has_intrinsic_squeezed);
+  printf("\tbi.has_quadratic_correction = %d\n", bi.has_quadratic_correction);
 
   /* Fisher */
   printf("\tfi.l_min_estimator = %d\n", fi.l_min_estimator);

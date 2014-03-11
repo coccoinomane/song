@@ -218,7 +218,9 @@ int class_assuming_bessels_computed(
 
   }
 
-  /****** all calculations done, now free the structures ******/
+  // =================================================================================
+  // =                                  Free memory                                  =
+  // =================================================================================
 
   if (lensing_free(ple) == _FAILURE_) {
     printf("\n\nError in spectra_free \n=>%s\n",ple->error_message);

@@ -155,7 +155,9 @@ int main(int argc, char **argv) {
   }
   
   
-  /****** all calculations done, now free the structures ******/
+  // =================================================================================
+  // =                                  Free memory                                  =
+  // =================================================================================
   
   if (thermodynamics_free(&th) == _FAILURE_) {
     printf("\n\nError in thermodynamics_free \n=>%s\n",th.error_message);

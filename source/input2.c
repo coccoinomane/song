@@ -1199,31 +1199,31 @@ int input2_init (
     _MAX_NUM_AZIMUTHAL_);
 
   /* For m>0 we cannot compute the reduced bispectrum when l1+l2+l3 is odd */
-  if ((pbi->has_intrinsic==_TRUE_) && (
-    (ppr2->m_max_2nd_order>0) ||
-    (ppt2->has_cmb_polarization_e) ||
-    (ppt2->has_cmb_polarization_b))) {
   // if ((pbi->has_intrinsic==_TRUE_) && (
   //   (ppr2->m_max_2nd_order>0) ||
-  // if (pbi->has_intrinsic==_TRUE_) {
-       
-    printf ("\n");
-    printf ("   *@^#?!?! FORCING THE COMPUTATION OF A GRID OF EVEN L'S\n");
-    printf ("\n");      
-    ppr->compute_only_even_ls = _TRUE_;
-
-    // printf ("\n");
-    // printf ("   *@^#?!?! FORCING THE COMPUTATION OF A GRID OF ODD L'S\n");
-    // printf ("\n");
-    // ppr->compute_only_odd_ls = _TRUE_;
-
-    class_test_permissive (
-      ((ppt2->has_cmb_polarization_b==_TRUE_) && (ppr->compute_only_even_ls==_TRUE_)) ||
-      ((ppt2->has_cmb_polarization_e==_TRUE_) && (ppr->compute_only_odd_ls==_TRUE_)) ||
-      ((ppt2->has_cmb_temperature==_TRUE_) && (ppr->compute_only_odd_ls==_TRUE_)),
-      errmsg,
-      "careful, your choice of parity is wrong!");
-  }
+  //   (ppt2->has_cmb_polarization_e) ||
+  //   (ppt2->has_cmb_polarization_b))) {
+  // // if ((pbi->has_intrinsic==_TRUE_) && (
+  // //   (ppr2->m_max_2nd_order>0) ||
+  // // if (pbi->has_intrinsic==_TRUE_) {
+  //      
+  //   printf ("\n");
+  //   printf ("   *@^#?!?! FORCING THE COMPUTATION OF A GRID OF EVEN L'S\n");
+  //   printf ("\n");      
+  //   ppr->compute_only_even_ls = _TRUE_;
+  // 
+  //   // printf ("\n");
+  //   // printf ("   *@^#?!?! FORCING THE COMPUTATION OF A GRID OF ODD L'S\n");
+  //   // printf ("\n");
+  //   // ppr->compute_only_odd_ls = _TRUE_;
+  // 
+  //   class_test_permissive (
+  //     ((ppt2->has_cmb_polarization_b==_TRUE_) && (ppr->compute_only_even_ls==_TRUE_)) ||
+  //     ((ppt2->has_cmb_polarization_e==_TRUE_) && (ppr->compute_only_odd_ls==_TRUE_)) ||
+  //     ((ppt2->has_cmb_temperature==_TRUE_) && (ppr->compute_only_odd_ls==_TRUE_)),
+  //     errmsg,
+  //     "careful, your choice of parity is wrong!");
+  // }
 
   /* Find out the index in ppr2->m corresponding to a given m. */
   class_alloc (ppr2->index_m, (ppr2->m_max_2nd_order+1)*sizeof(int), errmsg);

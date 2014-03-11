@@ -258,7 +258,9 @@ int main(int argc, char **argv) {
     
   printf ("\n");
 
-  /****** all calculations done, now free the structures ******/
+  // =================================================================================
+  // =                                  Free memory                                  =
+  // =================================================================================
 
 
   if (perturb2_free(&pr2,&pt2) == _FAILURE_) {

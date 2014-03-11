@@ -898,11 +898,23 @@ int input_init(
     perturbations. */
     if (strstr(string1,"intrinsic") != NULL) {
       pbi->has_intrinsic = _TRUE_;
+      pbi->has_quadratic_correction = _TRUE_;
       ppt->has_perturbations2 = _TRUE_;
       ppt->has_cls = _TRUE_;
     }
     
   } // end of bispectrum_types parsing
+  
+  /* Turn off the quadratic corrections to the intrinsic bispectrum coming from
+  the bolometric temperature and from the redshift term */
+  class_call(parser_read_string(pfc,"quadratic_corrections_to_intrinsic",&string1,&flag1,errmsg),
+	     errmsg,
+	     errmsg);	
+	     
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL))) {
+    pbi->has_quadratic_correction = _FALSE_;
+  }
+
   
   // *** END OF MY MODIFICATIONS ***
 
@@ -2686,6 +2698,7 @@ int input_default_params(
   pbi->has_local_squeezed = _FALSE_;
   pbi->has_cosine_shape = _FALSE_;
   pbi->has_isw_lensing = _FALSE_;
+  pbi->has_quadratic_correction = _FALSE_;
   pbi->store_bispectra_to_disk = _FALSE_;
 
 

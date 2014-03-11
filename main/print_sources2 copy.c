@@ -236,7 +236,9 @@ int main(int argc, char **argv) {
   }
   
   
-  /****** all calculations done, now free the structures ******/
+  // =================================================================================
+  // =                                  Free memory                                  =
+  // =================================================================================
 
   /* Free the memory associated with the line-of-sight sources for the considered k1 */
   if ( (pt2.load_sources_from_disk == _TRUE_) || (pt2.store_sources_to_disk == _TRUE_) )

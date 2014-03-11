@@ -441,7 +441,7 @@ int bispectra_indices (
     index_bt++;
   }
   
-  if (pbi->has_intrinsic == _TRUE_) {
+  if (pbi->has_quadratic_correction == _TRUE_) {
     pbi->index_bt_quadratic = index_bt;
     strcpy (pbi->bt_labels[index_bt], "quadratic");
     pbi->bispectrum_type[index_bt] = analytical_bispectrum;
@@ -947,8 +947,6 @@ int bispectra_cls (
     the second one (derivative of computed C_l's), with respect to the number of points
     taken in the l-grid. Uncomment the following lines to use the first approach. */
 
-    // /* To compute the squeezed limit approximation case, we need the derivative of 
-    // l*l*C_l. We interpolate exactly in the same way as we did for the normal C_l's. */
     // if (pbi->has_intrinsic_squeezed == _TRUE_) {
     // 
     //   class_call(spectra_dcl_at_l(
@@ -2123,7 +2121,7 @@ int bispectra_analytical_init (
   int max[number_of_threads][n_geometrical_factors];
   double *** value;
 
-  if (pbi->has_intrinsic == _TRUE_) {  
+  if (pbi->has_quadratic_correction == _TRUE_) {  
     /* Temporary arrays and values needed to store the results of the 3j and 6j computations */
     class_alloc (value, number_of_threads*sizeof(double **), pbi->error_message);
     for (int thread=0; thread < number_of_threads; ++thread) {
@@ -2400,7 +2398,7 @@ int bispectra_analytical_init (
               
               */
 
-              if ((pbi->has_intrinsic == _TRUE_) && (index_bt == pbi->index_bt_quadratic)) {
+              if ((pbi->has_quadratic_correction == _TRUE_) && (index_bt == pbi->index_bt_quadratic)) {
               
                 // ---------------------------------------------------------------
                 // -                  Determine field coefficients               -
@@ -2684,7 +2682,7 @@ int bispectra_analytical_init (
   } // end of for(index_bt)
 
   /* Free 3j values array */
-  if (pbi->has_intrinsic == _TRUE_) {
+  if (pbi->has_quadratic_correction == _TRUE_) {
     for (thread=0; thread < number_of_threads; ++thread) {
       for (int i=0; i < n_geometrical_factors; ++i)
         free (value[thread][i]);

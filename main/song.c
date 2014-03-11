@@ -124,9 +124,9 @@ int main(int argc, char **argv) {
   
   
   
-  
-  
-  /****** all calculations done, now free the structures ******/
+  // =================================================================================
+  // =                                  Free memory                                  =
+  // =================================================================================
   
   if (fisher_free(&bi,&fi) == _FAILURE_) {
     printf("\n\nError in fisher_free \n=>%s\n",fi.error_message);

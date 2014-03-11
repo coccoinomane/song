@@ -83,7 +83,6 @@ int main(int argc, char **argv) {
 	pt.has_cl_cmb_temperature = pt2.has_cmb_temperature = _TRUE_;
   bi.has_bispectra = _FALSE_;
 
-
   if (background_init(&pr,&ba) == _FAILURE_) {
     printf("\n\nError running background_init \n=>%s\n",ba.error_message);
     return _FAILURE_;
@@ -147,14 +146,9 @@ int main(int argc, char **argv) {
   fprintf(stderr,"# omega_b = %g, omega_cdm = %g, omega_lambda = %g, omega_ur = %g, omega_fld = %g\n",
     ba.Omega0_b*h*h, ba.Omega0_cdm*h*h, ba.Omega0_lambda*h*h, ba.Omega0_ur*h*h, ba.Omega0_fld*h*h);
 
-
-  
-  /* Running indices */
-  int index_k;
+  /* Shortcuts */
   int k_size = tr.k_size[index_mode];
-  int index_tt;
   int tt_size = tr.tt_size[index_mode];
-  int index_l;
   int l_size = tr.l_size[index_mode];  
   
   /* Account for overshooting of the inputs */
@@ -184,8 +178,8 @@ int main(int argc, char **argv) {
   char label[32];
 
   /* Print labels of transfer types */
-  for (index_tt = 0; index_tt < MIN(tt_size,n_columns); ++index_tt) {
-    for (index_l = 0; index_l < MIN(l_size,n_columns); ++index_l) {
+  for (int index_tt = 0; index_tt < MIN(tt_size,n_columns); ++index_tt) {
+    for (int index_l = 0; index_l < MIN(l_size,n_columns); ++index_l) {
       if (index_tt==tr.index_tt_t)
         sprintf (label, "T_%d", tr.l[index_l]);
       else if (index_tt==tr.index_tt_e)
@@ -197,7 +191,7 @@ int main(int argc, char **argv) {
   
 
   // **************    Loop on k    *****************//
-  for (index_k = 0; index_k < k_size; ++index_k) {
+  for (int index_k = 0; index_k < k_size; ++index_k) {
   
     double k = tr.k[index_mode][index_k];
   
@@ -205,8 +199,8 @@ int main(int argc, char **argv) {
     fprintf (stderr,"%+15e ", k);
       
     /* Columns from 3 to tt2_size+2 are the transfer functions */
-    for (index_tt = 0; index_tt < MIN(tt_size,n_columns); ++index_tt) {
-      for (index_l = 0; index_l < MIN(l_size,n_columns); ++index_l) {
+    for (int index_tt = 0; index_tt < MIN(tt_size,n_columns); ++index_tt) {
+      for (int index_l = 0; index_l < MIN(l_size,n_columns); ++index_l) {
   
         double var = tr.transfer[index_mode] 
           [((index_ic * tt_size + index_tt) * l_size + index_l) * k_size + index_k];
@@ -226,24 +220,17 @@ int main(int argc, char **argv) {
   } // end of for(index_k)
   
   
-  /****** all calculations done, now free the structures ******/
-  if (transfer2_free(&pt2,&tr2) == _FAILURE_) {
-    printf("\n\nError in transfer2_free \n=>%s\n",tr2.error_message);
-    return _FAILURE_;
-  }
+  // =================================================================================
+  // =                                  Free memory                                  =
+  // =================================================================================
 
   if (transfer_free(&tr) == _FAILURE_) {
     printf("\n\nError in transfer_free \n=>%s\n",tr.error_message);
     return _FAILURE_;
   }
-
+  
   if (bessel_free(&pr,&bs) == _FAILURE_)  {
     printf("\n\nError in bessel_free \n=>%s\n",bs.error_message);
-    return _FAILURE_;
-  }
-  
-  if (perturb2_free(&pr2,&pt2) == _FAILURE_) {
-    printf("\n\nError in perturb2_free \n=>%s\n",pt2.error_message);
     return _FAILURE_;
   }
   

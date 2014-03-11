@@ -76,7 +76,9 @@ int main(int argc, char **argv) {
   
   fclose(output);
 
-  /****** all calculations done, now free the structures ******/
+  // =================================================================================
+  // =                                  Free memory                                  =
+  // =================================================================================
 
   if (perturb_free(&pr,&pt) == _FAILURE_) {
     printf("\n\nError in perturb_free \n=>%s\n",pt.error_message);

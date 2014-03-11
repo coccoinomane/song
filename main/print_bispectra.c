@@ -997,7 +997,9 @@ int main(int argc, char **argv) {
   } // end of for(index_l3)
   
   
-  // /****** all calculations done, now free the structures ******/
+  // =================================================================================
+  // =                                  Free memory                                  =
+  // =================================================================================
   
   for (i=0; i<argc_for_SONG; ++i) free (argv_for_SONG[i]);
   free (argv_for_SONG);

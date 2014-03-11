@@ -35,6 +35,7 @@ struct bispectra {
   short has_local_squeezed;           /* Squeezed limit for local model (Guangui et al. 1994) */
   short has_cosine_shape;             /* The above, multiplied by an oscillating function in l */
   short has_isw_lensing;              /* ISW-Lensing bispectrum shape */
+  short has_quadratic_correction;     /* Four-point contribution to the bispectrum */
 
   /* Indices for the above bispectra types */
   int index_bt_local;                 /* Index for the bispectrum for a local model */
