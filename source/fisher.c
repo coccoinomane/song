@@ -1762,17 +1762,18 @@ int fisher_cross_correlate_nodes (
           
           /* If we are taking all the l-points, then any interpolation scheme reduces to a simple sum over the
           multipoles, and then we can naturally implement the delta factor in KSW2005. */
+          double one_over_delta = 1;
           if (ppr->l_linstep == 1) {
 
             if ((l1==l2) && (l1==l3))
-              interpolation_weight /= 6.;
+              one_over_delta = 1/6.;
 
             else if ((l1==l2) || (l1==l3) || (l2==l3))
-              interpolation_weight /= 2.;
+              one_over_delta = 0.5;
           }
           
           /* Include the double 3j symbol */
-          interpolation_weight *= pfi->I_l1_l2_l3[index_l1_l2_l3] * pfi->I_l1_l2_l3[index_l1_l2_l3];
+          double threej_000_squared = pfi->I_l1_l2_l3[index_l1_l2_l3] * pfi->I_l1_l2_l3[index_l1_l2_l3];
           
           /* Compute the Fisher matrix. In the simple case of only one probe (eg. temperature -> TTT),
           each element of the Fisher matrix is simply given by the square of the bispectrum divided
@@ -1788,9 +1789,11 @@ int fisher_cross_correlate_nodes (
             for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
               for (int index_ft_2=index_ft_1; index_ft_2 < pfi->fisher_size; ++index_ft_2) {              
 
-                double fisher = interpolation_weight *
+                double fisher = one_over_delta *
+                                interpolation_weight *
+                                threej_000_squared *
                                 inverse_covariance *
-                                pbi->bispectra[pfi->index_bt_of_ft[index_ft_1]][A][B][C][index_l1_l2_l3] *                                  
+                                pbi->bispectra[pfi->index_bt_of_ft[index_ft_1]][A][B][C][index_l1_l2_l3] *                             
                                 pbi->bispectra[pfi->index_bt_of_ft[index_ft_2]][X][Y][Z][index_l1_l2_l3];
                                 
                 pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft_1][index_ft_2] += fisher;
@@ -2041,10 +2044,6 @@ int fisher_cross_correlate_mesh (
   number_of_threads = omp_get_num_threads();
   #endif
 
-  /* Temporary values needed for the computation of the 3j symbol */
-  double ** temporary_three_j;
-  class_alloc (temporary_three_j, number_of_threads*sizeof(double *), pfi->error_message);
-
   /* Temporary values needed to store the bispectra interpolated in a given (l1,l2,l3) configuration 
   and for a certain type of bispectrum (e.g. local_tte). The array is indexed as
   interpolated_bispectra[thread][index_ft][X][Y][Z] */
@@ -2057,11 +2056,6 @@ int fisher_cross_correlate_mesh (
     #ifdef _OPENMP
     thread = omp_get_thread_num();
     #endif
-
-    /* The temporary array will contain at most 2*l_max+1 values when l1=l2=l_max, with the +1
-    accounting for the l=0 case. */
-    double l3_min_3j_D, l3_max_3j_D;
-    class_alloc_parallel (temporary_three_j[thread], (2*pfi->l_max+1)*sizeof(double ****), pfi->error_message);
 
     /* As many interpolations as the total number of bispectra (pfi->fisher_size * pbi->bf_size^3) */
     class_alloc_parallel (interpolated_bispectra[thread], pfi->fisher_size*sizeof(double ***), pfi->error_message);
@@ -2087,6 +2081,11 @@ int fisher_cross_correlate_mesh (
     
       if ((l1 < pfi->l1_min_global) || (l1 > pfi->l1_max_global))
         continue;
+
+      /* Arrays that will contain the 3j symbols for a given (l1,l2) */
+      double threej_000[2*pbi->l_max+1], threej_m220[2*pbi->l_max+1],
+             threej_0m22[2*pbi->l_max+1], threej_20m2[2*pbi->l_max+1];
+      int l3_min_000, l3_min_0m22, l3_min_20m2, l3_min_m220;
     
       if (pfi->fisher_verbose > 2)
         printf ("     * computing Fisher matrix for l1=%d\n", l1);
@@ -2105,20 +2104,66 @@ int fisher_cross_correlate_mesh (
           continue;
       
         double C_l2 = pbi->cls[pfi->index_ct_window][l2-2];
-
-        /* Compute the actual 3j symbol for all allowed values of l3 */
-        class_call_parallel (drc3jj (
-                      l1, l2, 0, 0,
-                      &l3_min_3j_D, &l3_max_3j_D,
-                      temporary_three_j[thread],
-                      (2*pfi->l_max+1),
-                      pfi->error_message       
-                      ),
-          pfi->error_message,
-          pfi->error_message);
   
-        int l3_min_3j = (int)(l3_min_3j_D+_EPS_);
         int l3_min = MAX(l1-l2,2);
+
+        // -----------------------------------------------------------------------------------
+        // -                             Compute three-j symbols                             -
+        // -----------------------------------------------------------------------------------
+      
+        /* Compute the 3j-symbol that enters the estimator, (l1 l2 l3)(0 0 0) */
+        
+        double min_D, max_D;
+  
+        class_call_parallel (drc3jj (
+                               l1, l2, 0, 0,
+                               &min_D, &max_D,
+                               threej_000,
+                               (2*pbi->l_max+1),
+                               pfi->error_message),
+          pfi->error_message,
+          pfi->error_message);          
+        l3_min_000 = (int)(min_D + _EPS_);
+
+
+        /* Compute more 3j-symbols, needed to compute specific bispectra. For more information
+        on why these are needed, refer to the function 'bispectra_analytical_init0 in the
+        bispectrum module. */
+
+        if ((pbi->has_bispectra_e) &&
+           ((pbi->has_quadratic_correction == _TRUE_) || (pbi->has_isw_lensing == _TRUE_))) {
+            
+          class_call_parallel (drc3jj (
+                                 l1, l2, 0, -2,
+                                 &min_D, &max_D,
+                                 threej_0m22,
+                                 (2*pbi->l_max+1),
+                                 pfi->error_message),
+            pfi->error_message,
+            pfi->error_message);
+          l3_min_0m22 = (int)(min_D + _EPS_);
+    
+          class_call_parallel (drc3jj (
+                                 l1, l2, 2, 0,
+                                 &min_D, &max_D,
+                                 threej_20m2,
+                                 (2*pbi->l_max+1),
+                                 pfi->error_message),
+            pfi->error_message,
+            pfi->error_message);
+          l3_min_20m2 = (int)(min_D + _EPS_);
+        
+          class_call_parallel (drc3jj (
+                                 l1, l2, -2, 2,
+                                 &min_D, &max_D,
+                                 threej_m220,
+                                 (2*pbi->l_max+1),
+                                 pfi->error_message),
+            pfi->error_message,
+            pfi->error_message);
+          l3_min_m220 = (int)(min_D + _EPS_);
+    
+        } // end of 3j computation
 
         // ------------------------------------------------
         // -                  Sum over l3                 -
@@ -2149,11 +2194,11 @@ int fisher_cross_correlate_mesh (
           // }
 
           // ---------------------------------------------------------------------------
-          // -                            Interpolate bispectra                        -
+          // -                              Obtain bispectra                           -
           // ---------------------------------------------------------------------------
 
           /* Factor that relates the reduced bispectrum to the angle-averaged one */
-          double I_l1_l2_l3 = sqrt((2.*l1+1.)*(2.*l2+1.)*(2.*l3+1.)/(4.*_PI_)) * temporary_three_j[thread][l3-l3_min_3j];
+          double I_l1_l2_l3 = sqrt((2.*l1+1.)*(2.*l2+1.)*(2.*l3+1.)/(4.*_PI_)) * threej_000[l3-l3_min_000];
 
           /* Interpolate all bispectra in (l1,l2,l3). These two loops go over all the possible bispectra,
           eg. local_ttt, equilateral_ete, intrinsic_ttt. */
@@ -2162,23 +2207,48 @@ int fisher_cross_correlate_mesh (
             for (int Y = 0; Y < pbi->bf_size; ++Y) {
             for (int Z = 0; Z < pbi->bf_size; ++Z) {
 
-              class_call_parallel (fisher_interpolate_bispectrum(
-                                     pbi,
-                                     pfi,
-                                     index_ft,
-                                     X,Y,Z,
-                                     l1,
-                                     l2,
-                                     l3,
-                                     &interpolated_bispectra[thread][index_ft][X][Y][Z]),
-                pfi->error_message,
-                pfi->error_message);
+              /*  ISW-LENSING BISPECTRUM */
+              if ((pbi->has_isw_lensing == _TRUE_) && (pfi->index_bt_of_ft[index_ft] == pbi->index_bt_isw_lensing)) {
+              // if (_FALSE_) {
+                
+                double doesnt_matter;
 
-              /* Compensate the effect of the window function. Note that the C_l's appearing here should not
-              be corrected for instrumental noise. */
-              double inverse_window = C_l1*C_l2 + C_l1*C_l3 + C_l2*C_l3;
+                class_call_parallel (bispectra_isw_lensing (
+                              ppr, psp, ple, pbi,
+                              l1, l2, l3,
+                              X, Y, Z,
+                              (pbi->has_bispectra_e==_TRUE_)?threej_000[l3-l3_min_000]:doesnt_matter,
+                              (pbi->has_bispectra_e==_TRUE_)?threej_20m2[l3-l3_min_20m2]:doesnt_matter,
+                              (pbi->has_bispectra_e==_TRUE_)?threej_m220[l3-l3_min_m220]:doesnt_matter,
+                              (pbi->has_bispectra_e==_TRUE_)?threej_0m22[l3-l3_min_0m22]:doesnt_matter,
+                              &interpolated_bispectra[thread][index_ft][X][Y][Z]),
+                  pbi->error_message,
+                  pbi->error_message);
+
+              } 
+              /*  INTERPOLATE ALL OTHER BISPECTRA */
+              else {
+
+                class_call_parallel (fisher_interpolate_bispectrum(
+                                       pbi,
+                                       pfi,
+                                       index_ft,
+                                       X,Y,Z,
+                                       l1,
+                                       l2,
+                                       l3,
+                                       &interpolated_bispectra[thread][index_ft][X][Y][Z]),
+                  pfi->error_message,
+                  pfi->error_message);
+
+                /* Compensate the effect of the window function. Note that the C_l's appearing here should not
+                be corrected for instrumental noise. */
+                double inverse_window = C_l1*C_l2 + C_l1*C_l3 + C_l2*C_l3;
+                interpolated_bispectra[thread][index_ft][X][Y][Z] *= inverse_window;
+              } 
               
-              interpolated_bispectra[thread][index_ft][X][Y][Z] *= I_l1_l2_l3 * inverse_window;
+              /* All bispectra have to be multiplied by the parity factor */
+              interpolated_bispectra[thread][index_ft][X][Y][Z] *= I_l1_l2_l3;
 
             }}} // end of for(XYZ)
           } // end of for(index_ft)
@@ -2248,8 +2318,6 @@ int fisher_cross_correlate_mesh (
     // -                              Free memory                            -
     // ------------------------------------------------------------------------
     
-    free (temporary_three_j[thread]);
-    
     for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
       for (int X = 0; X < pbi->bf_size; ++X) {
         for (int Y = 0; Y < pbi->bf_size; ++Y) {
@@ -2260,7 +2328,6 @@ int fisher_cross_correlate_mesh (
     
   } if (abort == _TRUE_) return _FAILURE_; // end of parallel region
   
-  free (temporary_three_j);
   free (interpolated_bispectra);
   
 

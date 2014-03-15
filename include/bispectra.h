@@ -785,6 +785,20 @@ extern "C" {
     double * out
     );
 
+  int bispectra_isw_lensing (
+    struct precision * ppr,
+    struct spectra * psp,
+    struct lensing * ple,
+    struct bispectra * pbi,
+    int l1, int l2, int l3,
+    int X1, int X2, int X3,
+    double threej_l1_l2_l3_0_0_0,
+    double threej_l1_l2_l3_2_0_m2,
+    double threej_l1_l2_l3_m2_2_0,
+    double threej_l1_l2_l3_0_m2_2,
+    double * result
+    );
+
 #ifdef __cplusplus
 }
 #endif
