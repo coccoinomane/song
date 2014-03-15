@@ -60,6 +60,10 @@ struct bispectra {
   /* How many bispectra of each type shall we compute? Indexed as pbi->n[bispectrum type], where
   the bispectrum type can be separable, non_separable, analytical, intrinsic */
   int n[_MAX_NUM_BISPECTRA_];
+  
+  /* Add the bolometric and redshift corrections (in the form of C_l*C_l) to the intrinsic bispectrum?
+  Ignore if you are only interested in first-order CLASS. */
+  short add_quadratic_correction;
 
 
 
@@ -205,6 +209,7 @@ struct bispectra {
   indexed as cls[index_ct][l-2] */
   double ** cls;
   double ** d_lsq_cls;        /* Logarithmic derivative of the C_l's, as in Lewis 2012 */
+  double ** lensed_cls;
 
   /* Array that contains the measure for the trapezoidal integration over k of the first-order transfer
   functions. It is defined as ptr->k[i+1] - ptr->k[i-1]. */
@@ -478,6 +483,7 @@ extern "C" {
   int bispectra_free(
        struct perturbs * ppt,
        struct spectra * psp,
+       struct lensing * ple,
        struct bispectra * pbi
        );
 
@@ -503,7 +509,8 @@ extern "C" {
       );
 
   int bispectra_cls (
-     struct perturbs * ppt,
+      struct precision * ppr,
+      struct perturbs * ppt,
       struct spectra * psp,
       struct lensing * ple,
       struct bispectra * pbi
@@ -518,6 +525,7 @@ extern "C" {
       struct transfers * ptr,
       struct primordial * ppm,
       struct spectra * psp,
+      struct lensing * ple,
       struct bispectra * pbi
       );
 
@@ -589,6 +597,7 @@ extern "C" {
       struct transfers * ptr,
       struct primordial * ppm,
       struct spectra * psp,
+      struct lensing * ple,
       struct bispectra * pbi
       );
 

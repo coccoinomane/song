@@ -370,7 +370,7 @@ int fisher_indices (
   pfi->fisher_size = index_ft;  
 
   if (pfi->fisher_verbose > 0) {
-    printf (" -> Fisher matrix will contain %d rows: ", pfi->fisher_size);
+    printf (" -> Fisher matrix will contain %d row%s: ", pfi->fisher_size, (pfi->fisher_size!=1)?"s":"");
     for (int index_ft=0; index_ft < (pfi->fisher_size-1); ++index_ft)
       printf ("%s, ", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
     printf ("%s\n", pbi->bt_labels[pfi->index_bt_of_ft[pfi->fisher_size-1]]);
@@ -898,8 +898,17 @@ int fisher_create_interpolation_mesh(
 
   // ***  Coarse mesh parameters  ***
 
-  pfi->link_lengths[1] = 0.5/sqrt(2) * ppr->l_linstep;
-  pfi->group_lengths[1] = 0.1 * ppr->l_linstep;
+  /* We will choose the linking length based on ppr->l_linstep, which determines the
+  (linear) step between the l's for high values of l_linstep. If ppr->l_linstep=1, 
+  all l's are used and there is effectively no interpolation. However, if also 
+  ppr->compute_only_even_ls == _TRUE_, then the actual step between one multipole
+  and the other is doubled, as the odd l's are skipped. */
+  int l_linstep = ppr->l_linstep;
+  if ((ppr->l_linstep==1) && (ppr->compute_only_even_ls == _TRUE_))
+    l_linstep = 2;
+
+  pfi->link_lengths[1] = 0.5/sqrt(2) * l_linstep;
+  pfi->group_lengths[1] = 0.1 * l_linstep;
   pfi->soft_coeffs[1] = 0.5;
   
   for (int index_mesh=0; index_mesh < pfi->n_meshes; ++index_mesh)
@@ -913,17 +922,17 @@ int fisher_create_interpolation_mesh(
   // ==================================================================================
   
   /* Never use the fine grid if the large step is used since the beginning */
-  if ((pbi->l[1]-pbi->l[0]) >= ppr->l_linstep) {
+  if ((pbi->l[1]-pbi->l[0]) >= l_linstep) {
     pfi->l_turnover[0] = pbi->l[0];
   }
   /* Never use the coarse grid if the linstep (i.e. the largest possible step) is never used.
   The MAX() is needed because the last point is fixed and does not depend on the grid spacing. */
-  else if (MAX(pbi->l[pbi->l_size-1]-pbi->l[pbi->l_size-2], pbi->l[pbi->l_size-2]-pbi->l[pbi->l_size-3]) < ppr->l_linstep) {
+  else if (MAX(pbi->l[pbi->l_size-1]-pbi->l[pbi->l_size-2], pbi->l[pbi->l_size-2]-pbi->l[pbi->l_size-3]) < l_linstep) {
     pfi->l_turnover[0] = pbi->l[pbi->l_size-1] + 1;
   }
   else {
     int index_l = 0;
-    while ((index_l < pbi->l_size-1) && ((pbi->l[index_l+1] - pbi->l[index_l]) < ppr->l_linstep))
+    while ((index_l < pbi->l_size-1) && ((pbi->l[index_l+1] - pbi->l[index_l]) < l_linstep))
       index_l++;
     pfi->l_turnover[0] = pbi->l[index_l-1];
   }
@@ -1502,7 +1511,7 @@ int fisher_compute (
   /* Print the Fisher matrix */
   if (pfi->fisher_verbose > 0) {
 
-    sprintf (pfi->info, "%s -> Fisher matrix:\n", pfi->info);
+    sprintf (pfi->info, "%s -> Fisher matrix for l_max = %d:\n", pfi->info, MIN (pfi->l_max_estimator, pfi->l_max));
     
     for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
       
@@ -1584,7 +1593,7 @@ int fisher_compute (
   }
   
   /* Print to screen the Fisher matrix */
-  fprintf (stderr, "%s", pfi->info);
+  printf ("%s", pfi->info);
   
   return _SUCCESS_;
   
@@ -1727,23 +1736,28 @@ int fisher_cross_correlate_nodes (
           double ** C2 = pfi->inverse_C[l2-2];
           double ** C3 = pfi->inverse_C[l3-2];
           
-          /* Weights for the interpolation. We use this variable to also store some other coefficients,
-          for optimisation purposes. */
-          double interpolation_weight;
+          /* Weights for the interpolation. Its default value is unity, in case interpolation is not
+          needed. */
+          double interpolation_weight = 1;
           
           if (pfi->bispectra_interpolation == smart_interpolation) {
             interpolation_weight = pwf->delta_l[index_l1] * pwf->delta_l[index_l2] * pwf->delta_l3[thread][index_l3];
           }
           else if (pfi->bispectra_interpolation == trilinear_interpolation) {
-            /* Weight for trilinear interpolation. The factor 1/2 comes from the fact that when interpolating over even
+            /* Weight for trilinear interpolation. When the trilinear interpolation is turned on, we always consider
+            configurations where all l's are even. The factor 1/2 comes from the fact that when interpolating over even
             configurations only, we are implicitly assuming non-zero values for the odd points, which instead are
             forced to vanish by the 3J. (Note that this factor, in the case of the smart interpolation, is already
             included in pwf->delta_l3) */
             interpolation_weight = 0.5 * pwf->delta_l[index_l1] * pwf->delta_l[index_l2] * pwf->delta_l[index_l3];
           }
-          /* All other kind of interpolation are sums over all l's and require no interpolation weight */
-          else {
-            interpolation_weight = 1;
+          else if ((pfi->bispectra_interpolation == sum_over_all_multipoles) && (ppr->compute_only_even_ls == _TRUE_)) {
+            /* If we are summing over all multipoles, and we have only computed configurations where all l's are
+            even, then we need to multiply the final result by 2. This is equivalent to assuming that combinations
+            like 2,3,3 (which are not computed if ppr->compute_only_even_ls == _TRUE_) give to the integral the same
+            contribution as 2,2,2. I have verified that the error is about ~ 1 permille for the local template, by
+            comparing an 'all_even run times 2' with a full run. */
+            interpolation_weight *= 2;
           }
           
           /* If we are taking all the l-points, then any interpolation scheme reduces to a simple sum over the
@@ -2333,6 +2347,8 @@ int fisher_cross_cls (
   When only one probe is considered (eg. T or E), the cross-power spectrum collapses
   to one number. */
 
+  /* TODO: The C_l's should be the observed ones, i.e. the LENSED ones (see for
+  example Eq. 5.2 of Lewis and Challinor, 2011) */
   
   // ==========================================================================
   // =                           Allocate memory                              =

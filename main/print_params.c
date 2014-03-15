@@ -182,6 +182,7 @@ int main(int argc, char **argv) {
   printf("\tbi.has_intrinsic = %d\n", bi.has_intrinsic);
   printf("\tbi.has_intrinsic_squeezed = %d\n", bi.has_intrinsic_squeezed);
   printf("\tbi.has_quadratic_correction = %d\n", bi.has_quadratic_correction);
+  printf("\tbi.add_quadratic_correction = %d\n", bi.add_quadratic_correction);
 
   /* Fisher */
   printf("\tfi.l_min_estimator = %d\n", fi.l_min_estimator);

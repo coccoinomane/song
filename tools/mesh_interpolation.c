@@ -53,7 +53,6 @@ int mesh_sort (
   pw->n_boxes = ceil(max_l/(safe*link_length*(1.+soft_coeff)));
   long int n_boxes = pw->n_boxes;
 
-
   /* Bin the support points in a grid based on the linking length */
   if (pw->compute_grid==_TRUE_) {
 
@@ -94,7 +93,6 @@ int mesh_sort (
     }
   }
   
-  
 
   // *** ALLOCATE MESH
   pw->mesh = (double*****) malloc(n_boxes*sizeof(double****));
@@ -115,9 +113,13 @@ int mesh_sort (
   
   
   // *** STORE VALUES IN THE MESH
-  #pragma omp parallel for private (i,ix,iy,iz)
+  /* This loop cannot be parallelised naively with:
+    #pragma omp parallel for private (i,ix,iy,iz)
+  because it relies on incrementing a quantity that, in the same loop,
+  is used to index an array */
   for(i=0; i<num_points; i++){
 
+    /* Don't we have an issue here? */
     ix = floor(vals[i][1]/(safe*link_length*(1.+soft_coeff)));
     iy = floor(vals[i][2]/(safe*link_length*(1.+soft_coeff)));
     iz = floor(vals[i][3]/(safe*link_length*(1.+soft_coeff)));
@@ -126,7 +128,7 @@ int mesh_sort (
     if ((ix >= n_boxes) || (iy >= n_boxes) || (iz >= n_boxes))
       continue;
 
-    int Q; for (Q=0; Q < 4; ++Q) {
+    for (int Q=0; Q < 4; ++Q) {
       pw->mesh[ix][iy][iz][counter[ix][iy][iz]][Q] = vals[i][Q];
       // if ((ix==1) && (iy==1) && (iz==1))
       //   printf("pw->mesh[ix=%d][iy=%d][iz=%d][counter=%d][Q=%d] = %g\n",
@@ -136,6 +138,18 @@ int mesh_sort (
     #pragma omp atomic
     counter[ix][iy][iz]++;
   }
+  
+  
+  /* Verify that grid = counter */
+  for(i = 0; i<n_boxes;i++) {
+    for(j = 0; j<n_boxes; j++) {
+      for(k = 0; k<n_boxes; k++) {
+        if (counter[i][j][k]!=pw->grid[i][j][k])
+          printf ("ERROR, %s: %d!=%d\n", __func__, counter[i][j][k], pw->grid[i][j][k]);
+      }
+    }
+  }
+  
 
   /* Counter not needed anymore */
   for(i = 0; i<n_boxes;i++) {
@@ -301,7 +315,7 @@ loop:
           //   vals[ix][iy][iz][i][4] += density;
           // }}}}
 
-
+          #pragma omp atomic
           num_points++;
           
           double value = mesh[ix][iy][iz][i][0];
@@ -316,7 +330,9 @@ loop:
             (1./(dist+link_length/10000000.))/density
             * (1.00000001 - erf((dist-link_length)/(link_length*soft_coeff)));
     
+          #pragma omp atomic
           result += weight * value;
+          #pragma omp atomic
           norm += weight;
 
           /* Some debug */

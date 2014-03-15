@@ -1005,7 +1005,7 @@ int main(int argc, char **argv) {
   free (argv_for_SONG);
   
   
-  if (bispectra_free(&pt,&sp,&bi) == _FAILURE_) {
+  if (bispectra_free(&pt,&sp,&le,&bi) == _FAILURE_) {
     printf("\n\nError in bispectra_free \n=>%s\n",bi.error_message);
     return _FAILURE_;
   }

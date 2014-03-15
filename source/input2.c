@@ -190,9 +190,9 @@ int input2_init (
     errmsg);
 
   
-  // ========================================================
-  // =                      Parse output                    =
-  // ========================================================
+  // ==================================================================================
+  // =                                  Parse output                                  =
+  // ==================================================================================
  
   class_call (parser_read_string (pfc,"output",&string1,&flag1,errmsg),
     errmsg,
@@ -969,8 +969,15 @@ int input2_init (
   // =                                       Bispectra                                           =
   // =============================================================================================
 
-
-
+  /* Turn off the quadratic corrections to the intrinsic bispectrum coming from
+  the bolometric temperature and from the redshift term */
+  class_call(parser_read_string(pfc,"add_quadratic_correction",&string1,&flag1,errmsg),
+	     errmsg,
+	     errmsg);	
+     
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL))) {
+    pbi->add_quadratic_correction = _FALSE_;
+  }
 
 
   // =============================================================================================
@@ -1090,15 +1097,12 @@ int input2_init (
   // =                                   Angular scales                                      =
   // =========================================================================================
 
-
   // *** Read l_max for the Boltzmann hierarchies
   class_read_int("l_max_g_2nd_order", ppr2->l_max_g_2nd_order);
   class_read_int("l_max_pol_g_2nd_order", ppr2->l_max_pol_g_2nd_order);    
   class_read_int("l_max_ur_2nd_order", ppr2->l_max_ur_2nd_order);        
   class_read_int("l_max_g_ten_2nd_order", ppr2->l_max_g_ten_2nd_order);       
   class_read_int("l_max_pol_g_ten_2nd_order", ppr2->l_max_pol_g_ten_2nd_order);            
-   
-              
 
   // *** Read l_max for the quadratic sources
 
@@ -1199,31 +1203,27 @@ int input2_init (
     _MAX_NUM_AZIMUTHAL_);
 
   /* For m>0 we cannot compute the reduced bispectrum when l1+l2+l3 is odd */
-  // if ((pbi->has_intrinsic==_TRUE_) && (
-  //   (ppr2->m_max_2nd_order>0) ||
-  //   (ppt2->has_cmb_polarization_e) ||
-  //   (ppt2->has_cmb_polarization_b))) {
-  // // if ((pbi->has_intrinsic==_TRUE_) && (
-  // //   (ppr2->m_max_2nd_order>0) ||
-  // // if (pbi->has_intrinsic==_TRUE_) {
-  //      
-  //   printf ("\n");
-  //   printf ("   *@^#?!?! FORCING THE COMPUTATION OF A GRID OF EVEN L'S\n");
-  //   printf ("\n");      
-  //   ppr->compute_only_even_ls = _TRUE_;
-  // 
-  //   // printf ("\n");
-  //   // printf ("   *@^#?!?! FORCING THE COMPUTATION OF A GRID OF ODD L'S\n");
-  //   // printf ("\n");
-  //   // ppr->compute_only_odd_ls = _TRUE_;
-  // 
-  //   class_test_permissive (
-  //     ((ppt2->has_cmb_polarization_b==_TRUE_) && (ppr->compute_only_even_ls==_TRUE_)) ||
-  //     ((ppt2->has_cmb_polarization_e==_TRUE_) && (ppr->compute_only_odd_ls==_TRUE_)) ||
-  //     ((ppt2->has_cmb_temperature==_TRUE_) && (ppr->compute_only_odd_ls==_TRUE_)),
-  //     errmsg,
-  //     "careful, your choice of parity is wrong!");
-  // }
+  if (((pbi->has_intrinsic==_TRUE_) && (ppr2->m_max_2nd_order>0)) ||
+      (((pbi->has_quadratic_correction==_TRUE_) || (pbi->has_isw_lensing ==_TRUE_)) &&
+        ((ppt2->has_cmb_polarization_e==_TRUE_) || (ppt2->has_cmb_polarization_b==_TRUE_)))) {
+       
+    printf ("\n");
+    printf ("   *@^#?!?! FORCING THE COMPUTATION OF A GRID OF EVEN L'S\n");
+    printf ("\n");      
+    ppr->compute_only_even_ls = _TRUE_;
+  
+    // printf ("\n");
+    // printf ("   *@^#?!?! FORCING THE COMPUTATION OF A GRID OF ODD L'S\n");
+    // printf ("\n");
+    // ppr->compute_only_odd_ls = _TRUE_;
+  
+    class_test_permissive (
+      ((ppt2->has_cmb_polarization_b==_TRUE_) && (ppr->compute_only_even_ls==_TRUE_)) ||
+      ((ppt2->has_cmb_polarization_e==_TRUE_) && (ppr->compute_only_odd_ls==_TRUE_)) ||
+      ((ppt2->has_cmb_temperature==_TRUE_) && (ppr->compute_only_odd_ls==_TRUE_)),
+      errmsg,
+      "careful, your choice of parity is wrong!");
+  }
 
   /* Find out the index in ppr2->m corresponding to a given m. */
   class_alloc (ppr2->index_m, (ppr2->m_max_2nd_order+1)*sizeof(int), errmsg);
@@ -1574,7 +1574,9 @@ int input2_default_params (
   // ============================================================
   // =                     bispectra structure                  =
   // ============================================================
-
+  pbi->add_quadratic_correction = _TRUE_;
+  
+    
 
   // ========================================================
   // =                    Fisher structure                  =

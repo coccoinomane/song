@@ -21,6 +21,7 @@ int main(int argc, char **argv) {
   struct output op;           /* output files */
   ErrorMsg errmsg;            /* error messages */
 
+
   if (input_init_from_arguments(argc,argv,&pr,&ba,&th,&pt,&bs,&tr,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
     return _FAILURE_;
@@ -41,11 +42,12 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
-  if (pt.has_perturbations2 == _FALSE_)
+  if (pt.has_perturbations2 == _FALSE_) {
     if (perturb_init(&pr,&ba,&th,&pt) == _FAILURE_) {
       printf("\n\nError in perturb_init \n=>%s\n",pt.error_message);
       return _FAILURE_;
     }
+  }
 
   if (perturb2_init(&pr,&pr2,&ba,&th,&pt,&pt2) == _FAILURE_) {
     printf("\n\nError in perturb2_init \n=>%s\n",pt2.error_message);
@@ -77,26 +79,11 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
-  if (lensing_free(&le) == _FAILURE_) {
-    printf("\n\nError in lensing_free \n=>%s\n",le.error_message);
-    return _FAILURE_;
-  }
-  
-  if (nonlinear_free(&nl) == _FAILURE_) {
-    printf("\n\nError in nonlinear_free \n=>%s\n",nl.error_message);
-    return _FAILURE_;
-  }
-
   if (spectra_init(&pr,&ba,&pt,&tr,&pm,&sp) == _FAILURE_) {
     printf("\n\nError in spectra_init \n=>%s\n",sp.error_message);
     return _FAILURE_;
   }
 
-  if (nonlinear_init(&pr,&ba,&th,&pm,&sp,&nl) == _FAILURE_) {
-    printf("\n\nError in nonlinear_init \n=>%s\n",nl.error_message);
-    return _FAILURE_;
-  }
-      
   if (lensing_init(&pr,&pt,&sp,&nl,&le) == _FAILURE_) {
     printf("\n\nError in lensing_init \n=>%s\n",le.error_message);
     return _FAILURE_;
@@ -133,8 +120,13 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
   
-  if (bispectra_free(&pt,&sp,&bi) == _FAILURE_) {
+  if (bispectra_free(&pt,&sp,&le,&bi) == _FAILURE_) {
     printf("\n\nError in bispectra_free \n=>%s\n",bi.error_message);
+    return _FAILURE_;
+  }
+  
+  if (lensing_free(&le) == _FAILURE_) {
+    printf("\n\nError in lensing_free \n=>%s\n",le.error_message);
     return _FAILURE_;
   }
   

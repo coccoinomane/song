@@ -37,10 +37,10 @@
  */
 
 int lensing_cl_at_l(
-		    struct lensing * ple,
-		    int l,
-		    double * cl_lensed    /* array with argument cl_lensed[index_ct] (must be already allocated) */
-		    ) {
+        struct lensing * ple,
+        int l,
+        double * cl_lensed    /* array with argument cl_lensed[index_ct] (must be already allocated) */
+        ) {
   int last_index;
 
   class_test(l > ple->l_lensed_max,
@@ -718,6 +718,8 @@ int lensing_init(
   //fin=omp_get_wtime();
   //cpu_time = (fin-debut);
   //printf("time in final lensing computation=%4.3f s\n",cpu_time); 
+
+  /* Debug - print the lensed C_ls */
 
   /** - spline computed Cls in view of interpolation */
 

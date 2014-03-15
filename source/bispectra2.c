@@ -170,7 +170,7 @@ int bispectra2_harmonic (
   If you would rather ignore these corrections, set the flag 'quadratic_corrections_to_intrinsic = no'
   in the parameter file. */
 
-  if (pbi->has_quadratic_correction == _TRUE_) {
+  if ((pbi->has_quadratic_correction == _TRUE_) && (pbi->add_quadratic_correction == _TRUE_)) {
     for (int index_bt = 0; index_bt < pbi->bt_size; ++index_bt) {
   
       /* Skip the bispectrum if it not of the non-separable type */

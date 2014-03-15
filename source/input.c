@@ -891,7 +891,14 @@ int input_init(
 
     /* Compute the approximation to the intrinsic bispectrum for the squeezed limit */
     if ((strstr(string1,"isw-lensing") != NULL) || (strstr(string1,"isw lensing") != NULL) || (strstr(string1,"isw_lensing") != NULL)) {
+      ppt->has_cl_cmb_lensing_potential = _TRUE_;
+      // ple->has_lensed_cls = _TRUE_;
       pbi->has_isw_lensing = _TRUE_;
+    }
+
+    /* Compute the quadratic correction bispectrum (effectively the CMB four-point function) */
+    if (strstr(string1,"quadratic") != NULL) {
+      pbi->has_quadratic_correction = _TRUE_;
     }
 
     /* Intrinsic bispectrum. This is induced by second-order effects in the evolution of the cosmological
@@ -904,17 +911,6 @@ int input_init(
     }
     
   } // end of bispectrum_types parsing
-  
-  /* Turn off the quadratic corrections to the intrinsic bispectrum coming from
-  the bolometric temperature and from the redshift term */
-  class_call(parser_read_string(pfc,"quadratic_corrections_to_intrinsic",&string1,&flag1,errmsg),
-	     errmsg,
-	     errmsg);	
-	     
-  if ((flag1 == _TRUE_) && ((strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL))) {
-    pbi->has_quadratic_correction = _FALSE_;
-  }
-
   
   // *** END OF MY MODIFICATIONS ***
 
