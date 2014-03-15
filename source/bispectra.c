@@ -130,6 +130,7 @@ int bispectra_init (
  */
 
 int bispectra_free(
+     struct precision * ppr,
      struct perturbs * ppt,
      struct spectra * psp,
      struct lensing * ple,
@@ -211,7 +212,7 @@ int bispectra_free(
       free (pbi->d_lsq_cls);
     }
     
-    if ((pbi->has_isw_lensing == _TRUE_) && (ple->has_lensed_cls == _TRUE_)) {
+    if (ppr->use_lensed_cls_in_fisher == _TRUE_) {
       for (int index_lt=0; index_lt < ple->lt_size; ++index_lt)
         free (pbi->lensed_cls[index_lt]);
       free (pbi->lensed_cls);
@@ -323,26 +324,42 @@ int bispectra_indices (
     if ((pbi->has_bispectra_t == _TRUE_) && (X == pbi->index_bf_t)) {
       pbi->index_tt_of_bf[X] = ptr->index_tt_t;
       pbi->index_ct_of_bf[X][X] = psp->index_ct_tt;
+      if (ppr->use_lensed_cls_in_fisher == _TRUE_)
+        pbi->index_lt_of_bf[X][X] = ple->index_lt_tt;
     }
 
     if ((pbi->has_bispectra_e == _TRUE_) && (X == pbi->index_bf_e)) {
       pbi->index_tt_of_bf[X] = ptr->index_tt_e;
       pbi->index_ct_of_bf[X][X] = psp->index_ct_ee; 
+      if (ppr->use_lensed_cls_in_fisher == _TRUE_)
+        pbi->index_lt_of_bf[X][X] = ple->index_lt_ee;
     }
 
     if ((pbi->has_bispectra_r == _TRUE_) && (X == pbi->index_bf_r)) {
       pbi->index_tt_of_bf[X] = ptr->index_tt_r;
-      pbi->index_ct_of_bf[X][X] = psp->index_ct_rr; 
+      pbi->index_ct_of_bf[X][X] = psp->index_ct_rr;
+      /* TODO: lensed Rayleigh not implemented yet */
+      // if (ppr->use_lensed_cls_in_fisher == _TRUE_)
+      //   pbi->index_lt_of_bf[X][X] = ple->index_lt_rr;
     }
 
     for (int Y = 0; Y < pbi->bf_size; ++Y) {
       if (((pbi->has_bispectra_t == _TRUE_) && (X == pbi->index_bf_t))
-       && ((pbi->has_bispectra_e == _TRUE_) && (Y == pbi->index_bf_e)))
+       && ((pbi->has_bispectra_e == _TRUE_) && (Y == pbi->index_bf_e))) {
+
         pbi->index_ct_of_bf[X][Y] = pbi->index_ct_of_bf[Y][X] = psp->index_ct_te;
+        if (ppr->use_lensed_cls_in_fisher == _TRUE_)
+          pbi->index_lt_of_bf[X][Y] = pbi->index_lt_of_bf[Y][X] = ple->index_lt_te;
+      }
 
       if (((pbi->has_bispectra_t == _TRUE_) && (X == pbi->index_bf_t))
-       && ((pbi->has_bispectra_r == _TRUE_) && (Y == pbi->index_bf_r)))
+       && ((pbi->has_bispectra_r == _TRUE_) && (Y == pbi->index_bf_r))) {
+
         pbi->index_ct_of_bf[X][Y] = pbi->index_ct_of_bf[Y][X] = psp->index_ct_tr;
+        /* TODO: lensed Rayleigh not implemented yet */
+        // if (ppr->use_lensed_cls_in_fisher == _TRUE_)
+        //   pbi->index_lt_of_bf[X][Y] = pbi->index_lt_of_bf[Y][X] = ple->index_lt_tr;
+      }
 
       if (((pbi->has_bispectra_e == _TRUE_) && (X == pbi->index_bf_e))
        && ((pbi->has_bispectra_r == _TRUE_) && (Y == pbi->index_bf_r)))
@@ -898,7 +915,7 @@ int bispectra_cls (
   }
   
   /* If the CMB lensing bispectrum is requested, interpolate also the lensed C_l's */ 
-  if ((pbi->has_isw_lensing == _TRUE_) && (ple->has_lensed_cls == _TRUE_)) {
+  if (ppr->use_lensed_cls_in_fisher == _TRUE_) {
     class_alloc (pbi->lensed_cls, ple->lt_size*sizeof(double*), pbi->error_message);
     for (int index_lt=0; index_lt < ple->lt_size; ++index_lt)
       class_calloc (pbi->lensed_cls[index_lt], pbi->full_l_size, sizeof(double), pbi->error_message);
@@ -925,8 +942,8 @@ int bispectra_cls (
   
   /* For the lensed C_l's, we only need to allocate one array */
   double * lensed_cl;
-  if ((pbi->has_isw_lensing == _TRUE_) && (ple->has_lensed_cls == _TRUE_)) {
-    class_calloc(lensed_cl, ple->lt_size, sizeof(double), pbi->error_message);	
+  if (ppr->use_lensed_cls_in_fisher == _TRUE_) {
+    class_calloc(lensed_cl, ple->lt_size, sizeof(double), pbi->error_message);  
   }
   
   // ==========================================================================================================
@@ -949,6 +966,30 @@ int bispectra_cls (
     for (int index_ct=0; index_ct < psp->ct_size; ++index_ct)
       pbi->cls[index_ct][l-2] = cl[index_ct];
     
+
+    /* Store the lensed C_l's */
+    if (ppr->use_lensed_cls_in_fisher == _TRUE_) {
+
+        /* The lensed C_l's must have been computed up to the maximum required multipole,
+        that is, up to pbi->l_max. This check is made inside 'lensing_cl_at_l' */
+        class_call(lensing_cl_at_l(
+                     ple,
+                     l,
+                     lensed_cl),
+          ple->error_message,
+          pbi->error_message);
+    
+        for (int index_lt=0; index_lt < ple->lt_size; ++index_lt)
+          pbi->lensed_cls[index_lt][l-2] = lensed_cl[index_lt];
+        
+        /* Debug - print temperature-lensing potential C_l's */
+        double factor = l*(l+1.)/(2*_PI_);
+        fprintf (stderr, "%4d %16g %16g %16g %16g\n",
+          l, factor*pbi->cls[psp->index_ct_tt][l-2], factor*pbi->lensed_cls[ple->index_lt_tt][l-2],
+          factor*sqrt(l*(l+1))*pbi->cls[psp->index_ct_tp][l-2], factor*sqrt(l*(l+1))*pbi->lensed_cls[ple->index_lt_tp][l-2]);
+        
+    }
+    
     /* Uncomment to turn the CMB-lensing C_l to zero on small scales, where we cannot trust them.
     This won't change the result because these C_l's are very small for large l's. In CAMB, Antony
     sets C_l^TP=0 for l>300 and C_l^EP=0 for l>50. */
@@ -960,31 +1001,16 @@ int bispectra_cls (
       int lmax_lensing_corrT = 50;
       int lmax_lensing_corrE = 50;
       
-      if ((l > lmax_lensing_corrT) && (pbi->has_bispectra_t == _TRUE_))
+      if ((l > lmax_lensing_corrT) && (pbi->has_bispectra_t == _TRUE_)) {
         pbi->cls[psp->index_ct_tp][l-2] = 0;
-
-      if ((l > lmax_lensing_corrE) && (pbi->has_bispectra_e == _TRUE_))
-        pbi->cls[psp->index_ct_ep][l-2] = 0;
-
-    }
-    
-
-    if ((pbi->has_isw_lensing == _TRUE_) && (ple->has_lensed_cls == _TRUE_)) {
-      
-      if (l < (pbi->l_max-ppr->delta_l_max)) {
-
-        class_call(lensing_cl_at_l(
-                     ple,
-                     l,
-                     lensed_cl),
-          ple->error_message,
-          pbi->error_message);
-
-        for (int index_lt=0; index_lt < ple->lt_size; ++index_lt)
-          pbi->lensed_cls[index_lt][l-2] = lensed_cl[index_lt];
-          
       }
+
+      if ((l > lmax_lensing_corrE) && (pbi->has_bispectra_e == _TRUE_)) {
+        pbi->cls[psp->index_ct_ep][l-2] = 0;
+      }
+
     }
+
 
     /* To compute the squeezed limit approximation case, we need the derivative of 
     l*l*C_l. The best way to obtain these is to take the derivative of the
@@ -1080,7 +1106,7 @@ int bispectra_cls (
   free(cl_md_ic);
   free(cl_md);
   
-  if ((pbi->has_isw_lensing == _TRUE_) && (ple->has_lensed_cls == _TRUE_)) {
+  if (ppr->use_lensed_cls_in_fisher == _TRUE_) {
     free (lensed_cl);
   }
       
@@ -2565,7 +2591,7 @@ int bispectra_analytical_init (
                     double C_l3 = C_l3_TT;
                                   
                     /* Use lensed temeperature C_l's if possible */
-                    if (ple->has_lensed_cls == _TRUE_) {
+                    if (ppr->use_lensed_cls_in_fisher == _TRUE_) {
                       C_l1 = pbi->lensed_cls[ple->index_lt_tt][l1-2];
                       C_l2 = pbi->lensed_cls[ple->index_lt_tt][l2-2];
                       C_l3 = pbi->lensed_cls[ple->index_lt_tt][l3-2];
@@ -2647,17 +2673,17 @@ int bispectra_analytical_init (
                   double C_l1_X3_X1 = pbi->cls[pbi->index_ct_of_bf[ X3 ][ X1 ]][l1-2];
                     
                   /* Use lensed temeperature C_l's if possible */
-                  if (ple->has_lensed_cls == _TRUE_) {
-                  
-                    /* TODO: uncomment below once you have implemented 'pbi->index_lt_of_bf' */
-                    // C_l3_X1_X3 = pbi->lensed_cls[pbi->index_lt_of_bf[ X1 ][ X3 ]][l3-2];
-                    // C_l2_X1_X2 = pbi->lensed_cls[pbi->index_lt_of_bf[ X1 ][ X2 ]][l2-2];
-                    // C_l3_X2_X3 = pbi->lensed_cls[pbi->index_lt_of_bf[ X2 ][ X3 ]][l3-2];
-                    // C_l1_X2_X1 = pbi->lensed_cls[pbi->index_lt_of_bf[ X2 ][ X1 ]][l1-2];
-                    // C_l2_X3_X2 = pbi->lensed_cls[pbi->index_lt_of_bf[ X3 ][ X2 ]][l2-2];
-                    // C_l1_X3_X1 = pbi->lensed_cls[pbi->index_lt_of_bf[ X3 ][ X1 ]][l1-2];
-                    
-                  }
+                  // if (ppr->use_lensed_cls_in_fisher == _TRUE_) {
+                  // 
+                  //   /* TODO: uncomment below once you have implemented 'pbi->index_lt_of_bf' */
+                  //   // C_l3_X1_X3 = pbi->lensed_cls[pbi->index_lt_of_bf[ X1 ][ X3 ]][l3-2];
+                  //   // C_l2_X1_X2 = pbi->lensed_cls[pbi->index_lt_of_bf[ X1 ][ X2 ]][l2-2];
+                  //   // C_l3_X2_X3 = pbi->lensed_cls[pbi->index_lt_of_bf[ X2 ][ X3 ]][l3-2];
+                  //   // C_l1_X2_X1 = pbi->lensed_cls[pbi->index_lt_of_bf[ X2 ][ X1 ]][l1-2];
+                  //   // C_l2_X3_X2 = pbi->lensed_cls[pbi->index_lt_of_bf[ X3 ][ X2 ]][l2-2];
+                  //   // C_l1_X3_X1 = pbi->lensed_cls[pbi->index_lt_of_bf[ X3 ][ X1 ]][l1-2];
+                  //   
+                  // }
                   
                   /* Obtain the 3j's appearing in the CMB-lensing bispectrum formula */
                   double threej_l2_l3_l1_0_FX1_mFX1 = value[thread][l2_l3_l1_0_FX1_mFX1][l3 - min[thread][l2_l3_l1_0_FX1_mFX1]];

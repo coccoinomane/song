@@ -106,6 +106,9 @@ struct bispectra {
   index_ct_of_bf[pbi->index_bf_t][pbi->index_bf_t] = psp->index_ct_tt
   index_ct_of_bf[pbi->index_bf_t][pbi->index_bf_e] = psp->index_ct_te  */
   int index_ct_of_bf[_MAX_NUM_FIELDS_][_MAX_NUM_FIELDS_];
+  
+  /* Same but for the lensed C_l's */
+  int index_lt_of_bf[_MAX_NUM_FIELDS_][_MAX_NUM_FIELDS_];
 
 
   /* Array of strings that contain the text labels of the various fields */
@@ -481,6 +484,7 @@ extern "C" {
        );
 
   int bispectra_free(
+       struct precision * ppr,
        struct perturbs * ppt,
        struct spectra * psp,
        struct lensing * ple,

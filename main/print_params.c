@@ -112,7 +112,6 @@ int main(int argc, char **argv) {
   // printf("\tpt2.has_integrated_sachs_wolfe_in_los = %d*\n", pt2.has_integrated_sachs_wolfe_in_los);  
   // printf("\tpt2.has_recombination_only = %d\n", pt2.has_recombination_only);
 
-
   /* Time sampling for quadratic sources */
   // printf("* Time sampling for quadratic sources\n");
   // printf("\tpr.perturb_sampling_stepsize_quadsources = %g\n", pr.perturb_sampling_stepsize_quadsources);
@@ -135,7 +134,6 @@ int main(int argc, char **argv) {
   // printf("\tpt2.custom_tau_mode = %d\n", pt2.custom_tau_mode);
   // printf("\tpt2.match_final_time_los = %d\n", pt2.match_final_time_los);
 
-
   /* Wavemode sampling */
   // printf("* Wavemode sampling for second-order sources\n");
   // printf("\tpt2.k_sampling = %d\n", pt2.k_sampling);
@@ -149,14 +147,12 @@ int main(int argc, char **argv) {
   // printf("\tpr2.k_max_scalar = %g\n", pr2.k_max_scalars);
   // printf("\tpr2.k_size_scalars = %d\n", pr2.k_size_scalars);
   // printf("\tpr2.k_step_trans_scalars_2nd_order = %g\n", pr2.k_step_trans_scalars_2nd_order);
-  // 
   // printf("\tpt2.k3_sampling = %d\n", pt2.k3_sampling);
   // printf("\tpr2.k3_size_min = %d\n", pr2.k3_size_min);
   // printf("\tpr2.k3_size = %d\n", pr2.k3_size); 
   // printf("\tpr2.tau_step_trans_2nd_order = %g\n", pr2.tau_step_trans_2nd_order);
   // printf("\ttr2.k_sampling = %d\n", tr2.k_sampling);
   // printf("\ttr2.tau_sampling = %d\n", tr2.tau_sampling);
-
 
   /* Initial conditions */
   // printf("* Initial conditions parameters\n");    
@@ -183,17 +179,18 @@ int main(int argc, char **argv) {
   printf("\tbi.has_intrinsic_squeezed = %d\n", bi.has_intrinsic_squeezed);
   printf("\tbi.has_quadratic_correction = %d\n", bi.has_quadratic_correction);
   printf("\tbi.add_quadratic_correction = %d\n", bi.add_quadratic_correction);
+  printf("\tpr.use_lensed_cls_in_fisher = %d\n", pr.use_lensed_cls_in_fisher);
 
   /* Fisher */
-  printf("\tfi.l_min_estimator = %d\n", fi.l_min_estimator);
-  printf("\tfi.l_max_estimator = %d\n", fi.l_max_estimator);
-  printf("\tfi.bispectra_interpolation = %d\n", fi.bispectra_interpolation);
-  printf("\tfi.f_sky = %g\n", fi.f_sky);
-  for (int index_channel=0; index_channel < fi.n_channels; ++index_channel) {
-    printf("\tchannel %d: fi.beam = %g arcmins, %g radians\n",index_channel, fi.beam[index_channel] * 60. / (_PI_/180.), fi.beam[index_channel]);
-    printf("\t           fi.noise_t = %g uK\n", index_channel, sqrt(fi.noise_t[index_channel]) * 1e6*ba.T_cmb / fi.beam[index_channel]);
-    printf("\t           fi.noise_e = %g uK\n", index_channel, sqrt(fi.noise_e[index_channel]) * 1e6*ba.T_cmb / fi.beam[index_channel]);
-  }
+  // printf("\tfi.l_min_estimator = %d\n", fi.l_min_estimator);
+  // printf("\tfi.l_max_estimator = %d\n", fi.l_max_estimator);
+  // printf("\tfi.bispectra_interpolation = %d\n", fi.bispectra_interpolation);
+  // printf("\tfi.f_sky = %g\n", fi.f_sky);
+  // for (int index_channel=0; index_channel < fi.n_channels; ++index_channel) {
+  //   printf("\tchannel %d: fi.beam = %g arcmins, %g radians\n",index_channel, fi.beam[index_channel] * 60. / (_PI_/180.), fi.beam[index_channel]);
+  //   printf("\t           fi.noise_t = %g uK\n", index_channel, sqrt(fi.noise_t[index_channel]) * 1e6*ba.T_cmb / fi.beam[index_channel]);
+  //   printf("\t           fi.noise_e = %g uK\n", index_channel, sqrt(fi.noise_e[index_channel]) * 1e6*ba.T_cmb / fi.beam[index_channel]);
+  // }
 
   /* Precision parameters - multipoles */
   // printf("* Precision parameters - multipoles\n");  

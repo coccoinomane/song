@@ -37,7 +37,12 @@ int input_init_from_arguments(
 
   /** - define local variables */
 
-  struct file_content fc;
+  // *** MY MODIFICATIONS ****
+  class_alloc (ppr->input_file_content, sizeof(struct file_content), errmsg);
+  struct file_content * pfc = ppr->input_file_content;
+  // *** ORIGINAL CLASS
+  // struct file_content fc;
+  // *** END OF MY MODIFICATIONS ****
   struct file_content fc_input;
   struct file_content fc_precision;
 
@@ -52,7 +57,7 @@ int input_init_from_arguments(
       arguments are passed, they will remain null and inform
       init_params() that all parameters take default values. */
 
-  fc.size = 0;
+  pfc->size = 0;
   fc_input.size = 0;
   fc_precision.size = 0;
   input_file[0]='\0';
@@ -164,7 +169,7 @@ int input_init_from_arguments(
 
   if ((input_file[0]!='\0') || (precision_file[0]!='\0'))
 
-    class_call(parser_cat(&fc_input,&fc_precision,&fc,errmsg),
+    class_call(parser_cat(&fc_input,&fc_precision,pfc,errmsg),
 	       errmsg,
 	       errmsg);
 
@@ -175,7 +180,7 @@ int input_init_from_arguments(
       structure.  If its size is null, all parameters take their
       default values. */
 
-  class_call(input_init(&fc,
+  class_call(input_init(pfc,
 			ppr,
 			pba,
 			pth,
@@ -193,7 +198,12 @@ int input_init_from_arguments(
 	     errmsg,
 	     errmsg);
 
-  class_call(parser_free(&fc),errmsg,errmsg);
+  
+  // *** MY MODIFICATIONS ***
+  
+  /* Commented the following line so that fc stays in ppr->input_file_content */
+  // class_call(parser_free(&fc),errmsg,errmsg);
+  // *** END OF MY MODIFICATIONS ***
 
   return _SUCCESS_;
 }
@@ -796,6 +806,7 @@ int input_init(
 
     if (strstr(string1,"fisher") != NULL) {
       pfi->has_fisher = _TRUE_;
+      ppt->has_cl_cmb_lensing_potential = _TRUE_; /* The covariance matrix needs lensed C_l's */ 
     }
 
     // if (strstr(string1,"fisher_test") != NULL) {
@@ -892,7 +903,6 @@ int input_init(
     /* Compute the approximation to the intrinsic bispectrum for the squeezed limit */
     if ((strstr(string1,"isw-lensing") != NULL) || (strstr(string1,"isw lensing") != NULL) || (strstr(string1,"isw_lensing") != NULL)) {
       ppt->has_cl_cmb_lensing_potential = _TRUE_;
-      // ple->has_lensed_cls = _TRUE_;
       pbi->has_isw_lensing = _TRUE_;
     }
 
@@ -1995,7 +2005,7 @@ or 'linear_extrapolation'.", "");
 
   }
 
-  /* How much to exted the k3 range in view of the bispectrum integration? */
+  /* How much to extend the k3 range in view of the bispectrum integration? */
   class_read_double("extra_k3_oscillations_right", ppr->extra_k3_oscillations_right);
   class_read_double("extra_k3_oscillations_left", ppr->extra_k3_oscillations_left);
 
@@ -2138,9 +2148,9 @@ or 'linear_extrapolation'.", "");
       a superior limit for tau0. */
     double x_max = MAX (pbs->x_max, k_max * MAX(tau0_sup, pbi->r_max));
   
-    printf("# Temporary message: Setting pbs->x_max from %g to %g\n",
-      ((int)(pbs->x_max * 1.1 / pbs->x_step)+1)*pbs->x_step,
-      ((int)(x_max * 1.1 / pbs->x_step)+1)*pbs->x_step);
+    // printf("# Temporary message: Setting pbs->x_max from %g to %g\n",
+    //   ((int)(pbs->x_max * 1.1 / pbs->x_step)+1)*pbs->x_step,
+    //   ((int)(x_max * 1.1 / pbs->x_step)+1)*pbs->x_step);
   
     pbs->x_max = ((int)(x_max * 1.1 / pbs->x_step)+1)*pbs->x_step;
   
@@ -2148,10 +2158,26 @@ or 'linear_extrapolation'.", "");
   } // end of if(has_bispectra)
 
 
+  // =====================================================================
+  // =                              C_l's                                =
+  // =====================================================================
 
-  // =======================================================
-  // =                     Fisher matrix                   =
-  // =======================================================
+  /* Compute the lensed C_l's in an extended l-range and include them in the
+  Fisher matrix analysis. The default behaviour is to compute the lensed C_l's
+  only up to l_max - ppr->delta_l_max. */    
+  if ((ple->has_lensed_cls == _TRUE_) && 
+         ((pfi->has_fisher == _TRUE_)
+        ||(pbi->has_isw_lensing == _TRUE_)
+        ||(pbi->has_intrinsic_squeezed == _TRUE_))) {
+  
+    ppr->use_lensed_cls_in_fisher = _TRUE_;
+  }
+        
+
+
+  // =====================================================================
+  // =                           Fisher matrix                           =
+  // =====================================================================
 
   class_read_int("fisher_verbose",
     pfi->fisher_verbose);
@@ -2987,6 +3013,8 @@ int input_default_precision ( struct precision * ppr ) {
   ppr->extra_k3_oscillations_left = 0;
   ppr->extra_k3_oscillations_right = 0;
 
+  /* C_l's */
+  ppr->use_lensed_cls_in_fisher = _FALSE_;
 
   /* Storage of intermediate results */
   ppr->store_run = _FALSE_;

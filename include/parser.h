@@ -15,6 +15,9 @@ struct file_content {
   FileArg * name;  /**< list of (size) names */
   FileArg * value; /**< list of (size) values */
   short * read;    /**< set to _TRUE_ if this parameter is effectively read */
+  // *** MY MODIFICATIONS ***
+  short * overwritten;    /**< set to _TRUE_ if this parameter has been overwritten  */
+  // *** END OF MY MODIFICATIONS
 };
 
 /**************************************************************/
@@ -107,6 +110,15 @@ int parser_cat(
 	       struct file_content * pfc3,
 	       ErrorMsg errmsg
 	       );
+
+// *** MY MODIFICATIONS ***
+int parser_overwrite_entry (
+		    struct file_content * pfc,
+		    char * name,
+		    char * new_value,
+		    ErrorMsg errmsg
+		    );
+// *** END OF MY MODIFICATIONS ***
 
 #ifdef __cplusplus
 }

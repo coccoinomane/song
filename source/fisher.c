@@ -2346,9 +2346,6 @@ int fisher_cross_cls (
   
   When only one probe is considered (eg. T or E), the cross-power spectrum collapses
   to one number. */
-
-  /* TODO: The C_l's should be the observed ones, i.e. the LENSED ones (see for
-  example Eq. 5.2 of Lewis and Challinor, 2011) */
   
   // ==========================================================================
   // =                           Allocate memory                              =
@@ -2370,10 +2367,36 @@ int fisher_cross_cls (
     }
   }
 
+  // ==========================================================================
+  // =                          Lensed or not lensed?                         =
+  // ==========================================================================
+  
+  /* The C_l's should be the observed ones, i.e. the LENSED ones (see for
+  example Eq. 5.2 of Lewis and Challinor, 2011) */
+
+  double ** cls;
+  int index_cls[pbi->bf_size][pbi->bf_size];
+
+  if (ppr->use_lensed_cls_in_fisher == _TRUE_) {
+
+    cls = pbi->lensed_cls;
+    for (int X=0; X < pbi->bf_size; ++X)
+      for (int Y=0; Y < pbi->bf_size; ++Y)
+        index_cls[X][Y] = pbi->index_lt_of_bf[X][Y];
+  }
+  else {
+    
+    cls = pbi->cls;
+    for (int X=0; X < pbi->bf_size; ++X)
+      for (int Y=0; Y < pbi->bf_size; ++Y)
+        index_cls[X][Y] = pbi->index_ct_of_bf[X][Y];
+  }
+
 
   // ==========================================================================
   // =                      Compute cross-power spectrum                      =
   // ==========================================================================
+
 
   /* The cross-power spectrum is used to build the covariance matrix and, therefore, needs to be
   include the instrumental noise. We assume that this affects only the direct C_l's,
@@ -2384,7 +2407,7 @@ int fisher_cross_cls (
       for (int Y = 0; Y < pbi->bf_size; ++Y) {
 
         /* Compute ij element */
-        pfi->C[l-2][X][Y] = pbi->cls[pbi->index_ct_of_bf[X][Y]][l-2];
+        pfi->C[l-2][X][Y] = cls[index_cls[X][Y]][l-2];
 
         /* Add noise only for diagonal combinations (TT, EE). We assume a vanishing noise
         cross-correlation between T and E, as the temperature and polarization detectors
@@ -2393,8 +2416,7 @@ int fisher_cross_cls (
 
         /* If a C_l vanishes, then we risk to have infinities in the inverse */
         class_test (fabs(pfi->C[l-2][X][Y]) < _MINUSCULE_, pfi->error_message,
-          "a C_l (l=%d) was found to be very close to zero. Stopping to prevent seg fault.\
-Maybe your k-max is too small so that C_l=0 for large l's?",l);
+          "C_%d was found ~ zero. Stopping to prevent seg fault. k-max too small?",l);
       }
     }
 

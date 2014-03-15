@@ -111,7 +111,7 @@ int input2_init_from_arguments(
     errmsg);
 
   class_call(parser_free(&fc),errmsg,errmsg);
-
+    
   return _SUCCESS_;
 }
 
@@ -1351,9 +1351,9 @@ int input2_init (
 
 
   /* Set the actual limit for x_max */
-  printf("# Temporary message: Setting pbs->x_max from %g to %g\n",
-    ((int)(pbs->x_max * 1.1 / pbs->x_step)+1)*pbs->x_step,
-    ((int)(x_max * 1.1 / pbs->x_step)+1)*pbs->x_step);
+  // printf("# Temporary message: Setting pbs->x_max from %g to %g\n",
+  //   ((int)(pbs->x_max * 1.1 / pbs->x_step)+1)*pbs->x_step,
+  //   ((int)(x_max * 1.1 / pbs->x_step)+1)*pbs->x_step);
   
   pbs->x_max = ((int)(x_max * 1.1 / pbs->x_step)+1)*pbs->x_step;
 

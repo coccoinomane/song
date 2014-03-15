@@ -397,6 +397,10 @@ enum k3_extrapolation {
 struct precision
 {
 
+  // *** MY MODIFICATIONS ***
+  
+  /* File structure containing the input parameters */
+  struct file_content * input_file_content;
 
   /** @name - parameters related to the background */
   //@{
@@ -829,6 +833,13 @@ struct precision
 
 
 
+  // ==========================
+  // =          C_l's         =
+  // ==========================
+  
+  /* Do we need to compute the lensed C_l's all the way to l_max? Default behaviour
+  is to compute them only up to l_max - ppr->delta_l_max */
+  short use_lensed_cls_in_fisher;
 
   // ==========================
   // =       Bispectrum       =

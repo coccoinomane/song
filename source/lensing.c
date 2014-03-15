@@ -921,6 +921,12 @@ int lensing_indices(
 
   }
 
+  /* Debug - print the l list */
+  // for (int index_l=0; index_l < ple->l_size; index_l++) {
+  //   printf ("ple->l[index_l] = %g\n", ple->l[index_l]);
+  // }
+
+
   /* allocate table where results will be stored */
     
   class_alloc(ple->cl_lens,

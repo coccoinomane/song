@@ -61,6 +61,9 @@ int parser_init(
     class_alloc(pfc->name,size*sizeof(FileArg),errmsg);
     class_alloc(pfc->value,size*sizeof(FileArg),errmsg);
     class_alloc(pfc->read,size*sizeof(short),errmsg);
+    // *** MY MODIFICATIONS ***
+    class_alloc(pfc->overwritten,size*sizeof(short),errmsg);
+    // *** END OF MY MODIFICATIONS ***
   }
 
   return _SUCCESS_;
@@ -604,19 +607,80 @@ int parser_cat(
   class_alloc(pfc3->value,pfc3->size*sizeof(FileArg),errmsg);
   class_alloc(pfc3->name,pfc3->size*sizeof(FileArg),errmsg);
   class_alloc(pfc3->read,pfc3->size*sizeof(short),errmsg);
+  class_alloc(pfc3->overwritten,pfc3->size*sizeof(short),errmsg);
 
   for (i=0; i < pfc1->size; i++) {
     strcpy(pfc3->value[i],pfc1->value[i]);
     strcpy(pfc3->name[i],pfc1->name[i]);
     pfc3->read[i]=pfc1->read[i];
+    pfc3->overwritten[i]=pfc1->overwritten[i];
   }
 
   for (i=0; i < pfc2->size; i++) {
     strcpy(pfc3->value[i+pfc1->size],pfc2->value[i]);
     strcpy(pfc3->name[i+pfc1->size],pfc2->name[i]);
     pfc3->read[i+pfc1->size]=pfc2->read[i];
+    pfc3->overwritten[i+pfc1->size]=pfc2->overwritten[i];
   }
   
   return _SUCCESS_;
 
 }
+
+
+
+// *** MY MODIFICATIONS ***
+
+/**
+ * Modify one entry of the file_content structure given as argument. It is up
+ * to you to check that the new string 'new_value' is shorter than the macro
+ * _ARGUMENT_LENGTH_MAX_.
+ */
+
+int parser_overwrite_entry (
+		    struct file_content * pfc,
+		    char * name,
+		    char * new_value,
+		    ErrorMsg errmsg
+		    )
+{
+
+  /* search parameter */
+
+  int index=0;
+  while ((index < pfc->size) && (strcmp(pfc->name[index],name) != 0))
+    index++;
+
+  /* if parameter not found, return an error  */
+
+  class_test (index == pfc->size,
+    errmsg,
+    "parameter '%s' not found in input file structure", name);
+
+  /* overwrite parameter value. */
+
+  strcpy (pfc->value[index], new_value);
+
+  /* if parameter overwritten correctly, set the flag 
+     associated with this parameter in the file_content structure */ 
+
+  pfc->overwritten[index] = _TRUE_;
+
+  /* if everything proceeded normally, return _SUCCESS_ */
+
+  return _SUCCESS_;
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+

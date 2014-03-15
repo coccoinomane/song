@@ -1,5 +1,16 @@
 #include "song.h"
 
+int compute_extended_lensed_cls(
+     struct file_content * pfc,
+     struct background * pba,
+     struct thermo * pth,
+     struct spectra * psp,
+     struct nonlinear * pnl,
+     struct lensing * ple,
+     ErrorMsg error_message
+     );
+
+
 int main(int argc, char **argv) {
 
   struct precision pr;        /* precision parameters (1st-order) */
@@ -21,7 +32,7 @@ int main(int argc, char **argv) {
   struct output op;           /* output files */
   ErrorMsg errmsg;            /* error messages */
 
-
+  /* Read parameters from input files */
   if (input_init_from_arguments(argc,argv,&pr,&ba,&th,&pt,&bs,&tr,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
     return _FAILURE_;
@@ -32,17 +43,19 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
+  /* Compute background and thermodynamics */
   if (background_init(&pr,&ba) == _FAILURE_) {
     printf("\n\nError running background_init \n=>%s\n",ba.error_message);
     return _FAILURE_;
   }
-  
+
   if (thermodynamics_init(&pr,&ba,&th) == _FAILURE_) {
     printf("\n\nError in thermodynamics_init \n=>%s\n",th.error_message);
     return _FAILURE_;
   }
 
-  if (pt.has_perturbations2 == _FALSE_) {
+  /* Compute first and second-order perturbations */
+  if (pt2.has_perturbations2 == _FALSE_) {
     if (perturb_init(&pr,&ba,&th,&pt) == _FAILURE_) {
       printf("\n\nError in perturb_init \n=>%s\n",pt.error_message);
       return _FAILURE_;
@@ -53,7 +66,8 @@ int main(int argc, char **argv) {
     printf("\n\nError in perturb2_init \n=>%s\n",pt2.error_message);
     return _FAILURE_;
   }
-  
+
+  /* Compute geometrical factors needed for the line of sight integration */
   if (bessel_init(&pr,&bs) == _FAILURE_) {
     printf("\n\nError in bessel_init \n =>%s\n",bs.error_message);
     return _FAILURE_;
@@ -64,46 +78,62 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
+  /* Compute transfer functions using the line of sight integration */
   if (transfer_init(&pr,&ba,&th,&pt,&bs,&tr) == _FAILURE_) {
     printf("\n\nError in transfer_init \n=>%s\n",tr.error_message);
     return _FAILURE_;
   }
-  
+
   if (transfer2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2) == _FAILURE_) {
     printf("\n\nError in transfer2_init \n=>%s\n",tr2.error_message);
     return _FAILURE_;
   }
-  
+
+  /* Compute the primordial power spectrum of curvature perturbations */
   if (primordial_init(&pr,&pt,&pm) == _FAILURE_) {
     printf("\n\nError in primordial_init \n=>%s\n",pm.error_message);
     return _FAILURE_;
   }
+  
+  /* Compute C_l's (lensed and unlensed) */
+  if (pr.use_lensed_cls_in_fisher == _FALSE_) {
 
-  if (spectra_init(&pr,&ba,&pt,&tr,&pm,&sp) == _FAILURE_) {
-    printf("\n\nError in spectra_init \n=>%s\n",sp.error_message);
-    return _FAILURE_;
+    if (spectra_init(&pr,&ba,&pt,&tr,&pm,&sp) == _FAILURE_) {
+      printf("\n\nError in spectra_init \n=>%s\n",sp.error_message);
+      return _FAILURE_;
+    }
+
+    if (lensing_init(&pr,&pt,&sp,&nl,&le) == _FAILURE_) {
+      printf("\n\nError in lensing_init \n=>%s\n",le.error_message);
+      return _FAILURE_;
+    }
+  }
+  else {
+
+    if (compute_extended_lensed_cls (pr.input_file_content,&ba,&th,&sp,&nl,&le,errmsg) == _FAILURE_) {
+      printf("\n\nError in compute_extended_lensed_cls \n=>%s\n",errmsg);
+      return _FAILURE_;
+    }
   }
 
-  if (lensing_init(&pr,&pt,&sp,&nl,&le) == _FAILURE_) {
-    printf("\n\nError in lensing_init \n=>%s\n",le.error_message);
-    return _FAILURE_;
-  }
-
+  /* Compute bispectra */
   if (bispectra_init(&pr,&ba,&th,&pt,&bs,&tr,&pm,&sp,&le,&bi) == _FAILURE_) {
     printf("\n\nError in bispectra_init \n=>%s\n",bi.error_message);
     return _FAILURE_;
   }
-  
+
   if (bispectra2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&sp,&le,&bi) == _FAILURE_) {
     printf("\n\nError in bispectra2_init \n=>%s\n",bi.error_message);
     return _FAILURE_;
   }
-  
+
+  /* Compute Fisher matrix */
   if (fisher_init(&pr,&ba,&th,&pt,&bs,&tr,&pm,&sp,&le,&bi,&fi) == _FAILURE_) {
     printf("\n\nError in fisher_init \n=>%s\n",fi.error_message);
     return _FAILURE_;
   }
-  
+
+  /* Write output files */
   if (output_init(&ba,&pt,&sp,&nl,&le,&bi,&fi,&op) == _FAILURE_) {
     printf("\n\nError in output_init \n=>%s\n",op.error_message);
     return _FAILURE_;
@@ -115,73 +145,192 @@ int main(int argc, char **argv) {
   // =                                  Free memory                                  =
   // =================================================================================
   
-  if (fisher_free(&bi,&fi) == _FAILURE_) {
-    printf("\n\nError in fisher_free \n=>%s\n",fi.error_message);
-    return _FAILURE_;
-  }
-  
-  if (bispectra_free(&pt,&sp,&le,&bi) == _FAILURE_) {
-    printf("\n\nError in bispectra_free \n=>%s\n",bi.error_message);
-    return _FAILURE_;
-  }
-  
-  if (lensing_free(&le) == _FAILURE_) {
-    printf("\n\nError in lensing_free \n=>%s\n",le.error_message);
-    return _FAILURE_;
-  }
-  
-  if (pt.has_cls == _TRUE_) {
-    if (spectra_free(&sp) == _FAILURE_) {
-      printf("\n\nError in spectra_free \n=>%s\n",sp.error_message);
-      return _FAILURE_;
-    }
-  }
-  
-  if (primordial_free(&pm) == _FAILURE_) {
-    printf("\n\nError in primordial_free \n=>%s\n",pm.error_message);
-    return _FAILURE_;
-  }
-  
-  if (transfer2_free(&pt2,&tr2) == _FAILURE_) {
-    printf("\n\nError in transfer2_free \n=>%s\n",tr2.error_message);
-    return _FAILURE_;
-  }
-  
-  if (transfer_free(&tr) == _FAILURE_) {
-    printf("\n\nError in transfer_free \n=>%s\n",tr.error_message);
-    return _FAILURE_;
-  }
-  
-  if (bessel2_free(&pr,&pr2,&bs,&bs2) == _FAILURE_)  {
-    printf("\n\nError in bessel2_free \n=>%s\n",bs2.error_message);
-    return _FAILURE_;
-  }
-  
-  if (bessel_free(&pr,&bs) == _FAILURE_)  {
-    printf("\n\nError in bessel_free \n=>%s\n",bs.error_message);
-    return _FAILURE_;
-  }
-  
-  if (perturb2_free(&pr2,&pt2) == _FAILURE_) {
-    printf("\n\nError in perturb2_free \n=>%s\n",pt2.error_message);
-    return _FAILURE_;
-  }
-  
-  if (perturb_free(&pr,&pt) == _FAILURE_) {
-    printf("\n\nError in perturb_free \n=>%s\n",pt.error_message);
-    return _FAILURE_;
-  }
-  
-  if (thermodynamics_free(&th) == _FAILURE_) {
-    printf("\n\nError in thermodynamics_free \n=>%s\n",th.error_message);
-    return _FAILURE_;
-  }
-  
-  if (background_free(&ba) == _FAILURE_) {
-    printf("\n\nError in background_free \n=>%s\n",ba.error_message);
-    return _FAILURE_;
-  }
+  // if (fisher_free(&bi,&fi) == _FAILURE_) {
+  //   printf("\n\nError in fisher_free \n=>%s\n",fi.error_message);
+  //   return _FAILURE_;
+  // }
+  // 
+  // if (bispectra_free(&pr,&pt,&sp,&le,&bi) == _FAILURE_) {
+  //   printf("\n\nError in bispectra_free \n=>%s\n",bi.error_message);
+  //   return _FAILURE_;
+  // }
+  // 
+  // if (lensing_free(&le) == _FAILURE_) {
+  //   printf("\n\nError in lensing_free \n=>%s\n",le.error_message);
+  //   return _FAILURE_;
+  // }
+  // 
+  // if (pt.has_cls == _TRUE_) {
+  //   if (spectra_free(&sp) == _FAILURE_) {
+  //     printf("\n\nError in spectra_free \n=>%s\n",sp.error_message);
+  //     return _FAILURE_;
+  //   }
+  // }
+  // 
+  // if (primordial_free(&pm) == _FAILURE_) {
+  //   printf("\n\nError in primordial_free \n=>%s\n",pm.error_message);
+  //   return _FAILURE_;
+  // }
+  // 
+  // if (transfer2_free(&pt2,&tr2) == _FAILURE_) {
+  //   printf("\n\nError in transfer2_free \n=>%s\n",tr2.error_message);
+  //   return _FAILURE_;
+  // }
+  // 
+  // if (transfer_free(&tr) == _FAILURE_) {
+  //   printf("\n\nError in transfer_free \n=>%s\n",tr.error_message);
+  //   return _FAILURE_;
+  // }
+  // 
+  // if (bessel2_free(&pr,&pr2,&bs,&bs2) == _FAILURE_)  {
+  //   printf("\n\nError in bessel2_free \n=>%s\n",bs2.error_message);
+  //   return _FAILURE_;
+  // }
+  // 
+  // if (bessel_free(&pr,&bs) == _FAILURE_)  {
+  //   printf("\n\nError in bessel_free \n=>%s\n",bs.error_message);
+  //   return _FAILURE_;
+  // }
+  // 
+  // if (perturb2_free(&pr2,&pt2) == _FAILURE_) {
+  //   printf("\n\nError in perturb2_free \n=>%s\n",pt2.error_message);
+  //   return _FAILURE_;
+  // }
+  // 
+  // if (perturb_free(&pr,&pt) == _FAILURE_) {
+  //   printf("\n\nError in perturb_free \n=>%s\n",pt.error_message);
+  //   return _FAILURE_;
+  // }
+  // 
+  // if (thermodynamics_free(&th) == _FAILURE_) {
+  //   printf("\n\nError in thermodynamics_free \n=>%s\n",th.error_message);
+  //   return _FAILURE_;
+  // }
+  // 
+  // if (background_free(&ba) == _FAILURE_) {
+  //   printf("\n\nError in background_free \n=>%s\n",ba.error_message);
+  //   return _FAILURE_;
+  // }
 
   return _SUCCESS_;
 
+}
+
+
+int compute_extended_lensed_cls(
+     struct file_content * pfc,
+     // struct precision * ppr,
+     struct background * pba,
+     struct thermo * pth,
+     // struct perturbs * ppt,
+     // struct bessels * pbs,
+     // struct transfers * ptr,
+     // struct primordial * ppm,
+     struct spectra * psp,
+     struct nonlinear * pnl,
+     struct lensing * ple,
+     // struct bispectra * pbi,
+     // struct fisher * pfi,
+     // struct output * pop,
+     ErrorMsg error_message
+     )
+{
+
+  /* Structures that are not of interest for SONG */
+  struct precision pr;
+  struct perturbs pt;
+  struct bessels bs;
+  struct transfers tr;
+  struct primordial pm;
+  struct bispectra bi;
+  struct fisher fi;
+  struct output op;
+
+  // ======================================================================================
+  // =                                Modify input parameters                             =
+  // ======================================================================================
+
+  /* String to hold the new parameter values */
+  char buffer[_ARGUMENT_LENGTH_MAX_];
+
+  /* Initialize all parameters with the values in the input 'file_content' structure  */
+  class_call (input_init (pfc,&pr,pba,pth,&pt,&bs,&tr,&pm,psp,&bi,&fi,pnl,ple,&op,error_message),
+    error_message,
+    error_message);
+
+  int new_l_max_scalars = pt.l_scalar_max + pr.delta_l_max;
+  sprintf (buffer, "%d", new_l_max_scalars);
+
+  class_call (parser_overwrite_entry (pfc, "l_max_scalars", buffer, error_message),
+    error_message,
+    error_message);
+
+  
+  // ======================================================================================
+  // =                                      Run CLASS                                     =
+  // ======================================================================================
+
+  if ((psp->spectra_verbose>0) || (ple->lensing_verbose>0))
+    printf ("Increasing l_max for lensed C_l's\n");
+
+  /* Read the parameters in the modified 'file_content' structure. */
+  class_call (input_init (pfc,&pr,pba,pth,&pt,&bs,&tr,&pm,psp,&bi,&fi,pnl,ple,&op,error_message),
+    error_message,
+    error_message);
+    
+  pt.perturbations_verbose = 0;
+  class_call (perturb_init(&pr,pba,pth,&pt),
+    error_message,
+    error_message);
+
+  bs.bessels_verbose = 0;
+  class_call (bessel_init(&pr,&bs),
+    error_message,
+    error_message);
+
+  tr.transfer_verbose = 0;
+  class_call (transfer_init(&pr,pba,pth,&pt,&bs,&tr),
+    error_message,
+    error_message);
+  
+  pm.primordial_verbose = 0;
+  class_call (primordial_init(&pr,&pt,&pm),
+    error_message,
+    error_message);
+
+  class_call (spectra_init(&pr,pba,&pt,&tr,&pm,psp),
+    error_message,
+    error_message);
+  
+  class_call (nonlinear_init(&pr,pba,pth,&pm,psp,pnl),
+    error_message,
+    error_message);
+      
+  class_call (lensing_init(&pr,&pt,psp,pnl,ple),
+    error_message,
+    error_message);
+
+
+  // =================================================================================
+  // =                                  Free memory                                  =
+  // =================================================================================
+  
+  class_call (primordial_free(&pm),
+    error_message,
+    error_message);
+    
+  class_call (transfer_free(&tr),
+    error_message,
+    error_message);
+  
+  class_call (bessel_free(&pr,&bs),
+    error_message,
+    error_message);
+  
+  class_call (perturb_free(&pr,&pt),
+    error_message,
+    error_message);
+         
+  return _SUCCESS_;
+  
 }
