@@ -51,22 +51,35 @@ int main(int argc, char **argv) {
     printf("\n\nError in primordial_init \n=>%s\n",pm.error_message);
     return _FAILURE_;
   }
-
-  if (spectra_init(&pr,&ba,&pt,&tr,&pm,&sp) == _FAILURE_) {
-    printf("\n\nError in spectra_init \n=>%s\n",sp.error_message);
-    return _FAILURE_;
+  
+  /* Compute C_l's (lensed and unlensed). If we don't need the lensed C_l's
+  all the way to l_max, then execute the standard CLASS moduels. Otherwise
+  call the function 'compute_cls' which extends l_max to l_max + delta_l_max. */
+  if (pr.use_lensed_cls_in_fisher == _FALSE_) {
+  
+    if (spectra_init(&pr,&ba,&pt,&tr,&pm,&sp) == _FAILURE_) {
+      printf("\n\nError in spectra_init \n=>%s\n",sp.error_message);
+      return _FAILURE_;
+    }
+  
+    if (nonlinear_init(&pr,&ba,&th,&pm,&sp,&nl) == _FAILURE_) {
+      printf("\n\nError in nonlinear_init \n=>%s\n",nl.error_message);
+      return _FAILURE_;
+    }
+  
+    if (lensing_init(&pr,&pt,&sp,&nl,&le) == _FAILURE_) {
+      printf("\n\nError in lensing_init \n=>%s\n",le.error_message);
+      return _FAILURE_;
+    }
   }
+  else {
 
-  if (nonlinear_init(&pr,&ba,&th,&pm,&sp,&nl) == _FAILURE_) {
-    printf("\n\nError in nonlinear_init \n=>%s\n",nl.error_message);
-    return _FAILURE_;
-  }
-      
-  if (lensing_init(&pr,&pt,&sp,&nl,&le) == _FAILURE_) {
-    printf("\n\nError in lensing_init \n=>%s\n",le.error_message);
-    return _FAILURE_;
-  }
-
+    if (compute_cls (&pr,&ba,&th,&sp,&nl,&le,errmsg) == _FAILURE_) {
+      printf("\n\nError in compute_cls \n=>%s\n",errmsg);
+      return _FAILURE_;
+    }
+  }  
+  
   if (bispectra_init(&pr,&ba,&th,&pt,&bs,&tr,&pm,&sp,&le,&bi) == _FAILURE_) {
     printf("\n\nError in bispectra_init \n=>%s\n",bi.error_message);
     return _FAILURE_;

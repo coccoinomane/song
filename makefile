@@ -71,8 +71,8 @@ LIBRARIES           = -lgfortran -fopenmp -lm
 # =                             Object files                               =
 # ==========================================================================
 
-TOOLS = growTable.o dei_rkck.o sparse.o evolver_rkck.o evolver_ndf15.o arrays.o parser.o quadrature.o
-SONG_TOOLS = $(TOOLS) song_tools.o slatec_3j_C.o slatec_3j_f90.o mesh_interpolation.o
+TOOLS = growTable.o dei_rkck.o sparse.o evolver_rkck.o evolver_ndf15.o arrays.o parser.o quadrature.o mains.o
+SONG_TOOLS = $(TOOLS) song_tools.o slatec_3j_C.o slatec_3j_f90.o mesh_interpolation.o mains.o
 INPUT = input.o
 INPUT2 = input2.o
 PRECISION = precision.o

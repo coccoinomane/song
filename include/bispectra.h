@@ -18,9 +18,9 @@ enum bispectra_types {
 
 struct bispectra {
 
-  // =================================================================================================
-  // =                                     Indices of bispectra                                      =
-  // =================================================================================================
+  // ===========================================================================================
+  // =                                  Indices of bispectra                                   =
+  // ===========================================================================================
 
   /* Should we compute any bispectra at all? */
   short has_bispectra;
@@ -34,7 +34,7 @@ struct bispectra {
   short has_intrinsic_squeezed;       /* Squeezed limit for the 2nd-order bispectrum (Creminelli et al. 2012, Bartolo et al. 2012, Lewis 2012) */
   short has_local_squeezed;           /* Squeezed limit for local model (Guangui et al. 1994) */
   short has_cosine_shape;             /* The above, multiplied by an oscillating function in l */
-  short has_isw_lensing;              /* ISW-Lensing bispectrum shape */
+  short has_cmb_lensing;              /* CMB-lensing bispectrum shape */
   short has_quadratic_correction;     /* Four-point contribution to the bispectrum */
 
   /* Indices for the above bispectra types */
@@ -47,7 +47,7 @@ struct bispectra {
   int index_bt_intrinsic_squeezed;    /* Index for the intrinsic bispectrum in the squeezed limit */  
   int index_bt_local_squeezed;        /* Index for the local-model bispectrum in the squeezed limit */  
   int index_bt_cosine;                /* Index for the oscillating bispectrum */  
-  int index_bt_isw_lensing;           /* Index for the bispectrum of isw-lensing */  
+  int index_bt_cmb_lensing;           /* Index for the bispectrum of CMB-lensing */  
   int index_bt_quadratic;             /* Index for the bispectrum induced by a quadratic correction to the distribution function */  
   int bt_size;                        /* Total number of bispectra types requested */
 
@@ -56,15 +56,54 @@ struct bispectra {
 
   /* Array that identifies whether a bispectrum is separable, non-separable, analytic or intrinsic. */
   enum bispectra_types bispectrum_type[_MAX_NUM_BISPECTRA_];
-
+  
   /* How many bispectra of each type shall we compute? Indexed as pbi->n[bispectrum type], where
   the bispectrum type can be separable, non_separable, analytical, intrinsic */
   int n[_MAX_NUM_BISPECTRA_];
+  
+  /* Given a generic bispectrum B_l1l2l3 with even parity (such as those involving only
+  temperature and E-mode polarisation), its reduced form b_l1l2l3 is defined by
+    B_l1l2l3 = sqrt((2*(l1+1)+2*(l2+1)+2*(l3+1))/(4pi)) * (l1,l2,l3)(0,0,0) * b_l1l2l3,
+  where the 3j-symbol (l1,l2,l3)(0,0,0) enforces the parity invariance of B_l1l2l3.
+  This implies that the bispectrum B_l1l2l3 vanishes for configurations where
+  l1+l2+l3 is odd, while the reduced bispectrum is non-zero for all (l1,l2,l3).
+  In the Fisher matrix estimator, only B_l1l2l3 enters, therefore the odd configurations
+  do not matter. However, computing b_l1l2l3 would make the interpolation more stable as the
+  odd configurations fill the gaps in the (l1,l2,l3) space. Therefore, we choose to store
+  the reduced bispectrum b_l1l2l3 rather than B_l1l2l3.
+  
+  However, for certain bispectra it is not possible to analytically extract the
+  3j-symbol (l1,l2,l3)(0,0,0). Examples of such bispectra are the |m|>0 intrinsic
+  bispectra (see chapter 6 of my thesis) and the CMB-lensing/quadratic bispectra
+  for polarisation (see Sec. 4 of http://arxiv.org/abs/1101.2234). For these
+  bispectra, the reduced bispectrum b_l1l2l3 has to be computed from B_l1l2l3
+  by numerically dividing the latter by (l1,l2,l3)(0,0,0). Therefore, it not
+  possible to obtain the value of b_l1l2l3 for odd l1+l2+3. We take note of these
+  non-reducible bispectra using the following array. */
+  int has_reduced_bispectrum[_MAX_NUM_BISPECTRA_];
   
   /* Add the bolometric and redshift corrections (in the form of C_l*C_l) to the intrinsic bispectrum?
   Ignore if you are only interested in first-order CLASS. */
   short add_quadratic_correction;
 
+  /* Array of functions that associates to a bispetrum index its analytical function. Defined only for
+  the analytical bispectra. The four 'threej' variables must be respectively the following 3j-symbols:
+  ( l1, l2, l3 )      ( l1, l2, l3 )      ( l1, l2, l3 )    ( l1, l2, l3 )
+  (  0,  0,  0 )      (  0, -2,  2 )      (  2,  0, -2 )    ( -2,  2,  0 )
+  They are needed only for the 'quadratic' and CMB-lensing bispectra. */
+  int (*bispectrum_function[_MAX_NUM_BISPECTRA_]) (
+    struct precision * ppr,
+    struct spectra * psp,
+    struct lensing * ple,
+    struct bispectra * pbi,
+    int l1, int l2, int l3,
+    int X, int Y, int Z,
+    double threej_000,
+    double threej_20m2,
+    double threej_m220,
+    double threej_0m22,
+    double *result
+  );
 
 
   // ======================================================================================
@@ -114,13 +153,11 @@ struct bispectra {
   /* Array of strings that contain the text labels of the various fields */
   char bf_labels[_MAX_NUM_FIELDS_][_MAX_LENGTH_LABEL_]; /* T,E... */
   char bfff_labels[_MAX_NUM_FIELDS_][_MAX_NUM_FIELDS_][_MAX_NUM_FIELDS_][_MAX_LENGTH_LABEL_]; /* TTT,EEE,TTE... */
-  
 
 
-
-  // ==================================================================================================
-  // =                                           Sampling in l                                        =
-  // ==================================================================================================
+  // ===========================================================================================
+  // =                                       Sampling in l                                     =
+  // ===========================================================================================
 
   int * l;                                /* List of multipole values pbi->l[index_l] */
   int l_size;                             /* Number of l's where we compute the bispectrum */
@@ -129,9 +166,9 @@ struct bispectra {
   
   /* The bispectrum depends on 3 l-values (l1,l2,l3), which must satisfy the triangular inequality:
   |l1-l2| <= l3 <= l1+l2.  We determine the range of l3 within pbi->l using the following two arrays. */
-  int ** l_triangular_size;              /* l_triangular_size[index_l1][index_l2] is the number of allowed l3 values in pbi->l given l1 and l2 */
-  int ** index_l_triangular_min;         /* index_l_triangular_min[index_l1][index_l2] is the index closest to abs(l1-l2) in pbi->l */
-  int ** index_l_triangular_max;         /* index_l_triangular_max[index_l1][index_l2] is the index closest to l1+l2 in pbi->l */
+  int ** l_triangular_size;       /* l_triangular_size[index_l1][index_l2] is the number of allowed l3 values in pbi->l given l1 and l2 */
+  int ** index_l_triangular_min;  /* index_l_triangular_min[index_l1][index_l2] is the index closest to abs(l1-l2) in pbi->l */
+  int ** index_l_triangular_max;  /* index_l_triangular_max[index_l1][index_l2] is the index closest to l1+l2 in pbi->l */
 
   /* Index associated to a given (l1,l2,l3) configuration. This is obtained assuming l3 satisfies the triangular condition,
     and that l1>=l2>=l3. The array should be indexed as:
@@ -154,10 +191,11 @@ struct bispectra {
   where i,j,k=T,E,B are indexed by the 'pbi->index_bf' indices, and
   'index_l1_l2_l3' is described above. */          
   double ***** bispectra;
+  
 
-  // ============================================================================================================
-  // =                                              Filter functions                                            =
-  // ============================================================================================================
+  // ===========================================================================================
+  // =                                   Filter functions                                      =
+  // ===========================================================================================
 
   /* In the local model, the primordial bispectrum is simply given by
         
@@ -193,11 +231,20 @@ struct bispectra {
   double *** delta;              /* delta[index_l][index_r] for temperature */
 
 
+  // ===========================================================================================
+  // =                              Parameters for the integration                             =
+  // ===========================================================================================
+  
+  /* Upper and lower limits on the integration variable 'r', appearing in the part of the bispectrum
+  integral that involves three Bessel functions. */
+  double r_min;
+  double r_max;
+  int r_size;
 
 
-  // ==================================================================================================
-  // =                                            Other arrays                                        =
-  // ==================================================================================================
+  // ==========================================================================================
+  // =                                    Other arrays                                        =
+  // ==========================================================================================
 
   /* First-order primordial power spectrum as a function of k. It is indexed as pbi->pk[index_k]
   where 'index_k' indexes ptr->k. Its size is ptr->k_size[ppt->index_md_scalars]. */
@@ -219,9 +266,9 @@ struct bispectra {
   double * delta_k;
 
 
-  // ==================================================================================================
-  // =                                              Disk IO                                           =
-  // ==================================================================================================
+  // ==========================================================================================
+  // =                                        Disk IO                                         =
+  // ==========================================================================================
 
   /* Should we store the content of pbi->bispectra to disk? */
   short store_bispectra_to_disk;
@@ -229,7 +276,6 @@ struct bispectra {
   /* Should we bother computing the bispectra, or they will be loaded from disk? This flag is
     on only if both ppr->load_run and 'store_bispectra_to_disk' are on. */
   short load_bispectra_from_disk;
-
 
   /* Files where the bispectra will be stored (one file for each bispectra type) */
   char bispectra_run_directory[_FILENAMESIZE_];
@@ -241,23 +287,9 @@ struct bispectra {
   char bispectra_status_path[_FILENAMESIZE_];
 
 
-
-
-  // *********        Parameters for the integration        ********
-  
-  /* Upper and lower limits on the integration variable 'r', appearing in the part of the bispectrum
-    integral that involves three Bessel functions. */
-  double r_min;
-  double r_max;
-  int r_size;
-
-
-  
-  
-
-
-
-  // ***  Technical parameter  ***
+  // ===========================================================================================
+  // =                                   Technical parameters                                  =
+  // ===========================================================================================
   
   short bispectra_verbose;                   /* Flag regulating the amount of information sent to standard output (none if set to zero) */                                                  
   long int n_total_configurations;           /* Number of (l1,l2,l3) configurations compatible with the triangular condition */
@@ -785,19 +817,80 @@ extern "C" {
     double * out
     );
 
-  int bispectra_isw_lensing (
-    struct precision * ppr,
-    struct spectra * psp,
-    struct lensing * ple,
-    struct bispectra * pbi,
-    int l1, int l2, int l3,
-    int X1, int X2, int X3,
-    double threej_l1_l2_l3_0_0_0,
-    double threej_l1_l2_l3_2_0_m2,
-    double threej_l1_l2_l3_m2_2_0,
-    double threej_l1_l2_l3_0_m2_2,
-    double * result
-    );
+  int bispectra_cmb_lensing_bispectrum (
+       struct precision * ppr,
+       struct spectra * psp,
+       struct lensing * ple,
+       struct bispectra * pbi,
+       int l1, int l2, int l3,
+       int X1, int X2, int X3,
+       double threej_l1_l2_l3_0_0_0,
+       double threej_l1_l2_l3_2_0_m2,
+       double threej_l1_l2_l3_m2_2_0,
+       double threej_l1_l2_l3_0_m2_2,
+       double * result
+       );
+
+
+  int bispectra_local_squeezed_bispectrum (
+       struct precision * ppr,
+       struct spectra * psp,
+       struct lensing * ple,
+       struct bispectra * pbi,
+       int l1, int l2, int l3,
+       int X1, int X2, int X3,
+       double threej_l1_l2_l3_0_0_0,
+       double threej_l1_l2_l3_2_0_m2,
+       double threej_l1_l2_l3_m2_2_0,
+       double threej_l1_l2_l3_0_m2_2,
+       double * result
+       );
+
+     
+  int bispectra_intrinsic_squeezed_bispectrum (
+       struct precision * ppr,
+       struct spectra * psp,
+       struct lensing * ple,
+       struct bispectra * pbi,
+       int l1, int l2, int l3,
+       int X1, int X2, int X3,
+       double threej_l1_l2_l3_0_0_0,
+       double threej_l1_l2_l3_2_0_m2,
+       double threej_l1_l2_l3_m2_2_0,
+       double threej_l1_l2_l3_0_m2_2,
+       double * result
+       );
+
+
+  int bispectra_quadratic_bispectrum (
+       struct precision * ppr,
+       struct spectra * psp,
+       struct lensing * ple,
+       struct bispectra * pbi,
+       int l1, int l2, int l3,
+       int X1, int X2, int X3,
+       double threej_l1_l2_l3_0_0_0,
+       double threej_l1_l2_l3_2_0_m2,
+       double threej_l1_l2_l3_m2_2_0,
+       double threej_l1_l2_l3_0_m2_2,
+       double * result
+       ); 
+
+
+  int bispectra_cosine_bispectrum (
+       struct precision * ppr,
+       struct spectra * psp,
+       struct lensing * ple,
+       struct bispectra * pbi,
+       int l1, int l2, int l3,
+       int X1, int X2, int X3,
+       double threej_l1_l2_l3_0_0_0,
+       double threej_l1_l2_l3_2_0_m2,
+       double threej_l1_l2_l3_m2_2_0,
+       double threej_l1_l2_l3_0_m2_2,
+       double * result
+       );
+
 
 #ifdef __cplusplus
 }

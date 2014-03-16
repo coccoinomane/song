@@ -49,11 +49,23 @@ int bispectra2_init (
   }
   
   
+  // =====================================================================================
+  // =                                    Preparations                                   =
+  // =====================================================================================
 
-  // =======================================================
-  // =                  Compute bispectra                  =
-  // =======================================================
-  
+  /* Initialize those indices & arrays in the bispectra structure which are
+  specific to the second-order bispectra but were not already initialised
+  in bispectra_indices */
+
+  class_call (bispectra2_indices (ppr,ppr2,pba,ppt,ppt2,pbs,pbs2,ptr,ptr2,ppm,psp,pbi),
+    pbi->error_message,
+    pbi->error_message);
+
+
+  // =====================================================================================
+  // =                                 Compute bispectra                                 =
+  // =====================================================================================
+
   class_call (bispectra2_harmonic (ppr,ppr2,pba,ppt,ppt2,pbs,pbs2,ptr,ptr2,ppm,psp,pbi),
     pbi->error_message,
     pbi->error_message);
@@ -65,6 +77,37 @@ int bispectra2_init (
 
 
 
+
+int bispectra2_indices (
+    struct precision * ppr,
+    struct precision2 * ppr2,
+    struct background * pba,
+    struct perturbs * ppt,
+    struct perturbs2 * ppt2,
+    struct bessels * pbs,
+    struct bessels2 * pbs2,
+    struct transfers * ptr,
+    struct transfers2 * ptr2,
+    struct primordial * ppm,
+    struct spectra * psp,
+    struct bispectra * pbi
+    )
+{
+
+  /* For |m|>0, it is not possible to obtain the reduced form of the intrinsic bispectrum
+  (see comment for 'has_reduced_bispectrum' in bispectra.h) */
+  for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt) {
+
+    if ((pbi->has_intrinsic == _TRUE_) && (index_bt == pbi->index_bt_intrinsic)) {
+      if (ppr2->m_max_2nd_order>0)
+        pbi->has_reduced_bispectrum[index_bt] = _FALSE_; /* see comment in bispectra.h */
+    }
+  }
+  
+
+  return _SUCCESS_;
+
+}
 
 
 /**

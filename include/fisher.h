@@ -77,7 +77,7 @@ struct fisher {
   int index_ft_intrinsic_squeezed;    /* Index for the intrinsic bispectrum in the squeezed limit */  
   int index_ft_local_squeezed;        /* Index for the local-model bispectrum in the squeezed limit */  
   int index_ft_cosine;                /* Index for the oscillating bispectrum */  
-  int index_ft_isw_lensing;           /* Index for the bispectrum of isw-lensing */  
+  int index_ft_cmb_lensing;           /* Index for the bispectrum of CMB-lensing */  
   int fisher_size;                         /* Total number of bispectra types requested */
 
   /* Correspondence between rows of the Fisher matrix and bispectra stored in pbi->bispectra[index_bt] */

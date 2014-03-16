@@ -1202,10 +1202,21 @@ int input2_init (
     "the maximum value of the azimuthal number 'm' cannot exceed %d, please choose 'modes_2nd_order' accordingly",
     _MAX_NUM_AZIMUTHAL_);
 
-  /* For m>0 we cannot compute the reduced bispectrum when l1+l2+l3 is odd */
-  if (((pbi->has_intrinsic==_TRUE_) && (ppr2->m_max_2nd_order>0)) ||
-      (((pbi->has_quadratic_correction==_TRUE_) || (pbi->has_isw_lensing ==_TRUE_)) &&
-        ((ppt2->has_cmb_polarization_e==_TRUE_) || (ppt2->has_cmb_polarization_b==_TRUE_)))) {
+  /* For certain bispectrum types, the 3j-symbol (l1,l2,l3)(0,0,0) does not appear explicitly
+  in the bispectrum formula and therefore it cannot be pulled out analytically. This is the
+  case for the intrinsic bispectrum when m>0, or for the CMB-lensing and quadratic bispectra
+  in presence of polarisation. To circumvent this issue, we choose to have 
+  an l-grid where all the l's are even. This is not completely satisfactory because half of
+  the configurations (those with even l1+l2+l3 but two odd components, like 2,3,3 or 2,3,7)
+  will be always skipped. The alternative, however, is worse: if the 1D l-grid has both
+  even and odd l's, it can happen that all of the configurations are skipped! Think of
+  having a grid with step 2 starting from an odd value: you will always get odd l's, which
+  means that l1+l2+l3 is always odd too. (A potential solution is to have a step of delta_l=1
+  up to some even l and then carry on with an even linear step).
+  An exception to this rule is when ppr->l_linstep=1, that is, when we take all l's (even
+  and odd) in our 1D l-list. In this case, nothing can be skipped and the Fisher estimator
+  will give an exact result. */
+  if ((ppr->l_linstep!=1) && (pbi->has_intrinsic==_TRUE_) && (ppr2->m_max_2nd_order>0)) {
        
     printf ("\n");
     printf ("   *@^#?!?! FORCING THE COMPUTATION OF A GRID OF EVEN L'S\n");

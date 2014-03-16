@@ -1,15 +1,5 @@
 #include "song.h"
 
-int compute_extended_lensed_cls(
-     struct file_content * pfc,
-     struct background * pba,
-     struct thermo * pth,
-     struct spectra * psp,
-     struct nonlinear * pnl,
-     struct lensing * ple,
-     ErrorMsg error_message
-     );
-
 
 int main(int argc, char **argv) {
 
@@ -33,13 +23,21 @@ int main(int argc, char **argv) {
   ErrorMsg errmsg;            /* error messages */
 
   /* Read parameters from input files */
-  if (input_init_from_arguments(argc,argv,&pr,&ba,&th,&pt,&bs,&tr,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
+  if (input_init_from_arguments(argc,argv,&pr,&ba,&th,&pt,&bs,&tr,&pm,
+  &sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
     return _FAILURE_;
   }
 
-  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
+  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&bs,
+  &bs2,&tr,&tr2,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
+    return _FAILURE_;
+  }
+
+  /* This file is meant only for computations that involve second-order perturbations */
+  if (pt2.has_perturbations2 == _FALSE_) {
+    printf ("\n\nThe computation you requested is linear. Use 'class' rather than 'song'.\n");
     return _FAILURE_;
   }
 
@@ -54,14 +52,13 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
-  /* Compute first and second-order perturbations */
-  if (pt2.has_perturbations2 == _FALSE_) {
-    if (perturb_init(&pr,&ba,&th,&pt) == _FAILURE_) {
-      printf("\n\nError in perturb_init \n=>%s\n",pt.error_message);
-      return _FAILURE_;
-    }
+  /* Compute the first-order C_l's */
+  if (compute_cls (&pr,&ba,&th,&sp,&nl,&le,errmsg) == _FAILURE_) {
+    printf("\n\nError in compute_cls \n=>%s\n",errmsg);
+    return _FAILURE_;
   }
 
+  /* Compute first and second-order perturbations */
   if (perturb2_init(&pr,&pr2,&ba,&th,&pt,&pt2) == _FAILURE_) {
     printf("\n\nError in perturb2_init \n=>%s\n",pt2.error_message);
     return _FAILURE_;
@@ -94,27 +91,17 @@ int main(int argc, char **argv) {
     printf("\n\nError in primordial_init \n=>%s\n",pm.error_message);
     return _FAILURE_;
   }
-  
-  /* Compute C_l's (lensed and unlensed) */
-  if (pr.use_lensed_cls_in_fisher == _FALSE_) {
 
-    if (spectra_init(&pr,&ba,&pt,&tr,&pm,&sp) == _FAILURE_) {
-      printf("\n\nError in spectra_init \n=>%s\n",sp.error_message);
-      return _FAILURE_;
-    }
-
-    if (lensing_init(&pr,&pt,&sp,&nl,&le) == _FAILURE_) {
-      printf("\n\nError in lensing_init \n=>%s\n",le.error_message);
-      return _FAILURE_;
-    }
-  }
-  else {
-
-    if (compute_extended_lensed_cls (pr.input_file_content,&ba,&th,&sp,&nl,&le,errmsg) == _FAILURE_) {
-      printf("\n\nError in compute_extended_lensed_cls \n=>%s\n",errmsg);
-      return _FAILURE_;
-    }
-  }
+  /* Compute spectra */
+  //   if (spectra_init(&pr,&ba,&pt,&tr,&pm,&sp) == _FAILURE_) {
+  //     printf("\n\nError in spectra_init \n=>%s\n",sp.error_message);
+  //     return _FAILURE_;
+  //   }
+  // 
+  //   if (lensing_init(&pr,&pt,&sp,&nl,&le) == _FAILURE_) {
+  //     printf("\n\nError in lensing_init \n=>%s\n",le.error_message);
+  //     return _FAILURE_;
+  //   }
 
   /* Compute bispectra */
   if (bispectra_init(&pr,&ba,&th,&pt,&bs,&tr,&pm,&sp,&le,&bi) == _FAILURE_) {
@@ -217,120 +204,3 @@ int main(int argc, char **argv) {
 }
 
 
-int compute_extended_lensed_cls(
-     struct file_content * pfc,
-     // struct precision * ppr,
-     struct background * pba,
-     struct thermo * pth,
-     // struct perturbs * ppt,
-     // struct bessels * pbs,
-     // struct transfers * ptr,
-     // struct primordial * ppm,
-     struct spectra * psp,
-     struct nonlinear * pnl,
-     struct lensing * ple,
-     // struct bispectra * pbi,
-     // struct fisher * pfi,
-     // struct output * pop,
-     ErrorMsg error_message
-     )
-{
-
-  /* Structures that are not of interest for SONG */
-  struct precision pr;
-  struct perturbs pt;
-  struct bessels bs;
-  struct transfers tr;
-  struct primordial pm;
-  struct bispectra bi;
-  struct fisher fi;
-  struct output op;
-
-  // ======================================================================================
-  // =                                Modify input parameters                             =
-  // ======================================================================================
-
-  /* String to hold the new parameter values */
-  char buffer[_ARGUMENT_LENGTH_MAX_];
-
-  /* Initialize all parameters with the values in the input 'file_content' structure  */
-  class_call (input_init (pfc,&pr,pba,pth,&pt,&bs,&tr,&pm,psp,&bi,&fi,pnl,ple,&op,error_message),
-    error_message,
-    error_message);
-
-  int new_l_max_scalars = pt.l_scalar_max + pr.delta_l_max;
-  sprintf (buffer, "%d", new_l_max_scalars);
-
-  class_call (parser_overwrite_entry (pfc, "l_max_scalars", buffer, error_message),
-    error_message,
-    error_message);
-
-  
-  // ======================================================================================
-  // =                                      Run CLASS                                     =
-  // ======================================================================================
-
-  if ((psp->spectra_verbose>0) || (ple->lensing_verbose>0))
-    printf ("Increasing l_max for lensed C_l's\n");
-
-  /* Read the parameters in the modified 'file_content' structure. */
-  class_call (input_init (pfc,&pr,pba,pth,&pt,&bs,&tr,&pm,psp,&bi,&fi,pnl,ple,&op,error_message),
-    error_message,
-    error_message);
-    
-  pt.perturbations_verbose = 0;
-  class_call (perturb_init(&pr,pba,pth,&pt),
-    error_message,
-    error_message);
-
-  bs.bessels_verbose = 0;
-  class_call (bessel_init(&pr,&bs),
-    error_message,
-    error_message);
-
-  tr.transfer_verbose = 0;
-  class_call (transfer_init(&pr,pba,pth,&pt,&bs,&tr),
-    error_message,
-    error_message);
-  
-  pm.primordial_verbose = 0;
-  class_call (primordial_init(&pr,&pt,&pm),
-    error_message,
-    error_message);
-
-  class_call (spectra_init(&pr,pba,&pt,&tr,&pm,psp),
-    error_message,
-    error_message);
-  
-  class_call (nonlinear_init(&pr,pba,pth,&pm,psp,pnl),
-    error_message,
-    error_message);
-      
-  class_call (lensing_init(&pr,&pt,psp,pnl,ple),
-    error_message,
-    error_message);
-
-
-  // =================================================================================
-  // =                                  Free memory                                  =
-  // =================================================================================
-  
-  class_call (primordial_free(&pm),
-    error_message,
-    error_message);
-    
-  class_call (transfer_free(&tr),
-    error_message,
-    error_message);
-  
-  class_call (bessel_free(&pr,&bs),
-    error_message,
-    error_message);
-  
-  class_call (perturb_free(&pr,&pt),
-    error_message,
-    error_message);
-         
-  return _SUCCESS_;
-  
-}

@@ -1,4 +1,4 @@
-// This file is included only by the "mains" that call class functions externally
+/* This file is included only by the "int main" programs that call class functions externally */
 
 #ifndef __CLASS__
 #define __CLASS__
@@ -19,7 +19,7 @@
 #include "arrays.h"
 #include "dei_rkck.h"
 #include "parser.h"
-
+#include "mains.h"
 
 /* class modules */
 #include "common.h"

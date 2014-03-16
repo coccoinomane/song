@@ -242,11 +242,11 @@ int perturb2_init (
   // ===============================================================================================
 
   /* We now compute the 1st-order perturbations in order to (i) fill ppt->quadsources with the 1st-order quantities
-    needed to compute the quadratic sources to the 2nd-order equations, and (ii) fill ppt->sources with the line-
-    of-sight sources needed to compute the first-order transfer functions and Cl's.
+  needed to compute the quadratic sources to the 2nd-order equations, and (ii) fill ppt->sources with the line-
+  of-sight sources needed to compute the first-order transfer functions and Cl's.
 
-    Note that the k-sampling for the first order sources (ppt->k) is determined by perturb2_get_k_lists;
-    the time sampling (ppt->tau_sampling_quadsources) is determined by perturb2_timesampling_for_sources */
+  Note that the k-sampling for the first order sources (ppt->k) is determined by perturb2_get_k_lists;
+  the time sampling (ppt->tau_sampling_quadsources) is determined by perturb2_timesampling_for_sources */
   class_call (perturb_init (
                 ppr,
                 pba,

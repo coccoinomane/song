@@ -901,9 +901,10 @@ int input_init(
     }
 
     /* Compute the approximation to the intrinsic bispectrum for the squeezed limit */
-    if ((strstr(string1,"isw-lensing") != NULL) || (strstr(string1,"isw lensing") != NULL) || (strstr(string1,"isw_lensing") != NULL)) {
+    if ((strstr(string1,"cmb_lensing") != NULL) || (strstr(string1,"cmb_lensing") != NULL)
+    ||  (strstr(string1,"isw_lensing") != NULL) || (strstr(string1,"isw-lensing") != NULL)) {
       ppt->has_cl_cmb_lensing_potential = _TRUE_;
-      pbi->has_isw_lensing = _TRUE_;
+      pbi->has_cmb_lensing = _TRUE_;
     }
 
     /* Compute the quadratic correction bispectrum (effectively the CMB four-point function) */
@@ -1240,7 +1241,7 @@ int input_init(
 				  errmsg),
 	       errmsg,
 	       errmsg);
-    
+
     if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL))) {
       ple->has_lensed_cls = _TRUE_;
     }
@@ -2031,23 +2032,22 @@ or 'linear_extrapolation'.", "");
       ppr->compute_only_even_ls = _TRUE_;
     }
 
-    else if (strstr(string1,"sum") != NULL)
+    else if (strstr(string1,"sum") != NULL) {
       pfi->bispectra_interpolation = sum_over_all_multipoles;
-  
-    else if ((strcmp(string1,"mesh") == 0) || (strcmp(string1,"mesh_3d") == 0))
+    }
+    else if ((strcmp(string1,"mesh") == 0) || (strcmp(string1,"mesh_3d") == 0)) {
       pfi->bispectra_interpolation = mesh_interpolation;
-  
-    else if ((strcmp(string1,"mesh_2d") == 0) || (strcmp(string1,"mesh_2D") == 0))
+    }
+    else if ((strcmp(string1,"mesh_2d") == 0) || (strcmp(string1,"mesh_2D") == 0)) {
       pfi->bispectra_interpolation = mesh_interpolation_2d;
-      
-    else
+    }
+    else {
       class_test(1==1,
       errmsg,
       "You wrote: bispectra_interpolation=%s. Could not identify any of the supported interpolation techniques ('trilinear', 'mesh', 'mesh_2d', 'sum') in such input",string1);
+    }
   
   }
-
-
 
   // ****   Interpolation of transfer functions   ****
   
@@ -2167,12 +2167,11 @@ or 'linear_extrapolation'.", "");
   only up to l_max - ppr->delta_l_max. */    
   if ((ple->has_lensed_cls == _TRUE_) && 
          ((pfi->has_fisher == _TRUE_)
-        ||(pbi->has_isw_lensing == _TRUE_)
+        ||(pbi->has_cmb_lensing == _TRUE_)
         ||(pbi->has_intrinsic_squeezed == _TRUE_))) {
   
     ppr->use_lensed_cls_in_fisher = _TRUE_;
   }
-        
 
 
   // =====================================================================
@@ -2416,10 +2415,40 @@ less than %d values for 'experiment_beam_fwhm'", _N_FREQUENCY_CHANNELS_MAX_);
   } // end of if (store_run)
 
 
-
   pbi->load_bispectra_from_disk == _FALSE_;
   if ((ppr->load_run==_TRUE_) && (pbi->store_bispectra_to_disk==_TRUE_))
     pbi->load_bispectra_from_disk = _TRUE_;
+
+
+  /* For certain bispectrum types, the 3j-symbol (l1,l2,l3)(0,0,0) does not appear explicitly
+  in the bispectrum formula and therefore it cannot be pulled out analytically. This is the
+  case for the intrinsic bispectrum when m>0, or for the CMB-lensing and quadratic bispectra
+  in presence of polarisation. To circumvent this issue, we choose to have 
+  an l-grid where all the l's are even. This is not completely satisfactory because half of
+  the configurations (those with even l1+l2+l3 but two odd components, like 2,3,3 or 2,3,7)
+  will be always skipped. The alternative, however, is worse: if the 1D l-grid has both
+  even and odd l's, it can happen that all of the configurations are skipped! Think of
+  having a grid with step 2 starting from an odd value: you will always get odd l's, which
+  means that l1+l2+l3 is always odd too. (A potential solution is to have a step of delta_l=1
+  up to some even l and then carry on with an even linear step).
+  An exception to this rule is when ppr->l_linstep=1, that is, when we take all l's (even
+  and odd) in our 1D l-list. In this case, nothing can be skipped and the Fisher estimator
+  will give an exact result. */
+  if ((ppr->l_linstep!=1) && (ppt->has_bi_cmb_polarization==_TRUE_) 
+  && ((pbi->has_quadratic_correction==_TRUE_) || (pbi->has_cmb_lensing ==_TRUE_))) {
+       
+    printf ("\n");
+    printf ("   *@^#?!?! FORCING THE COMPUTATION OF A GRID OF EVEN L'S\n");
+    printf ("\n");      
+    ppr->compute_only_even_ls = _TRUE_;
+  
+    // printf ("\n");
+    // printf ("   *@^#?!?! FORCING THE COMPUTATION OF A GRID OF ODD L'S\n");
+    // printf ("\n");
+    // ppr->compute_only_odd_ls = _TRUE_;
+  
+  }
+
 
   // *** END OF MY MODIFICATIONS ***
 
@@ -2719,7 +2748,7 @@ int input_default_params(
   pbi->has_intrinsic_squeezed = _FALSE_;
   pbi->has_local_squeezed = _FALSE_;
   pbi->has_cosine_shape = _FALSE_;
-  pbi->has_isw_lensing = _FALSE_;
+  pbi->has_cmb_lensing = _FALSE_;
   pbi->has_quadratic_correction = _FALSE_;
   pbi->store_bispectra_to_disk = _FALSE_;
 
