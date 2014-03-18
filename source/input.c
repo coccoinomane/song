@@ -884,14 +884,16 @@ int input_init(
     }
 
     /* Compute the approximation to the intrinsic bispectrum for the squeezed limit */
-    if ((strstr(string1,"intrinsic_squeezed") != NULL) || (strstr(string1,"i_squeezed") != NULL)) {
+    if ((strstr(string1,"intrinsic_squeezed") != NULL)
+    || (strstr(string1,"i_squeezed") != NULL) || (strstr(string1,"i-squeezed") != NULL)) {
       pbi->has_intrinsic_squeezed = _TRUE_;
       ppt->has_cl_cmb_zeta = _TRUE_;
       psp->compute_cl_derivative = _TRUE_;
     }
 
     /* Compute the approximation to the intrinsic bispectrum for the squeezed limit */
-    if ((strstr(string1,"local_squeezed") != NULL) || (strstr(string1,"l_squeezed") != NULL)) {
+    if ((strstr(string1,"local_squeezed") != NULL)
+    || (strstr(string1,"l_squeezed") != NULL) || (strstr(string1,"l-squeezed") != NULL)) {
       pbi->has_local_squeezed = _TRUE_;
     }
 
@@ -901,7 +903,7 @@ int input_init(
     }
 
     /* Compute the approximation to the intrinsic bispectrum for the squeezed limit */
-    if ((strstr(string1,"cmb_lensing") != NULL) || (strstr(string1,"cmb_lensing") != NULL)
+    if ((strstr(string1,"cmb_lensing") != NULL) || (strstr(string1,"cmb-lensing") != NULL)
     ||  (strstr(string1,"isw_lensing") != NULL) || (strstr(string1,"isw-lensing") != NULL)) {
       ppt->has_cl_cmb_lensing_potential = _TRUE_;
       pbi->has_cmb_lensing = _TRUE_;
@@ -2431,22 +2433,36 @@ less than %d values for 'experiment_beam_fwhm'", _N_FREQUENCY_CHANNELS_MAX_);
   having a grid with step 2 starting from an odd value: you will always get odd l's, which
   means that l1+l2+l3 is always odd too. (A potential solution is to have a step of delta_l=1
   up to some even l and then carry on with an even linear step).
+
   An exception to this rule is when ppr->l_linstep=1, that is, when we take all l's (even
   and odd) in our 1D l-list. In this case, nothing can be skipped and the Fisher estimator
-  will give an exact result. */
-  if ((ppr->l_linstep!=1) && (ppt->has_bi_cmb_polarization==_TRUE_) 
+  will give an exact result.
+  
+  If you are interested only in the Fisher matrix (with mesh interpolation) and only for
+  analytical bispectra, it is not necessary to set 'ppr->compute_only_even_ls = _TRUE_'.
+  In fact, in this case the Fisher module does not need the precomputed bispectrum in
+  pbi->bispectra, as it obtains the bispectrum from scratch using the closed formulas for
+  the analytical bispectrum, which are quick to evaluate. However, the computed bispectrum
+  in pbi->bispectra will still be subject to the pitfall described above (i.e. it
+  might have most zero entries if the 1D l-grid is chosen such that l1+l2+l3 is
+  mostly odd). Therefore, you might consider setting 'ppr->compute_only_even_ls = _TRUE_' by
+  hand in the functions that rely on pbi->bispectra, such as 'print_bispectra' */
+  if ((ppr->l_linstep!=1)
+  && (pfi->bispectra_interpolation != mesh_interpolation_2d)
+  && (pfi->bispectra_interpolation != mesh_interpolation)
+  && (ppt->has_bi_cmb_polarization==_TRUE_) 
   && ((pbi->has_quadratic_correction==_TRUE_) || (pbi->has_cmb_lensing ==_TRUE_))) {
-       
+     
     printf ("\n");
     printf ("   *@^#?!?! FORCING THE COMPUTATION OF A GRID OF EVEN L'S\n");
     printf ("\n");      
     ppr->compute_only_even_ls = _TRUE_;
-  
+
     // printf ("\n");
     // printf ("   *@^#?!?! FORCING THE COMPUTATION OF A GRID OF ODD L'S\n");
     // printf ("\n");
     // ppr->compute_only_odd_ls = _TRUE_;
-  
+
   }
 
 

@@ -52,11 +52,11 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
-  /* Compute the first-order C_l's */
-  if (compute_cls (&pr,&ba,&th,&sp,&nl,&le,errmsg) == _FAILURE_) {
-    printf("\n\nError in compute_cls \n=>%s\n",errmsg);
-    return _FAILURE_;
-  }
+  // /* Compute the first-order C_l's */
+  // if (compute_cls (&pr,&ba,&th,&sp,&nl,&le,errmsg) == _FAILURE_) {
+  //   printf("\n\nError in compute_cls \n=>%s\n",errmsg);
+  //   return _FAILURE_;
+  // }
 
   /* Compute first and second-order perturbations */
   if (perturb2_init(&pr,&pr2,&ba,&th,&pt,&pt2) == _FAILURE_) {
@@ -64,68 +64,68 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
-  /* Compute geometrical factors needed for the line of sight integration */
-  if (bessel_init(&pr,&bs) == _FAILURE_) {
-    printf("\n\nError in bessel_init \n =>%s\n",bs.error_message);
-    return _FAILURE_;
-  }
-
-  if (bessel2_init(&pr,&pr2,&pt2,&bs,&bs2) == _FAILURE_) {
-    printf("\n\nError in bessel2_init \n =>%s\n",bs2.error_message);
-    return _FAILURE_;
-  }
-
-  /* Compute transfer functions using the line of sight integration */
-  if (transfer_init(&pr,&ba,&th,&pt,&bs,&tr) == _FAILURE_) {
-    printf("\n\nError in transfer_init \n=>%s\n",tr.error_message);
-    return _FAILURE_;
-  }
-
-  if (transfer2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2) == _FAILURE_) {
-    printf("\n\nError in transfer2_init \n=>%s\n",tr2.error_message);
-    return _FAILURE_;
-  }
-
-  /* Compute the primordial power spectrum of curvature perturbations */
-  if (primordial_init(&pr,&pt,&pm) == _FAILURE_) {
-    printf("\n\nError in primordial_init \n=>%s\n",pm.error_message);
-    return _FAILURE_;
-  }
-
-  /* Compute spectra */
-  //   if (spectra_init(&pr,&ba,&pt,&tr,&pm,&sp) == _FAILURE_) {
-  //     printf("\n\nError in spectra_init \n=>%s\n",sp.error_message);
-  //     return _FAILURE_;
-  //   }
+  // /* Compute geometrical factors needed for the line of sight integration */
+  // if (bessel_init(&pr,&bs) == _FAILURE_) {
+  //   printf("\n\nError in bessel_init \n =>%s\n",bs.error_message);
+  //   return _FAILURE_;
+  // }
   // 
-  //   if (lensing_init(&pr,&pt,&sp,&nl,&le) == _FAILURE_) {
-  //     printf("\n\nError in lensing_init \n=>%s\n",le.error_message);
-  //     return _FAILURE_;
-  //   }
-
-  /* Compute bispectra */
-  if (bispectra_init(&pr,&ba,&th,&pt,&bs,&tr,&pm,&sp,&le,&bi) == _FAILURE_) {
-    printf("\n\nError in bispectra_init \n=>%s\n",bi.error_message);
-    return _FAILURE_;
-  }
-
-  if (bispectra2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&sp,&le,&bi) == _FAILURE_) {
-    printf("\n\nError in bispectra2_init \n=>%s\n",bi.error_message);
-    return _FAILURE_;
-  }
-
-  /* Compute Fisher matrix */
-  if (fisher_init(&pr,&ba,&th,&pt,&bs,&tr,&pm,&sp,&le,&bi,&fi) == _FAILURE_) {
-    printf("\n\nError in fisher_init \n=>%s\n",fi.error_message);
-    return _FAILURE_;
-  }
-
-  /* Write output files */
-  if (output_init(&ba,&pt,&sp,&nl,&le,&bi,&fi,&op) == _FAILURE_) {
-    printf("\n\nError in output_init \n=>%s\n",op.error_message);
-    return _FAILURE_;
-  }  
-  
+  // if (bessel2_init(&pr,&pr2,&pt2,&bs,&bs2) == _FAILURE_) {
+  //   printf("\n\nError in bessel2_init \n =>%s\n",bs2.error_message);
+  //   return _FAILURE_;
+  // }
+  // 
+  // /* Compute transfer functions using the line of sight integration */
+  // if (transfer_init(&pr,&ba,&th,&pt,&bs,&tr) == _FAILURE_) {
+  //   printf("\n\nError in transfer_init \n=>%s\n",tr.error_message);
+  //   return _FAILURE_;
+  // }
+  // 
+  // if (transfer2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2) == _FAILURE_) {
+  //   printf("\n\nError in transfer2_init \n=>%s\n",tr2.error_message);
+  //   return _FAILURE_;
+  // }
+  // 
+  // /* Compute the primordial power spectrum of curvature perturbations */
+  // if (primordial_init(&pr,&pt,&pm) == _FAILURE_) {
+  //   printf("\n\nError in primordial_init \n=>%s\n",pm.error_message);
+  //   return _FAILURE_;
+  // }
+  // 
+  // /* Compute spectra */
+  // //   if (spectra_init(&pr,&ba,&pt,&tr,&pm,&sp) == _FAILURE_) {
+  // //     printf("\n\nError in spectra_init \n=>%s\n",sp.error_message);
+  // //     return _FAILURE_;
+  // //   }
+  // // 
+  // //   if (lensing_init(&pr,&pt,&sp,&nl,&le) == _FAILURE_) {
+  // //     printf("\n\nError in lensing_init \n=>%s\n",le.error_message);
+  // //     return _FAILURE_;
+  // //   }
+  // 
+  // /* Compute bispectra */
+  // if (bispectra_init(&pr,&ba,&th,&pt,&bs,&tr,&pm,&sp,&le,&bi) == _FAILURE_) {
+  //   printf("\n\nError in bispectra_init \n=>%s\n",bi.error_message);
+  //   return _FAILURE_;
+  // }
+  // 
+  // if (bispectra2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&sp,&le,&bi) == _FAILURE_) {
+  //   printf("\n\nError in bispectra2_init \n=>%s\n",bi.error_message);
+  //   return _FAILURE_;
+  // }
+  // 
+  // /* Compute Fisher matrix */
+  // if (fisher_init(&pr,&ba,&th,&pt,&bs,&tr,&pm,&sp,&le,&bi,&fi) == _FAILURE_) {
+  //   printf("\n\nError in fisher_init \n=>%s\n",fi.error_message);
+  //   return _FAILURE_;
+  // }
+  // 
+  // /* Write output files */
+  // if (output_init(&ba,&pt,&sp,&nl,&le,&bi,&fi,&op) == _FAILURE_) {
+  //   printf("\n\nError in output_init \n=>%s\n",op.error_message);
+  //   return _FAILURE_;
+  // }  
+  // 
   
   
   // =================================================================================

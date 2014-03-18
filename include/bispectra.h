@@ -260,6 +260,7 @@ struct bispectra {
   double ** cls;
   double ** d_lsq_cls;        /* Logarithmic derivative of the C_l's, as in Lewis 2012 */
   double ** lensed_cls;
+  double ** lensed_d_lsq_cls;
 
   /* Array that contains the measure for the trapezoidal integration over k of the first-order transfer
   functions. It is defined as ptr->k[i+1] - ptr->k[i-1]. */
