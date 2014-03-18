@@ -4,7 +4,7 @@ l_long=$1
 shift
 runs=$@
 
-make print_bispectra -j4
+make print_bispectra -j4 > /dev/null;
 
 for run in $runs; do
   out_dir=$run/squeezed_small_${l_long}

@@ -98,7 +98,7 @@ OUTPUT = output.o
 # ==========================================================================
 
 # Rule to be executed when make is called with no parameters
-default: honda c_honda # print_bispectra
+default: honda c_honda print_bispectra
 
 # CLASS code
 CLASS = class.o
@@ -190,7 +190,7 @@ print_cls: $(SONG_TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(BES
 
 print_bispectra: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2)\
 	$(BESSEL) $(BESSEL2) $(TRANSFER) $(TRANSFER2) $(PRIMORDIAL) $(SPECTRA) $(BISPECTRA) $(BISPECTRA2) $(FISHER)\
-	$(PRINT_BISPECTRA)
+	$(FISHER) $(NONLINEAR) $(LENSING) $(OUTPUT)	$(PRINT_BISPECTRA)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_background: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PRINT_BACKGROUND)

@@ -5,7 +5,7 @@ shift
 runs=$@
 
 make clean
-make -f makefile_honda print_bispectra -j8
+make -f makefile_honda print_bispectra -j8 > /dev/null
 
 for run in $runs; do
   out_dir=$run/squeezed_small_${l_long}

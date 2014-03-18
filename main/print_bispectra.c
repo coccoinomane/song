@@ -11,8 +11,6 @@
  */
  
 #include "song.h"
-#include "input2.h"
-#include "mains.h"
 
 int main(int argc, char **argv) {
 
