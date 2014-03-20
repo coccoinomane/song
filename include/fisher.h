@@ -38,7 +38,13 @@ struct fisher {
   // =                             Flags and indices                             =
   // =============================================================================
 
+  /* Should we compute the Fisher matrix at all? */
   short has_fisher;
+
+  /* Should we include the lensing effects in the Fisher matrix estimator? These
+  include the extra variance due to lensing (see Sec. 5 of http://uk.arxiv.org/abs/1101.2234)
+  and using the lensed C_l's in the covariance matrix */
+  short include_lensing_effects;
 
   // ===============================================================================
   // =                                 Arrays                                      =
@@ -78,7 +84,12 @@ struct fisher {
   int index_ft_local_squeezed;        /* Index for the local-model bispectrum in the squeezed limit */  
   int index_ft_cosine;                /* Index for the oscillating bispectrum */  
   int index_ft_cmb_lensing;           /* Index for the bispectrum of CMB-lensing */  
-  int fisher_size;                         /* Total number of bispectra types requested */
+  int fisher_size;                    /* Total number of bispectra types requested */
+  
+  /* Index of the first Fisher matrix line that does not refer to an analytical bispectrum. 
+  This is used for the allocation of the mesh interpolation grids */
+  int first_non_analytical_index_ft;
+  int has_only_analytical_bispectra;
 
   /* Correspondence between rows of the Fisher matrix and bispectra stored in pbi->bispectra[index_bt] */
   int index_bt_of_ft[_MAX_NUM_BISPECTRA_];
@@ -89,8 +100,8 @@ struct fisher {
   Indexed as pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_bt_1][index_bt_2],
   where index_l1 refers to the multipole pfi->l1[index_l1]. */
   double ****** fisher_matrix_XYZ_l1;
-  
-  /* Same as above, but for l3, the smallest multipole, and l3 belonging to pfi->l3[index_l3] */
+
+  /* Same as above, but for l3, the smallest multipole, and l3 belonging to pfi->l3[index_l3]. */
   double ****** fisher_matrix_XYZ_l3;
   
   /* Same as fisher_matrix_XYZ_l1, but summed over XYZ */
@@ -152,6 +163,19 @@ struct fisher {
   double *** C;
   double *** inverse_C;
 
+
+  // ==========================================================================================
+  // =                                   Lensing variance                                     =
+  // ==========================================================================================
+  
+  /* Same as fisher_matrix_XYZ_l3, but keeping track of the Z and C field indices instead.
+  This is needed to compute the lensing variance, and corresponds to \bar{F}_{l_1 i p}
+  in Eq. 5.25 of http://uk.arxiv.org/abs/1101.2234 */
+  double ***** fisher_matrix_ZC_l3;
+
+  /* Same as fisher_matrix_l3, but includes the effect of the lensing variance */
+  double *** fisher_matrix_lensvar_l3;
+  
 
   // ==========================================================================================
   // =                                       Noise model                                      =
@@ -387,7 +411,20 @@ extern "C" {
         double * delta_l3,
         struct fisher_workspace * pw
         );
-        
+
+int fisher_lensing_variance (
+        struct precision * ppr,
+        struct background * pba,
+        struct perturbs * ppt,
+        struct bessels * pbs,
+        struct transfers * ptr,
+        struct primordial * ppm,
+        struct spectra * psp,
+        struct lensing * ple,
+        struct bispectra * pbi,
+        struct fisher * pfi
+        );
+
 
 #ifdef __cplusplus
 }

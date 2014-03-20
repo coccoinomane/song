@@ -805,8 +805,8 @@ int input_init(
     }
 
     if (strstr(string1,"fisher") != NULL) {
-      pfi->has_fisher = _TRUE_;
       ppt->has_cl_cmb_lensing_potential = _TRUE_; /* The covariance matrix needs lensed C_l's */ 
+      pfi->has_fisher = _TRUE_;
     }
 
     // if (strstr(string1,"fisher_test") != NULL) {
@@ -2164,15 +2164,22 @@ or 'linear_extrapolation'.", "");
   // =                              C_l's                                =
   // =====================================================================
 
-  /* Compute the lensed C_l's in an extended l-range and include them in the
-  Fisher matrix analysis. The default behaviour is to compute the lensed C_l's
+  /* Should we include the lensing effects on the bispectrum and on the Fisher matrix
+  estimator? If so, extend the lensed C_l's all the way to l_max by setting 
+  the flag 'ppr->extend_lensed_cls'. The default behaviour is to compute the lensed C_l's
   only up to l_max - ppr->delta_l_max. */    
-  if ((ple->has_lensed_cls == _TRUE_) && 
-         ((pfi->has_fisher == _TRUE_)
-        ||(pbi->has_cmb_lensing == _TRUE_)
-        ||(pbi->has_intrinsic_squeezed == _TRUE_))) {
-  
-    ppr->use_lensed_cls_in_fisher = _TRUE_;
+  if (ple->has_lensed_cls == _TRUE_) {
+    
+    if (pfi->has_fisher == _TRUE_) {
+      pfi->include_lensing_effects = _TRUE_;
+      ppr->extend_lensed_cls = _TRUE_;
+    }
+    
+    if ((pbi->has_bispectra == _TRUE_) &&
+    ((pbi->has_cmb_lensing == _TRUE_) || (pbi->has_intrinsic_squeezed == _TRUE_))) {
+      pbi->include_lensing_effects = _TRUE_;
+      ppr->extend_lensed_cls = _TRUE_;
+    }
   }
 
 
@@ -2767,7 +2774,7 @@ int input_default_params(
   pbi->has_cmb_lensing = _FALSE_;
   pbi->has_quadratic_correction = _FALSE_;
   pbi->store_bispectra_to_disk = _FALSE_;
-
+  pbi->include_lensing_effects = _FALSE_;
 
   // ========================================================
   // =                    Fisher structure                  =
@@ -2783,7 +2790,7 @@ int input_default_params(
   pfi->beam[0] = 0;
   pfi->noise_t[0] = 0;
   pfi->noise_e[0] = 0;
-  
+  pfi->include_lensing_effects = _FALSE_;
   
 
   // ==========================================================
@@ -3045,7 +3052,8 @@ int input_default_precision ( struct precision * ppr ) {
   /* l-sampling */
   ppr->compute_only_even_ls = _FALSE_;
   ppr->compute_only_odd_ls = _FALSE_;
-
+  ppr->extend_lensed_cls = _FALSE_;
+    
   /* Quadsources time-sampling */
   ppr->perturb_sampling_stepsize_quadsources = 0.08;
 
@@ -3057,9 +3065,6 @@ int input_default_precision ( struct precision * ppr ) {
   ppr->bispectra_k3_extrapolation = no_k3_extrapolation;
   ppr->extra_k3_oscillations_left = 0;
   ppr->extra_k3_oscillations_right = 0;
-
-  /* C_l's */
-  ppr->use_lensed_cls_in_fisher = _FALSE_;
 
   /* Storage of intermediate results */
   ppr->store_run = _FALSE_;

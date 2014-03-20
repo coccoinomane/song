@@ -8381,23 +8381,26 @@ int perturb_source_terms_2nd_order_eqs(
     	  k2*(delta_g/4.-shear_g)
     	  + metric_euler
     	  +pvecthermo[pth->index_th_dkappa]*(theta_b-theta_g); */
-      else if (l==1)
+      else if (l==1) {
         quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_collision_g+l][time_and_wavemode_index]
           = - dipole_g + four_thirds*dipole_b;
-
+      }
       /* The quadrupole from derivs:
     	dy[ppw->pv->index_pt_shear_g] =
     	  0.5*(8./15.*(theta_g+metric_shear)
     	       -3./5.*k*y[ppw->pv->index_pt_l3_g]
     	       -pvecthermo[pth->index_th_dkappa]*(2.*shear_g-1./10.*Pi)); */
-      else if (l==2)
+      else if (l==2) {
         quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_collision_g+l][time_and_wavemode_index]
           = - quadrupole_g + Pi;
-      
-      else
-        quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_collision_g+l][time_and_wavemode_index]
-          = - (2*l+1.) * y[ppw->pv->index_pt_delta_g+l];
-        
+      }
+      else {
+        /* The l>2 moments are not defined if RSA or TCA are turned on, so not including the following 'if block'
+        will result in seg fault */
+        if ((ppw->approx[ppw->index_ap_rsa]==(int)rsa_off) && (ppw->approx[ppw->index_ap_tca]==(int)tca_off))
+          quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_collision_g+l][time_and_wavemode_index]
+            = - (2*l+1.) * y[ppw->pv->index_pt_delta_g+l];
+      }
 
       sprintf(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_monopole_g+l], "C[I%d]", l);
     }

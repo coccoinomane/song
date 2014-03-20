@@ -19,11 +19,21 @@ enum bispectra_types {
 struct bispectra {
 
   // ===========================================================================================
-  // =                                  Indices of bispectra                                   =
+  // =                                         Flags                                           =
   // ===========================================================================================
 
   /* Should we compute any bispectra at all? */
   short has_bispectra;
+
+  /* Should we include the lensing effects in the computation of the bispectra? This affects
+  only analytical bispectra such as the CMB-lensing and the squeezed approximation for the
+  intrinsic bispectrum */
+  short include_lensing_effects;
+
+
+  // ===========================================================================================
+  // =                                  Indices of bispectra                                   =
+  // ===========================================================================================
 
   /* What bispectra types should be compute? */
   short has_local_model;              /* Local model */

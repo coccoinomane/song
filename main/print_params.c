@@ -28,12 +28,14 @@ int main(int argc, char **argv) {
   struct output op;           /* output files */
   ErrorMsg errmsg;            /* error messages */
 
-  if (input_init_from_arguments(argc,argv,&pr,&ba,&th,&pt,&bs,&tr,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
+  if (input_init_from_arguments(argc,argv,&pr,&ba,&th,&pt,&bs,&tr,&pm,
+  &sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
     return _FAILURE_;
   }
 
-  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
+  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,
+  &sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
     return _FAILURE_;
   }
@@ -179,18 +181,23 @@ int main(int argc, char **argv) {
   printf("\tbi.has_intrinsic_squeezed = %d\n", bi.has_intrinsic_squeezed);
   printf("\tbi.has_quadratic_correction = %d\n", bi.has_quadratic_correction);
   printf("\tbi.add_quadratic_correction = %d\n", bi.add_quadratic_correction);
-  printf("\tpr.use_lensed_cls_in_fisher = %d\n", pr.use_lensed_cls_in_fisher);
+  printf("\tbi.include_lensing_effects = %d\n", bi.include_lensing_effects);
+  printf("\tpr.extend_lensed_cls = %d\n", pr.extend_lensed_cls);
 
   /* Fisher */
-  // printf("\tfi.l_min_estimator = %d\n", fi.l_min_estimator);
-  // printf("\tfi.l_max_estimator = %d\n", fi.l_max_estimator);
-  // printf("\tfi.bispectra_interpolation = %d\n", fi.bispectra_interpolation);
-  // printf("\tfi.f_sky = %g\n", fi.f_sky);
-  // for (int index_channel=0; index_channel < fi.n_channels; ++index_channel) {
-  //   printf("\tchannel %d: fi.beam = %g arcmins, %g radians\n",index_channel, fi.beam[index_channel] * 60. / (_PI_/180.), fi.beam[index_channel]);
-  //   printf("\t           fi.noise_t = %g uK\n", index_channel, sqrt(fi.noise_t[index_channel]) * 1e6*ba.T_cmb / fi.beam[index_channel]);
-  //   printf("\t           fi.noise_e = %g uK\n", index_channel, sqrt(fi.noise_e[index_channel]) * 1e6*ba.T_cmb / fi.beam[index_channel]);
-  // }
+  printf("\tfi.l_min_estimator = %d\n", fi.l_min_estimator);
+  printf("\tfi.l_max_estimator = %d\n", fi.l_max_estimator);
+  printf("\tfi.bispectra_interpolation = %d\n", fi.bispectra_interpolation);
+  printf("\tfi.f_sky = %g\n", fi.f_sky);
+  for (int index_channel=0; index_channel < fi.n_channels; ++index_channel) {
+    printf("\tchannel %d: fi.beam = %g arcmins, %g radians\n",
+    index_channel, fi.beam[index_channel] * 60. / (_PI_/180.), fi.beam[index_channel]);
+    printf("\t           fi.noise_t = %g uK\n",
+    index_channel, sqrt(fi.noise_t[index_channel]) * 1e6*ba.T_cmb / fi.beam[index_channel]);
+    printf("\t           fi.noise_e = %g uK\n",
+    index_channel, sqrt(fi.noise_e[index_channel]) * 1e6*ba.T_cmb / fi.beam[index_channel]);
+  }
+  printf("\tfi.include_lensing_effects = %d\n", fi.include_lensing_effects);
 
   /* Precision parameters - multipoles */
   // printf("* Precision parameters - multipoles\n");  

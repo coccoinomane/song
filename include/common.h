@@ -839,7 +839,7 @@ struct precision
   
   /* Do we need to compute the lensed C_l's all the way to l_max? Default behaviour
   is to compute them only up to l_max - ppr->delta_l_max */
-  short use_lensed_cls_in_fisher;
+  short extend_lensed_cls;
 
   // ==========================
   // =       Bispectrum       =

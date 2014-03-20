@@ -29,8 +29,8 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
-  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&bs,
-  &bs2,&tr,&tr2,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
+  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,
+  &sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
     return _FAILURE_;
   }
@@ -91,17 +91,6 @@ int main(int argc, char **argv) {
     printf("\n\nError in primordial_init \n=>%s\n",pm.error_message);
     return _FAILURE_;
   }
-  
-  /* Compute spectra */
-  //   if (spectra_init(&pr,&ba,&pt,&tr,&pm,&sp) == _FAILURE_) {
-  //     printf("\n\nError in spectra_init \n=>%s\n",sp.error_message);
-  //     return _FAILURE_;
-  //   }
-  // 
-  //   if (lensing_init(&pr,&pt,&sp,&nl,&le) == _FAILURE_) {
-  //     printf("\n\nError in lensing_init \n=>%s\n",le.error_message);
-  //     return _FAILURE_;
-  //   }
   
   /* Compute bispectra */
   if (bispectra_init(&pr,&ba,&th,&pt,&bs,&tr,&pm,&sp,&le,&bi) == _FAILURE_) {

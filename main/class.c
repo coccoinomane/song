@@ -53,9 +53,9 @@ int main(int argc, char **argv) {
   }
   
   /* Compute C_l's (lensed and unlensed). If we don't need the lensed C_l's
-  all the way to l_max, then execute the standard CLASS moduels. Otherwise
+  all the way to l_max, then execute the standard CLASS modules. Otherwise
   call the function 'compute_cls' which extends l_max to l_max + delta_l_max. */
-  if (pr.use_lensed_cls_in_fisher == _FALSE_) {
+  if (pr.extend_lensed_cls == _FALSE_) {
   
     if (spectra_init(&pr,&ba,&pt,&tr,&pm,&sp) == _FAILURE_) {
       printf("\n\nError in spectra_init \n=>%s\n",sp.error_message);

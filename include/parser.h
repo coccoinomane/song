@@ -116,6 +116,7 @@ int parser_overwrite_entry (
 		    struct file_content * pfc,
 		    char * name,
 		    char * new_value,
+        int * found,
 		    ErrorMsg errmsg
 		    );
 // *** END OF MY MODIFICATIONS ***

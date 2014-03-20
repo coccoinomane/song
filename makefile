@@ -71,8 +71,8 @@ LIBRARIES           = -lgfortran -fopenmp -lm
 # =                             Object files                               =
 # ==========================================================================
 
-TOOLS = growTable.o dei_rkck.o sparse.o evolver_rkck.o evolver_ndf15.o arrays.o parser.o quadrature.o mains.o
-SONG_TOOLS = $(TOOLS) song_tools.o slatec_3j_C.o slatec_3j_f90.o mesh_interpolation.o mains.o
+TOOLS = growTable.o dei_rkck.o sparse.o evolver_rkck.o evolver_ndf15.o arrays.o parser.o quadrature.o
+SONG_TOOLS = $(TOOLS) song_tools.o slatec_3j_C.o slatec_3j_f90.o mesh_interpolation.o
 INPUT = input.o
 INPUT2 = input2.o
 PRECISION = precision.o
@@ -91,8 +91,8 @@ BISPECTRA2 = bispectra2.o
 FISHER = fisher.o
 NONLINEAR = trg.o nonlinear.o
 LENSING = lensing.o
+MAINS = mains.o
 OUTPUT = output.o
-
 
 
 
@@ -112,16 +112,19 @@ TEST_PERTURBATIONS = test_perturbations.o
 TEST_THERMODYNAMICS = test_thermodynamics.o
 TEST_BACKGROUND = test_background.o
 
-libclass.a: $(TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(BESSEL) $(TRANSFER) $(PRIMORDIAL) $(SPECTRA) $(NONLINEAR) $(LENSING) $(OUTPUT)
+libclass.a: $(TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(BESSEL) $(TRANSFER) $(PRIMORDIAL)\
+	$(SPECTRA) $(NONLINEAR) $(LENSING) $(MAINS) $(OUTPUT)
 	$(AR)  $@ $(addprefix build/,$(notdir $^))
  
-class: $(SONG_TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(BESSEL) $(TRANSFER) $(PRIMORDIAL) $(SPECTRA) $(BISPECTRA) $(FISHER) $(NONLINEAR) $(LENSING) $(OUTPUT) $(CLASS)
+class: $(SONG_TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(BESSEL) $(TRANSFER) $(PRIMORDIAL)\
+	$(SPECTRA) $(BISPECTRA) $(FISHER) $(NONLINEAR) $(LENSING) $(OUTPUT) $(MAINS) $(CLASS)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 test_plegendre: $(TOOLS) $(SONG_TOOLS) $(TEST_PLEGENDRE)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-test_loops: $(TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(BESSEL) $(TRANSFER) $(PRIMORDIAL) $(SPECTRA) $(NONLINEAR) $(LENSING) $(OUTPUT) $(TEST_LOOPS)
+test_loops: $(TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(BESSEL) $(TRANSFER) $(PRIMORDIAL)
+	$(SPECTRA) $(NONLINEAR) $(LENSING) $(OUTPUT) $(TEST_LOOPS)\
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 test_transfer: $(TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(BESSEL) $(TRANSFER) $(TEST_TRANSFER)
@@ -165,7 +168,7 @@ test_bispectra: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTU
 
 song: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2)\
 	$(BESSEL) $(BESSEL2) $(TRANSFER) $(TRANSFER2) $(PRIMORDIAL) $(SPECTRA) $(BISPECTRA) $(BISPECTRA2)\
-	$(FISHER) $(NONLINEAR) $(LENSING) $(OUTPUT) $(SONG)
+	$(FISHER) $(NONLINEAR) $(LENSING) $(OUTPUT) $(MAINS) $(SONG)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_params: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PRINT_PARAMS)
@@ -193,7 +196,7 @@ print_cls: $(SONG_TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(BES
 
 print_bispectra: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2)\
 	$(BESSEL) $(BESSEL2) $(TRANSFER) $(TRANSFER2) $(PRIMORDIAL) $(SPECTRA) $(BISPECTRA) $(BISPECTRA2) $(FISHER)\
-	$(FISHER) $(NONLINEAR) $(LENSING) $(OUTPUT)	$(PRINT_BISPECTRA)
+	$(FISHER) $(NONLINEAR) $(LENSING) $(OUTPUT)	$(MAINS) $(PRINT_BISPECTRA)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_background: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PRINT_BACKGROUND)

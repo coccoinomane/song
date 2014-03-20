@@ -641,6 +641,7 @@ int parser_overwrite_entry (
 		    struct file_content * pfc,
 		    char * name,
 		    char * new_value,
+        int * found,
 		    ErrorMsg errmsg
 		    )
 {
@@ -651,13 +652,24 @@ int parser_overwrite_entry (
   while ((index < pfc->size) && (strcmp(pfc->name[index],name) != 0))
     index++;
 
-  /* if parameter not found, return an error  */
+  /* if parameter not found, either return an error or overwrite 'found'  */
+  
+  if (found == NULL) {
+    class_test (index == pfc->size,
+      errmsg,
+      "parameter '%s' not found in input file structure", name);
+  }
+  else {
+    if (index < pfc->size) {
+      *found = _TRUE_;
+    }
+    else {
+      *found = _FALSE_;
+      return _SUCCESS_;
+    }
+  }
 
-  class_test (index == pfc->size,
-    errmsg,
-    "parameter '%s' not found in input file structure", name);
-
-  /* overwrite parameter value. */
+  /* overwrite parameter value if found. */
 
   strcpy (pfc->value[index], new_value);
 

@@ -35,11 +35,11 @@ int compute_cls(
   
   /* Structure that contains the two input parameter files */
   struct file_content * pfc = ppr->input_file_content;
+  int found = _FALSE_;
 
-  if (ppr->use_lensed_cls_in_fisher == _TRUE_) {
+  if (ppr->extend_lensed_cls == _TRUE_) {
 
     /* Read old value of l_max */
-    int found = _FALSE_;
     int old_l_max_scalars;
     class_call (parser_read_int (pfc,"l_max_scalars", &old_l_max_scalars, &found, error_message),
 	       error_message,
@@ -52,7 +52,7 @@ int compute_cls(
     int new_l_max_scalars = old_l_max_scalars + ppr->delta_l_max;
     char buffer[_ARGUMENT_LENGTH_MAX_];
     sprintf (buffer, "%d", new_l_max_scalars);    
-    class_call (parser_overwrite_entry (pfc, "l_max_scalars", buffer, error_message),
+    class_call (parser_overwrite_entry (pfc, "l_max_scalars", buffer, NULL, error_message),
       error_message,
       error_message);
       
@@ -61,7 +61,7 @@ int compute_cls(
   }
 
   /* Do not create the run directory twice */ 
-  class_call (parser_overwrite_entry (pfc, "store_run", "no", error_message),
+  class_call (parser_overwrite_entry (pfc, "store_run", "no", &found, error_message),
     error_message,
     error_message);
   
