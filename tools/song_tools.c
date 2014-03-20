@@ -2757,9 +2757,10 @@ void Transpose(double **a,int n)
 }
 
 
-/* 
-   Inverse of a square matrix
-*/
+/** 
+ * Inverse of a square matrix. The inversion can be done in-place, that is, the
+ * the user can select in=out.
+ */
 void InverseMatrix(double **in,int n,double **out)
 {
 
@@ -2771,13 +2772,18 @@ void InverseMatrix(double **in,int n,double **out)
     return;
   }
 
-  /* Obvious case where n=2 */
+  /* Obvious case where n=2. We write the formula in such a way that the inversion can
+  be done in place (i.e. the user can set out=in). */
   if (n==2) {
-    double one_over_det = 1/(in[0][0]*in[1][1] - in[0][1]*in[1][0]);
-    out[0][0] = one_over_det * in[1][1];
-    out[1][0] = -one_over_det * in[0][1];
-    out[0][1] = -one_over_det * in[1][0];
-    out[1][1] = one_over_det * in[0][0];
+    double a = in[0][0];
+    double b = in[0][1];
+    double c = in[1][0];
+    double d = in[1][1];
+    double one_over_det = 1/(a*d - b*c);
+    out[0][0] = one_over_det * d;
+    out[1][0] = -one_over_det * b;
+    out[0][1] = -one_over_det * c;
+    out[1][1] = one_over_det * a;
     return;
   }
   

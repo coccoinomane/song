@@ -1011,7 +1011,7 @@ int bispectra_cls (
       /* TODO: Consider implementing these values in the structure and then set in the Fisher matrix
       estimator a condition 'if (l3>lmax_lensing_corrT) continue'. This would speed up the computation
       of the estimator sensibly */
-      int lmax_lensing_corrT = 300;
+      int lmax_lensing_corrT = 40;
       int lmax_lensing_corrE = 40;
       
       if ((l > lmax_lensing_corrT) && (pbi->has_bispectra_t == _TRUE_)) {

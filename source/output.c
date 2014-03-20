@@ -412,7 +412,7 @@ int output_fisher(
           
         /* S/N as a function of the l_min of the experiment */
         if ((pfi->bispectra_interpolation == mesh_interpolation) ||
-            (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
+        (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
             
           for (int index_l3=0; index_l3 < pfi->l3_size; ++index_l3) {
             

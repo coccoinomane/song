@@ -2651,12 +2651,17 @@ int fisher_lensing_variance (
         )
 {
 
-  double ** inverse_f_bar, ** inverse_f;
+  if (pfi->fisher_verbose > 0)
+    printf (" -> computing lensing-induced noise according to 1101.2234\n");
+
+  double ** inverse_f_bar, ** temp, ** f;
   class_alloc (inverse_f_bar, pfi->fisher_size*sizeof(double *), pfi->error_message);
-  class_alloc (inverse_f, pfi->fisher_size*sizeof(double *), pfi->error_message);
+  class_alloc (temp, pfi->fisher_size*sizeof(double *), pfi->error_message);
+  class_alloc (f, pfi->fisher_size*sizeof(double *), pfi->error_message);
   for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
     class_calloc (inverse_f_bar[index_ft], pfi->fisher_size, sizeof(double), pfi->error_message);
-    class_calloc (inverse_f[index_ft], pfi->fisher_size, sizeof(double), pfi->error_message);
+    class_calloc (temp[index_ft], pfi->fisher_size, sizeof(double), pfi->error_message);
+    class_calloc (f[index_ft], pfi->fisher_size, sizeof(double), pfi->error_message);
   }
 
   for (int Z=0; Z < pbi->bf_size; ++Z) {
@@ -2695,32 +2700,47 @@ int fisher_lensing_variance (
           l3 = index_l3+2;
         else
           l3 = pbi->l[index_l3];
-        
-        InverseMatrix (pfi->fisher_matrix_ZC_l3[Z][C][index_l3], pfi->fisher_size, inverse_f_bar);
-        
+                
+        /* Extract C_l's */
         double C_tot_ZC = pfi->C[l3-2][Z][C];
         double C_PP = pbi->cls[psp->index_ct_pp][l3-2];
         double C_ZP = pbi->cls[index_ct_ZP][l3-2];
         double C_CP = pbi->cls[index_ct_CP][l3-2];
-        
-        for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
+
+        /* Compute the extra noise due to lensing */
+        double r_minus_2 = C_tot_ZC*C_PP/(C_ZP*C_CP);
+        double noise_correction = (1 + r_minus_2)/(2*l3+1);
+
+        /* Invert the usual Fisher matrix */
+        InverseMatrix (pfi->fisher_matrix_ZC_l3[Z][C][index_l3], pfi->fisher_size, inverse_f_bar);
+
+        /* Debug - print r_l. This should match Fig. 3 of Lewis et al. 2011 when considering only
+        temperature or only polarisation. Note that the r-plot thus produced will look as the
+        absolute value of the curves in Fig. 3, as we compute it as 1/sqrt(r^-2). */
+        // double l_factor = l3*(l3+1)/(2*_PI_);
+        // double t_factor = 2.7255*1e6;
+        // double factor = pow(t_factor,2) * l_factor;
+        // fprintf (stderr, "%4d %17g %17g %17g %17g %17g\n",
+        //   l3, 1/sqrt(r_minus_2), factor*C_tot_ZC, l_factor*l3*(l3+1)*C_PP,
+        //   t_factor*l_factor*sqrt(l3*(l3+1))*C_ZP, t_factor*l_factor*sqrt(l3*(l3+1))*C_CP);
+
+        /* Contribution to the Fisher matrix from this (l1,Z,C) */
+        for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1)
+          for (int index_ft_2=0; index_ft_2 < pfi->fisher_size; ++index_ft_2)
+            temp[index_ft_1][index_ft_2] = inverse_f_bar[index_ft_1][index_ft_2] + noise_correction;
+
+        /* Invert the contribution */
+        InverseMatrix (temp, pfi->fisher_size, temp);
           
-          for (int index_ft_2=0; index_ft_2 < pfi->fisher_size; ++index_ft_2) {
-          
-            double noise_correction = (1 - (C_tot_ZC*C_PP)/(C_ZP*C_CP))/(2*l3+1);
-            inverse_f[index_ft_1][index_ft_2] += inverse_f_bar[index_ft_1][index_ft_2] + noise_correction;
-          
-          } // index_ft_2
-        } // index_ft_1
+        /* Increment the full Fisher matrix */
+        for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1)
+          for (int index_ft_2=0; index_ft_2 < pfi->fisher_size; ++index_ft_2)
+            f[index_ft_1][index_ft_2] += temp[index_ft_1][index_ft_2];
 
       } // index_l3
     } // index_C
   } // index_Z
 
-  /* Invert back to obtain the Fisher matrix including the lensing noise */
-  for (int index_l3=0; index_l3 < pfi->l3_size; ++index_l3)
-    InverseMatrix (inverse_f, pfi->fisher_size, pfi->fisher_matrix_lensvar_l3[index_l3]);
-  
   /* Print the Fisher matrix with lensing variance */
   if (pfi->fisher_verbose > 0) {
   
@@ -2734,7 +2754,7 @@ int fisher_lensing_variance (
       sprintf (pfi->info, "%s(", pfi->info);
       
       for (int index_ft_2=0; index_ft_2 < pfi->fisher_size; ++index_ft_2)
-        sprintf (pfi->info, "%s %+.5e ", pfi->info, pfi->fisher_matrix_lensvar_l3[0]);
+        sprintf (pfi->info, "%s %+.5e ", pfi->info, f[index_ft_1][index_ft_2]);
   
       sprintf (pfi->info, "%s)\n", pfi->info);
     }
@@ -2743,10 +2763,13 @@ int fisher_lensing_variance (
   /* Free memory */
   for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
     free (inverse_f_bar[index_ft]);
-    free (inverse_f[index_ft]);
+    free (temp[index_ft]);
+    free (f[index_ft]);
   }
   free (inverse_f_bar);
-
+  free (temp);
+  free (f);
+  
   return _SUCCESS_;
   
 }
