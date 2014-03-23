@@ -103,6 +103,9 @@ struct fisher {
 
   /* Same as above, but for l3, the smallest multipole, and l3 belonging to pfi->l3[index_l3]. */
   double ****** fisher_matrix_XYZ_l3;
+
+  /* Contains the full Fisher matrix summed over the intermediate multipole, l2 */ 
+  double ******* fisher_matrix_XYZ_l3_l1;
   
   /* Same as fisher_matrix_XYZ_l1, but summed over XYZ */
   double *** fisher_matrix_l1;

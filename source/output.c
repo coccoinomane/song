@@ -220,15 +220,15 @@ int output_fisher(
   class_open (fisher_file_lmax, filename, "w", pop->error_message);
   
   /* We can compute the S/N for varying l_min only when we interpolate all 3 l-dimensions using the mesh-interpolation. */
-  if ((pfi->bispectra_interpolation == mesh_interpolation) ||
-      (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
+  // if ((pfi->bispectra_interpolation == mesh_interpolation) ||
+  // (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
 
     if ((pfi->l_min_estimator > pfi->l_min) || (pfi->l_max_estimator < pfi->l_max))
       sprintf (filename, "%s%s_%d_%d.dat", pop->root, "fisher_lmin", pfi->l_min_estimator, pfi->l_max_estimator);
     else
       sprintf (filename, "%s%s.dat", pop->root, "fisher_lmin");
     class_open (fisher_file_lmin, filename, "w", pop->error_message);
-  }
+  // }
   
   // --------------------------------------------------------------------------
   // -                                Print labels                            -
@@ -245,8 +245,8 @@ int output_fisher(
   }
   fprintf (fisher_file_lmax, "\n");
   
-  if ((pfi->bispectra_interpolation == mesh_interpolation) ||
-      (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
+  // if ((pfi->bispectra_interpolation == mesh_interpolation) ||
+  //     (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
     
     fprintf (fisher_file_lmin, "%20s ", "l_min");
     for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
@@ -258,7 +258,7 @@ int output_fisher(
       fprintf (fisher_file_lmin, "%20s ", label);
     }
     fprintf (fisher_file_lmin, "\n");
-  }
+  // }
   
   // ---------------------------------------------------------------------
   // -                           Print values                            -
@@ -280,8 +280,8 @@ int output_fisher(
   } // end of for (index_l1)
   
   /* S/N as a function of the l_min of the experiment */
-  if ((pfi->bispectra_interpolation == mesh_interpolation) ||
-      (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
+  // if ((pfi->bispectra_interpolation == mesh_interpolation) ||
+  //     (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
     
     for (int index_l3=0; index_l3 < pfi->l3_size; ++index_l3) {
     
@@ -296,7 +296,7 @@ int output_fisher(
       fprintf (fisher_file_lmin, "\n");
 
     } // end of for (index_l3)    
-  }
+  // }
   
   // ---------------------------------------------------------------------------
   // -                            Close files                                  -
@@ -304,9 +304,9 @@ int output_fisher(
   
   fclose (fisher_file_lmax);
   
-  if ((pfi->bispectra_interpolation == mesh_interpolation) ||
-      (pfi->bispectra_interpolation == sum_over_all_multipoles))
-    fclose (fisher_file_lmin);
+  // if ((pfi->bispectra_interpolation == mesh_interpolation) ||
+  //     (pfi->bispectra_interpolation == sum_over_all_multipoles))
+  //   fclose (fisher_file_lmin);
   
   
 
@@ -348,8 +348,8 @@ int output_fisher(
         class_open (fisher_file_XYZ_lmax[X][Y][Z], filename, "w", pop->error_message);
           
         /* We can compute the S/N for varying l_min only when we interpolate all 3 l-dimensions using the mesh-interpolation. */
-        if ((pfi->bispectra_interpolation == mesh_interpolation) ||
-            (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
+        // if ((pfi->bispectra_interpolation == mesh_interpolation) ||
+        //     (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
           
           if ((pfi->l_min_estimator > pfi->l_min) || (pfi->l_max_estimator < pfi->l_max))
             sprintf (filename, "%s%s_%s_%d_%d.dat",
@@ -357,7 +357,7 @@ int output_fisher(
           else
           sprintf (filename, "%s%s_%s.dat", pop->root, "fisher_lmin", pbi->bfff_labels[X][Y][Z]);
           class_open (fisher_file_XYZ_lmin[X][Y][Z], filename, "w", pop->error_message);
-        }
+        // }
           
         // --------------------------------------------------------------------------
         // -                                Print labels                            -
@@ -374,8 +374,8 @@ int output_fisher(
         }
         fprintf (fisher_file_XYZ_lmax[X][Y][Z], "\n");
           
-        if ((pfi->bispectra_interpolation == mesh_interpolation) ||
-            (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
+        // if ((pfi->bispectra_interpolation == mesh_interpolation) ||
+        //     (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
             
           fprintf (fisher_file_XYZ_lmin[X][Y][Z], "%20s ", "l_min");
           for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
@@ -387,7 +387,7 @@ int output_fisher(
             fprintf (fisher_file_XYZ_lmin[X][Y][Z], "%20s ", label);
           }
           fprintf (fisher_file_XYZ_lmin[X][Y][Z], "\n");
-        }
+        // }
           
         // ---------------------------------------------------------------------
         // -                           Print values                            -
@@ -411,8 +411,8 @@ int output_fisher(
         } // end of for (index_l1)
           
         /* S/N as a function of the l_min of the experiment */
-        if ((pfi->bispectra_interpolation == mesh_interpolation) ||
-        (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
+        // if ((pfi->bispectra_interpolation == mesh_interpolation) ||
+        // (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
             
           for (int index_l3=0; index_l3 < pfi->l3_size; ++index_l3) {
             
@@ -428,7 +428,7 @@ int output_fisher(
           
             fprintf (fisher_file_XYZ_lmin[X][Y][Z], "\n");
           
-          } // end of for (index_l3)    
+          // } // end of for (index_l3)    
         }
   
         // ---------------------------------------------------------------------------
@@ -437,9 +437,9 @@ int output_fisher(
   
         fclose (fisher_file_XYZ_lmax[X][Y][Z]);
 
-        if ((pfi->bispectra_interpolation == mesh_interpolation) ||
-            (pfi->bispectra_interpolation == sum_over_all_multipoles))
-          fclose (fisher_file_XYZ_lmin[X][Y][Z]);
+        // if ((pfi->bispectra_interpolation == mesh_interpolation) ||
+        //     (pfi->bispectra_interpolation == sum_over_all_multipoles))
+        //   fclose (fisher_file_XYZ_lmin[X][Y][Z]);
   
       } // end of for Z
     } // end of for Y
