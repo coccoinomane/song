@@ -33,7 +33,8 @@ vpath .base build
 
 # Build directory
 # MDIR := $(notdir $(shell pwd))
-MDIR := $(shell pwd)
+# MDIR := $(shell pwd)
+MDIR := .
 WRKDIR = $(MDIR)/build
 
 .base:

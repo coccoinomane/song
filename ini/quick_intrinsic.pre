@@ -156,6 +156,11 @@ k_per_decade_primordial = 10.
 
 
 
+# perturb_sampling_stepsize = 0.01 # set to 0.01 for precise result even without limber
+l_switch_limber = 10 # set to 10 to match CAMB
+accurate_lensing = 1
+num_mu_minus_lmax = 150
+delta_l_max = 250
 
 
 
@@ -375,10 +380,6 @@ transfer_cut_threshold_cl=1.e-8 # not robust if tilted or if one Delta_l(k) osci
 
 evolver=1
 
-l_switch_limber = 40.
-accurate_lensing=0
-num_mu_minus_lmax = 1000.
-delta_l_max = 1000.
 
 
 

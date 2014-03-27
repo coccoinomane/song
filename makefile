@@ -6,18 +6,18 @@
 # =========================================================================
 
 # Your C compiler and library tool
-CC			 = /usr/local/bin/gcc -g
+CC			 = gcc -g
 AR       = ar rv
 
 # Your Fortran compiler
-FC       = /usr/local/bin/gfortran
+FC       = gfortran
 
 # Optimization flags.
 # The flags -fast, -O3 and -ffast-math seem to have the same effect, that is a factor 2 speed-up.
 # The fastest combination seems to be -O3 -ffast-math, whic delivers a speed-up of ~3.
 # Note that (i) the flag -ffast-math will produce different results at the 1 permille level,
 # and that (ii) debug won't work if the optimization is on.
-OPTFLAG         = -O
+OPTFLAG    = -O
 
 # Openmp flag (comment for compiling without openmp)
 CCFLAG     = -fopenmp -std=c99
@@ -36,7 +36,8 @@ vpath %.o build
 vpath .base build
 
 # Build directory
-MDIR := $(shell pwd)
+# MDIR := $(shell pwd)
+MDIR := .
 WRKDIR = $(MDIR)/build
 
 .base:
@@ -47,7 +48,7 @@ WRKDIR = $(MDIR)/build
 # Remember to include gfortran or ifort libraries in order to use Slatec.
 INCLUDES 					  = -I../include
 FORTRAN_LIB_DIR 		=  
-LIBRARIES           = -lgfortran -fopenmp -lm
+LIBRARIES           = -L/opt/local/lib/gcc48 -lgfortran -fopenmp -lm
 
 
 

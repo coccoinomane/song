@@ -677,7 +677,8 @@ int main(int argc, char **argv) {
         the other ones would not make sense. (In practice, we enforce l3>=l2>=l1 instead of l1>=l2>=l3
         because we have assigned l1 to be l_long, that is, the smallest of the three.) */
         if ((((bi.has_intrinsic_squeezed == _TRUE_) && (index_bt == bi.index_bt_intrinsic_squeezed)))
-           ||((bi.has_local_squeezed == _TRUE_) && (index_bt == bi.index_bt_local_squeezed)))
+           ||((bi.has_local_squeezed == _TRUE_) && (index_bt == bi.index_bt_local_squeezed))
+           ||((bi.has_cmb_lensing_squeezed == _TRUE_) && (index_bt == bi.index_bt_cmb_lensing_squeezed)))
           if ((l1>l2) || (l1>l3) || (l2>l3))
             continue;
   
@@ -787,9 +788,9 @@ int main(int argc, char **argv) {
         However, this is only a visualisation issue relevant to this function that does not affect Song. */
         /* TODO: update for polarization. This means loading a full bispectrum rather than computing it here
         on the fly */
-        double Cl1 = sp.cl[pt.index_md_scalars][index_l1 * sp.ct_size + bi.index_ct_of_bf[X][X]];
-        double Cl2 = sp.cl[pt.index_md_scalars][index_l2 * sp.ct_size + bi.index_ct_of_bf[X][X]];
-        double Cl3 = sp.cl[pt.index_md_scalars][index_l3 * sp.ct_size + bi.index_ct_of_bf[X][X]];
+        double Cl1 = sp.cl[pt.index_md_scalars][index_l1 * sp.ct_size + bi.index_ct_of_bf_bf[X][X]];
+        double Cl2 = sp.cl[pt.index_md_scalars][index_l2 * sp.ct_size + bi.index_ct_of_bf_bf[X][X]];
+        double Cl3 = sp.cl[pt.index_md_scalars][index_l3 * sp.ct_size + bi.index_ct_of_bf_bf[X][X]];
         double temperature_correction = 3*(Cl1*Cl2 + Cl1*Cl3 + Cl2*Cl3);
   
         /* Value of the brightness temperature bispectrum */
@@ -883,10 +884,10 @@ int main(int argc, char **argv) {
           int mode = pt.index_md_scalars;
                     
           /* C_l's for the short and long modes */
-          double cl_YZ_short    = bi.cls[bi.index_ct_of_bf[Y][Z]][l_short-2];
-          double cl_XX_long     = bi.cls[bi.index_ct_of_bf[X][X]][l_long-2];
-          double cl_XX_short    = bi.cls[bi.index_ct_of_bf[X][X]][l_short-2];
-          double cl_XY_long     = bi.cls[bi.index_ct_of_bf[X][Y]][l_long-2];
+          double cl_YZ_short    = bi.cls[bi.index_ct_of_bf_bf[Y][Z]][l_short-2];
+          double cl_XX_long     = bi.cls[bi.index_ct_of_bf_bf[X][X]][l_long-2];
+          double cl_XX_short    = bi.cls[bi.index_ct_of_bf_bf[X][X]][l_short-2];
+          double cl_XY_long     = bi.cls[bi.index_ct_of_bf_bf[X][Y]][l_long-2];
 
           /* Determine which field has to be correlated with the comoving curvature perturbation zeta.
           The resulting C_l^zeta always gets the largest scale multipole */
@@ -916,7 +917,7 @@ int main(int argc, char **argv) {
           if (bi.has_bispectra_t == _TRUE_)
             normalization = - 1 / (12 * bi.cls[sp.index_ct_tt][l_long-2] * bi.cls[sp.index_ct_tt][l_short-2]);
           else if (bi.bf_size == 1)
-            normalization = - 1 / (12 * bi.cls[bi.index_ct_of_bf[X][X]][l_long-2] * bi.cls[bi.index_ct_of_bf[X][X]][l_short-2]);
+            normalization = - 1 / (12 * bi.cls[bi.index_ct_of_bf_bf[X][X]][l_long-2] * bi.cls[bi.index_ct_of_bf_bf[X][X]][l_short-2]);
           else {
             printf ("ERROR: case of 2 non-temperature fields not implemented yet.\n");
           }
@@ -938,7 +939,7 @@ int main(int argc, char **argv) {
           /* Here we compute the approximations in eq. 4.1 and 4.2 of Lewis 2012. This is the general
           formula that includes polarisation. With respect to Lewis' formula, i->X, j->Y, k->Z and
           greek zeta -> z. */
-          double dcl_YZ_short = bi.d_lsq_cls[bi.index_ct_of_bf[Y][Z]][l_short-2];
+          double dcl_YZ_short = bi.d_lsq_cls[bi.index_ct_of_bf_bf[Y][Z]][l_short-2];
           
           /* Ricci focussing in Lewis 2012 (eq. 4.1) */
           double bolometric_T_lewis_ricci = normalization * (- cl_Xz_long * dcl_YZ_short/l_short);
@@ -948,9 +949,9 @@ int main(int argc, char **argv) {
           
           if (bi.has_bispectra_t == _TRUE_) {
             double cl_Xt_long = 0; double cl_Yt_short = 0; double cl_Zt_short = 0;
-            cl_Xt_long = bi.cls[bi.index_ct_of_bf[X][bi.index_bf_t]][l_long-2];
-            if (Z == bi.index_bf_t) cl_Yt_short = bi.cls[bi.index_ct_of_bf[Y][bi.index_bf_t]][l_short-2];
-            if (Y == bi.index_bf_t) cl_Zt_short = bi.cls[bi.index_ct_of_bf[Z][bi.index_bf_t]][l_short-2];
+            cl_Xt_long = bi.cls[bi.index_ct_of_bf_bf[X][bi.index_bf_t]][l_long-2];
+            if (Z == bi.index_bf_t) cl_Yt_short = bi.cls[bi.index_ct_of_bf_bf[Y][bi.index_bf_t]][l_short-2];
+            if (Y == bi.index_bf_t) cl_Zt_short = bi.cls[bi.index_ct_of_bf_bf[Z][bi.index_bf_t]][l_short-2];
             bolometric_T_lewis_redshift = normalization * (cl_Xt_long * (cl_Yt_short + cl_Zt_short));
           }
           

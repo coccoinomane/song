@@ -35,7 +35,7 @@ int threej_single(
 	/* Check input */
 	class_test (l1>l1_max || l1<l1_min,
     errmsg,
-		"'l1' should be between %d and %d.\n", __func__, l1_min, l1_max);
+		"ERROR, %s: 'l1' should be between %d and %d.\n", __func__, l1_min, l1_max);
 
   /* The Slatec function DRC3JJ computes the 3j symbol for any allowed value
   of l1.  Here we compute the number of such values and allocate memory
@@ -2774,18 +2774,19 @@ void InverseMatrix(double **in,int n,double **out)
 
   /* Obvious case where n=2. We write the formula in such a way that the inversion can
   be done in place (i.e. the user can set out=in). */
-  if (n==2) {
-    double a = in[0][0];
-    double b = in[0][1];
-    double c = in[1][0];
-    double d = in[1][1];
-    double one_over_det = 1/(a*d - b*c);
-    out[0][0] = one_over_det * d;
-    out[1][0] = -one_over_det * b;
-    out[0][1] = -one_over_det * c;
-    out[1][1] = one_over_det * a;
-    return;
-  }
+  // if (n==2) {
+  //   double a = in[0][0];
+  //   double b = in[0][1];
+  //   double c = in[1][0];
+  //   double d = in[1][1];
+  //   double one_over_det = 1/(a*d - b*c);
+  //   out[0][0] = one_over_det * d;
+  //   out[1][0] = -one_over_det * b;
+  //   out[0][1] = -one_over_det * c;
+  //   out[1][1] = one_over_det * a;
+  //   printf ("a*d=%g, b*c=%g, a=%g, one_over_det=%g\n",a*d,b*c,a,one_over_det);
+  //   return;
+  // }
   
   /* Compute determinant */
   double det = Determinant(in, n);
@@ -2804,6 +2805,26 @@ void InverseMatrix(double **in,int n,double **out)
   for (i=0;i<n;i++)
      free(cofactor[i]);
   free(cofactor);
+
+}
+
+
+/** 
+ * Print a matrix to standard output.
+ */
+void PrintMatrix(double **in,int n)
+{
+
+  int i,j;
+
+  for (int i = 0; i < n; ++i) {
+    printf ("( ");
+    for (int j = 0; j < n; ++j)
+      printf ("%18.10e ", in[i][j]);
+    printf (")\n");
+  }
+
+  return;
 
 }
 

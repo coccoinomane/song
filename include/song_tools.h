@@ -330,6 +330,7 @@ extern "C" {
   void CoFactor(double **a,int n,double **b);
   void Transpose(double **a,int n);
   void InverseMatrix(double **in,int n,double **out);
+  void PrintMatrix(double **in,int n);
 
 
 

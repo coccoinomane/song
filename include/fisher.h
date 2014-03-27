@@ -84,6 +84,8 @@ struct fisher {
   int index_ft_local_squeezed;        /* Index for the local-model bispectrum in the squeezed limit */  
   int index_ft_cosine;                /* Index for the oscillating bispectrum */  
   int index_ft_cmb_lensing;           /* Index for the bispectrum of CMB-lensing */  
+  int index_ft_cmb_lensing_squeezed;  /* Index for the bispectrum of CMB-lensing in the squeezed limit */  
+  int index_ft_cmb_lensing_kernel;    /* Index for the bispectrum of CMB-lensing in the squeezed limit (kernel only) */
   int fisher_size;                    /* Total number of bispectra types requested */
   
   /* Index of the first Fisher matrix line that does not refer to an analytical bispectrum. 
@@ -104,9 +106,6 @@ struct fisher {
   /* Same as above, but for l3, the smallest multipole, and l3 belonging to pfi->l3[index_l3]. */
   double ****** fisher_matrix_XYZ_l3;
 
-  /* Contains the full Fisher matrix summed over the intermediate multipole, l2 */ 
-  double ******* fisher_matrix_XYZ_l3_l1;
-  
   /* Same as fisher_matrix_XYZ_l1, but summed over XYZ */
   double *** fisher_matrix_l1;
 
@@ -173,11 +172,18 @@ struct fisher {
   
   /* Same as fisher_matrix_XYZ_l3, but keeping track of the Z and C field indices instead.
   This is needed to compute the lensing variance, and corresponds to \bar{F}_{l_1 i p}
-  in Eq. 5.25 of http://uk.arxiv.org/abs/1101.2234 */
-  double ***** fisher_matrix_ZC_l3;
+  in Eq. 5.25 of http://uk.arxiv.org/abs/1101.2234. The indexing of this array is slightly
+  different from the others, because we will need to invert it with respect to the last two
+  levels (see Eq. 5.35 ibidem):
+  fisher_matrix_CZ_l3[index_l3][index_ft_1*field_size+index_field_C][index_ft_2*field_size+index_field_Z] */
+  double *** fisher_matrix_CZ_l3;
 
-  /* Same as fisher_matrix_l3, but includes the effect of the lensing variance */
+  /* Same as the other arrays defined above, but used to contain the full result including lensing
+  variance */
   double *** fisher_matrix_lensvar_l3;
+  double *** fisher_matrix_lensvar_lmin;
+  double *** inverse_fisher_matrix_lensvar_lmin;
+  double ** sigma_fnl_lensvar_lmin;
   
 
   // ==========================================================================================

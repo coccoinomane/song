@@ -863,27 +863,27 @@ int input_init(
 
   if ((pbi->has_bispectra == _TRUE_) && (flag1 == _TRUE_)) {
   
-    /* Compute primordial temperature bispectrum with a local shape function */
+    /* Compute primordial bispectrum with a local shape function */
     if (strstr(string1,"local") != NULL) {
       pbi->has_local_model = _TRUE_;  
     }
   
-    /* Compute primordial temperature bispectrum with an equilateral shape function */
+    /* Compute primordial bispectrum with an equilateral shape function */
     if (strstr(string1,"equilateral") != NULL) {
       pbi->has_equilateral_model = _TRUE_;
     }
 
-    /* Compute primordial temperature bispectrum with an orthogonal shape function */
+    /* Compute primordial bispectrum with an orthogonal shape function */
     if (strstr(string1,"orthogonal") != NULL) {
       pbi->has_orthogonal_model = _TRUE_;  
     }
 
-    /* Compute primordial temperature bispectrum with the two Galileon shapes in arXiv:1303.2125 */
+    /* Compute primordial bispectrum with the two Galileon shapes in arXiv:1303.2125 */
     if (strstr(string1,"galileon") != NULL) {
       pbi->has_galileon_model = _TRUE_;  
     }
 
-    /* Compute the approximation to the intrinsic bispectrum for the squeezed limit */
+    /* Compute the approximation of the intrinsic bispectrum in the squeezed limit */
     if ((strstr(string1,"intrinsic_squeezed") != NULL)
     || (strstr(string1,"i_squeezed") != NULL) || (strstr(string1,"i-squeezed") != NULL)) {
       pbi->has_intrinsic_squeezed = _TRUE_;
@@ -891,22 +891,29 @@ int input_init(
       psp->compute_cl_derivative = _TRUE_;
     }
 
-    /* Compute the approximation to the intrinsic bispectrum for the squeezed limit */
+    /* Compute the approximation of the local bispectrum in the squeezed limit */
     if ((strstr(string1,"local_squeezed") != NULL)
     || (strstr(string1,"l_squeezed") != NULL) || (strstr(string1,"l-squeezed") != NULL)) {
       pbi->has_local_squeezed = _TRUE_;
     }
 
-    /* Compute the approximation to the intrinsic bispectrum for the squeezed limit */
+    /* Compute a test oscillating bispectrum */
     if ((strstr(string1,"cosine_shape") != NULL) || (strstr(string1,"cosine") != NULL)) {
       pbi->has_cosine_shape = _TRUE_;
     }
 
-    /* Compute the approximation to the intrinsic bispectrum for the squeezed limit */
+    /* Compute the CMB-lensing bispectrum */
     if ((strstr(string1,"cmb_lensing") != NULL) || (strstr(string1,"cmb-lensing") != NULL)
-    ||  (strstr(string1,"isw_lensing") != NULL) || (strstr(string1,"isw-lensing") != NULL)) {
+    || (strstr(string1,"CMB_lensing") != NULL) || (strstr(string1,"CMB-lensing") != NULL)
+    || (strstr(string1,"isw_lensing") != NULL) || (strstr(string1,"isw-lensing") != NULL)) {
       ppt->has_cl_cmb_lensing_potential = _TRUE_;
       pbi->has_cmb_lensing = _TRUE_;
+    }
+
+    /* Compute the approximation of the CMB-lensing bispectrum in the squeezed limit */
+    if ((strstr(string1,"c_squeezed") != NULL) || (strstr(string1,"c-squeezed") != NULL)) {
+      ppt->has_cl_cmb_lensing_potential = _TRUE_;
+      pbi->has_cmb_lensing_squeezed = _TRUE_;
     }
 
     /* Compute the quadratic correction bispectrum (effectively the CMB four-point function) */
@@ -2168,20 +2175,23 @@ or 'linear_extrapolation'.", "");
   estimator? If so, extend the lensed C_l's all the way to l_max by setting 
   the flag 'ppr->extend_lensed_cls'. The default behaviour is to compute the lensed C_l's
   only up to l_max - ppr->delta_l_max. */    
-  if (ple->has_lensed_cls == _TRUE_) {
+  if (ple->has_lensed_cls == _TRUE_) { /* equivalent to setting lensing=yes in parameter file */
     
     if (pfi->has_fisher == _TRUE_) {
       pfi->include_lensing_effects = _TRUE_;
-      ppr->extend_lensed_cls = _TRUE_;
+      pbi->has_cmb_lensing_kernel = _TRUE_;  /* needed to compute the effect of lensing variance */
+      ppr->extend_lensed_cls = _TRUE_;       /* needed to include the lensing noise in the covariance matrix */
     }
     
     if ((pbi->has_bispectra == _TRUE_) &&
-    ((pbi->has_cmb_lensing == _TRUE_) || (pbi->has_intrinsic_squeezed == _TRUE_))) {
+    ((pbi->has_cmb_lensing == _TRUE_)              /* analytic bispectrum that needs the lensed C_l's */
+    || (pbi->has_cmb_lensing_squeezed == _TRUE_)   /* analytic bispectrum that needs the lensed C_l's */
+    || (pbi->has_cmb_lensing_kernel == _TRUE_)     /* analytic bispectrum that needs the lensed C_l's */
+    || (pbi->has_intrinsic_squeezed == _TRUE_))) { /* analytic bispectrum that needs the lensed C_l's */
       pbi->include_lensing_effects = _TRUE_;
       ppr->extend_lensed_cls = _TRUE_;
     }
   }
-
 
   // =====================================================================
   // =                           Fisher matrix                           =
@@ -2458,7 +2468,10 @@ less than %d values for 'experiment_beam_fwhm'", _N_FREQUENCY_CHANNELS_MAX_);
   && (pfi->bispectra_interpolation != mesh_interpolation_2d)
   && (pfi->bispectra_interpolation != mesh_interpolation)
   && (ppt->has_bi_cmb_polarization==_TRUE_) 
-  && ((pbi->has_quadratic_correction==_TRUE_) || (pbi->has_cmb_lensing ==_TRUE_))) {
+  && ((pbi->has_quadratic_correction==_TRUE_)
+  || (pbi->has_cmb_lensing ==_TRUE_)
+  || (pbi->has_cmb_lensing_squeezed ==_TRUE_)
+  || (pbi->has_cmb_lensing_kernel ==_TRUE_))) {
      
     printf ("\n");
     printf ("   *@^#?!?! FORCING THE COMPUTATION OF A GRID OF EVEN L'S\n");
@@ -2772,6 +2785,8 @@ int input_default_params(
   pbi->has_local_squeezed = _FALSE_;
   pbi->has_cosine_shape = _FALSE_;
   pbi->has_cmb_lensing = _FALSE_;
+  pbi->has_cmb_lensing_squeezed = _FALSE_;
+  pbi->has_cmb_lensing_kernel = _FALSE_;
   pbi->has_quadratic_correction = _FALSE_;
   pbi->store_bispectra_to_disk = _FALSE_;
   pbi->include_lensing_effects = _FALSE_;

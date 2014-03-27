@@ -199,7 +199,7 @@ int output_fisher(
   class_open (fisher_file, filename, "w", pop->error_message);
   
   /* Print the Fisher matrix to file */
-  fprintf (fisher_file, pfi->info);
+  fprintf (fisher_file, "%s", pfi->info);
 
   /* Close file */
   fclose (fisher_file);

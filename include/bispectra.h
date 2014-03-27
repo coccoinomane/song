@@ -44,7 +44,9 @@ struct bispectra {
   short has_intrinsic_squeezed;       /* Squeezed limit for the 2nd-order bispectrum (Creminelli et al. 2012, Bartolo et al. 2012, Lewis 2012) */
   short has_local_squeezed;           /* Squeezed limit for local model (Guangui et al. 1994) */
   short has_cosine_shape;             /* The above, multiplied by an oscillating function in l */
-  short has_cmb_lensing;              /* CMB-lensing bispectrum shape */
+  short has_cmb_lensing;              /* CMB-lensing bispectrum (Eq. 4.5 of arxiv:1101.2234) */
+  short has_cmb_lensing_squeezed;     /* Squeezed limit of the CMB-lensing bispectrum (Eq. 5.20 of arxiv:1101.2234) */
+  short has_cmb_lensing_kernel;       /* Squeezed limit of the CMB-lensing bispectrum (kernel only, Eq. 5.20 of arxiv:1101.2234) */
   short has_quadratic_correction;     /* Four-point contribution to the bispectrum */
 
   /* Indices for the above bispectra types */
@@ -57,7 +59,9 @@ struct bispectra {
   int index_bt_intrinsic_squeezed;    /* Index for the intrinsic bispectrum in the squeezed limit */  
   int index_bt_local_squeezed;        /* Index for the local-model bispectrum in the squeezed limit */  
   int index_bt_cosine;                /* Index for the oscillating bispectrum */  
-  int index_bt_cmb_lensing;           /* Index for the bispectrum of CMB-lensing */  
+  int index_bt_cmb_lensing;           /* Index for the bispectrum of CMB-lensing */
+  int index_bt_cmb_lensing_squeezed;  /* Index for the bispectrum of CMB-lensing in the squeezed limit */
+  int index_bt_cmb_lensing_kernel;    /* Index for the bispectrum of CMB-lensing in the squeezed limit (kernel only) */
   int index_bt_quadratic;             /* Index for the bispectrum induced by a quadratic correction to the distribution function */  
   int bt_size;                        /* Total number of bispectra types requested */
 
@@ -152,13 +156,17 @@ struct bispectra {
   /* Array that relates each pair of fields (TT,EE,TE...) to their C_l power spectrum, as computed
   in the spectra.c module. This is used to build the cross-power spectrum in the Fisher module.
   For example,
-  index_ct_of_bf[pbi->index_bf_t][pbi->index_bf_t] = psp->index_ct_tt
-  index_ct_of_bf[pbi->index_bf_t][pbi->index_bf_e] = psp->index_ct_te  */
-  int index_ct_of_bf[_MAX_NUM_FIELDS_][_MAX_NUM_FIELDS_];
+  index_ct_of_bf_bf[pbi->index_bf_t][pbi->index_bf_t] = psp->index_ct_tt
+  index_ct_of_bf_bf[pbi->index_bf_t][pbi->index_bf_e] = psp->index_ct_te  */
+  int index_ct_of_bf_bf[_MAX_NUM_FIELDS_][_MAX_NUM_FIELDS_];
+
+  /* Associate to each field X=T,E,... its C_l correlation <X phi> with the lensing potential and
+  its C_l correlation <X zeta> with the curvature perturbation. */
+  int index_ct_of_phi_bf[_MAX_NUM_FIELDS_];
+  int index_ct_of_zeta_bf[_MAX_NUM_FIELDS_];
   
   /* Same but for the lensed C_l's */
-  int index_lt_of_bf[_MAX_NUM_FIELDS_][_MAX_NUM_FIELDS_];
-
+  int index_lt_of_bf_bf[_MAX_NUM_FIELDS_][_MAX_NUM_FIELDS_];
 
   /* Array of strings that contain the text labels of the various fields */
   char bf_labels[_MAX_NUM_FIELDS_][_MAX_LENGTH_LABEL_]; /* T,E... */
@@ -202,6 +210,11 @@ struct bispectra {
   'index_l1_l2_l3' is described above. */          
   double ***** bispectra;
   
+  /* In computing the CMB-lensing bispectrum, turn the lensing potential C_l to zero on small scales,
+  where we cannot trust them. This won't change the result because these C_l's are very small for
+  large l's. In CAMB, Antony sets C_l^TP=0 for l>300 and C_l^EP=0 for l>40. */
+  int lmax_lensing_corrT;
+  int lmax_lensing_corrE;
 
   // ===========================================================================================
   // =                                   Filter functions                                      =
@@ -842,6 +855,33 @@ extern "C" {
        double * result
        );
 
+  int bispectra_cmb_lensing_squeezed_kernel (
+       struct precision * ppr,
+       struct spectra * psp,
+       struct lensing * ple,
+       struct bispectra * pbi,
+       int l1, int l2, int l3,
+       int X1, int X2, int X3,
+       double threej_l1_l2_l3_0_0_0,
+       double threej_l1_l2_l3_2_0_m2,
+       double threej_l1_l2_l3_m2_2_0,
+       double threej_l1_l2_l3_0_m2_2,
+       double * result
+       );
+
+  int bispectra_cmb_lensing_squeezed_bispectrum (
+       struct precision * ppr,
+       struct spectra * psp,
+       struct lensing * ple,
+       struct bispectra * pbi,
+       int l1, int l2, int l3,
+       int X1, int X2, int X3,
+       double threej_l1_l2_l3_0_0_0,
+       double threej_l1_l2_l3_2_0_m2,
+       double threej_l1_l2_l3_m2_2_0,
+       double threej_l1_l2_l3_0_m2_2,
+       double * result
+       );
 
   int bispectra_local_squeezed_bispectrum (
        struct precision * ppr,
