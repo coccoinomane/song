@@ -29,7 +29,13 @@ struct bispectra {
   only analytical bispectra such as the CMB-lensing and the squeezed approximation for the
   intrinsic bispectrum */
   short include_lensing_effects;
+  
+  /* Flag that overrides 'include_lensing_effects' for the intrinsic bispectrum. If _FALSE_,
+  never use the lensed version of the intrinsic bispectrum or of its approximation  */ 
+  short lensed_intrinsic;
 
+  /* Are the Wigner 3j-symbols needed to compute the requested bispectra? */
+  short need_3j_symbols;
 
   // ===========================================================================================
   // =                                  Indices of bispectra                                   =
@@ -106,6 +112,24 @@ struct bispectra {
   (  0,  0,  0 )      (  0, -2,  2 )      (  2,  0, -2 )    ( -2,  2,  0 )
   They are needed only for the 'quadratic' and CMB-lensing bispectra. */
   int (*bispectrum_function[_MAX_NUM_BISPECTRA_]) (
+    struct precision * ppr,
+    struct spectra * psp,
+    struct lensing * ple,
+    struct bispectra * pbi,
+    int l1, int l2, int l3,
+    int X, int Y, int Z,
+    double threej_000,
+    double threej_20m2,
+    double threej_m220,
+    double threej_0m22,
+    double *result
+  );
+
+  /* To obtain the Fisher matrix involving non-analytical bispectra, these will need to be interpolated
+  in (l1,l2,l3). For bispectra with power on squeezed configurations, like the local and intrinisc ones,
+  it is preferable to use a window function for the interpolation. This array contains the window
+  function associated to each bispectrum. A NULL function implies that no window function will be used. */
+  int (*window_function[_MAX_NUM_BISPECTRA_]) (
     struct precision * ppr,
     struct spectra * psp,
     struct lensing * ple,

@@ -865,7 +865,7 @@ int input_init(
   
     /* Compute primordial bispectrum with a local shape function */
     if (strstr(string1,"local") != NULL) {
-      pbi->has_local_model = _TRUE_;  
+      pbi->has_local_model = _TRUE_; 
     }
   
     /* Compute primordial bispectrum with an equilateral shape function */
@@ -928,6 +928,10 @@ int input_init(
       pbi->has_quadratic_correction = _TRUE_;
       ppt->has_perturbations2 = _TRUE_;
       ppt->has_cls = _TRUE_;
+      /* We also require to be able to compute the analytical approximation in the squeezed limit,
+      which is used as a window function for the interpolation of the intrinsic bispectrum */
+      ppt->has_cl_cmb_zeta = _TRUE_;
+      psp->compute_cl_derivative = _TRUE_;
     }
     
   } // end of bispectrum_types parsing
@@ -2189,9 +2193,23 @@ or 'linear_extrapolation'.", "");
     || (pbi->has_cmb_lensing_kernel == _TRUE_)     /* analytic bispectrum that needs the lensed C_l's */
     || (pbi->has_intrinsic_squeezed == _TRUE_))) { /* analytic bispectrum that needs the lensed C_l's */
       pbi->include_lensing_effects = _TRUE_;
+      pbi->lensed_intrinsic = _TRUE_;
       ppr->extend_lensed_cls = _TRUE_;
     }
   }
+
+  /* Do not include the lensed C_l's in the squeezed approximation for the intrinsic
+  bispectrum */
+  if (pbi->include_lensing_effects == _TRUE_) {
+
+    class_call(parser_read_string(pfc,"lensed_intrinsic",&(string1),&(flag1),errmsg),
+        errmsg,
+        errmsg);
+   
+    if ((flag1 == _TRUE_) && ((strstr(string1,"n") != NULL) || (strstr(string1,"N") != NULL)))
+      pbi->lensed_intrinsic = _FALSE_;
+  }
+
 
   // =====================================================================
   // =                           Fisher matrix                           =
@@ -2790,6 +2808,7 @@ int input_default_params(
   pbi->has_quadratic_correction = _FALSE_;
   pbi->store_bispectra_to_disk = _FALSE_;
   pbi->include_lensing_effects = _FALSE_;
+  pbi->lensed_intrinsic = _FALSE_;
 
   // ========================================================
   // =                    Fisher structure                  =

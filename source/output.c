@@ -185,7 +185,7 @@ int output_fisher(
         )
 {
   
-  FileName filename;
+  FileName filename, filename_lmin, filename_lmax;
   char label[256];
   
   // ============================================================================================
@@ -195,7 +195,11 @@ int output_fisher(
   FILE * fisher_file;
   
   /* Open the file for the Fisher matrix */
-  sprintf (filename, "%s%s.dat", pop->root, "fisher");
+  if ((pfi->l_min_estimator > pfi->l_min) || (pfi->l_max_estimator < pfi->l_max))
+    sprintf (filename, "%s%s_%d_%d.dat", pop->root, "fisher", pfi->l_min_estimator, pfi->l_max_estimator);
+  else
+    sprintf (filename, "%s%s.dat", pop->root, "fisher");
+
   class_open (fisher_file, filename, "w", pop->error_message);
   
   /* Print the Fisher matrix to file */
@@ -213,22 +217,17 @@ int output_fisher(
   FILE * fisher_file_lmax;
 
   /* Open the file for the signal to noise as a function of the maximum resolution of the experiment */
-  if ((pfi->l_min_estimator > pfi->l_min) || (pfi->l_max_estimator < pfi->l_max))
-    sprintf (filename, "%s%s_%d_%d.dat", pop->root, "fisher_lmax", pfi->l_min_estimator, pfi->l_max_estimator);
-  else
-    sprintf (filename, "%s%s.dat", pop->root, "fisher_lmax");
-  class_open (fisher_file_lmax, filename, "w", pop->error_message);
-  
-  /* We can compute the S/N for varying l_min only when we interpolate all 3 l-dimensions using the mesh-interpolation. */
-  // if ((pfi->bispectra_interpolation == mesh_interpolation) ||
-  // (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
+  if ((pfi->l_min_estimator > pfi->l_min) || (pfi->l_max_estimator < pfi->l_max)) {
+    sprintf (filename_lmax, "%s%s_%d_%d.dat", pop->root, "fisher_lmax", pfi->l_min_estimator, pfi->l_max_estimator);
+    sprintf (filename_lmin, "%s%s_%d_%d.dat", pop->root, "fisher_lmin", pfi->l_min_estimator, pfi->l_max_estimator);
+  }
+  else { 
+    sprintf (filename_lmax, "%s%s.dat", pop->root, "fisher_lmax");
+    sprintf (filename_lmin, "%s%s.dat", pop->root, "fisher_lmin");
+  }
 
-    if ((pfi->l_min_estimator > pfi->l_min) || (pfi->l_max_estimator < pfi->l_max))
-      sprintf (filename, "%s%s_%d_%d.dat", pop->root, "fisher_lmin", pfi->l_min_estimator, pfi->l_max_estimator);
-    else
-      sprintf (filename, "%s%s.dat", pop->root, "fisher_lmin");
-    class_open (fisher_file_lmin, filename, "w", pop->error_message);
-  // }
+  class_open (fisher_file_lmax, filename_lmax, "w", pop->error_message);
+  class_open (fisher_file_lmin, filename_lmin, "w", pop->error_message);
   
   // --------------------------------------------------------------------------
   // -                                Print labels                            -
@@ -236,35 +235,31 @@ int output_fisher(
   
   fprintf (fisher_file_lmax, "%20s ", "l_max");
   for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-    sprintf (label, "SN_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
+    sprintf (label, "F_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
     fprintf (fisher_file_lmax, "%20s ", label);
   }
   for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-    sprintf (label, "SN_cum_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
+    sprintf (label, "F_cum_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
     fprintf (fisher_file_lmax, "%20s ", label);
   }
   fprintf (fisher_file_lmax, "\n");
   
-  // if ((pfi->bispectra_interpolation == mesh_interpolation) ||
-  //     (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
-    
-    fprintf (fisher_file_lmin, "%20s ", "l_min");
-    for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-      sprintf (label, "SN_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
-      fprintf (fisher_file_lmin, "%20s ", label);
-    }
-    for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-      sprintf (label, "SN_cum_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
-      fprintf (fisher_file_lmin, "%20s ", label);
-    }
-    fprintf (fisher_file_lmin, "\n");
-  // }
+  fprintf (fisher_file_lmin, "%20s ", "l_min");
+  for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+    sprintf (label, "F_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
+    fprintf (fisher_file_lmin, "%20s ", label);
+  }
+  for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+    sprintf (label, "F_cum_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
+    fprintf (fisher_file_lmin, "%20s ", label);
+  }
+  fprintf (fisher_file_lmin, "\n");
   
   // ---------------------------------------------------------------------
   // -                           Print values                            -
   // ---------------------------------------------------------------------
   
-  /* S/N as a function of the l_max of the experiment */
+  /* Fisher as a function of the l_max of the experiment */
   for (int index_l1=0; index_l1 < pfi->l1_size; ++index_l1) {
     
     fprintf (fisher_file_lmax, "%20d ", pfi->l1[index_l1]);
@@ -279,291 +274,213 @@ int output_fisher(
 
   } // end of for (index_l1)
   
-  /* S/N as a function of the l_min of the experiment */
-  // if ((pfi->bispectra_interpolation == mesh_interpolation) ||
-  //     (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
-    
-    for (int index_l3=0; index_l3 < pfi->l3_size; ++index_l3) {
-    
-      fprintf (fisher_file_lmin, "%20d ", pfi->l3[index_l3]);
+  for (int index_l3=0; index_l3 < pfi->l3_size; ++index_l3) {
+  
+    fprintf (fisher_file_lmin, "%20d ", pfi->l3[index_l3]);
 
-      for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
-        fprintf (fisher_file_lmin, "%20.7g ", (pfi->fisher_matrix_l3[index_l3][index_ft][index_ft]));
+    for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
+      fprintf (fisher_file_lmin, "%20.7g ", (pfi->fisher_matrix_l3[index_l3][index_ft][index_ft]));
 
-      for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
-        fprintf (fisher_file_lmin, "%20.7g ", (pfi->fisher_matrix_lmin[index_l3][index_ft][index_ft]));
+    for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
+      fprintf (fisher_file_lmin, "%20.7g ", (pfi->fisher_matrix_lmin[index_l3][index_ft][index_ft]));
 
-      fprintf (fisher_file_lmin, "\n");
+    fprintf (fisher_file_lmin, "\n");
 
-    } // end of for (index_l3)    
-  // }
+  } // end of for (index_l3)    
   
   // ---------------------------------------------------------------------------
   // -                            Close files                                  -
   // ---------------------------------------------------------------------------
   
   fclose (fisher_file_lmax);
-  
-  // if ((pfi->bispectra_interpolation == mesh_interpolation) ||
-  //     (pfi->bispectra_interpolation == sum_over_all_multipoles))
-  //   fclose (fisher_file_lmin);
+  fclose (fisher_file_lmin);
   
   
+  // ============================================================================================
+  // =                               Same, with lensing variance                                =
+  // ============================================================================================
+
+  if (pfi->include_lensing_effects == _TRUE_) {
+
+    /* No lmax file for lensing variance */
+
+    if ((pfi->l_min_estimator > pfi->l_min) || (pfi->l_max_estimator < pfi->l_max)) {
+      sprintf (filename_lmin, "%s%s_%d_%d.dat", pop->root, "fisher_lensvar_lmin", pfi->l_min_estimator, pfi->l_max_estimator);
+    }
+    else { 
+      sprintf (filename_lmin, "%s%s.dat", pop->root, "fisher_lensvar_lmin");
+    }
+
+    class_open (fisher_file_lmin, filename_lmin, "w", pop->error_message);
+  
+    // --------------------------------------------------------------------------
+    // -                                Print labels                            -
+    // --------------------------------------------------------------------------
+  
+    fprintf (fisher_file_lmin, "%20s ", "l_min");
+    for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+      sprintf (label, "F_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
+      fprintf (fisher_file_lmin, "%20s ", label);
+    }
+    for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+      sprintf (label, "F_cum_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
+      fprintf (fisher_file_lmin, "%20s ", label);
+    }
+    fprintf (fisher_file_lmin, "\n");
+  
+    // ---------------------------------------------------------------------
+    // -                           Print values                            -
+    // ---------------------------------------------------------------------
+  
+    for (int index_l3=0; index_l3 < pfi->l3_size; ++index_l3) {
+  
+      fprintf (fisher_file_lmin, "%20d ", pfi->l3[index_l3]);
+
+      for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
+        fprintf (fisher_file_lmin, "%20.7g ", (pfi->fisher_matrix_lensvar_l3[index_l3][index_ft][index_ft]));
+
+      for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
+        fprintf (fisher_file_lmin, "%20.7g ", (pfi->fisher_matrix_lensvar_lmin[index_l3][index_ft][index_ft]));
+
+      fprintf (fisher_file_lmin, "\n");
+
+    } // end of for (index_l3)    
+  
+    // ---------------------------------------------------------------------------
+    // -                            Close files                                  -
+    // ---------------------------------------------------------------------------
+  
+    fclose (fisher_file_lmin);
+
+  } // end of if(include_lensing_effects)
+  
+
+
 
   // ============================================================================================
   // =                           Fisher matrix for XYZ and lmin/lmax                            =
   // ============================================================================================
 
-  /* One file per XYZ bispectrum, so that if you ask for temperature and polarisation, 8 files
-  (TTT, EEE, TEE, ...) will be produced */
-  FILE **** fisher_file_XYZ_lmin, **** fisher_file_XYZ_lmax;
+  if (pfi->fisher_verbose > 2) {
 
-  class_alloc (fisher_file_XYZ_lmin, pbi->bf_size*sizeof(FILE ***), pop->error_message);
-  class_alloc (fisher_file_XYZ_lmax, pbi->bf_size*sizeof(FILE ***), pop->error_message);
+    /* One file per XYZ bispectrum, so that if you ask for temperature and polarisation, 8 files
+    (TTT, EEE, TEE, ...) will be produced */
+    FILE **** fisher_file_XYZ_lmin, **** fisher_file_XYZ_lmax;
 
-  for (int X=0; X < pbi->bf_size; ++X) {
+    class_alloc (fisher_file_XYZ_lmin, pbi->bf_size*sizeof(FILE ***), pop->error_message);
+    class_alloc (fisher_file_XYZ_lmax, pbi->bf_size*sizeof(FILE ***), pop->error_message);
 
-    class_alloc (fisher_file_XYZ_lmin[X], pbi->bf_size*sizeof(FILE **), pop->error_message);
-    class_alloc (fisher_file_XYZ_lmax[X], pbi->bf_size*sizeof(FILE **), pop->error_message);
+    for (int X=0; X < pbi->bf_size; ++X) {
 
-    for (int Y=0; Y < pbi->bf_size; ++Y) {
+      class_alloc (fisher_file_XYZ_lmin[X], pbi->bf_size*sizeof(FILE **), pop->error_message);
+      class_alloc (fisher_file_XYZ_lmax[X], pbi->bf_size*sizeof(FILE **), pop->error_message);
 
-      class_alloc (fisher_file_XYZ_lmin[X][Y], pbi->bf_size*sizeof(FILE *), pop->error_message);
-      class_alloc (fisher_file_XYZ_lmax[X][Y], pbi->bf_size*sizeof(FILE *), pop->error_message);
+      for (int Y=0; Y < pbi->bf_size; ++Y) {
+
+        class_alloc (fisher_file_XYZ_lmin[X][Y], pbi->bf_size*sizeof(FILE *), pop->error_message);
+        class_alloc (fisher_file_XYZ_lmax[X][Y], pbi->bf_size*sizeof(FILE *), pop->error_message);
+      }
     }
-  }
   
-  /* Copy the cove above for l_min and l_max, but now for each bispectrum XYZ */
-  for (int X=0; X < pbi->bf_size; ++X) {
-    for (int Y=0; Y < pbi->bf_size; ++Y) {
-      for (int Z=0; Z < pbi->bf_size; ++Z) {
+    /* Copy the code above for l_min and l_max, but now for each bispectrum XYZ */
+    for (int X=0; X < pbi->bf_size; ++X) {
+      for (int Y=0; Y < pbi->bf_size; ++Y) {
+        for (int Z=0; Z < pbi->bf_size; ++Z) {
   
-        /* Open the file for the signal to noise as a function of the maximum resolution of the experiment */
-        if ((pfi->l_min_estimator > pfi->l_min) || (pfi->l_max_estimator < pfi->l_max))
-          sprintf (filename, "%s%s_%s_%d_%d.dat",
-            pop->root, "fisher_lmax", pbi->bfff_labels[X][Y][Z], pfi->l_min_estimator, pfi->l_max_estimator);
-        else
-          sprintf (filename, "%s%s_%s.dat", pop->root, "fisher_lmax", pbi->bfff_labels[X][Y][Z]);
-
-        class_open (fisher_file_XYZ_lmax[X][Y][Z], filename, "w", pop->error_message);
-          
-        /* We can compute the S/N for varying l_min only when we interpolate all 3 l-dimensions using the mesh-interpolation. */
-        // if ((pfi->bispectra_interpolation == mesh_interpolation) ||
-        //     (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
-          
-          if ((pfi->l_min_estimator > pfi->l_min) || (pfi->l_max_estimator < pfi->l_max))
-            sprintf (filename, "%s%s_%s_%d_%d.dat",
+          /* Open the file for the signal to noise as a function of the maximum resolution of the experiment */
+          if ((pfi->l_min_estimator > pfi->l_min) || (pfi->l_max_estimator < pfi->l_max)) {
+            sprintf (filename_lmax, "%s%s_%s_%d_%d.dat",
+              pop->root, "fisher_lmax", pbi->bfff_labels[X][Y][Z], pfi->l_min_estimator, pfi->l_max_estimator);
+            sprintf (filename_lmin, "%s%s_%s_%d_%d.dat",
               pop->root, "fisher_lmin", pbi->bfff_labels[X][Y][Z], pfi->l_min_estimator, pfi->l_max_estimator);
-          else
-          sprintf (filename, "%s%s_%s.dat", pop->root, "fisher_lmin", pbi->bfff_labels[X][Y][Z]);
-          class_open (fisher_file_XYZ_lmin[X][Y][Z], filename, "w", pop->error_message);
-        // }
+          }
+          else {
+            sprintf (filename_lmax, "%s%s_%s.dat", pop->root, "fisher_lmax", pbi->bfff_labels[X][Y][Z]);
+            sprintf (filename_lmin, "%s%s_%s.dat", pop->root, "fisher_lmin", pbi->bfff_labels[X][Y][Z]);
+          }
+
+          class_open (fisher_file_XYZ_lmax[X][Y][Z], filename_lmax, "w", pop->error_message);
+          class_open (fisher_file_XYZ_lmin[X][Y][Z], filename_lmin, "w", pop->error_message);
+
           
-        // --------------------------------------------------------------------------
-        // -                                Print labels                            -
-        // --------------------------------------------------------------------------
+          // --------------------------------------------------------------------------
+          // -                                Print labels                            -
+          // --------------------------------------------------------------------------
           
-        fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20s ", "l_max");
-        for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-          sprintf (label, "SN_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
-          fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20s ", label);
-        }
-        for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-          sprintf (label, "SN_cum_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
-          fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20s ", label);
-        }
-        fprintf (fisher_file_XYZ_lmax[X][Y][Z], "\n");
-          
-        // if ((pfi->bispectra_interpolation == mesh_interpolation) ||
-        //     (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
+          fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20s ", "l_max");
+          for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+            sprintf (label, "F_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
+            fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20s ", label);
+          }
+          for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+            sprintf (label, "F_cum_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
+            fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20s ", label);
+          }
+          fprintf (fisher_file_XYZ_lmax[X][Y][Z], "\n");
+
             
           fprintf (fisher_file_XYZ_lmin[X][Y][Z], "%20s ", "l_min");
           for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-            sprintf (label, "SN_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
+            sprintf (label, "F_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
             fprintf (fisher_file_XYZ_lmin[X][Y][Z], "%20s ", label);
           }
           for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-            sprintf (label, "SN_cum_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
+            sprintf (label, "F_cum_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
             fprintf (fisher_file_XYZ_lmin[X][Y][Z], "%20s ", label);
           }
           fprintf (fisher_file_XYZ_lmin[X][Y][Z], "\n");
-        // }
           
-        // ---------------------------------------------------------------------
-        // -                           Print values                            -
-        // ---------------------------------------------------------------------
+          // ---------------------------------------------------------------------
+          // -                           Print values                            -
+          // ---------------------------------------------------------------------
           
-        /* S/N as a function of the l_max of the experiment */
-        for (int index_l1=0; index_l1 < pfi->l1_size; ++index_l1) {
+          /* Fisher as a function of the l_max of the experiment */
+          for (int index_l1=0; index_l1 < pfi->l1_size; ++index_l1) {
             
-          fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20d ", pfi->l1[index_l1]);
+            fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20d ", pfi->l1[index_l1]);
           
-          for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
-            fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20.7g ",
-              (pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft][index_ft]));
+            for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
+              fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20.7g ",
+                (pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft][index_ft]));
           
-          for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
-            fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20.7g ",
-              (pfi->fisher_matrix_XYZ_lmax[X][Y][Z][index_l1][index_ft][index_ft]));
+            for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
+              fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20.7g ",
+                (pfi->fisher_matrix_XYZ_lmax[X][Y][Z][index_l1][index_ft][index_ft]));
           
-          fprintf (fisher_file_XYZ_lmax[X][Y][Z], "\n");
+            fprintf (fisher_file_XYZ_lmax[X][Y][Z], "\n");
           
-        } // end of for (index_l1)
-          
-        /* S/N as a function of the l_min of the experiment */
-        // if ((pfi->bispectra_interpolation == mesh_interpolation) ||
-        // (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
+          } // end of for (index_l1)
             
           for (int index_l3=0; index_l3 < pfi->l3_size; ++index_l3) {
-            
-            fprintf (fisher_file_XYZ_lmin[X][Y][Z], "%20d ", pfi->l3[index_l3]);
           
+            fprintf (fisher_file_XYZ_lmin[X][Y][Z], "%20d ", pfi->l3[index_l3]);
+        
             for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
               fprintf (fisher_file_XYZ_lmin[X][Y][Z], "%20.7g ",
                 (pfi->fisher_matrix_XYZ_l3[X][Y][Z][index_l3][index_ft][index_ft]));
-          
+        
             for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
               fprintf (fisher_file_XYZ_lmin[X][Y][Z], "%20.7g ",
                 (pfi->fisher_matrix_XYZ_lmin[X][Y][Z][index_l3][index_ft][index_ft]));
-          
+        
             fprintf (fisher_file_XYZ_lmin[X][Y][Z], "\n");
-          
-          // } // end of for (index_l3)    
-        }
+          }
   
-        // ---------------------------------------------------------------------------
-        // -                            Close files                                  -
-        // ---------------------------------------------------------------------------
+          // ---------------------------------------------------------------------------
+          // -                            Close files                                  -
+          // ---------------------------------------------------------------------------
   
-        fclose (fisher_file_XYZ_lmax[X][Y][Z]);
-
-        // if ((pfi->bispectra_interpolation == mesh_interpolation) ||
-        //     (pfi->bispectra_interpolation == sum_over_all_multipoles))
-        //   fclose (fisher_file_XYZ_lmin[X][Y][Z]);
+          fclose (fisher_file_XYZ_lmax[X][Y][Z]);
+          fclose (fisher_file_XYZ_lmin[X][Y][Z]);
   
-      } // end of for Z
-    } // end of for Y
-  } // end of for X
+        } // end of for Z
+      } // end of for Y
+    } // end of for X
+  } // end of if(fisher_verbose>1)
 
   
   return _SUCCESS_;
   
-
-  // // ============================================================================
-  // // =                                 Open files                               =
-  // // ============================================================================
-  // 
-  // FILE * fisher_lmax, * fisher_lmin, * fisher;
-  // FileName filename;  
-  // 
-  // /* Open the file for the Fisher matrix */
-  // sprintf (filename, "%s%s.dat", pop->root, "fisher");
-  // class_open (fisher, filename, "w", pop->error_message);
-  // 
-  // /* Open the file for the signal to noise as a function of the maximum resolution of the experiment */
-  // if ((pfi->l_min_estimator > pfi->l_min) || (pfi->l_max_estimator < pfi->l_max))
-  //   sprintf (filename, "%s%s_%d_%d.dat", pop->root, "fisher_lmax", pfi->l_min_estimator, pfi->l_max_estimator);
-  // else
-  //   sprintf (filename, "%s%s.dat", pop->root, "fisher_lmax");
-  // class_open (fisher_lmax, filename, "w", pop->error_message);
-  // 
-  // /* We can compute the S/N for varying l_min only when we interpolate all 3 l-dimensions using the mesh-interpolation. */
-  // if ((pfi->bispectra_interpolation == mesh_interpolation) ||
-  //     (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
-  // 
-  //   if ((pfi->l_min_estimator > pfi->l_min) || (pfi->l_max_estimator < pfi->l_max))
-  //     sprintf (filename, "%s%s_%d_%d.dat", pop->root, "fisher_lmin", pfi->l_min_estimator, pfi->l_max_estimator);
-  //   else
-  //     sprintf (filename, "%s%s.dat", pop->root, "fisher_lmin");
-  //   class_open (fisher_lmin, filename, "w", pop->error_message);
-  // }
-  // 
-  // // ==========================================================================
-  // // =                                Print labels                            =
-  // // ==========================================================================
-  // 
-  // char label[256];
-  // 
-  // fprintf (fisher_lmax, "%20s ", "l_max");
-  // for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-  //   sprintf (label, "SN_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
-  //   fprintf (fisher_lmax, "%20s ", label);
-  // }
-  // for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-  //   sprintf (label, "SN_cum_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
-  //   fprintf (fisher_lmax, "%20s ", label);
-  // }
-  // fprintf (fisher_lmax, "\n");
-  // 
-  // if ((pfi->bispectra_interpolation == mesh_interpolation) ||
-  //     (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
-  //   
-  //   fprintf (fisher_lmin, "%20s ", "l_min");
-  //   for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-  //     sprintf (label, "SN_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
-  //     fprintf (fisher_lmin, "%20s ", label);
-  //   }
-  //   for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-  //     sprintf (label, "SN_cum_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
-  //     fprintf (fisher_lmin, "%20s ", label);
-  //   }
-  //   fprintf (fisher_lmin, "\n");
-  // }
-  // 
-  // // ==========================================================================
-  // // =                                Print values                            =
-  // // ==========================================================================
-  // 
-  // /* Fisher matrix */
-  // fprintf (fisher, pfi->info);
-  // 
-  // /* S/N as a function of the l_max of the experiment */
-  // for (int index_l1=0; index_l1 < pfi->l1_size; ++index_l1) {
-  //   
-  //   fprintf (fisher_lmax, "%20d ", pfi->l1[index_l1]);
-  // 
-  //   for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
-  //     fprintf (fisher_lmax, "%20.7g ", sqrt(pfi->fisher_matrix_l1[index_l1][index_ft][index_ft]));
-  // 
-  //   for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
-  //     fprintf (fisher_lmax, "%20.7g ", sqrt(pfi->fisher_matrix_lmax[index_l1][index_ft][index_ft]));
-  // 
-  //   fprintf (fisher_lmax, "\n");
-  // 
-  // } // end of for (index_l1)
-  // 
-  // /* S/N as a function of the l_min of the experiment */
-  // if ((pfi->bispectra_interpolation == mesh_interpolation) ||
-  //     (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
-  //   
-  //   for (int index_l3=0; index_l3 < pfi->l3_size; ++index_l3) {
-  //   
-  //     fprintf (fisher_lmin, "%20d ", pfi->l3[index_l3]);
-  // 
-  //     for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
-  //       fprintf (fisher_lmin, "%20.7g ", sqrt(pfi->fisher_matrix_l3[index_l3][index_ft][index_ft]));
-  // 
-  //     for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
-  //       fprintf (fisher_lmin, "%20.7g ", sqrt(pfi->fisher_matrix_lmin[index_l3][index_ft][index_ft]));
-  // 
-  //     fprintf (fisher_lmin, "\n");
-  // 
-  //   } // end of for (index_l3)    
-  // }
-  // 
-  // // ==============================================================================
-  // // =                               Close files                                  =
-  // // ==============================================================================
-  // 
-  // fclose (fisher);
-  // fclose (fisher_lmax);
-  // 
-  // if ((pfi->bispectra_interpolation == mesh_interpolation) ||
-  //     (pfi->bispectra_interpolation == sum_over_all_multipoles))
-  //   fclose (fisher_lmin);
-  // 
-  // return _SUCCESS_;
-          
 }
 
 

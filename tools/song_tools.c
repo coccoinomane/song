@@ -2771,22 +2771,6 @@ void InverseMatrix(double **in,int n,double **out)
     out[0][0] = 1/in[0][0];
     return;
   }
-
-  /* Obvious case where n=2. We write the formula in such a way that the inversion can
-  be done in place (i.e. the user can set out=in). */
-  // if (n==2) {
-  //   double a = in[0][0];
-  //   double b = in[0][1];
-  //   double c = in[1][0];
-  //   double d = in[1][1];
-  //   double one_over_det = 1/(a*d - b*c);
-  //   out[0][0] = one_over_det * d;
-  //   out[1][0] = -one_over_det * b;
-  //   out[0][1] = -one_over_det * c;
-  //   out[1][1] = one_over_det * a;
-  //   printf ("a*d=%g, b*c=%g, a=%g, one_over_det=%g\n",a*d,b*c,a,one_over_det);
-  //   return;
-  // }
   
   /* Compute determinant */
   double det = Determinant(in, n);

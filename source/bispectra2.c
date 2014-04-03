@@ -709,7 +709,7 @@ int bispectra2_intrinsic_init (
                 }
 
                 // -------------------------------------------------------------------
-                // -                          l1 <-> l2 check                        -
+                // -                          l2 <-> l3 check                        -
                 // -------------------------------------------------------------------
 
                 /* Check that, when the two first-order transfer functions (Y and Z) are equal, like in TEE
@@ -757,11 +757,11 @@ int bispectra2_intrinsic_init (
       } // end of for(index_l2)
     } // end of for(index_l1)
     
-    /* We worry only if we have more than 1% of mismatches. We keep the treshold so high because
+    /* We worry only if we have more than 5% of mismatches. We keep the treshold so high because
     the bispectrum crosses the zero many times. */
-    class_test_permissive ((wrong_counter/(double)all_counter)>0.01,
+    class_test_permissive ((wrong_counter/(double)all_counter)>0.05,
       pbi->error_message,
-      "l1<->l2 symmetry violated: n_configurations=%d, non_negligible=%d, wrong=%d, wrong/non_negl=%g, <diff> of matches=%g, <diff> of wrongs=%g\n",
+      "l1<->l2 symmetry violated: n_configurations=%d, non_negligible=%d,wrong=%d, wrong/non_negl=%g, <diff> of matches=%g, <diff> of wrongs=%g\n",
       all_counter, non_negligible_counter, wrong_counter, wrong_counter/(double)non_negligible_counter,
       incremental_diff_correct/(double)correct_counter, incremental_diff_wrong/(double)wrong_counter);
   

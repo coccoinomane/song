@@ -182,6 +182,7 @@ int main(int argc, char **argv) {
   printf("\tbi.has_quadratic_correction = %d\n", bi.has_quadratic_correction);
   printf("\tbi.add_quadratic_correction = %d\n", bi.add_quadratic_correction);
   printf("\tbi.include_lensing_effects = %d\n", bi.include_lensing_effects);
+  printf("\tbi.lensed_intrinsic = %d\n", bi.lensed_intrinsic);
   printf("\tpr.extend_lensed_cls = %d\n", pr.extend_lensed_cls);
 
   /* Fisher */

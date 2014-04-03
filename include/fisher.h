@@ -261,6 +261,12 @@ struct fisher_workspace {
   pfi->delta_l3[thread][index_l3] */
   double ** delta_l3;
 
+  /* Temporary arrays needed to store the 3j-symbols */
+  double ** threej_000;
+  double ** threej_m220;
+  double ** threej_0m22;
+  double ** threej_20m2;
+
 };
 
 
