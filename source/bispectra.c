@@ -323,6 +323,7 @@ int bispectra_indices (
       pbi->index_tt_of_bf[X] = ptr->index_tt_t;
       pbi->index_ct_of_phi_bf[X] = psp->index_ct_tp;
       pbi->index_ct_of_zeta_bf[X] = psp->index_ct_tz;
+      pbi->index_ct_of_t_bf[X] = psp->index_ct_tt;
       pbi->index_ct_of_bf_bf[X][X] = psp->index_ct_tt;
       if (pbi->include_lensing_effects == _TRUE_)
         pbi->index_lt_of_bf_bf[X][X] = ple->index_lt_tt;
@@ -332,6 +333,7 @@ int bispectra_indices (
       pbi->index_tt_of_bf[X] = ptr->index_tt_e;
       pbi->index_ct_of_phi_bf[X] = psp->index_ct_ep;
       pbi->index_ct_of_zeta_bf[X] = psp->index_ct_ez;
+      pbi->index_ct_of_t_bf[X] = psp->index_ct_te;
       pbi->index_ct_of_bf_bf[X][X] = psp->index_ct_ee;
       if (pbi->include_lensing_effects == _TRUE_)
         pbi->index_lt_of_bf_bf[X][X] = ple->index_lt_ee;
@@ -339,6 +341,7 @@ int bispectra_indices (
 
     if ((pbi->has_bispectra_r == _TRUE_) && (X == pbi->index_bf_r)) {
       pbi->index_tt_of_bf[X] = ptr->index_tt_r;
+      pbi->index_ct_of_t_bf[X] = psp->index_ct_tr;
       pbi->index_ct_of_bf_bf[X][X] = psp->index_ct_rr;
       /* TODO: lensed Rayleigh not implemented yet */
       // pbi->index_ct_of_phi_bf[X] = psp->index_ct_rp;
@@ -673,11 +676,14 @@ int bispectra_indices (
 
     pbi->window_function[index_bt] = NULL;
 
-    // if ((pbi->has_local_model == _TRUE_) && (index_bt == pbi->index_bt_local))
-    //   pbi->window_function[index_bt] = bispectra_local_squeezed_bispectrum;
-    // 
-    // else if ((pbi->has_intrinsic == _TRUE_) && (index_bt == pbi->index_bt_intrinsic))
-    //   pbi->window_function[index_bt] = bispectra_intrinsic_squeezed_bispectrum;
+    if ((pbi->has_local_model == _TRUE_) && (index_bt == pbi->index_bt_local))
+      pbi->window_function[index_bt] = bispectra_local_window_function;
+    
+    else if ((pbi->has_intrinsic == _TRUE_) && (index_bt == pbi->index_bt_intrinsic))
+      pbi->window_function[index_bt] = bispectra_intrinsic_squeezed_bispectrum;
+
+    else if ((pbi->has_intrinsic_squeezed == _TRUE_) && (index_bt == pbi->index_bt_intrinsic_squeezed))
+      pbi->window_function[index_bt] = bispectra_intrinsic_window_function;
 
     // else if ((pbi->has_equilateral == _TRUE_) && (index_bt == pbi->index_bt_equilateral))
     //   pbi->window_function[index_bt] = bispectra_local_squeezed_bispectrum;
@@ -4545,7 +4551,7 @@ int bispectra_local_squeezed_bispectrum (
   double cl2_XY = pbi->cls[pbi->index_ct_of_bf_bf[X][Y]][l2-2];
   
   /* Use lensed temperature C_l's if available */
-  if ((pbi->include_lensing_effects == _TRUE_) && (pbi->lensed_intrinsic == _TRUE_)) {
+  if (pbi->include_lensing_effects == _TRUE_) {
     cl1_XY = pbi->lensed_cls[pbi->index_ct_of_bf_bf[X][Y]][l1-2];    
     cl2_XY = pbi->lensed_cls[pbi->index_ct_of_bf_bf[X][Y]][l2-2];    
   }
@@ -4558,6 +4564,13 @@ int bispectra_local_squeezed_bispectrum (
   //     pbi->cls[psp->index_ct_tt][l1-2] * pbi->cls[psp->index_ct_tt][l2-2]
   //   + pbi->cls[psp->index_ct_tt][l2-2] * pbi->cls[psp->index_ct_tt][l3-2]
   //   + pbi->cls[psp->index_ct_tt][l3-2] * pbi->cls[psp->index_ct_tt][l1-2]
+  // );      
+
+  /* EEE result */
+  // *result = 6 * (
+  //     pbi->cls[psp->index_ct_ee][l1-2] * pbi->cls[psp->index_ct_ee][l2-2]
+  //   + pbi->cls[psp->index_ct_ee][l2-2] * pbi->cls[psp->index_ct_ee][l3-2]
+  //   + pbi->cls[psp->index_ct_ee][l3-2] * pbi->cls[psp->index_ct_ee][l1-2]
   // );      
 
   return _SUCCESS_;
@@ -4810,6 +4823,7 @@ int bispectra_quadratic_bispectrum (
   set the C_l's to zero, so that the only contribution comes from the
   bispectrum with the second-order a^B_lm.  */
   /* TODO: do we need the lensed C_l's? */
+  /* TODO: CHECK FACTORS 4!!!! */
     
   double C_l1_X1_I   = pbi->cls[index_ct_X1_I][l1-2];
   double C_l1_X1_TX2 = pbi->cls[pbi->index_ct_of_bf_bf[ X1 ][ T_X2 ]][l1-2];
@@ -4946,5 +4960,153 @@ int bispectra_cosine_bispectrum (
   return _SUCCESS_;
   
 }
+
+
+
+
+/** 
+ * Window function for the local (l1,l2,l3) bispectrum.
+ *
+ * The natural scaling for the bispectrum (both the templates and the second-order one) is given by a product 
+ * of two power spectra. When available, we always use the C_l's for the temperature as, when multiplied by l^2,
+ * they are approximately the same order of magnitude for all l's, contrary to those for polarisation which are
+ * very small for l<200.
+ *
+ */
+int bispectra_local_window_function (
+     struct precision * ppr,
+     struct spectra * psp,
+     struct lensing * ple,
+     struct bispectra * pbi,
+     int l1, int l2, int l3,
+     int X, int Y, int Z,
+     double threej_l1_l2_l3_0_0_0,
+     double threej_l1_l2_l3_2_0_m2,
+     double threej_l1_l2_l3_m2_2_0,
+     double threej_l1_l2_l3_0_m2_2,
+     double * result
+     )
+{
+
+  if (pbi->has_bispectra_t == _TRUE_) {
+    *result = 
+        pbi->cls[psp->index_ct_tt][l1-2] * pbi->cls[psp->index_ct_tt][l2-2]
+      + pbi->cls[psp->index_ct_tt][l2-2] * pbi->cls[psp->index_ct_tt][l3-2]
+      + pbi->cls[psp->index_ct_tt][l3-2] * pbi->cls[psp->index_ct_tt][l1-2];
+  }
+  else if (pbi->bf_size == 1) {
+    *result =
+        pbi->cls[0][l1-2] * pbi->cls[0][l2-2]
+      + pbi->cls[0][l2-2] * pbi->cls[0][l3-2]
+      + pbi->cls[0][l3-2] * pbi->cls[0][l1-2];
+  }
+  else {
+    class_stop (pbi->error_message, "bispectra with two non-temperature fields are not implemented yet.\n");
+  }
+
+  return _SUCCESS_;
+
+}
+
+
+
+/** 
+ * Window function for the intrinsic (l1,l2,l3) bispectrum.
+ *
+ */
+int bispectra_intrinsic_window_function (
+     struct precision * ppr,
+     struct spectra * psp,
+     struct lensing * ple,
+     struct bispectra * pbi,
+     int l1, int l2, int l3,
+     int X, int Y, int Z,
+     double threej_l1_l2_l3_0_0_0,
+     double threej_l1_l2_l3_2_0_m2,
+     double threej_l1_l2_l3_m2_2_0,
+     double threej_l1_l2_l3_0_m2_2,
+     double * result
+     )
+{
+
+  if (pbi->has_bispectra_t == _TRUE_) {
+    *result = 
+        pbi->cls[psp->index_ct_tt][l1-2] * pbi->cls[psp->index_ct_tt][l2-2]
+      + pbi->cls[psp->index_ct_tt][l2-2] * pbi->cls[psp->index_ct_tt][l3-2]
+      + pbi->cls[psp->index_ct_tt][l3-2] * pbi->cls[psp->index_ct_tt][l1-2];
+  }
+  else if (pbi->bf_size == 1) {
+    *result =
+        pbi->cls[0][l1-2] * pbi->cls[0][l2-2]
+      + pbi->cls[0][l2-2] * pbi->cls[0][l3-2]
+      + pbi->cls[0][l3-2] * pbi->cls[0][l1-2];
+  }
+  else {
+    class_stop (pbi->error_message, "bispectra with two non-temperature fields are not implemented yet.\n");
+  }
+
+  return _SUCCESS_;
+
+}
+
+
+
+
+/** 
+ * Play around with the window function for the local (l1,l2,l3) bispectrum.
+ *
+ */
+int bispectra_local_window_function_test (
+     struct precision * ppr,
+     struct spectra * psp,
+     struct lensing * ple,
+     struct bispectra * pbi,
+     int l1, int l2, int l3,
+     int X, int Y, int Z,
+     double threej_l1_l2_l3_0_0_0,
+     double threej_l1_l2_l3_2_0_m2,
+     double threej_l1_l2_l3_m2_2_0,
+     double threej_l1_l2_l3_0_m2_2,
+     double * result
+     )
+{
+
+  double cl1_Zz = pbi->cls[pbi->index_ct_of_zeta_bf[ Z ]][l1-2];
+  double cl2_Zz = pbi->cls[pbi->index_ct_of_zeta_bf[ Z ]][l2-2];
+  double cl3_Zz = pbi->cls[pbi->index_ct_of_zeta_bf[ Z ]][l3-2];
+
+  double cl1_XY = pbi->cls[pbi->index_ct_of_bf_bf[X][Y]][l1-2];
+  double cl2_XY = pbi->cls[pbi->index_ct_of_bf_bf[X][Y]][l2-2];
+  double cl3_XY = pbi->cls[pbi->index_ct_of_bf_bf[X][Y]][l3-2];
+  
+  /* Squeezed limit of the local bispectrum */
+  // *result = cl3_Zz * (cl1_XY + cl2_XY);
+
+  /* Symmetrised version of the squeezed limit of the local bispectrum */
+  // *result = 2 * (
+  //   cl3_Zz * (cl1_XY + cl2_XY) +
+  //   cl1_Zz * (cl2_XY + cl3_XY) +
+  //   cl2_Zz * (cl3_XY + cl1_XY)
+  // );
+
+  /* This is always positive */
+  *result =
+      pbi->cls[pbi->index_ct_of_bf_bf[X][X]][l1-2] * pbi->cls[pbi->index_ct_of_bf_bf[Y][Y]][l2-2]
+    + pbi->cls[pbi->index_ct_of_bf_bf[X][X]][l2-2] * pbi->cls[pbi->index_ct_of_bf_bf[Y][Y]][l3-2]
+    + pbi->cls[pbi->index_ct_of_bf_bf[X][X]][l3-2] * pbi->cls[pbi->index_ct_of_bf_bf[Y][Y]][l1-2]
+    + pbi->cls[pbi->index_ct_of_bf_bf[Y][Y]][l1-2] * pbi->cls[pbi->index_ct_of_bf_bf[X][X]][l2-2]
+    + pbi->cls[pbi->index_ct_of_bf_bf[Y][Y]][l2-2] * pbi->cls[pbi->index_ct_of_bf_bf[X][X]][l3-2]
+    + pbi->cls[pbi->index_ct_of_bf_bf[Y][Y]][l3-2] * pbi->cls[pbi->index_ct_of_bf_bf[X][X]][l1-2];
+
+  return _SUCCESS_;
+
+}
+
+
+
+
+
+
+
 
 

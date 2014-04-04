@@ -40,6 +40,34 @@ struct mesh_interpolation_workspace {
 };
 
 
+struct mesh_2d_interpolation_workspace {
+
+  long int n_points;
+  long int n_boxes;
+  double l_max;
+  double link_length;
+  double soft_coeff;
+  double group_length;
+  
+  int ** grid;
+  double **** mesh;
+  
+  /* Should we compute the grid? If not, the user should overwrite by hand the grid field
+    with a precomputed grid. */
+  short compute_grid;
+  
+  /* Counters to keep track of the memory usage */
+  long int n_allocated_in_mesh;
+  long int n_allocated_in_grid;
+
+  /* Counters to keep track of which meshes are used */
+  long int count_interpolations;
+  long int count_range_extensions;
+
+  
+};
+
+
 
 
 /*
@@ -68,6 +96,27 @@ extern "C" {
       );
 
   double distance (
+      double * vec1,
+      double * vec2
+  );
+
+  int mesh_2d_sort (
+      struct mesh_2d_interpolation_workspace * pw,
+      double ** values
+      );
+
+  int mesh_2d_int (
+      struct mesh_2d_interpolation_workspace * pw,
+      double x,
+      double y,
+      double * interpolated_value
+      );
+
+  int mesh_2d_free (
+      struct mesh_2d_interpolation_workspace * pw
+      );
+
+  double distance_2d (
       double * vec1,
       double * vec2
   );

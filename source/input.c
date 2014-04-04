@@ -808,16 +808,6 @@ int input_init(
       ppt->has_cl_cmb_lensing_potential = _TRUE_; /* The covariance matrix needs lensed C_l's */ 
       pfi->has_fisher = _TRUE_;
     }
-
-    // if (strstr(string1,"fisher_test") != NULL) {
-    //   ppr->fisher_test = _TRUE_;
-    //   ppt2->load_sources_from_disk = _TRUE_;
-    //   ptr2->load_transfers_from_disk = _TRUE_;
-    //   pbi->load_bispectra_from_disk = _TRUE_;
-    //   ppt->has_cls = _TRUE_;
-    //   pbi->has_bispectra = _TRUE_;
-    //   pfi->has_fisher = _TRUE_;
-    // }    
     
     // ================================================================================
     // =                                 Song outputs                                 =
@@ -2218,7 +2208,13 @@ or 'linear_extrapolation'.", "");
   class_read_int("fisher_verbose",
     pfi->fisher_verbose);
 
-  ppr->fisher_test = _FALSE_;
+  class_call(parser_read_string(pfc,"interpolate_all_bispectra",&(string1),&(flag1),errmsg),
+      errmsg,
+      errmsg);
+   
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+    pfi->interpolate_all_bispectra = _TRUE_;
+
 
   /* Minimum and maximum multipole to consider in the Fisher sum */
   class_read_int("fisher_l_min",pfi->l_min_estimator);
@@ -2815,6 +2811,7 @@ int input_default_params(
   // ========================================================
 
   pfi->fisher_verbose = 0;
+  pfi->interpolate_all_bispectra = _FALSE_;
   pfi->has_fisher = _FALSE_;
   pfi->l_min_estimator = 2;
   pfi->l_max_estimator = 10000000;

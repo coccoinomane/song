@@ -186,6 +186,7 @@ int main(int argc, char **argv) {
   printf("\tpr.extend_lensed_cls = %d\n", pr.extend_lensed_cls);
 
   /* Fisher */
+  printf("\tfi.interpolate_all_bispectra = %d\n", fi.interpolate_all_bispectra);
   printf("\tfi.l_min_estimator = %d\n", fi.l_min_estimator);
   printf("\tfi.l_max_estimator = %d\n", fi.l_max_estimator);
   printf("\tfi.bispectra_interpolation = %d\n", fi.bispectra_interpolation);

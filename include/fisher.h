@@ -226,21 +226,19 @@ struct fisher {
     where index_mesh runs from 0 to n_mesh_grids-1 */
   int * l_turnover;
   
-  /* Array of pointers to interpolation workspaces, indexed as mesh_workspaces[index_bt][i][j][k][index_mesh],
+  /* Array of pointers to interpolation workspaces, indexed as mesh_workspaces[index_bt][X][Y][Z][index_mesh],
   where i,j,k are the field indices (eg. TET). */
   struct mesh_interpolation_workspace ****** mesh_workspaces;
-
-  /* C_l power spectrum to use for the bispectrum interpolation window function */
-  int index_ct_window;
 
 
   // ===========================================================================================
   // =                                    Technical parameter                                  =
   // ===========================================================================================
   
-  short fisher_verbose;           /* Flag regulating the amount of information sent to standard output (none if set to zero) */                                                    
-  char info[8192];                /* Store Fisher matrix information to be printed out to screen and saved to file */
-  ErrorMsg error_message;         /* Zone for writing error messages */
+  short fisher_verbose;            /* Flag regulating the amount of information sent to standard output (none if set to zero) */                                                    
+  char info[8192];                 /* Store Fisher matrix information to be printed out to screen and saved to file */
+  short interpolate_all_bispectra; /* Should we interpolate also the analytical bispectra? */
+  ErrorMsg error_message;          /* Zone for writing error messages */
 
 };
 

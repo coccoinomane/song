@@ -188,6 +188,7 @@ struct bispectra {
   its C_l correlation <X zeta> with the curvature perturbation. */
   int index_ct_of_phi_bf[_MAX_NUM_FIELDS_];
   int index_ct_of_zeta_bf[_MAX_NUM_FIELDS_];
+  int index_ct_of_t_bf[_MAX_NUM_FIELDS_];
   
   /* Same but for the lensed C_l's */
   int index_lt_of_bf_bf[_MAX_NUM_FIELDS_][_MAX_NUM_FIELDS_];
@@ -907,6 +908,7 @@ extern "C" {
        double * result
        );
 
+
   int bispectra_local_squeezed_bispectrum (
        struct precision * ppr,
        struct spectra * psp,
@@ -920,7 +922,7 @@ extern "C" {
        double threej_l1_l2_l3_0_m2_2,
        double * result
        );
-
+     
      
   int bispectra_intrinsic_squeezed_bispectrum (
        struct precision * ppr,
@@ -966,6 +968,50 @@ extern "C" {
        double * result
        );
 
+
+  int bispectra_local_window_function (
+       struct precision * ppr,
+       struct spectra * psp,
+       struct lensing * ple,
+       struct bispectra * pbi,
+       int l1, int l2, int l3,
+       int X1, int X2, int X3,
+       double threej_l1_l2_l3_0_0_0,
+       double threej_l1_l2_l3_2_0_m2,
+       double threej_l1_l2_l3_m2_2_0,
+       double threej_l1_l2_l3_0_m2_2,
+       double * result
+       );
+
+
+  int bispectra_intrinsic_window_function (
+       struct precision * ppr,
+       struct spectra * psp,
+       struct lensing * ple,
+       struct bispectra * pbi,
+       int l1, int l2, int l3,
+       int X, int Y, int Z,
+       double threej_l1_l2_l3_0_0_0,
+       double threej_l1_l2_l3_2_0_m2,
+       double threej_l1_l2_l3_m2_2_0,
+       double threej_l1_l2_l3_0_m2_2,
+       double * result
+       );
+       
+
+  int bispectra_local_window_function_test (
+       struct precision * ppr,
+       struct spectra * psp,
+       struct lensing * ple,
+       struct bispectra * pbi,
+       int l1, int l2, int l3,
+       int X1, int X2, int X3,
+       double threej_l1_l2_l3_0_0_0,
+       double threej_l1_l2_l3_2_0_m2,
+       double threej_l1_l2_l3_m2_2_0,
+       double threej_l1_l2_l3_0_m2_2,
+       double * result
+       );
 
 #ifdef __cplusplus
 }
