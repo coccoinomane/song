@@ -11107,7 +11107,6 @@ int perturb2_load_sources_from_disk(
         )
 {
  
-  
   /* Allocate memory to keep the line-of-sight sources */
   class_call (perturb2_allocate_k1_level(ppt2, index_k1), ppt2->error_message, ppt2->error_message);
   

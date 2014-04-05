@@ -142,6 +142,7 @@ int bispectra_free(
 
     free(pbi->l);
     free(pbi->pk);
+    free(pbi->pk_pt);
 
     for(int index_l1=0; index_l1<pbi->l_size; ++index_l1) {
 
@@ -155,6 +156,12 @@ int bispectra_free(
     free(pbi->index_l_triangular_min);
     free(pbi->index_l_triangular_max);
 
+  for(int index_l1=0; index_l1<pbi->l_size; ++index_l1) {
+    for(int index_l2=0; index_l2<=index_l1; ++index_l2)
+        free (pbi->index_l1_l2_l3[index_l1][index_l1-index_l2]);
+    free (pbi->index_l1_l2_l3[index_l1]);
+  } free (pbi->index_l1_l2_l3);
+
 
     /* Free pbi->bispectra */
     for (int index_bt=0; index_bt<pbi->bt_size; ++index_bt) {
@@ -163,12 +170,9 @@ int bispectra_free(
           for (int Z = 0; Z < pbi->bf_size; ++Z)
             free (pbi->bispectra[index_bt][X][Y][Z]);
           free (pbi->bispectra[index_bt][X][Y]);
-        }
-        free (pbi->bispectra[index_bt][X]);
-      }
-      free (pbi->bispectra[index_bt]);
-    }
-    free (pbi->bispectra);
+        } free (pbi->bispectra[index_bt][X]);
+      } free (pbi->bispectra[index_bt]);
+    } free (pbi->bispectra);
 
 
     /* Arrays specific to the primordial models */
@@ -671,31 +675,50 @@ int bispectra_indices (
   // ============================================================================================
   
   /* Assign to each bispectrum a window function suitable for its interpolation. See header file
-  for mode details. Comment out a bispectrum to have it interpolated without a window function. */
+  for mode details. Comment out a bispectrum to have it interpolated without a window function.
+  
+  It seems that using window functions that cross the zero might generate some issues. This
+  has yet to be verified rigorously, though.
+  
+  */
   for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt) {
 
     pbi->window_function[index_bt] = NULL;
 
-    if ((pbi->has_local_model == _TRUE_) && (index_bt == pbi->index_bt_local))
+    /* In absence of reionisation and for polarisation, better results are obtained without a window
+    function. The reason is that the C_l's for polarisation are tiny at small l's without
+    reionisation, so multiplying and dividing by the window functions creates numerical
+    instabilities. The patology is stronger for bispectra that peak in the squeezed limit,
+    as in that case the large scales are those where most of the signal comes from. */
+    
+    if ((ppr->has_reionization == _FALSE_) && (pbi->has_bispectra_e == _TRUE_) && (pbi->bf_size > 1)) {
+      continue;
+    }
+    else {
+
+      if ((pbi->has_local_model == _TRUE_) && (index_bt == pbi->index_bt_local))
+        pbi->window_function[index_bt] = bispectra_local_window_function;
+          
+      else if ((pbi->has_intrinsic == _TRUE_) && (index_bt == pbi->index_bt_intrinsic))
+        pbi->window_function[index_bt] = bispectra_local_window_function;
+        // pbi->window_function[index_bt] = bispectra_intrinsic_squeezed_bispectrum; /* CRAZY RESULTS */
+          
+      else if ((pbi->has_intrinsic_squeezed == _TRUE_) && (index_bt == pbi->index_bt_intrinsic_squeezed))
+        pbi->window_function[index_bt] = bispectra_local_window_function;
+    }
+
+    /* For the non-squeezed bispectra, we always use the window function. */
+    if ((pbi->has_equilateral_model == _TRUE_) && (index_bt == pbi->index_bt_equilateral))
       pbi->window_function[index_bt] = bispectra_local_window_function;
     
-    else if ((pbi->has_intrinsic == _TRUE_) && (index_bt == pbi->index_bt_intrinsic))
-      pbi->window_function[index_bt] = bispectra_intrinsic_squeezed_bispectrum;
-
-    else if ((pbi->has_intrinsic_squeezed == _TRUE_) && (index_bt == pbi->index_bt_intrinsic_squeezed))
-      pbi->window_function[index_bt] = bispectra_intrinsic_window_function;
-
-    // else if ((pbi->has_equilateral == _TRUE_) && (index_bt == pbi->index_bt_equilateral))
-    //   pbi->window_function[index_bt] = bispectra_local_squeezed_bispectrum;
-    // 
-    // else if ((pbi->has_orthogonal == _TRUE_) && (index_bt == pbi->index_bt_orthogonal))
-    //   pbi->window_function[index_bt] = bispectra_local_squeezed_bispectrum;
-    // 
-    // else if ((pbi->has_galileon_model==_TRUE_) && (index_bt == pbi->index_bt_galileon_gradient))
-    //   pbi->window_function[index_bt] = bispectra_local_squeezed_bispectrum;
-    // 
-    // else if ((pbi->has_galileon_model==_TRUE_) && (index_bt == pbi->index_bt_galileon_time))
-    //   pbi->window_function[index_bt] = bispectra_local_squeezed_bispectrum;
+    else if ((pbi->has_orthogonal_model == _TRUE_) && (index_bt == pbi->index_bt_orthogonal))
+      pbi->window_function[index_bt] = bispectra_local_window_function;
+    
+    else if ((pbi->has_galileon_model==_TRUE_) && (index_bt == pbi->index_bt_galileon_gradient))
+      pbi->window_function[index_bt] = bispectra_local_window_function;
+    
+    else if ((pbi->has_galileon_model==_TRUE_) && (index_bt == pbi->index_bt_galileon_time))
+      pbi->window_function[index_bt] = bispectra_local_window_function;
 
   }
   
@@ -1216,6 +1239,7 @@ int bispectra_cls (
   }  
   free(cl_md_ic);
   free(cl_md);
+  free(cl);
   
   return _SUCCESS_;
   
@@ -2210,6 +2234,8 @@ int bispectra_separable_workspace_free (
     free (pwb->gamma_integrand);
     free (pwb->delta_integrand);
   }
+ 
+  free (pwb);
  
   return _SUCCESS_; 
   

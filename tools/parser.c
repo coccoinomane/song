@@ -78,6 +78,9 @@ int parser_free(
     free(pfc->value);
     free(pfc->read);
     free(pfc->filename);
+    // *** MY MODIFICATIONS ***
+    free(pfc->overwritten);
+    // *** END OF MY MODIFICATIONS ***
   }
 
   return _SUCCESS_;

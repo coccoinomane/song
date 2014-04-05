@@ -2,10 +2,12 @@
 
 
 
+// ==============================================================================================
+// =                                       3D interpolation                                     =
+// ==============================================================================================
 
 
-
-int mesh_sort (
+int mesh_3D_sort (
     struct mesh_interpolation_workspace * pw,
     double ** vals
     )
@@ -56,11 +58,11 @@ int mesh_sort (
   /* Bin the support points in a grid based on the linking length */
   if (pw->compute_grid==_TRUE_) {
 
-    pw->grid = (int***) malloc(n_boxes*sizeof(int**));
+    pw->grid_3D = (int***) malloc(n_boxes*sizeof(int**));
     for(i=0; i<n_boxes; i++) {
-      pw->grid[i] = (int**) malloc(n_boxes*sizeof(int*));
+      pw->grid_3D[i] = (int**) malloc(n_boxes*sizeof(int*));
       for(j=0; j<n_boxes; j++) {
-        pw->grid[i][j] = (int *) calloc(n_boxes,sizeof(int));
+        pw->grid_3D[i][j] = (int *) calloc(n_boxes,sizeof(int));
         #pragma omp atomic
         pw->n_allocated_in_grid += n_boxes;
       }
@@ -78,7 +80,7 @@ int mesh_sort (
         continue;
     
       #pragma omp atomic
-      pw->grid[ix][iy][iz]++;
+      pw->grid_3D[ix][iy][iz]++;
     }
     
   } // end of if compute grid
@@ -95,15 +97,15 @@ int mesh_sort (
   
 
   // *** ALLOCATE MESH
-  pw->mesh = (double*****) malloc(n_boxes*sizeof(double****));
+  pw->mesh_3D = (double*****) malloc(n_boxes*sizeof(double****));
   for(i=0;i<n_boxes;i++){
-    pw->mesh[i] = (double****) malloc(n_boxes*sizeof(double***));
+    pw->mesh_3D[i] = (double****) malloc(n_boxes*sizeof(double***));
     for(j=0;j<n_boxes;j++){
-      pw->mesh[i][j] = (double ***) malloc(n_boxes*sizeof(double**));
+      pw->mesh_3D[i][j] = (double ***) malloc(n_boxes*sizeof(double**));
       for(k=0;k<n_boxes;k++){
-        pw->mesh[i][j][k] = (double **) malloc((pw->grid[i][j][k])*sizeof(double*));
-        for(m=0; m < pw->grid[i][j][k]; m++){
-          pw->mesh[i][j][k][m] = (double *) calloc(5, sizeof(double)); 
+        pw->mesh_3D[i][j][k] = (double **) malloc((pw->grid_3D[i][j][k])*sizeof(double*));
+        for(m=0; m < pw->grid_3D[i][j][k]; m++){
+          pw->mesh_3D[i][j][k][m] = (double *) calloc(5, sizeof(double)); 
           #pragma omp atomic
           pw->n_allocated_in_mesh += 5;
         }
@@ -129,10 +131,10 @@ int mesh_sort (
       continue;
 
     for (int Q=0; Q < 4; ++Q) {
-      pw->mesh[ix][iy][iz][counter[ix][iy][iz]][Q] = vals[i][Q];
+      pw->mesh_3D[ix][iy][iz][counter[ix][iy][iz]][Q] = vals[i][Q];
       // if ((ix==1) && (iy==1) && (iz==1))
-      //   printf("pw->mesh[ix=%d][iy=%d][iz=%d][counter=%d][Q=%d] = %g\n",
-      //     ix, iy, iz, counter[ix][iy][iz], Q, pw->mesh[ix][iy][iz][counter[ix][iy][iz]][Q]);
+      //   printf("pw->mesh_3D[ix=%d][iy=%d][iz=%d][counter=%d][Q=%d] = %g\n",
+      //     ix, iy, iz, counter[ix][iy][iz], Q, pw->mesh_3D[ix][iy][iz][counter[ix][iy][iz]][Q]);
     }
 
     #pragma omp atomic
@@ -144,8 +146,8 @@ int mesh_sort (
   for(i = 0; i<n_boxes;i++) {
     for(j = 0; j<n_boxes; j++) {
       for(k = 0; k<n_boxes; k++) {
-        if (counter[i][j][k]!=pw->grid[i][j][k])
-          printf ("ERROR, %s: %d!=%d\n", __func__, counter[i][j][k], pw->grid[i][j][k]);
+        if (counter[i][j][k]!=pw->grid_3D[i][j][k])
+          printf ("ERROR, %s: %d!=%d\n", __func__, counter[i][j][k], pw->grid_3D[i][j][k]);
       }
     }
   }
@@ -171,16 +173,16 @@ int mesh_sort (
   for(i = 0; i<n_boxes;i++) {
     for(j = 0; j<n_boxes; j++) {
       for(k = 0; k<n_boxes; k++) {
-        for(m = 0; m<pw->grid[i][j][k]; m++){
-          for(n = 0; n<pw->grid[i][j][k];n++){ 
+        for(m = 0; m<pw->grid_3D[i][j][k]; m++){
+          for(n = 0; n<pw->grid_3D[i][j][k];n++){ 
 
             /* The 4th level of mesh is just the n-th particle in the ijk box */
-            double dist = distance(pw->mesh[i][j][k][m],pw->mesh[i][j][k][n]);
+            double dist = distance(pw->mesh_3D[i][j][k][m],pw->mesh_3D[i][j][k][n]);
             double density = exp(-dist*dist/pow(group_length,2));
                   
             /* The 5th level of mesh is the local density around the m-th particle of the ijk box */
             #pragma omp atomic
-            pw->mesh[i][j][k][m][4] += density;
+            pw->mesh_3D[i][j][k][m][4] += density;
                         
           }
         }
@@ -192,11 +194,11 @@ int mesh_sort (
   // for(i=0;i<n_boxes;i++){
   //     for(j=0;j<n_boxes;j++){
   //     for(k=0;k<n_boxes;k++){
-  //       for(m=0;m<(pw->grid)[i][j][k];m++){
+  //       for(m=0;m<(pw->grid_3D)[i][j][k];m++){
   // 
   //           int Q;
   //           for (Q=0; Q < 5; ++Q) {
-  //             printf("%g ", pw->mesh[i][j][k][m][Q]);
+  //             printf("%g ", pw->mesh_3D[i][j][k][m][Q]);
   //           }
   //           printf("\n");
   //         }
@@ -205,8 +207,8 @@ int mesh_sort (
   //   }
   
   // printf("~*~*~*~*~ Executing line %d of function %s\n", __LINE__, __func__); fflush(stdout);
-  // printf("pw->mesh[0][0][0][0][0] = %g\n", pw->mesh[0][0][0][0][0]);
-  // printf("pw->mesh[0][0][0][0][1] = %g\n", pw->mesh[0][0][0][0][1]);
+  // printf("pw->mesh_3D[0][0][0][0][0] = %g\n", pw->mesh_3D[0][0][0][0][0]);
+  // printf("pw->mesh_3D[0][0][0][0][1] = %g\n", pw->mesh_3D[0][0][0][0][1]);
   
   return _SUCCESS_;
   
@@ -217,7 +219,7 @@ int mesh_sort (
 
 
 
-int mesh_int (
+int mesh_3D_int (
     struct mesh_interpolation_workspace * pw,
     double x,
     double y,
@@ -246,8 +248,8 @@ int mesh_int (
   double link_length = pw->link_length;
   double group_length = pw->group_length;
   double soft_coeff = pw->soft_coeff;
-  double ***** mesh = pw->mesh;
-  int *** grid = pw->grid;
+  double ***** mesh = pw->mesh_3D;
+  int *** grid = pw->grid_3D;
   
   
   /* Check bounds */
@@ -371,7 +373,7 @@ loop:
 }
 
 
-int mesh_free (
+int mesh_3D_free (
     struct mesh_interpolation_workspace * pw
     )
 {
@@ -384,26 +386,22 @@ int mesh_free (
     for(i = 0; i<pw->n_boxes;i++) {
       for(j = 0; j<pw->n_boxes; j++) {
         for(k = 0; k<pw->n_boxes; k++) {
-          for(m = 0; m<pw->grid[i][j][k]; m++)
-            free (pw->mesh[i][j][k][m]);
+          for(m = 0; m<pw->grid_3D[i][j][k]; m++)
+            free (pw->mesh_3D[i][j][k][m]);
   
-          free (pw->mesh[i][j][k]);
-        }
-        free (pw->mesh[i][j]);
-      }
-      free (pw->mesh[i]);
-    }
-    free (pw->mesh);
+          free (pw->mesh_3D[i][j][k]);
+        } free (pw->mesh_3D[i][j]);
+      } free (pw->mesh_3D[i]);
+    } free (pw->mesh_3D);
 
   
     /* Free grid */
     if (pw->compute_grid==_TRUE_) {
       for(i = 0; i<pw->n_boxes; i++) {
         for(j = 0; j<pw->n_boxes; j++)
-          free (pw->grid[i][j]);
-        free (pw->grid[i]);
-      }
-      free (pw->grid);
+          free (pw->grid_3D[i][j]);
+        free (pw->grid_3D[i]);
+      } free (pw->grid_3D);
     }
 
   }
@@ -431,40 +429,17 @@ double distance (double * vec1, double * vec2){
 
 
 
+// ==============================================================================================
+// =                                       2D interpolation                                     =
+// ==============================================================================================
 
 
 
-
-int mesh_2d_sort (
-    struct mesh_2d_interpolation_workspace * pw,
+int mesh_2D_sort (
+    struct mesh_interpolation_workspace * pw,
     double ** vals
     )
 {
-
-  /*This routine presorts an unsorted mesh. 
-  In: ** vals: vals[n][0] is the value of the nth point, vals[n][1] is the x coordinate, [2] is the y, [3] is z.  
-  num_points: the number of points
-  link_length: the local region influencing the values, on an in homogenous grid this should correspond roughly to the largest distance of two neighbouring points
-  soft_coeff: softens the link_length. The default value on most meshs should be 0.5
-  group_length: down weights clusters of many close points. In an in homogenous grid this should correspond to the shortest distance of two points
-  max_l: the mesh assumes the arguments in each direction should be between 0 and max_l
-  Out: grid: this specifies how many points fall in each bin of the new sorted mesh. It will be allocated by this routine automatically
-  Return value: the new sorted mesh 
-  */
-
-  /* First we create a grid, that is we count the number of particles in each box of side
-  equal to the linking length. This is stored in grid[ix][iy][iz]. Then we create the mesh,
-  an array that contains the information about the particules contained in each box. It is
-  accessed as mesh[ix][iy][ik][n] where 'n' is the ID of the particle in the box, which
-  goes from 0 to grid[ix][iy][iz]-1.  The information stored in the mesh has 5 elements.
-  The first four are x,y,z and f(x,y,z). The last is the density of points in the box
-  around the node n; for each other node in the box, the density gets a contribution of
-  e^(-distance squared/grouping_length) so that a group of particles clustered
-  on a scale smaller than the grouping length count as one particle. The density is
-  needed only to downweight those points that are clustered so that they count as one
-  (see mesh_int).
-  */
-  
 
   /* Read values from structure */
   long int num_points = pw->n_points;
@@ -485,9 +460,9 @@ int mesh_2d_sort (
   /* Bin the support points in a grid based on the linking length */
   if (pw->compute_grid==_TRUE_) {
 
-    pw->grid = (int**) malloc(n_boxes*sizeof(int*));
+    pw->grid_2D = (int**) malloc(n_boxes*sizeof(int*));
     for(int i=0; i<n_boxes; i++) {
-      pw->grid[i] = (int*) malloc(n_boxes*sizeof(int));
+      pw->grid_2D[i] = (int*) calloc(n_boxes, sizeof(int));
       #pragma omp atomic
       pw->n_allocated_in_grid += n_boxes;
     }
@@ -503,7 +478,7 @@ int mesh_2d_sort (
         continue;
     
       #pragma omp atomic
-      pw->grid[ix][iy]++;
+      pw->grid_2D[ix][iy]++;
     }
     
   } // end of if compute grid
@@ -512,30 +487,27 @@ int mesh_2d_sort (
   /* First allocate counter */
   counter = (int**) malloc(n_boxes*sizeof(int*));
   for(int i=0;i<n_boxes;i++){
-    counter[i] = (int*) malloc(n_boxes*sizeof(int));
+    counter[i] = (int*) calloc(n_boxes, sizeof(int));
   }
-  
+
 
   /* Allocate mesh */
-  pw->mesh = (double****) malloc(n_boxes*sizeof(double***));
+  pw->mesh_2D = (double****) malloc(n_boxes*sizeof(double***));
   for(int i=0;i<n_boxes;i++){
-    pw->mesh[i] = (double***) malloc(n_boxes*sizeof(double**));
+    pw->mesh_2D[i] = (double***) malloc(n_boxes*sizeof(double**));
     for(int j=0;j<n_boxes;j++){
-      pw->mesh[i][j] = (double **) malloc(pw->grid[i][j]*sizeof(double*));
-      for(int m=0; m < pw->grid[i][j]; m++){
-        pw->mesh[i][j][m] = (double *) calloc(4, sizeof(double));
+      pw->mesh_2D[i][j] = (double **) malloc(pw->grid_2D[i][j]*sizeof(double*));
+      for(int m=0; m < pw->grid_2D[i][j]; m++){
+        pw->mesh_2D[i][j][m] = (double *) calloc(4, sizeof(double));
         #pragma omp atomic
         pw->n_allocated_in_mesh += 4;
       }
     }
   }
   
-  
   // --------------------------------------------------------------------------
   // -                      STORE VALUES IN THE MESH                          -
   // --------------------------------------------------------------------------
-  
-
 
   /* This loop cannot be parallelised naively with:
     #pragma omp parallel for private (i,ix,iy,iz)
@@ -552,10 +524,10 @@ int mesh_2d_sort (
       continue;
 
     for (int Q=0; Q < 3; ++Q) {
-      pw->mesh[ix][iy][counter[ix][iy]][Q] = vals[i][Q];
+      pw->mesh_2D[ix][iy][counter[ix][iy]][Q] = vals[i][Q];
       // if ((ix==1) && (iy==1))
-      //   printf("pw->mesh[ix=%d][iy=%d][counter=%d][Q=%d] = %g\n",
-      //     ix, iy, counter[ix][iy], Q, pw->mesh[ix][iy][counter[ix][iy]][Q]);
+      //   printf("pw->mesh_2D[ix=%d][iy=%d][counter=%d][Q=%d] = %g\n",
+      //     ix, iy, counter[ix][iy], Q, pw->mesh_2D[ix][iy][counter[ix][iy]][Q]);
     }
 
     #pragma omp atomic
@@ -566,8 +538,8 @@ int mesh_2d_sort (
   /* Verify that grid = counter */
   for(int i = 0; i<n_boxes;i++) {
     for(int j = 0; j<n_boxes; j++) {
-      if (counter[i][j]!=pw->grid[i][j])
-        printf ("ERROR, %s: %d!=%d\n", __func__, counter[i][j], pw->grid[i][j]);
+      if (counter[i][j]!=pw->grid_2D[i][j])
+        printf ("ERROR, %s: %d!=%d\n", __func__, counter[i][j], pw->grid_2D[i][j]);
     }
   }
   
@@ -590,16 +562,16 @@ int mesh_2d_sort (
   #pragma omp parallel for
   for(int i = 0; i<n_boxes;i++) {
     for(int j = 0; j<n_boxes; j++) {
-      for(int m = 0; m<pw->grid[i][j]; m++){
-        for(int n = 0; n<pw->grid[i][j];n++){ 
+      for(int m = 0; m<pw->grid_2D[i][j]; m++){
+        for(int n = 0; n<pw->grid_2D[i][j];n++){ 
 
           /* The 3rd level of mesh is just the n-th particle in the ijk box */
-          double dist = distance_2d(pw->mesh[i][j][m],pw->mesh[i][j][n]);
+          double dist = distance_2D(pw->mesh_2D[i][j][m],pw->mesh_2D[i][j][n]);
           double density = exp(-dist*dist/pow(group_length,2));
                 
           /* The 4th level of mesh is the local density around the m-th particle of the ijk box */
           #pragma omp atomic
-          pw->mesh[i][j][m][4] += density;
+          pw->mesh_2D[i][j][m][3] += density;
                       
         }
       }
@@ -611,11 +583,11 @@ int mesh_2d_sort (
   // for(i=0;i<n_boxes;i++){
   //     for(j=0;j<n_boxes;j++){
   //     for(k=0;k<n_boxes;k++){
-  //       for(m=0;m<(pw->grid)[i][j][k];m++){
+  //       for(m=0;m<(pw->grid_2D)[i][j][k];m++){
   // 
   //           int Q;
   //           for (Q=0; Q < 5; ++Q) {
-  //             printf("%g ", pw->mesh[i][j][k][m][Q]);
+  //             printf("%g ", pw->mesh_2D[i][j][k][m][Q]);
   //           }
   //           printf("\n");
   //         }
@@ -624,8 +596,8 @@ int mesh_2d_sort (
   //   }
   
   // printf("~*~*~*~*~ Executing line %d of function %s\n", __LINE__, __func__); fflush(stdout);
-  // printf("pw->mesh[0][0][0][0][0] = %g\n", pw->mesh[0][0][0][0][0]);
-  // printf("pw->mesh[0][0][0][0][1] = %g\n", pw->mesh[0][0][0][0][1]);
+  // printf("pw->mesh_2D[0][0][0][0][0] = %g\n", pw->mesh_2D[0][0][0][0][0]);
+  // printf("pw->mesh_2D[0][0][0][0][1] = %g\n", pw->mesh_2D[0][0][0][0][1]);
   
   return _SUCCESS_;
   
@@ -634,36 +606,21 @@ int mesh_2d_sort (
 
 
 
-int mesh_2d_int (
-    struct mesh_2d_interpolation_workspace * pw,
+int mesh_2D_int (
+    struct mesh_interpolation_workspace * pw,
     double x,
     double y,
     double * interpolated_value
     )
 {
   
-  /*this routine interpolates a point on the sorted mesh
-  In: ***** vals: sorted mesh as returned by mesh sort
-  link_length: the local region influencing the values, on an in homogenous grid this should correspond roughly to the largest distance of two neighbouring points
-  soft_coeff: softens the link_length. The default value on most meshs should be 0.5
-  group_length: down weights clusters of many close points. In an in homogenous grid this should correspond to the shortest distance of two points
-  *** grid: number of points in each bin, as returned by mesh_sort
-  l1,l2,l3: the x,y,z coordinates of the point where the interpolation is needed
-  max_l: the mesh assumes the arguments in each direction should be between 0 and max_l
-  Out: grid: this specifies how many points fall in each bin of the new sorted mesh. It will be allocated by this routine automatically
-  Return value: value of the interpolation
-  
-  IMPORTANT: All parameters like max_l, link_length etc need to be identical to the values given to mesh_sort. Otherwise you will get either random values or the code will crash 
-
-  */
-  
   /* Read values from structure */
   double max_l = pw->l_max;
   double link_length = pw->link_length;
   double group_length = pw->group_length;
   double soft_coeff = pw->soft_coeff;
-  double **** mesh = pw->mesh;
-  int ** grid = pw->grid;
+  double **** mesh = pw->mesh_2D;
+  int ** grid = pw->grid_2D;
   
   
   /* Check bounds */
@@ -778,8 +735,8 @@ loop:
 }
 
 
-int mesh_2d_free (
-    struct mesh_2d_interpolation_workspace * pw
+int mesh_2D_free (
+    struct mesh_interpolation_workspace * pw
     )
 {
   
@@ -788,21 +745,21 @@ int mesh_2d_free (
     /* Free mesh */
     for(int i = 0; i<pw->n_boxes;i++) {
       for(int j = 0; j<pw->n_boxes; j++) {
-        for(int m = 0; m<pw->grid[i][j]; m++)
-          free (pw->mesh[i][j][m]);
+        for(int m = 0; m<pw->grid_2D[i][j]; m++)
+          free (pw->mesh_2D[i][j][m]);
 
-        free (pw->mesh[i][j]);
+        free (pw->mesh_2D[i][j]);
       }
-      free (pw->mesh[i]);
+      free (pw->mesh_2D[i]);
     }
-    free (pw->mesh);
+    free (pw->mesh_2D);
 
   
     /* Free grid */
     if (pw->compute_grid==_TRUE_) {
       for(int i = 0; i<pw->n_boxes; i++)
-        free (pw->grid[i]);
-      free (pw->grid);
+        free (pw->grid_2D[i]);
+      free (pw->grid_2D);
     }
 
   }
@@ -815,7 +772,7 @@ int mesh_2d_free (
 
 
 
-double distance_2d (double * vec1, double * vec2){
+double distance_2D (double * vec1, double * vec2){
   
   return  sqrt ( (vec1[1]-vec2[1])*(vec1[1]-vec2[1])
                 +(vec1[2]-vec2[2])*(vec1[2]-vec2[2]) );

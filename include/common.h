@@ -526,6 +526,10 @@ struct precision
   double reionization_sampling; /**< control stepsize in z during reionization */
   double reionization_optical_depth_tol; /**< fractional error on optical_depth */
   double reionization_start_factor; /**< parameter for CAMB-like parametrization */
+  
+  // *** MY_MODIFICATIONS ***
+  short has_reionization;
+  // *** END OF MY_MODIFICATIONS ***
    
   /** - general */
 

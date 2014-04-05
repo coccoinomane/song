@@ -21,11 +21,14 @@ struct mesh_interpolation_workspace {
   double soft_coeff;
   double group_length;
   
-  int *** grid;
-  double ***** mesh;
+  int *** grid_3D;
+  double ***** mesh_3D;
   
-  /* Should we compute the grid? If not, the user should overwrite by hand the grid field
-    with a precomputed grid. */
+  int ** grid_2D;
+  double **** mesh_2D;
+  
+  /* Should we compute the grid? If not, the user has to overwrite by hand the grid field
+  with a precomputed grid. */
   short compute_grid;
   
   /* Counters to keep track of the memory usage */
@@ -36,35 +39,6 @@ struct mesh_interpolation_workspace {
   long int count_interpolations;
   long int count_range_extensions;
 
-  
-};
-
-
-struct mesh_2d_interpolation_workspace {
-
-  long int n_points;
-  long int n_boxes;
-  double l_max;
-  double link_length;
-  double soft_coeff;
-  double group_length;
-  
-  int ** grid;
-  double **** mesh;
-  
-  /* Should we compute the grid? If not, the user should overwrite by hand the grid field
-    with a precomputed grid. */
-  short compute_grid;
-  
-  /* Counters to keep track of the memory usage */
-  long int n_allocated_in_mesh;
-  long int n_allocated_in_grid;
-
-  /* Counters to keep track of which meshes are used */
-  long int count_interpolations;
-  long int count_range_extensions;
-
-  
 };
 
 
@@ -77,13 +51,16 @@ struct mesh_2d_interpolation_workspace {
 extern "C" {
 #endif
 
+  // ==============================================================================================
+  // =                                       3D interpolation                                     =
+  // ==============================================================================================
 
-  int mesh_sort (
+  int mesh_3D_sort (
       struct mesh_interpolation_workspace * pw,
       double ** values
       );
 
-  int mesh_int (
+  int mesh_3D_int (
       struct mesh_interpolation_workspace * pw,
       double x,
       double y,
@@ -91,7 +68,7 @@ extern "C" {
       double * interpolated_value
       );
 
-  int mesh_free (
+  int mesh_3D_free (
       struct mesh_interpolation_workspace * pw
       );
 
@@ -100,23 +77,28 @@ extern "C" {
       double * vec2
   );
 
-  int mesh_2d_sort (
-      struct mesh_2d_interpolation_workspace * pw,
+
+  // ==============================================================================================
+  // =                                       2D interpolation                                     =
+  // ==============================================================================================
+
+  int mesh_2D_sort (
+      struct mesh_interpolation_workspace * pw,
       double ** values
       );
 
-  int mesh_2d_int (
-      struct mesh_2d_interpolation_workspace * pw,
+  int mesh_2D_int (
+      struct mesh_interpolation_workspace * pw,
       double x,
       double y,
       double * interpolated_value
       );
 
-  int mesh_2d_free (
-      struct mesh_2d_interpolation_workspace * pw
+  int mesh_2D_free (
+      struct mesh_interpolation_workspace * pw
       );
 
-  double distance_2d (
+  double distance_2D (
       double * vec1,
       double * vec2
   );

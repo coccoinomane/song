@@ -663,6 +663,11 @@ int input_init(
 	       errmsg,
 	       "could not identify reionization_parametrization value, check that it is one of 'reio_none', 'reio_camb', 'reio_bins_tanh', ...");
   }
+  
+  // *** MY_MODIFICATIONS ***
+  if (pth->reio_parametrization != reio_none)
+    ppr->has_reionization = _TRUE_;
+  // *** END OF MY_MODIFICATIONS ***
 
   /* reionization parameters if reio_parametrization=reio_camb */
   if (pth->reio_parametrization == reio_camb) {
@@ -2038,16 +2043,16 @@ or 'linear_extrapolation'.", "");
     else if (strstr(string1,"sum") != NULL) {
       pfi->bispectra_interpolation = sum_over_all_multipoles;
     }
-    else if ((strcmp(string1,"mesh") == 0) || (strcmp(string1,"mesh_3d") == 0)) {
-      pfi->bispectra_interpolation = mesh_interpolation;
+    else if ((strcmp(string1,"mesh_3d") == 0) || (strcmp(string1,"mesh_3D") == 0)) {
+      pfi->bispectra_interpolation = mesh_interpolation_3D;
     }
     else if ((strcmp(string1,"mesh_2d") == 0) || (strcmp(string1,"mesh_2D") == 0)) {
-      pfi->bispectra_interpolation = mesh_interpolation_2d;
+      pfi->bispectra_interpolation = mesh_interpolation_2D;
     }
     else {
       class_test(1==1,
       errmsg,
-      "You wrote: bispectra_interpolation=%s. Could not identify any of the supported interpolation techniques ('trilinear', 'mesh', 'mesh_2d', 'sum') in such input",string1);
+      "You wrote: bispectra_interpolation=%s. Could not identify any of the supported interpolation techniques ('trilinear', 'mesh_3d', 'mesh_2d', 'sum') in such input",string1);
     }
   
   }
@@ -2479,8 +2484,8 @@ less than %d values for 'experiment_beam_fwhm'", _N_FREQUENCY_CHANNELS_MAX_);
   mostly odd). Therefore, you might consider setting 'ppr->compute_only_even_ls = _TRUE_' by
   hand in the functions that rely on pbi->bispectra, such as 'print_bispectra' */
   if ((ppr->l_linstep!=1)
-  && (pfi->bispectra_interpolation != mesh_interpolation_2d)
-  && (pfi->bispectra_interpolation != mesh_interpolation)
+  && (pfi->bispectra_interpolation != mesh_interpolation_2D)
+  && (pfi->bispectra_interpolation != mesh_interpolation_3D)
   && (ppt->has_bi_cmb_polarization==_TRUE_) 
   && ((pbi->has_quadratic_correction==_TRUE_)
   || (pbi->has_cmb_lensing ==_TRUE_)
@@ -2815,7 +2820,7 @@ int input_default_params(
   pfi->has_fisher = _FALSE_;
   pfi->l_min_estimator = 2;
   pfi->l_max_estimator = 10000000;
-  pfi->bispectra_interpolation = mesh_interpolation_2d;
+  pfi->bispectra_interpolation = mesh_interpolation_2D;
   pfi->f_sky = 1;
   pfi->n_channels = 1;
   pfi->beam[0] = 0;
@@ -3102,6 +3107,8 @@ int input_default_precision ( struct precision * ppr ) {
   ppr->append_date_to_run = _FALSE_;
   if (ppr->load_run == _FALSE_) strcpy(ppr->run_directory, "./runs/run_");
 
+  /* Reionisation flag */
+  ppr->has_reionization = _FALSE_;
 
   // *** END OF MY MODIFICATIONS
 

@@ -265,7 +265,7 @@ int output_fisher(
     fprintf (fisher_file_lmax, "%20d ", pfi->l1[index_l1]);
 
     for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
-      fprintf (fisher_file_lmax, "%20.7g ", (pfi->fisher_matrix_l1[index_l1][index_ft][index_ft]));
+      fprintf (fisher_file_lmax, "%20.7g ", (pfi->fisher_matrix_largest[index_l1][index_ft][index_ft]));
 
     for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
       fprintf (fisher_file_lmax, "%20.7g ", (pfi->fisher_matrix_lmax[index_l1][index_ft][index_ft]));
@@ -279,7 +279,7 @@ int output_fisher(
     fprintf (fisher_file_lmin, "%20d ", pfi->l3[index_l3]);
 
     for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
-      fprintf (fisher_file_lmin, "%20.7g ", (pfi->fisher_matrix_l3[index_l3][index_ft][index_ft]));
+      fprintf (fisher_file_lmin, "%20.7g ", (pfi->fisher_matrix_smallest[index_l3][index_ft][index_ft]));
 
     for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
       fprintf (fisher_file_lmin, "%20.7g ", (pfi->fisher_matrix_lmin[index_l3][index_ft][index_ft]));
@@ -441,7 +441,7 @@ int output_fisher(
           
             for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
               fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20.7g ",
-                (pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft][index_ft]));
+                (pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l1][index_ft][index_ft]));
           
             for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
               fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20.7g ",
@@ -457,7 +457,7 @@ int output_fisher(
         
             for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
               fprintf (fisher_file_XYZ_lmin[X][Y][Z], "%20.7g ",
-                (pfi->fisher_matrix_XYZ_l3[X][Y][Z][index_l3][index_ft][index_ft]));
+                (pfi->fisher_matrix_XYZ_smallest[X][Y][Z][index_l3][index_ft][index_ft]));
         
             for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
               fprintf (fisher_file_XYZ_lmin[X][Y][Z], "%20.7g ",

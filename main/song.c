@@ -186,6 +186,9 @@ int main(int argc, char **argv) {
   //   printf("\n\nError in background_free \n=>%s\n",ba.error_message);
   //   return _FAILURE_;
   // }
+  // 
+  // parser_free(pr.input_file_content);
+  // free (pr.input_file_content);
 
   return _SUCCESS_;
 

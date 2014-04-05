@@ -13,8 +13,8 @@
 enum bispectra_interpolation_method {
   smart_interpolation,
   trilinear_interpolation,
-  mesh_interpolation,
-  mesh_interpolation_2d,
+  mesh_interpolation_2D,
+  mesh_interpolation_3D,
   sum_over_all_multipoles
 };
 
@@ -99,21 +99,21 @@ struct fisher {
   /* Contribution to the Fisher matrix coming from a given l1 and for a given XYZ bispectrum,
   where XYZ=TTT,TTE,TET, etc. This is the sum over l2, l3, A, B, C of
   b^XYZ(l1,l2,l3) * b^ABC(l1,l2,l3) * cov^XYZABC(l1,l2,l3), with l1>=l2>=l3.
-  Indexed as pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_bt_1][index_bt_2],
+  Indexed as pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l1][index_bt_1][index_bt_2],
   where index_l1 refers to the multipole pfi->l1[index_l1]. */
-  double ****** fisher_matrix_XYZ_l1;
+  double ****** fisher_matrix_XYZ_largest;
 
   /* Same as above, but for l3, the smallest multipole, and l3 belonging to pfi->l3[index_l3]. */
-  double ****** fisher_matrix_XYZ_l3;
+  double ****** fisher_matrix_XYZ_smallest;
 
-  /* Same as fisher_matrix_XYZ_l1, but summed over XYZ */
-  double *** fisher_matrix_l1;
+  /* Same as fisher_matrix_XYZ_largest, but summed over XYZ */
+  double *** fisher_matrix_largest;
 
-  /* Same as fisher_matrix_XYZ_l3, but summed over XYZ */
-  double *** fisher_matrix_l3;
+  /* Same as fisher_matrix_XYZ_smallest, but summed over XYZ */
+  double *** fisher_matrix_smallest;
 
   /* Fisher matrix for the considered experiment, as a function of the angular resolution
-  and for a given bispectrum XYZ. This is obtained as sum_{lmin<=l1<=lmax} fisher_matrix_XYZ_l1,
+  and for a given bispectrum XYZ. This is obtained as sum_{lmin<=l1<=lmax} fisher_matrix_XYZ_largest,
   with lmin fixed (=2) and lmax varying.
   Indexed as pfi->fisher_matrix_XYZ_lmax[X][Y][Z][index_l1][index_bt_1][index_bt_2]
   where index_l1 refers to the multipole pfi->l1[index_l1]. */
@@ -123,7 +123,7 @@ struct fisher {
   double ****** fisher_matrix_XYZ_lmin; 
 
   /* Fisher matrix for the considered experiment, as a function of the angular resolution.
-  It is obtained as sum_{lmin<=l1<=l_max,XYZ} fisher_matrix_XYZ_l1.
+  It is obtained as sum_{lmin<=l1<=l_max,XYZ} fisher_matrix_XYZ_largest.
   Indexed as pbi->fisher_matrix_lmax[index_l1][index_bt_1][index_bt_2],
   where index_l1 refers to the multipole pfi->l1[index_l1]. */
   double *** fisher_matrix_lmax;
@@ -170,7 +170,7 @@ struct fisher {
   // =                                   Lensing variance                                     =
   // ==========================================================================================
   
-  /* Same as fisher_matrix_XYZ_l3, but keeping track of the Z and C field indices instead.
+  /* Same as fisher_matrix_XYZ_smallest, but keeping track of the Z and C field indices instead.
   This is needed to compute the lensing variance, and corresponds to \bar{F}_{l_1 i p}
   in Eq. 5.25 of http://uk.arxiv.org/abs/1101.2234. The indexing of this array is slightly
   different from the others, because we will need to invert it with respect to the last two
@@ -341,47 +341,8 @@ extern "C" {
           struct bispectra * pbi,
           struct fisher * pfi
           );
-
-  int fisher_create_interpolation_mesh(
-        struct precision * ppr,
-        struct background * pba,
-        struct perturbs * ppt,
-        struct bessels * pbs,
-        struct transfers * ptr,
-        struct primordial * ppm,
-        struct spectra * psp,
-        struct lensing * ple,
-        struct bispectra * pbi,
-        struct fisher * pfi
-        );
-
-  int fisher_interpolation_mesh(
-        struct precision * ppr,
-        struct background * pba,
-        struct perturbs * ppt,
-        struct bessels * pbs,
-        struct transfers * ptr,
-        struct primordial * ppm,
-        struct spectra * psp,
-        struct lensing * ple,
-        struct bispectra * pbi,
-        struct fisher * pfi
-        );
-
-
-  int fisher_interpolate_bispectrum (
-        struct bispectra * pbi,
-        struct fisher * pfi,
-        int index_bt,
-        int i,
-        int j,
-        int k,
-        double l1,
-        double l2,
-        double l3,
-        double * interpolated_value
-        );
-
+          
+          
   int fisher_compute(
         struct precision * ppr,
         struct background * pba,
@@ -425,17 +386,78 @@ extern "C" {
         struct fisher_workspace * pw
         );
 
-int fisher_lensing_variance (
+  int fisher_lensing_variance (
+          struct precision * ppr,
+          struct background * pba,
+          struct perturbs * ppt,
+          struct bessels * pbs,
+          struct transfers * ptr,
+          struct primordial * ppm,
+          struct spectra * psp,
+          struct lensing * ple,
+          struct bispectra * pbi,
+          struct fisher * pfi
+          );
+
+  int fisher_allocate_interpolation_mesh(
+          struct precision * ppr,
+          struct spectra * psp,
+          struct lensing * ple,
+          struct bispectra * pbi,
+          struct fisher * pfi,
+          struct mesh_interpolation_workspace ******* mesh_workspaces
+          );
+
+  int fisher_free_interpolation_mesh(
+          struct bispectra * pbi,
+          struct fisher * pfi,
+          struct mesh_interpolation_workspace ******* mesh_workspaces
+          );
+
+  int fisher_create_3D_interpolation_mesh(
         struct precision * ppr,
-        struct background * pba,
-        struct perturbs * ppt,
-        struct bessels * pbs,
-        struct transfers * ptr,
-        struct primordial * ppm,
         struct spectra * psp,
         struct lensing * ple,
         struct bispectra * pbi,
         struct fisher * pfi
+        );
+
+  int fisher_create_2D_interpolation_mesh(
+        struct precision * ppr,
+        struct spectra * psp,
+        struct lensing * ple,
+        struct bispectra * pbi,
+        struct fisher * pfi,
+        int index_l1,
+        struct mesh_interpolation_workspace ****** mesh_workspaces
+        );
+
+  int fisher_interpolate_bispectrum_mesh_2D (
+        struct bispectra * pbi,
+        struct fisher * pfi,
+        int index_bt,
+        int X,
+        int Y,
+        int Z,
+        double l1,
+        double l2,
+        double l3,
+        struct mesh_interpolation_workspace ** mesh,
+        double * interpolated_value
+        );
+
+  int fisher_interpolate_bispectrum_mesh_3D (
+        struct bispectra * pbi,
+        struct fisher * pfi,
+        int index_bt,
+        int X,
+        int Y,
+        int Z,
+        double l1,
+        double l2,
+        double l3,
+        struct mesh_interpolation_workspace ** mesh,
+        double * interpolated_value
         );
 
 

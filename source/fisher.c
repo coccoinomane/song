@@ -152,40 +152,40 @@ int fisher_free(
           /* lmax */
           for (int index_l1=0; index_l1 < pfi->l1_size; ++index_l1) {          
             for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-              free (pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft]);
+              free (pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l1][index_ft]);
               free (pfi->fisher_matrix_XYZ_lmax[X][Y][Z][index_l1][index_ft]);          
             }
-            free (pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1]);
+            free (pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l1]);
             free (pfi->fisher_matrix_XYZ_lmax[X][Y][Z][index_l1]);
           }
           /* lmin */
           for (int index_l3=0; index_l3 < pfi->l3_size; ++index_l3) {          
             for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-              free (pfi->fisher_matrix_XYZ_l3[X][Y][Z][index_l3][index_ft]);
+              free (pfi->fisher_matrix_XYZ_smallest[X][Y][Z][index_l3][index_ft]);
               free (pfi->fisher_matrix_XYZ_lmin[X][Y][Z][index_l3][index_ft]);          
             }
-            free (pfi->fisher_matrix_XYZ_l3[X][Y][Z][index_l3]);
+            free (pfi->fisher_matrix_XYZ_smallest[X][Y][Z][index_l3]);
             free (pfi->fisher_matrix_XYZ_lmin[X][Y][Z][index_l3]);
           }
           /* common */
-          free (pfi->fisher_matrix_XYZ_l1[X][Y][Z]);
+          free (pfi->fisher_matrix_XYZ_largest[X][Y][Z]);
           free (pfi->fisher_matrix_XYZ_lmax[X][Y][Z]);
-          free (pfi->fisher_matrix_XYZ_l3[X][Y][Z]);
+          free (pfi->fisher_matrix_XYZ_smallest[X][Y][Z]);
           free (pfi->fisher_matrix_XYZ_lmin[X][Y][Z]);
         }
-        free (pfi->fisher_matrix_XYZ_l1[X][Y]);
+        free (pfi->fisher_matrix_XYZ_largest[X][Y]);
         free (pfi->fisher_matrix_XYZ_lmax[X][Y]);
-        free (pfi->fisher_matrix_XYZ_l3[X][Y]);
+        free (pfi->fisher_matrix_XYZ_smallest[X][Y]);
         free (pfi->fisher_matrix_XYZ_lmin[X][Y]);
       }
-      free (pfi->fisher_matrix_XYZ_l1[X]);
+      free (pfi->fisher_matrix_XYZ_largest[X]);
       free (pfi->fisher_matrix_XYZ_lmax[X]);
-      free (pfi->fisher_matrix_XYZ_l3[X]);
+      free (pfi->fisher_matrix_XYZ_smallest[X]);
       free (pfi->fisher_matrix_XYZ_lmin[X]);
     }
-    free (pfi->fisher_matrix_XYZ_l1);
+    free (pfi->fisher_matrix_XYZ_largest);
     free (pfi->fisher_matrix_XYZ_lmax);
-    free (pfi->fisher_matrix_XYZ_l3);
+    free (pfi->fisher_matrix_XYZ_smallest);
     free (pfi->fisher_matrix_XYZ_lmin);
 
     if (pfi->include_lensing_effects == _TRUE_) {
@@ -205,19 +205,19 @@ int fisher_free(
     
       for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
         free (pfi->fisher_matrix_lmax[index_l1][index_ft]);
-        free (pfi->fisher_matrix_l1[index_l1][index_ft]);
+        free (pfi->fisher_matrix_largest[index_l1][index_ft]);
         free (pfi->inverse_fisher_matrix_lmax[index_l1][index_ft]);
       }
     
       free (pfi->fisher_matrix_lmax[index_l1]);
-      free (pfi->fisher_matrix_l1[index_l1]);
+      free (pfi->fisher_matrix_largest[index_l1]);
       free (pfi->inverse_fisher_matrix_lmax[index_l1]);
       free (pfi->sigma_fnl_lmax[index_l1]);
     
     } // end of for(index_l1)
     
     free (pfi->fisher_matrix_lmax);
-    free (pfi->fisher_matrix_l1);
+    free (pfi->fisher_matrix_largest);
     free (pfi->inverse_fisher_matrix_lmax);
     free (pfi->sigma_fnl_lmax);
 
@@ -225,19 +225,19 @@ int fisher_free(
     
       for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
         free (pfi->fisher_matrix_lmin[index_l3][index_ft]);
-        free (pfi->fisher_matrix_l3[index_l3][index_ft]);
+        free (pfi->fisher_matrix_smallest[index_l3][index_ft]);
         free (pfi->inverse_fisher_matrix_lmin[index_l3][index_ft]);
       }
     
       free (pfi->fisher_matrix_lmin[index_l3]);
-      free (pfi->fisher_matrix_l3[index_l3]);
+      free (pfi->fisher_matrix_smallest[index_l3]);
       free (pfi->inverse_fisher_matrix_lmin[index_l3]);
       free (pfi->sigma_fnl_lmin[index_l3]);
     
     } // end of for(index_l3)
 
     free (pfi->fisher_matrix_lmin);
-    free (pfi->fisher_matrix_l3);
+    free (pfi->fisher_matrix_smallest);
     free (pfi->inverse_fisher_matrix_lmin);
     free (pfi->sigma_fnl_lmin);
 
@@ -484,38 +484,38 @@ int fisher_indices (
   CRUCIAL that these arrays are initialised with calloc, as they will be incremented in the Fisher
   matrix estimator function.  */
   
-  class_alloc (pfi->fisher_matrix_XYZ_l1, pbi->bf_size*sizeof(double *****), pfi->error_message);
+  class_alloc (pfi->fisher_matrix_XYZ_largest, pbi->bf_size*sizeof(double *****), pfi->error_message);
   class_alloc (pfi->fisher_matrix_XYZ_lmax, pbi->bf_size*sizeof(double *****), pfi->error_message);
-  class_alloc (pfi->fisher_matrix_XYZ_l3, pbi->bf_size*sizeof(double *****), pfi->error_message);
+  class_alloc (pfi->fisher_matrix_XYZ_smallest, pbi->bf_size*sizeof(double *****), pfi->error_message);
   class_alloc (pfi->fisher_matrix_XYZ_lmin, pbi->bf_size*sizeof(double *****), pfi->error_message);
 
   for (int X = 0; X < pbi->bf_size; ++X) {
 
-    class_alloc (pfi->fisher_matrix_XYZ_l1[X], pbi->bf_size*sizeof(double ****), pfi->error_message);
+    class_alloc (pfi->fisher_matrix_XYZ_largest[X], pbi->bf_size*sizeof(double ****), pfi->error_message);
     class_alloc (pfi->fisher_matrix_XYZ_lmax[X], pbi->bf_size*sizeof(double ****), pfi->error_message);
-    class_alloc (pfi->fisher_matrix_XYZ_l3[X], pbi->bf_size*sizeof(double ****), pfi->error_message);
+    class_alloc (pfi->fisher_matrix_XYZ_smallest[X], pbi->bf_size*sizeof(double ****), pfi->error_message);
     class_alloc (pfi->fisher_matrix_XYZ_lmin[X], pbi->bf_size*sizeof(double ****), pfi->error_message);
         
     for (int Y = 0; Y < pbi->bf_size; ++Y) {
 
-      class_alloc (pfi->fisher_matrix_XYZ_l1[X][Y], pbi->bf_size*sizeof(double ***), pfi->error_message);
+      class_alloc (pfi->fisher_matrix_XYZ_largest[X][Y], pbi->bf_size*sizeof(double ***), pfi->error_message);
       class_alloc (pfi->fisher_matrix_XYZ_lmax[X][Y], pbi->bf_size*sizeof(double ***), pfi->error_message);
-      class_alloc (pfi->fisher_matrix_XYZ_l3[X][Y], pbi->bf_size*sizeof(double ***), pfi->error_message);
+      class_alloc (pfi->fisher_matrix_XYZ_smallest[X][Y], pbi->bf_size*sizeof(double ***), pfi->error_message);
       class_alloc (pfi->fisher_matrix_XYZ_lmin[X][Y], pbi->bf_size*sizeof(double ***), pfi->error_message);
 
       for (int Z = 0; Z < pbi->bf_size; ++Z) {
 
         /* Arrays as a function of lmax (involves l1) */
-        class_alloc (pfi->fisher_matrix_XYZ_l1[X][Y][Z], pfi->l1_size*sizeof(double **), pfi->error_message);
+        class_alloc (pfi->fisher_matrix_XYZ_largest[X][Y][Z], pfi->l1_size*sizeof(double **), pfi->error_message);
         class_alloc (pfi->fisher_matrix_XYZ_lmax[X][Y][Z], pfi->l1_size*sizeof(double **), pfi->error_message);
 
         for (int index_l1=0; index_l1 < pfi->l1_size; ++index_l1) {
           
-          class_alloc (pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1], pfi->fisher_size*sizeof(double *), pfi->error_message);
+          class_alloc (pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l1], pfi->fisher_size*sizeof(double *), pfi->error_message);
           class_alloc (pfi->fisher_matrix_XYZ_lmax[X][Y][Z][index_l1], pfi->fisher_size*sizeof(double *), pfi->error_message);
           
           for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-            class_calloc (pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft],
+            class_calloc (pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l1][index_ft],
               pfi->fisher_size, sizeof(double), pfi->error_message);
             class_calloc (pfi->fisher_matrix_XYZ_lmax[X][Y][Z][index_l1][index_ft],
               pfi->fisher_size, sizeof(double), pfi->error_message);            
@@ -523,16 +523,16 @@ int fisher_indices (
         }
 
         /* Arrays as a function of lmin (involves l3) */
-        class_alloc (pfi->fisher_matrix_XYZ_l3[X][Y][Z], pfi->l3_size*sizeof(double **), pfi->error_message);
+        class_alloc (pfi->fisher_matrix_XYZ_smallest[X][Y][Z], pfi->l3_size*sizeof(double **), pfi->error_message);
         class_alloc (pfi->fisher_matrix_XYZ_lmin[X][Y][Z], pfi->l3_size*sizeof(double **), pfi->error_message);
 
         for (int index_l3=0; index_l3 < pfi->l3_size; ++index_l3) {
           
-          class_alloc (pfi->fisher_matrix_XYZ_l3[X][Y][Z][index_l3], pfi->fisher_size*sizeof(double *), pfi->error_message);
+          class_alloc (pfi->fisher_matrix_XYZ_smallest[X][Y][Z][index_l3], pfi->fisher_size*sizeof(double *), pfi->error_message);
           class_alloc (pfi->fisher_matrix_XYZ_lmin[X][Y][Z][index_l3], pfi->fisher_size*sizeof(double *), pfi->error_message);
           
           for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-            class_calloc (pfi->fisher_matrix_XYZ_l3[X][Y][Z][index_l3][index_ft],
+            class_calloc (pfi->fisher_matrix_XYZ_smallest[X][Y][Z][index_l3][index_ft],
               pfi->fisher_size, sizeof(double), pfi->error_message);
             class_calloc (pfi->fisher_matrix_XYZ_lmin[X][Y][Z][index_l3][index_ft],
               pfi->fisher_size, sizeof(double), pfi->error_message);
@@ -545,40 +545,40 @@ int fisher_indices (
   
   /* More arrays as a function of lmax (involving l1) */
   class_alloc (pfi->fisher_matrix_lmax, pfi->l1_size*sizeof(double **), pfi->error_message);
-  class_alloc (pfi->fisher_matrix_l1, pfi->l1_size*sizeof(double **), pfi->error_message);
+  class_alloc (pfi->fisher_matrix_largest, pfi->l1_size*sizeof(double **), pfi->error_message);
   class_alloc (pfi->inverse_fisher_matrix_lmax, pfi->l1_size*sizeof(double **), pfi->error_message);
   class_alloc (pfi->sigma_fnl_lmax, pfi->l1_size*sizeof(double *), pfi->error_message);
   
   for (int index_l1=0; index_l1 < pfi->l1_size; ++index_l1) {
 
     class_alloc (pfi->fisher_matrix_lmax[index_l1], pfi->fisher_size*sizeof(double *), pfi->error_message);
-    class_alloc (pfi->fisher_matrix_l1[index_l1], pfi->fisher_size*sizeof(double *), pfi->error_message);
+    class_alloc (pfi->fisher_matrix_largest[index_l1], pfi->fisher_size*sizeof(double *), pfi->error_message);
     class_alloc (pfi->inverse_fisher_matrix_lmax[index_l1], pfi->fisher_size*sizeof(double *), pfi->error_message);
     class_calloc (pfi->sigma_fnl_lmax[index_l1], pfi->fisher_size, sizeof(double), pfi->error_message);
     
     for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
       class_calloc (pfi->fisher_matrix_lmax[index_l1][index_ft], pfi->fisher_size, sizeof(double), pfi->error_message);
-      class_calloc (pfi->fisher_matrix_l1[index_l1][index_ft], pfi->fisher_size, sizeof(double), pfi->error_message);
+      class_calloc (pfi->fisher_matrix_largest[index_l1][index_ft], pfi->fisher_size, sizeof(double), pfi->error_message);
       class_calloc (pfi->inverse_fisher_matrix_lmax[index_l1][index_ft], pfi->fisher_size, sizeof(double), pfi->error_message);
     }    
   }
 
   /* More arrays as a function of lmin (involving l3) */
   class_alloc (pfi->fisher_matrix_lmin, pfi->l3_size*sizeof(double **), pfi->error_message);
-  class_alloc (pfi->fisher_matrix_l3, pfi->l3_size*sizeof(double **), pfi->error_message);
+  class_alloc (pfi->fisher_matrix_smallest, pfi->l3_size*sizeof(double **), pfi->error_message);
   class_alloc (pfi->inverse_fisher_matrix_lmin, pfi->l3_size*sizeof(double **), pfi->error_message);
   class_alloc (pfi->sigma_fnl_lmin, pfi->l3_size*sizeof(double *), pfi->error_message);
   
   for (int index_l3=0; index_l3 < pfi->l3_size; ++index_l3) {
 
     class_alloc (pfi->fisher_matrix_lmin[index_l3], pfi->fisher_size*sizeof(double *), pfi->error_message);
-    class_alloc (pfi->fisher_matrix_l3[index_l3], pfi->fisher_size*sizeof(double *), pfi->error_message);
+    class_alloc (pfi->fisher_matrix_smallest[index_l3], pfi->fisher_size*sizeof(double *), pfi->error_message);
     class_alloc (pfi->inverse_fisher_matrix_lmin[index_l3], pfi->fisher_size*sizeof(double *), pfi->error_message);
     class_calloc (pfi->sigma_fnl_lmin[index_l3], pfi->fisher_size, sizeof(double), pfi->error_message);
     
     for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
       class_calloc (pfi->fisher_matrix_lmin[index_l3][index_ft], pfi->fisher_size, sizeof(double), pfi->error_message);
-      class_calloc (pfi->fisher_matrix_l3[index_l3][index_ft], pfi->fisher_size, sizeof(double), pfi->error_message);
+      class_calloc (pfi->fisher_matrix_smallest[index_l3][index_ft], pfi->fisher_size, sizeof(double), pfi->error_message);
       class_calloc (pfi->inverse_fisher_matrix_lmin[index_l3][index_ft], pfi->fisher_size, sizeof(double), pfi->error_message);
     }    
   }
@@ -1080,7 +1080,7 @@ int fisher_compute (
   // ===============================================================================================
     
 
-  /* Fill the "pfi->fisher_matrix_XYZ_l1" and "fisher_matrix_XYZ_l3" Fisher matrices using mesh interpolation */
+  /* Fill the "pfi->fisher_matrix_XYZ_largest" and "fisher_matrix_XYZ_smallest" Fisher matrices using mesh interpolation */
   if ((pfi->bispectra_interpolation == mesh_interpolation_3D)
   || (pfi->bispectra_interpolation == mesh_interpolation_2D)) {
   
@@ -1096,7 +1096,7 @@ int fisher_compute (
       
   }
   
-  /* Fill the "pfi->fisher_matrix_XYZ_l1" and "fisher_matrix_XYZ_l3" Fisher matrices using linear interpolation */
+  /* Fill the "pfi->fisher_matrix_XYZ_largest" and "fisher_matrix_XYZ_smallest" Fisher matrices using linear interpolation */
   else if ((pfi->bispectra_interpolation == smart_interpolation)
   || (pfi->bispectra_interpolation == trilinear_interpolation)
   || (pfi->bispectra_interpolation == sum_over_all_multipoles)) {
@@ -1129,16 +1129,16 @@ int fisher_compute (
           for (int index_ft_2=index_ft_1; index_ft_2 < pfi->fisher_size; ++index_ft_2) {
 
             for (int index_l1=0; index_l1<pfi->l1_size; ++index_l1) {
-              pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft_1][index_ft_2] *= pfi->f_sky;
-              pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft_2][index_ft_1]
-                = pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft_1][index_ft_2];   
+              pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l1][index_ft_1][index_ft_2] *= pfi->f_sky;
+              pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l1][index_ft_2][index_ft_1]
+                = pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l1][index_ft_1][index_ft_2];   
             }
             
             /* Do the same for the Fisher matrix as a function of the smallest multipole */
             for (int index_l3=0; index_l3<pfi->l3_size; ++index_l3) {
-              pfi->fisher_matrix_XYZ_l3[X][Y][Z][index_l3][index_ft_1][index_ft_2] *= pfi->f_sky;
-              pfi->fisher_matrix_XYZ_l3[X][Y][Z][index_l3][index_ft_2][index_ft_1]
-                = pfi->fisher_matrix_XYZ_l3[X][Y][Z][index_l3][index_ft_1][index_ft_2]; 
+              pfi->fisher_matrix_XYZ_smallest[X][Y][Z][index_l3][index_ft_1][index_ft_2] *= pfi->f_sky;
+              pfi->fisher_matrix_XYZ_smallest[X][Y][Z][index_l3][index_ft_2][index_ft_1]
+                = pfi->fisher_matrix_XYZ_smallest[X][Y][Z][index_l3][index_ft_1][index_ft_2]; 
             }
           }
         }
@@ -1237,7 +1237,7 @@ int fisher_compute (
       // -----------------------------------------------------------------------
       
       /* Build the Fisher matrix as a function of lmax, as
-      sum_{lmin<=l1<=lmax} fisher_matrix_XYZ_l1 */
+      sum_{lmin<=l1<=lmax} fisher_matrix_XYZ_largest */
       for (int index_l1=0; index_l1<pfi->l1_size; ++index_l1) {
 
         for (int X = 0; X < pbi->bf_size; ++X) {
@@ -1245,10 +1245,10 @@ int fisher_compute (
             for (int Z = 0; Z < pbi->bf_size; ++Z) {
 
               /* Contribution from this l1 to the total (X+Y+Z) Fisher matrix */
-              double l1_contribution = pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft_1][index_ft_2];
+              double l1_contribution = pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l1][index_ft_1][index_ft_2];
                     
               /* Sum over  all possible XYZ */
-              pfi->fisher_matrix_l1[index_l1][index_ft_1][index_ft_2] += l1_contribution;
+              pfi->fisher_matrix_largest[index_l1][index_ft_1][index_ft_2] += l1_contribution;
 
               /* Include the interpolation weight for the l1 direction, if needed, in order
               to correcly sum over l1 (not needed for the sum over XYZ, above) */
@@ -1286,7 +1286,7 @@ int fisher_compute (
       // -----------------------------------------------------------------------------
         
       /* Build the Fisher matrix as a function of lmin, as
-      sum_{lmin<=l3<=lmax} fisher_matrix_XYZ_l3 */
+      sum_{lmin<=l3<=lmax} fisher_matrix_XYZ_smallest */
       accumulator = 0;
       for (int X = 0; X < pbi->bf_size; ++X)
         for (int Y = 0; Y < pbi->bf_size; ++Y)
@@ -1301,14 +1301,14 @@ int fisher_compute (
         and therefore it contains the actual squeezed CMB-lensing bispectrum rather than its kernel.
         The rescaling cannot be performed for the other Fisher arrays because they don't have information
         on the field C in the Fisher matrix sum. Therefore, we use 'fisher_matrix_CZ_l3' rather than
-        'fisher_matrix_XYZ_l3' to build the Fisher matrix. */
+        'fisher_matrix_XYZ_smallest' to build the Fisher matrix. */
         if (pfi->include_lensing_effects == _TRUE_) {
 
           for (int C=0; C < pbi->bf_size; ++C) {
             for (int Z=0; Z < pbi->bf_size; ++Z) {
                   
               double l3_contribution = pfi->fisher_matrix_CZ_l3[index_l3][index_ft_1*pbi->bf_size+C][index_ft_2*pbi->bf_size+Z];
-              pfi->fisher_matrix_l3[index_l3][index_ft_1][index_ft_2] += l3_contribution;
+              pfi->fisher_matrix_smallest[index_l3][index_ft_1][index_ft_2] += l3_contribution;
               accumulator += l3_contribution;
               pfi->fisher_matrix_lmin[index_l3][index_ft_1][index_ft_2] = accumulator;
   
@@ -1321,8 +1321,8 @@ int fisher_compute (
             for (int Y = 0; Y < pbi->bf_size; ++Y) {
               for (int Z = 0; Z < pbi->bf_size; ++Z) {
         
-                double l3_contribution = pfi->fisher_matrix_XYZ_l3[X][Y][Z][index_l3][index_ft_1][index_ft_2];
-                pfi->fisher_matrix_l3[index_l3][index_ft_1][index_ft_2] += l3_contribution;
+                double l3_contribution = pfi->fisher_matrix_XYZ_smallest[X][Y][Z][index_l3][index_ft_1][index_ft_2];
+                pfi->fisher_matrix_smallest[index_l3][index_ft_1][index_ft_2] += l3_contribution;
                 accumulator += l3_contribution;
                 pfi->fisher_matrix_lmin[index_l3][index_ft_1][index_ft_2] = accumulator;
                 accumulator_XYZ[X][Y][Z] += l3_contribution;
@@ -1594,8 +1594,8 @@ int fisher_compute (
 
 /**
  *
- * This function computes the Fisher matrix and fills pfi->fisher_matrix_XYZ_l1 and 
- * pfi->fisher_matrix_XYZ_l3 using a linear interpolation of the bispectrum.
+ * This function computes the Fisher matrix and fills pfi->fisher_matrix_XYZ_largest and 
+ * pfi->fisher_matrix_XYZ_smallest using a linear interpolation of the bispectrum.
  */
 int fisher_cross_correlate_nodes (
        struct precision * ppr,
@@ -1777,9 +1777,9 @@ int fisher_cross_correlate_nodes (
                                 pbi->bispectra[pfi->index_bt_of_ft[index_ft_2]][X][Y][Z][index_l1_l2_l3];
                                 
                 #pragma omp atomic
-                pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft_1][index_ft_2] += fisher;
+                pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l1][index_ft_1][index_ft_2] += fisher;
                 #pragma omp atomic
-                pfi->fisher_matrix_XYZ_l3[X][Y][Z][index_l3][index_ft_1][index_ft_2] += fisher;
+                pfi->fisher_matrix_XYZ_smallest[X][Y][Z][index_l3][index_ft_1][index_ft_2] += fisher;
                   
               } // bt_2
             } // bt_1
@@ -1950,8 +1950,8 @@ int fisher_interpolation_weights (
 
 /**
  *
- * This function computes the Fisher matrix and fills pfi->fisher_matrix_XYZ_l1 and 
- * pfi->fisher_matrix_XYZ_l3 using a mesh interpolation of the bispectrum.
+ * This function computes the Fisher matrix and fills pfi->fisher_matrix_XYZ_largest and 
+ * pfi->fisher_matrix_XYZ_smallest using a mesh interpolation of the bispectrum.
  */
 int fisher_cross_correlate_mesh (
        struct precision * ppr,
@@ -2298,17 +2298,17 @@ int fisher_cross_correlate_mesh (
 
                 /* Fisher matrix as a function of the largest multipole */
                 #pragma omp atomic
-                pfi->fisher_matrix_XYZ_l1[X][Y][Z][index_l1][index_ft_1][index_ft_2] += fisher;
+                pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l1][index_ft_1][index_ft_2] += fisher;
 
                 /* Fisher matrix as a function of the smallest multipole. Since this quantity is summed
                 over the incomplete l1 direction, include the interpolation weight when needed. */
                 if (pfi->bispectra_interpolation == mesh_interpolation_2D) {
                   #pragma omp atomic
-                  pfi->fisher_matrix_XYZ_l3[X][Y][Z][l3-2][index_ft_1][index_ft_2] += fisher * pwf->delta_l[index_l1];
+                  pfi->fisher_matrix_XYZ_smallest[X][Y][Z][l3-2][index_ft_1][index_ft_2] += fisher * pwf->delta_l[index_l1];
                 }
                 else {
                   #pragma omp atomic
-                  pfi->fisher_matrix_XYZ_l3[X][Y][Z][l3-2][index_ft_1][index_ft_2] += fisher;
+                  pfi->fisher_matrix_XYZ_smallest[X][Y][Z][l3-2][index_ft_1][index_ft_2] += fisher;
                 }
                 
                 /* Needed to compute the lensing variance. This is equivalent to \bar{F} in Eq. 5.25 

@@ -1830,6 +1830,9 @@ int background_epoch_of_equality (
     pba->error_message,
     "Found an invalid value of a_equality (%g)", pba->a_eq);
   
+  /* Free memory */
+  free (pvecback);
+  
   return _SUCCESS_;
 
 }
