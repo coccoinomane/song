@@ -147,22 +147,14 @@ struct transfers2 {
   // =================================================================================
   // =                        Storage of intermediate results                        =
   // =================================================================================
-
-  /* Should we store the content of ptr2->transfer to disk? */
-  short store_transfers_to_disk;
-
-  /* Should we bother computing the transfer functions, or they will be loaded from disk? This flag is
-    on only if both ppr->load_run and 'store_transfers_to_disk' are on. */
-  short load_transfers_from_disk;
-
-
+  
 
   /* Files where the transfer functions will be stored (one file for each transfer type) */
   char transfers_run_directory[_FILENAMESIZE_];
   FILE ** transfers_run_files;
   char ** transfers_run_paths;
 
-  /* File that will keep track how how many transfer files have been succesfully written */
+  /* ASCII file that will keep track how how many transfer files have been succesfully written */
   FILE * transfers_status_file;
   char transfers_status_path[_FILENAMESIZE_];
 
@@ -285,6 +277,7 @@ extern "C" {
         );
     
   int transfer2_free(
+          struct precision2 * ppr2,
           struct perturbs2 * ppt2,
           struct transfers2 * ptr2
           );
@@ -449,7 +442,7 @@ extern "C" {
         );
 
 
-  int transfer2_save_transfers_to_disk(
+  int transfer2_store_transfers_to_disk(
           struct perturbs2 * ppt2,
           struct transfers2 * ptr2,
           int index_k1

@@ -361,7 +361,7 @@ int main(int argc, char **argv) {
   to obtain. */
   if ((bi.bispectrum_type[index_bt] == non_separable_bispectrum)
    || (bi.bispectrum_type[index_bt] == intrinsic_bispectrum)) {
-    if ( (bi.load_bispectra_from_disk == _TRUE_) || (bi.store_bispectra_to_disk == _TRUE_) ) {
+    if ( (pr.load_bispectra_from_disk == _TRUE_) || (pr.store_bispectra_to_disk == _TRUE_) ) {
       if (bispectra_load_from_disk(&bi, index_bt) == _FAILURE_) {
         printf("\n\nError in bispectra_load_from_disk \n=>%s\n", bi.error_message);
         return _FAILURE_;
@@ -1022,7 +1022,7 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
   
-  if (transfer2_free(&pt2,&tr2) == _FAILURE_) {
+  if (transfer2_free(&pr2,&pt2,&tr2) == _FAILURE_) {
     printf("\n\nError in transfer2_free \n=>%s\n",tr2.error_message);
     return _FAILURE_;
   }

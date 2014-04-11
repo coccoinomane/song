@@ -100,7 +100,6 @@ int input_init_from_arguments(
     
   }
 
-
   /** If some arguments are passed, identify eventually some 'xxx.ini'
       and 'xxx.pre' files, and store their name. */
 
@@ -180,7 +179,8 @@ int input_init_from_arguments(
       structure.  If its size is null, all parameters take their
       default values. */
 
-  class_call(input_init(pfc,
+  class_call(input_init(
+      pfc,
 			ppr,
 			pba,
 			pth,
@@ -878,10 +878,18 @@ int input_init(
       pbi->has_galileon_model = _TRUE_;  
     }
 
-    /* Compute the approximation of the intrinsic bispectrum in the squeezed limit */
+    /* Compute the approximation of the intrinsic bispectrum in the squeezed limit, the lensed version */
     if ((strstr(string1,"intrinsic_squeezed") != NULL)
     || (strstr(string1,"i_squeezed") != NULL) || (strstr(string1,"i-squeezed") != NULL)) {
       pbi->has_intrinsic_squeezed = _TRUE_;
+      ppt->has_cl_cmb_zeta = _TRUE_;
+      psp->compute_cl_derivative = _TRUE_;
+    }
+
+    /* Compute the approximation of the intrinsic bispectrum in the squeezed limit, the unlensed version */
+    if ((strstr(string1,"unlensed_intrinsic_squeezed") != NULL)
+    || (strstr(string1,"i_u_squeezed") != NULL) || (strstr(string1,"i-u-squeezed") != NULL)) {
+      pbi->has_intrinsic_squeezed_unlensed = _TRUE_;
       ppt->has_cl_cmb_zeta = _TRUE_;
       psp->compute_cl_derivative = _TRUE_;
     }
@@ -2043,10 +2051,8 @@ or 'linear_extrapolation'.", "");
     else if (strstr(string1,"sum") != NULL) {
       pfi->bispectra_interpolation = sum_over_all_multipoles;
     }
-    else if ((strcmp(string1,"mesh_3d") == 0) || (strcmp(string1,"mesh_3D") == 0)) {
-      pfi->bispectra_interpolation = mesh_interpolation_3D;
-    }
-    else if ((strcmp(string1,"mesh_2d") == 0) || (strcmp(string1,"mesh_2D") == 0)) {
+    else if ((strcmp(string1,"mesh_2d") == 0) || (strcmp(string1,"mesh_2D") == 0)
+    || (strcmp(string1,"mesh") == 0) || (strcmp(string1,"mesh_3d") == 0) || (strcmp(string1,"mesh_3D") == 0)) {
       pfi->bispectra_interpolation = mesh_interpolation_2D;
     }
     else {
@@ -2213,17 +2219,18 @@ or 'linear_extrapolation'.", "");
   class_read_int("fisher_verbose",
     pfi->fisher_verbose);
 
-  class_call(parser_read_string(pfc,"interpolate_all_bispectra",&(string1),&(flag1),errmsg),
+  class_call(parser_read_string(pfc,"always_interpolate_bispectra",&(string1),&(flag1),errmsg),
       errmsg,
       errmsg);
    
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-    pfi->interpolate_all_bispectra = _TRUE_;
-
+    pfi->always_interpolate_bispectra = _TRUE_;
 
   /* Minimum and maximum multipole to consider in the Fisher sum */
   class_read_int("fisher_l_min",pfi->l_min_estimator);
+  class_read_int("fisher_lmin",pfi->l_min_estimator);
   class_read_int("fisher_l_max",pfi->l_max_estimator);
+  class_read_int("fisher_lmax",pfi->l_max_estimator);
 
   /* Read the experiment sky coverage. */
   class_read_double("experiment_f_sky", pfi->f_sky);
@@ -2349,114 +2356,155 @@ less than %d values for 'experiment_beam_fwhm'", _N_FREQUENCY_CHANNELS_MAX_);
   } // end of T noise
   
 
+  // ==========================================================================================
+  // =                                 Create run directory                                   =
+  // ==========================================================================================
+
+  class_call(parser_read_string(pfc,"store_run",&(string1),&(flag1),errmsg),
+      errmsg,
+      errmsg);
+   
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+    ppr->store_run = _TRUE_;
+
+  /* Create a run directory if asked (ppr->store_run == _TRUE_) and if it does not already exist
+  (ppr->load_run == _FALSE_). The latter case is always true unless we are running CLASS with a single
+  argument and that argument is the run directory. */
+  if ((ppr->store_run == _TRUE_) && (ppr->load_run == _FALSE_)) {
+
+    /* Read the name of the run directory from the parameter file */
+    class_call(parser_read_string(pfc,
+         "run_directory",
+         &(string1),
+         &(flag1),
+         errmsg),
+         errmsg,
+         errmsg);  
   
+    if ((flag1 == _TRUE_) && (string1 != NULL))
+      strcpy(ppr->run_directory, string1);
 
-  // ================================================================
-  // =                 Storage of intermediate results              =
-  // ================================================================
-
-
-  /* Should we store to disk the intermediate results? Do it only if ppr->load_run is _FALSE_.  */
-  if (ppr->load_run == _FALSE_) {
-
-    class_call(parser_read_string(pfc,"store_run",&(string1),&(flag1),errmsg),
+    /* Check that the directory does not exist */
+    struct stat st;
+    stat (ppr->run_directory, &st);
+    class_test (S_ISDIR (st.st_mode) != 0,
+      errmsg,
+      "target directory '%s' already exists, choose another one", ppr->run_directory);
+      
+    /* Should the date be appended to the run directory? */
+    class_call(parser_read_string(pfc,"append_date",&(string1),&(flag1),errmsg),
         errmsg,
         errmsg);
-     
+   
     if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-      ppr->store_run = _TRUE_;
+      ppr->append_date_to_run = _TRUE_;
+    
+
+    /* Determine the actual run directory according to the append_date variable */
+    if (ppr->append_date_to_run == _TRUE_) {
+
+      time_t now;
+      struct tm *d;
+      char suffix[64];
+
+      time(&now);
+      d = localtime(&now);
+
+      strftime(suffix, 64, "%Y-%m-%d_%H-%M-%S", d);
+      sprintf(ppr->run_directory, "%s_%s", ppr->run_directory, suffix);
+    }
+
+    /* Create the directory for the run */
+    class_test (mkdir (ppr->run_directory, 0777)!=0,
+      errmsg,
+      "could not create run directory '%s'. Parent directory doesn't exist? Actual directory already exists?",
+      ppr->run_directory);
+
+    /* Print some information to screen */
+    printf("# We shall store the current run to the folder %s.\n", ppr->run_directory);
+  
+    /* Copy the parameter files to the run directory */
+    char new_ini_filepath[_FILENAMESIZE_], new_pre_filepath[_FILENAMESIZE_], command[3*_FILENAMESIZE_];
+
+    sprintf(new_ini_filepath, "%s/run_params.ini", ppr->run_directory);
+    sprintf(command, "cp %s %s", ppr->ini_filename, new_ini_filepath);
+    if (strcmp(ppr->ini_filename, new_ini_filepath) != 0) system(command);
+
+    sprintf(new_pre_filepath, "%s/run_params.pre", ppr->run_directory);
+    sprintf(command, "cp %s %s", ppr->pre_filename, new_pre_filepath);
+    if (strcmp(ppr->pre_filename, new_pre_filepath) != 0) system(command);
+    
+  } // end of if not load_run
+
+
+  // =============================================================================================
+  // =                               Disk storage of bispectra                                   =
+  // =============================================================================================
+
+  /* Store to disk the bispectra? */
+  class_call(parser_read_string(pfc,"store_bispectra",&(string1),&(flag1),errmsg),
+      errmsg,
+      errmsg);
+   
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+    ppr->store_bispectra_to_disk = _TRUE_;
+
+  sprintf(pbi->bispectra_run_directory, "%s/bispectra", ppr->run_directory);
+
+  /* If we are not loading from disk, just create the bispectra directory */
+  if ((ppr->store_bispectra_to_disk == _TRUE_) && (ppr->load_run == _FALSE_)) {
+    
+    class_test (mkdir (pbi->bispectra_run_directory, 0777) != 0,
+      errmsg,
+      "could not create directory '%s', maybe it already exists?", pbi->bispectra_run_directory);
+  }
+  /* If we are in a run directory, checks if it already contains the bispectra */
+  else if (ppr->load_run == _TRUE_) {
+
+    struct stat st;
+    short bispectra_dir_exists = (stat(pbi->bispectra_run_directory, &st)==0);
+
+    /* If the bispectra directory exists, then we shall load the 2nd-order bispectra from it */
+    if (bispectra_dir_exists) {
+      ppr->store_bispectra_to_disk = _FALSE_;
+      ppr->load_bispectra_from_disk = _TRUE_;
+      if (pbi->bispectra_verbose > 1)
+        printf (" -> found bispectra folder in run directory.\n");
+    }
+    /* Otherwise, create it */
+    else if (ppr->store_bispectra_to_disk == _TRUE_) {
+              
+      if (pbi->bispectra_verbose > 1)
+        printf (" -> bispectra folder not found in run directory, will create it.\n");
+
+      class_test (mkdir (pbi->bispectra_run_directory, 0777)!=0,
+        errmsg,
+        "could not create directory '%s', maybe it already exists?", pbi->bispectra_run_directory);
+        
+      ppr->load_bispectra_from_disk = _FALSE_;
+    }
   }
 
+  /* Create/open the status file. The 'a+' mode means that if the file does not exist it will be created,
+  but if it exist it won't be erased (append mode) */
+  if (ppr->store_bispectra_to_disk == _TRUE_) {
+    sprintf(pbi->bispectra_status_path, "%s/bispectra_status_file.txt", ppr->run_directory);
+    class_open(pbi->bispectra_status_file, pbi->bispectra_status_path, "a+", errmsg);
+  }
 
-  /* Which intermediate results should we store? */
-  if ( (ppr->store_run == _TRUE_) || (ppr->load_run == _TRUE_) ) {
-    
-    // *** Store bispectra?
-    class_call(parser_read_string(pfc,"store_bispectra",&(string1),&(flag1),errmsg),
-        errmsg,
-        errmsg);
-     
-    if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-      pbi->store_bispectra_to_disk = _TRUE_;
+  class_test ((ppr->store_bispectra_to_disk == _TRUE_) && (ppr->load_bispectra_from_disk == _TRUE_),
+    errmsg,
+    "cannot load and save bispectra at the same time!");
 
-
-    // *** Create run directory
-
-    /* Note that if ppr->load_run == _TRUE_, the run directory has been already read from the command line. */
-
-    if (ppr->load_run == _FALSE_) {
-
-      /* Read the name of the run directory from the parameter file */
-      class_call(parser_read_string(pfc,
-           "run_directory",
-           &(string1),
-           &(flag1),
-           errmsg),
-           errmsg,
-           errmsg);  
-    
-      if ((flag1 == _TRUE_) && (string1 != NULL))
-        strcpy(ppr->run_directory, string1);
-
-
-
-      /* Should the date be appended to the run directory? */
-      class_call(parser_read_string(pfc,"append_date",&(string1),&(flag1),errmsg),
-          errmsg,
-          errmsg);
-     
-      if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-        ppr->append_date_to_run = _TRUE_;
-      
-
-      /* Determine the actual run directory according to the append_date variable */
-      if (ppr->append_date_to_run == _TRUE_) {
-
-        time_t now;
-        struct tm *d;
-        char suffix[64];
-
-        time(&now);
-        d = localtime(&now);
-
-        strftime(suffix, 64, "%Y-%m-%d_%H-%M-%S", d);
-        sprintf(ppr->run_directory, "%s_%s", ppr->run_directory, suffix);
-      }
-
-      /* Create the directory for the run */
-      class_test (mkdir (ppr->run_directory, 0777)!=0,
-                  errmsg,
-                  "could not create run directory '%s'. Parent directory doesn't exist? Actual directory already exists?",
-                  ppr->run_directory);
-
-      /* Print some information to screen */
-      printf("# We shall store the current run to the folder %s.\n", ppr->run_directory);
-    
-      /* Copy the parameter files to the run directory */
-      char new_ini_filepath[_FILENAMESIZE_], new_pre_filepath[_FILENAMESIZE_], command[3*_FILENAMESIZE_];
-
-      sprintf(new_ini_filepath, "%s/run_params.ini", ppr->run_directory);
-      sprintf(command, "cp %s %s", ppr->ini_filename, new_ini_filepath);
-      if (strcmp(ppr->ini_filename, new_ini_filepath) != 0) system(command);
-
-      sprintf(new_pre_filepath, "%s/run_params.pre", ppr->run_directory);
-      sprintf(command, "cp %s %s", ppr->pre_filename, new_pre_filepath);
-      if (strcmp(ppr->pre_filename, new_pre_filepath) != 0) system(command);
-    
-    } // end of if(ppr->load_run == _FALSE_)
-    
-
-    /* In any case, store or load run, make the root coincide with the run directory, so that the output files will
-    be dumped there */
+  /* In any case, store or load run, make the root coincide with the run directory, so that the output files will
+  be dumped there */
+  if ((ppr->store_run == _TRUE_) || (ppr->load_run == _TRUE_))
     sprintf (pop->root, "%s/", ppr->run_directory);
 
-  } // end of if (store_run)
 
-
-  pbi->load_bispectra_from_disk == _FALSE_;
-  if ((ppr->load_run==_TRUE_) && (pbi->store_bispectra_to_disk==_TRUE_))
-    pbi->load_bispectra_from_disk = _TRUE_;
-
+  // =======================================================================================
+  // =                               Even or odd l-grid?                                   =
+  // =======================================================================================
 
   /* For certain bispectrum types, the 3j-symbol (l1,l2,l3)(0,0,0) does not appear explicitly
   in the bispectrum formula and therefore it cannot be pulled out analytically. This is the
@@ -2801,13 +2849,13 @@ int input_default_params(
   pbi->has_orthogonal_model = _FALSE_;
   pbi->has_galileon_model = _FALSE_;
   pbi->has_intrinsic_squeezed = _FALSE_;
+  pbi->has_intrinsic_squeezed_unlensed = _FALSE_;
   pbi->has_local_squeezed = _FALSE_;
   pbi->has_cosine_shape = _FALSE_;
   pbi->has_cmb_lensing = _FALSE_;
   pbi->has_cmb_lensing_squeezed = _FALSE_;
   pbi->has_cmb_lensing_kernel = _FALSE_;
   pbi->has_quadratic_correction = _FALSE_;
-  pbi->store_bispectra_to_disk = _FALSE_;
   pbi->include_lensing_effects = _FALSE_;
   pbi->lensed_intrinsic = _FALSE_;
 
@@ -2816,7 +2864,7 @@ int input_default_params(
   // ========================================================
 
   pfi->fisher_verbose = 0;
-  pfi->interpolate_all_bispectra = _FALSE_;
+  pfi->always_interpolate_bispectra = _FALSE_;
   pfi->has_fisher = _FALSE_;
   pfi->l_min_estimator = 2;
   pfi->l_max_estimator = 10000000;
@@ -3103,9 +3151,14 @@ int input_default_precision ( struct precision * ppr ) {
   ppr->extra_k3_oscillations_right = 0;
 
   /* Storage of intermediate results */
-  ppr->store_run = _FALSE_;
+  ppr->store_run == _FALSE_;
   ppr->append_date_to_run = _FALSE_;
-  if (ppr->load_run == _FALSE_) strcpy(ppr->run_directory, "./runs/run_");
+  ppr->store_bispectra_to_disk = _FALSE_;
+  ppr->load_bispectra_from_disk = _FALSE_;
+
+  /* Do not specify default values for ppr->run_directory and for ppr->load_run, as
+  these variables are not set in input_init but in the parent function,
+  input_init_from_arguments */
 
   /* Reionisation flag */
   ppr->has_reionization = _FALSE_;

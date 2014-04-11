@@ -196,7 +196,8 @@ int output_fisher(
   
   /* Open the file for the Fisher matrix */
   if ((pfi->l_min_estimator > pfi->l_min) || (pfi->l_max_estimator < pfi->l_max))
-    sprintf (filename, "%s%s_%d_%d.dat", pop->root, "fisher", pfi->l_min_estimator, pfi->l_max_estimator);
+    sprintf (filename, "%s%s_%d_%d.dat", pop->root, "fisher",
+      MAX(pfi->l_min, pfi->l_min_estimator), MIN(pfi->l_max, pfi->l_max_estimator));
   else
     sprintf (filename, "%s%s.dat", pop->root, "fisher");
 
@@ -208,6 +209,27 @@ int output_fisher(
   /* Close file */
   fclose (fisher_file);
 
+  // ============================================================================================
+  // =                               Same, with lensing variance                                =
+  // ============================================================================================
+
+  if (pfi->include_lensing_effects == _TRUE_) {
+    
+    if ((pfi->l_min_estimator > pfi->l_min) || (pfi->l_max_estimator < pfi->l_max))
+      sprintf (filename, "%s%s_%d_%d.dat", pop->root, "fisher_lensvar",
+        MAX(pfi->l_min, pfi->l_min_estimator), MIN(pfi->l_max, pfi->l_max_estimator));
+    else
+      sprintf (filename, "%s%s.dat", pop->root, "fisher_lensvar");
+
+    class_open (fisher_file, filename, "w", pop->error_message);
+  
+    /* Print the Fisher matrix to file */
+    fprintf (fisher_file, "%s", pfi->info_lensvar);
+
+    /* Close file */
+    fclose (fisher_file);
+    
+  }
 
   // ============================================================================================
   // =                            Full Fisher matrix for lmin/lmax                              =
@@ -218,8 +240,10 @@ int output_fisher(
 
   /* Open the file for the signal to noise as a function of the maximum resolution of the experiment */
   if ((pfi->l_min_estimator > pfi->l_min) || (pfi->l_max_estimator < pfi->l_max)) {
-    sprintf (filename_lmax, "%s%s_%d_%d.dat", pop->root, "fisher_lmax", pfi->l_min_estimator, pfi->l_max_estimator);
-    sprintf (filename_lmin, "%s%s_%d_%d.dat", pop->root, "fisher_lmin", pfi->l_min_estimator, pfi->l_max_estimator);
+    sprintf (filename_lmax, "%s%s_%d_%d.dat", pop->root, "fisher_lmax",
+      MAX(pfi->l_min, pfi->l_min_estimator), MIN(pfi->l_max, pfi->l_max_estimator));
+    sprintf (filename_lmin, "%s%s_%d_%d.dat", pop->root, "fisher_lmin",
+      MAX(pfi->l_min, pfi->l_min_estimator), MIN(pfi->l_max, pfi->l_max_estimator));
   }
   else { 
     sprintf (filename_lmax, "%s%s.dat", pop->root, "fisher_lmax");
@@ -260,33 +284,33 @@ int output_fisher(
   // ---------------------------------------------------------------------
   
   /* Fisher as a function of the l_max of the experiment */
-  for (int index_l1=0; index_l1 < pfi->l1_size; ++index_l1) {
+  for (int index_l3=0; index_l3 < pfi->l3_size; ++index_l3) {
     
-    fprintf (fisher_file_lmax, "%20d ", pfi->l1[index_l1]);
+    fprintf (fisher_file_lmax, "%20d ", pfi->l3[index_l3]);
 
     for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
-      fprintf (fisher_file_lmax, "%20.7g ", (pfi->fisher_matrix_largest[index_l1][index_ft][index_ft]));
+      fprintf (fisher_file_lmax, "%20.7g ", (pfi->fisher_matrix_largest[index_l3][index_ft][index_ft]));
 
     for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
-      fprintf (fisher_file_lmax, "%20.7g ", (pfi->fisher_matrix_lmax[index_l1][index_ft][index_ft]));
+      fprintf (fisher_file_lmax, "%20.7g ", (pfi->fisher_matrix_lmax[index_l3][index_ft][index_ft]));
 
     fprintf (fisher_file_lmax, "\n");
 
-  } // end of for (index_l1)
+  } // end of for (index_l3)
   
-  for (int index_l3=0; index_l3 < pfi->l3_size; ++index_l3) {
+  for (int index_l1=0; index_l1 < pfi->l1_size; ++index_l1) {
   
-    fprintf (fisher_file_lmin, "%20d ", pfi->l3[index_l3]);
+    fprintf (fisher_file_lmin, "%20d ", pfi->l1[index_l1]);
 
     for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
-      fprintf (fisher_file_lmin, "%20.7g ", (pfi->fisher_matrix_smallest[index_l3][index_ft][index_ft]));
+      fprintf (fisher_file_lmin, "%20.7g ", (pfi->fisher_matrix_smallest[index_l1][index_ft][index_ft]));
 
     for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
-      fprintf (fisher_file_lmin, "%20.7g ", (pfi->fisher_matrix_lmin[index_l3][index_ft][index_ft]));
+      fprintf (fisher_file_lmin, "%20.7g ", (pfi->fisher_matrix_lmin[index_l1][index_ft][index_ft]));
 
     fprintf (fisher_file_lmin, "\n");
 
-  } // end of for (index_l3)    
+  } // end of for (index_l1)    
   
   // ---------------------------------------------------------------------------
   // -                            Close files                                  -
@@ -305,7 +329,8 @@ int output_fisher(
     /* No lmax file for lensing variance */
 
     if ((pfi->l_min_estimator > pfi->l_min) || (pfi->l_max_estimator < pfi->l_max)) {
-      sprintf (filename_lmin, "%s%s_%d_%d.dat", pop->root, "fisher_lensvar_lmin", pfi->l_min_estimator, pfi->l_max_estimator);
+      sprintf (filename_lmin, "%s%s_%d_%d.dat", pop->root, "fisher_lensvar_lmin",
+        MAX(pfi->l_min, pfi->l_min_estimator), MIN(pfi->l_max, pfi->l_max_estimator));
     }
     else { 
       sprintf (filename_lmin, "%s%s.dat", pop->root, "fisher_lensvar_lmin");
@@ -332,19 +357,19 @@ int output_fisher(
     // -                           Print values                            -
     // ---------------------------------------------------------------------
   
-    for (int index_l3=0; index_l3 < pfi->l3_size; ++index_l3) {
+    for (int index_l1=0; index_l1 < pfi->l1_size; ++index_l1) {
   
-      fprintf (fisher_file_lmin, "%20d ", pfi->l3[index_l3]);
+      fprintf (fisher_file_lmin, "%20d ", pfi->l1[index_l1]);
 
       for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
-        fprintf (fisher_file_lmin, "%20.7g ", (pfi->fisher_matrix_lensvar_l3[index_l3][index_ft][index_ft]));
+        fprintf (fisher_file_lmin, "%20.7g ", (pfi->fisher_matrix_lensvar_smallest[index_l1][index_ft][index_ft]));
 
       for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
-        fprintf (fisher_file_lmin, "%20.7g ", (pfi->fisher_matrix_lensvar_lmin[index_l3][index_ft][index_ft]));
+        fprintf (fisher_file_lmin, "%20.7g ", (pfi->fisher_matrix_lensvar_lmin[index_l1][index_ft][index_ft]));
 
       fprintf (fisher_file_lmin, "\n");
 
-    } // end of for (index_l3)    
+    } // end of for (index_l1)    
   
     // ---------------------------------------------------------------------------
     // -                            Close files                                  -
@@ -390,9 +415,11 @@ int output_fisher(
           /* Open the file for the signal to noise as a function of the maximum resolution of the experiment */
           if ((pfi->l_min_estimator > pfi->l_min) || (pfi->l_max_estimator < pfi->l_max)) {
             sprintf (filename_lmax, "%s%s_%s_%d_%d.dat",
-              pop->root, "fisher_lmax", pbi->bfff_labels[X][Y][Z], pfi->l_min_estimator, pfi->l_max_estimator);
+              pop->root, "fisher_lmax", pbi->bfff_labels[X][Y][Z],
+                MAX(pfi->l_min, pfi->l_min_estimator), MIN(pfi->l_max, pfi->l_max_estimator));
             sprintf (filename_lmin, "%s%s_%s_%d_%d.dat",
-              pop->root, "fisher_lmin", pbi->bfff_labels[X][Y][Z], pfi->l_min_estimator, pfi->l_max_estimator);
+              pop->root, "fisher_lmin", pbi->bfff_labels[X][Y][Z],
+                MAX(pfi->l_min, pfi->l_min_estimator), MIN(pfi->l_max, pfi->l_max_estimator));
           }
           else {
             sprintf (filename_lmax, "%s%s_%s.dat", pop->root, "fisher_lmax", pbi->bfff_labels[X][Y][Z]);
@@ -435,33 +462,33 @@ int output_fisher(
           // ---------------------------------------------------------------------
           
           /* Fisher as a function of the l_max of the experiment */
-          for (int index_l1=0; index_l1 < pfi->l1_size; ++index_l1) {
+          for (int index_l3=0; index_l3 < pfi->l3_size; ++index_l3) {
             
-            fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20d ", pfi->l1[index_l1]);
+            fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20d ", pfi->l3[index_l3]);
           
             for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
               fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20.7g ",
-                (pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l1][index_ft][index_ft]));
+                (pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l3][index_ft][index_ft]));
           
             for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
               fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20.7g ",
-                (pfi->fisher_matrix_XYZ_lmax[X][Y][Z][index_l1][index_ft][index_ft]));
+                (pfi->fisher_matrix_XYZ_lmax[X][Y][Z][index_l3][index_ft][index_ft]));
           
             fprintf (fisher_file_XYZ_lmax[X][Y][Z], "\n");
           
-          } // end of for (index_l1)
+          } // end of for (index_l3)
             
-          for (int index_l3=0; index_l3 < pfi->l3_size; ++index_l3) {
+          for (int index_l1=0; index_l1 < pfi->l1_size; ++index_l1) {
           
-            fprintf (fisher_file_XYZ_lmin[X][Y][Z], "%20d ", pfi->l3[index_l3]);
+            fprintf (fisher_file_XYZ_lmin[X][Y][Z], "%20d ", pfi->l1[index_l1]);
         
             for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
               fprintf (fisher_file_XYZ_lmin[X][Y][Z], "%20.7g ",
-                (pfi->fisher_matrix_XYZ_smallest[X][Y][Z][index_l3][index_ft][index_ft]));
+                (pfi->fisher_matrix_XYZ_smallest[X][Y][Z][index_l1][index_ft][index_ft]));
         
             for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
               fprintf (fisher_file_XYZ_lmin[X][Y][Z], "%20.7g ",
-                (pfi->fisher_matrix_XYZ_lmin[X][Y][Z][index_l3][index_ft][index_ft]));
+                (pfi->fisher_matrix_XYZ_lmin[X][Y][Z][index_l1][index_ft][index_ft]));
         
             fprintf (fisher_file_XYZ_lmin[X][Y][Z], "\n");
           }
@@ -963,7 +990,10 @@ int output_cl(
   }
   // *** MY MODIFICATIONS ***
   if (psp->compute_cl_derivative == _TRUE_) {
-    fclose (out_dcl);
+    fclose(out_dcl);
+    free(dcl_tot);
+    free(dcl_md_ic);
+    free(dcl_md);
   }
   // *** END OF MY MODIFICATIONS ***
   free(cl_tot);

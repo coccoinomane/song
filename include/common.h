@@ -57,7 +57,7 @@ typedef char FileName[_FILENAMESIZE_];
 #define sign(a) (((a)>0) ? 1. : -1. )
 #define alternating_sign(m) ((m)%2 == 0 ? 1 : -1)
 
-#define _MINUSCULE_ 1.e-99
+#define _MINUSCULE_ 1.e-75
 
 #define _MAX_LENGTH_LABEL_ 64 /* Maximum length allowed for the label strings (e.g. for the perturbation variables such as 'phi', 'psi') */
 #define _MAX_NUM_BISPECTRA_ 32 /* Maximum number of bispectra that can be computed in any of the bispectra modules */    
@@ -66,6 +66,10 @@ typedef char FileName[_FILENAMESIZE_];
 /* Possible parity states */
 #define _ODD_ 1
 #define _EVEN_ 0
+
+/* Natural scale of the power spectra and bispectra */
+#define _SPECTRA_SCALE_ 1e-10
+#define _BISPECTRA_SCALE_ 1e-20
 
 #define _PI_SQUARED_ 9.869604401089358618834491
 #define _PI_CUBE_ 31.006276680299820175
@@ -886,6 +890,9 @@ struct precision
   /* Paths of the parameter & precision input files */
   char ini_filename[_FILENAMESIZE_];
   char pre_filename[_FILENAMESIZE_];
+
+  short store_bispectra_to_disk;  /* Should we store the bispectra to disk? */
+  short load_bispectra_from_disk; /* Should we load the bispectra from disk? */
 
 
   // *** END OF MY MODIFICATIONS ***  

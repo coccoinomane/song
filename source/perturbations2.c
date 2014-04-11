@@ -1,176 +1,5 @@
 #include "perturbations2.h"
-
-// ====================================================================================
-// =                                 Macro definitions                                =
-// ====================================================================================
-
-
-// ------------------------------------------------------------------------------------
-// -                          Shortcuts for 2nd-order moments                         -
-// ------------------------------------------------------------------------------------
-
-/* Shortcut to access the ppt2->sources array. It must be used only if the workspace ppw2 is
-defined, and after the functions perturb2_geometrical_corner and perturb2_get_k_lists have
-been called. */
-#define sources(index_type) ppt2->sources[(index_type)]\
-                            [ppw2->index_k1]\
-                            [ppw2->index_k2]\
-                            [index_tau*ppt2->k3_size[ppw2->index_k1][ppw2->index_k2] + ppw2->index_k3]
-
-
-/* Define the photon temperature multipoles. Note that we set them to zero by default when
-the no-radiation approximation is switched on. */
-#define I(l,m) ( ((abs(m)>l) || (l<0) || ((l)>ppw2->pv->l_max_g)) ? 0 : y[ppw2->pv->index_pt2_monopole_g + lm(l,m)] )
-#define dI(l,m) dy[ppw2->pv->index_pt2_monopole_g + lm(l,m)]
-
-/* Define the photon polarization multipoles.  We include a check on the E and B modes, so
-that they are non-zero only if polarization is requested.  This will allow us to write
-the photon temperature hierarchy in the same way regardless of whether polarization is on
-or off. */
-#define E(l,m) ( ((ppt2->has_polarization2 == _FALSE_)||(abs(m)>l)||(l<0)||((l)>ppw2->pv->l_max_pol_g)) ? 0 : y[ppw2->pv->index_pt2_monopole_E + lm(l,m)] )
-#define dE(l,m) dy[ppw2->pv->index_pt2_monopole_E + lm(l,m)]
-
-#define B(l,m) ( ((ppt2->has_polarization2 == _FALSE_)||(abs(m)>l)||(l<0)||((l)>ppw2->pv->l_max_pol_g)) ? 0 : y[ppw2->pv->index_pt2_monopole_B + lm(l,m)] )
-#define dB(l,m) dy[ppw2->pv->index_pt2_monopole_B + lm(l,m)]
-
-/* Define the neutrinos multipoles */
-#define N(l,m) ( ((abs(m) > l) || ((l)>ppw2->pv->l_max_ur)) ? 0 : y[ppw2->pv->index_pt2_monopole_ur + lm(l,m)] )
-#define dN(l,m) dy[ppw2->pv->index_pt2_monopole_ur + lm(l,m)]
-
-/* Define the baryon beta-moments */
-#define b(n,l,m) ( ((abs(m)>l) || (l<0)) ? 0 : y[ppw2->pv->index_pt2_monopole_b + nlm(n,l,m)] )
-#define db(n,l,m) dy[ppw2->pv->index_pt2_monopole_b + nlm(n,l,m)]
-
-/* Define the CDM beta-moments */
-#define cdm(n,l,m) ( ((abs(m)>l) || (l<0)) ? 0 : y[ppw2->pv->index_pt2_monopole_cdm + nlm(n,l,m)] )
-#define dcdm(n,l,m) dy[ppw2->pv->index_pt2_monopole_cdm + nlm(n,l,m)]
-
-// ------------------------------------------------------------------------------------
-// -                          Shortcuts for quadratic sources                         -
-// ------------------------------------------------------------------------------------
-
-/* Shortcuts to access the full quadratic sources, as computed by perturb2_quadratic_sources or
-interpolated by perturb2_quadratic_sources_at_tau. */
-#define dI_qs2(l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_g + lm(l,m)]
-#define dE_qs2(l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_E + lm(l,m)]
-#define dB_qs2(l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_B + lm(l,m)]
-#define db_qs2(n,l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_b + nlm(n,l,m)]
-#define dcdm_qs2(n,l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_cdm + nlm(n,l,m)]
-#define dN_qs2(l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_ur + lm(l,m)]
-
-/* Same as above, but only for the collision term. These sources are never interpolated, and
-the split is useful to include the quadratic part of the collision term in the line of
-sight sources. */
-#define dI_qc2(l,m) ppw2->pvec_quadcollision[ppw2->index_qs2_monopole_g + lm(l,m)]
-#define dE_qc2(l,m) ppw2->pvec_quadcollision[ppw2->index_qs2_monopole_E + lm(l,m)]
-#define dB_qc2(l,m) ppw2->pvec_quadcollision[ppw2->index_qs2_monopole_B + lm(l,m)]
-#define db_qc2(n,l,m) ppw2->pvec_quadcollision[ppw2->index_qs2_monopole_b + nlm(n,l,m)]
-
-// ------------------------------------------------------------------------------------
-// -                          Shortcuts for 1st-order moments                         -
-// ------------------------------------------------------------------------------------
-
-/* Rotation coefficients for the first-order quantities. They are defined as
-sqrt(4pi/(2l+1)) Y_lm(theta,phi)
-and they appear in the the rotation formula
-Delta_lm(\vec{k1}) = sqrt(4pi/(2l+1)) Y_lm(theta,phi) Delta_l(k1)
-where Delta_l is the first-order multipole computed with k1 aligned with the zenith.
-                              
-Note that We set the multipoles to zero when they are accessed with l<0 and abs(m)>l.
-This will give us some freedom in writing the equations inside loops over (l,m).
-
-IMPORTANT: These macros can be used inside perturb2_solve only and after perturb2_geometrical_corner
-has been called. */
-#define rot_1(l,m) ( (((l) < 0) || (abs(m)>(l))) ? 0 : ( (m) < 0 ? ppw2->rotation_1_minus[lm_quad(l,abs(m))] : ppw2->rotation_1[lm_quad(l,m)]))
-#define rot_2(l,m) ( (((l) < 0) || (abs(m)>(l))) ? 0 : ( (m) < 0 ? ppw2->rotation_2_minus[lm_quad(l,abs(m))] : ppw2->rotation_2[lm_quad(l,m)]))
-
-/* First order multipoles as computed by the first-order system. The 'tilde' suffix denotes
-any 1st-order quantity computed with the symmetry axis aligned with the wavemode in its argument.
-For example, I_1_tilde(l) is the (l,0) 1st-order moment in k1, computed with k1 aligned
-with the z-axis. The E-modes are set to be different from zero only if polarization is
-requested.  We have no need for the B-modes because they vanish at 1st order.
-
-IMPORTANT: These macros can be used whenever a pvec_sources1 vector exists. This happens
-either after a call to with perturb_quadsources_at_tau_for_all_types (as in perturb_source_term
-or perturb2_save_early_transfers) or when pvec_sources1 and pvec_sources2 directly access the
-quadratic sources stored in ppt->quadsources (as in perturb2_quadratic_sources). */
-#define I_1_tilde(l) ( l < 0 ? 0 : pvec_sources1[ppt->index_qs_monopole_g + l] )
-#define I_2_tilde(l) ( l < 0 ? 0 : pvec_sources2[ppt->index_qs_monopole_g + l] )
-
-#define E_1_tilde(l) ( ((l < 0)||(ppt2->has_polarization2==_FALSE_)) ? 0 : pvec_sources1[ppt->index_qs_monopole_E + l] )
-#define E_2_tilde(l) ( ((l < 0)||(ppt2->has_polarization2==_FALSE_)) ? 0 : pvec_sources2[ppt->index_qs_monopole_E + l] )
-
-#define N_1_tilde(l) ( l < 0 ? 0 : pvec_sources1[ppt->index_qs_monopole_ur + l] )
-#define N_2_tilde(l) ( l < 0 ? 0 : pvec_sources2[ppt->index_qs_monopole_ur + l] )
-
-/* Rotated first-order multipoles.
-
-IMPORTANT: These macros can be used whenever I_1_tilde can (see above) */
-#define I_1(l,m) (rot_1(l,m))*(I_1_tilde(l))
-#define I_2(l,m) (rot_2(l,m))*(I_2_tilde(l))
-#define E_1(l,m) (rot_1(l,m))*(E_1_tilde(l))
-#define E_2(l,m) (rot_2(l,m))*(E_2_tilde(l))
-#define N_1(l,m) (rot_1(l,m))*(N_1_tilde(l))
-#define N_2(l,m) (rot_2(l,m))*(N_2_tilde(l))
-
-/* Define shorthands for the coupling coefficients. This is the only place where the arrays like
-ppt2->c_minus are used */
-#define c_minus(l,m1,m) ppt2->c_minus[lm(l,m)][m-m1+1]
-#define c_plus(l,m1,m) ppt2->c_plus[lm(l,m)][m-m1+1]
-#define d_minus(l,m1,m) ppt2->d_minus[lm(l,m)][m-m1+1]
-#define d_plus(l,m1,m) ppt2->d_plus[lm(l,m)][m-m1+1]
-#define d_zero(l,m1,m) ppt2->d_zero[lm(l,m)][m-m1+1]
-
-/* Define shorthands for the summed coupling coefficients */
-#define c_minus_12(l,m) ppw2->c_minus_product_12[lm(l,m)]
-#define c_minus_21(l,m) ppw2->c_minus_product_21[lm(l,m)]
-#define c_plus_12(l,m)  ppw2->c_plus_product_12[lm(l,m)]  
-#define c_plus_21(l,m)  ppw2->c_plus_product_21[lm(l,m)]  
-#define c_minus_11(l,m) ppw2->c_minus_product_11[lm(l,m)]
-#define c_minus_22(l,m) ppw2->c_minus_product_22[lm(l,m)]
-#define c_plus_11(l,m)  ppw2->c_plus_product_11[lm(l,m)]  
-#define c_plus_22(l,m)  ppw2->c_plus_product_22[lm(l,m)]  
-
-#define r_minus_12(l,m) ppw2->r_minus_product_12[lm(l,m)]
-#define r_minus_21(l,m) ppw2->r_minus_product_21[lm(l,m)]
-#define r_plus_12(l,m)  ppw2->r_plus_product_12[lm(l,m)]  
-#define r_plus_21(l,m)  ppw2->r_plus_product_21[lm(l,m)] 
- 
-#define d_minus_12(l,m) ppw2->d_minus_product_12[lm(l,m)]
-#define d_minus_21(l,m) ppw2->d_minus_product_21[lm(l,m)]
-#define d_plus_12(l,m)  ppw2->d_plus_product_12[lm(l,m)]  
-#define d_plus_21(l,m)  ppw2->d_plus_product_21[lm(l,m)]
-#define d_minus_11(l,m) ppw2->d_minus_product_11[lm(l,m)]
-#define d_minus_22(l,m) ppw2->d_minus_product_22[lm(l,m)]
-#define d_plus_11(l,m)  ppw2->d_plus_product_11[lm(l,m)]  
-#define d_plus_22(l,m)  ppw2->d_plus_product_22[lm(l,m)]  
-
-#define d_zero_12(l,m)  ppw2->d_zero_product_12[lm(l,m)]  
-#define d_zero_21(l,m)  ppw2->d_zero_product_21[lm(l,m)]  
-#define d_zero_11(l,m)  ppw2->d_zero_product_11[lm(l,m)]  
-#define d_zero_22(l,m)  ppw2->d_zero_product_22[lm(l,m)]  
-
-#define k_minus_12(l,m) ppw2->k_minus_product_12[lm(l,m)]
-#define k_minus_21(l,m) ppw2->k_minus_product_21[lm(l,m)]
-#define k_plus_12(l,m)  ppw2->k_plus_product_12[lm(l,m)]  
-#define k_plus_21(l,m)  ppw2->k_plus_product_21[lm(l,m)]  
-#define k_minus_11(l,m) ppw2->k_minus_product_11[lm(l,m)]
-#define k_minus_22(l,m) ppw2->k_minus_product_22[lm(l,m)]
-#define k_plus_11(l,m)  ppw2->k_plus_product_11[lm(l,m)]  
-#define k_plus_22(l,m)  ppw2->k_plus_product_22[lm(l,m)]  
-
-#define k_zero_12(l,m)  ppw2->k_zero_product_12[lm(l,m)]  
-#define k_zero_21(l,m)  ppw2->k_zero_product_21[lm(l,m)]  
-#define k_zero_11(l,m)  ppw2->k_zero_product_11[lm(l,m)]  
-#define k_zero_22(l,m)  ppw2->k_zero_product_22[lm(l,m)]  
-  
-  
-
-
-
-
-
-
+#include "perturbations2_macros.h"
 
 int perturb2_init (
      struct precision * ppr,
@@ -328,7 +157,7 @@ int perturb2_init (
   /* Apart from ppt2->sources, all the arrays needed by the subsequent modules have been filled.
   If the user requested to load the line of sight sources from disk, we can stop the execution of
   this module now without regrets. */
-  if (ppt2->load_sources_from_disk == _TRUE_) {
+  if (ppr2->load_sources_from_disk == _TRUE_) {
     
     if (ppt2->perturbations2_verbose > 0)
       printf(" -> leaving perturbs2 module without having computed the line-of-sight sources, which will be read from disk\n");
@@ -458,18 +287,17 @@ int perturb2_init (
 
     } // end of for (index_k2)
 
-    /* Save sources to disk, if requested */
-    if (ppt2->store_sources_to_disk == _TRUE_) {
+    /* Save sources to disk for the considered k1, and free the memory associated with them.
+    The next time we'll need them, we shall load them from disk. */
 
-      class_call_parallel (perturb2_save_sources_to_disk(ppt2, index_k1),
-          ppt2->error_message,
-          ppt2->error_message);
+    if (ppr2->store_sources_to_disk == _TRUE_) {
+
+      class_call_parallel (perturb2_store_sources_to_disk(ppt2, index_k1),
+        ppt2->error_message,
+        ppt2->error_message);
         
-      /* Free the memory associated with the line-of-sight sources for the considered k1.
-        The next time we'll need them, we shall load them from disk. */
       class_call_parallel (perturb2_free_k1_level(ppt2, index_k1),
         ppt2->error_message, ppt2->error_message);
-        
     }
     
     #pragma omp flush(abort)
@@ -504,7 +332,7 @@ int perturb2_init (
     printf(" -> filled ppt2->sources with %ld values\n", ppt2->count_memorised_sources);
     
   /* Check that the number of filled values corresponds to the number of allocated space */
-  if ((ppr->load_run == _FALSE_) || ((ppr->load_run == _TRUE_)&&(ppt2->store_sources_to_disk == _FALSE_)))
+  if (ppr2->load_sources_from_disk == _FALSE_)
     class_test (ppt2->count_allocated_sources != ppt2->count_memorised_sources,
       ppt2->error_message,
       "there is a mismatch between allocated (%ld) and used (%ld) space!",
@@ -785,79 +613,26 @@ int perturb2_indices_of_perturbs(
   // ================================================================================
   
 
-  /* If it does not exist, create the directory for the line of sight sources.  Also create/open
-    the status file for the sources.  The status file is an ASCII file used to determine the values
-    of k1 for which we already succesfully stored the sources. Finally, create a source file for each
-    requested k1. */
-  if (ppt2->store_sources_to_disk == _TRUE_) {
-    
-    sprintf(ppt2->sources_run_directory, "%s/sources", ppr->run_directory);
-
-    /* If we are not in a load run, just create the sources directory */
-    if (ppr->load_run == _FALSE_) {
-      
-      class_test (mkdir (ppt2->sources_run_directory, 0777) != 0,
-                  ppt2->error_message,
-                  "could not create directory '%s', maybe it already exists?", ppt2->sources_run_directory);
-
-    }
-    /* Otherwise, determine whether to skip the transfer module based on the existence of the transfer directory */
-    else {
-
-      struct stat st;
-      short sources_dir_exists = (stat(ppt2->sources_run_directory, &st)==0);
-
-      /* If the sources folder already exists, assume that the source functions have already been computed */
-      if (sources_dir_exists) {
-
-        if (ppt2->perturbations2_verbose > 1)
-          printf (" -> found source functions folder.\n");
-
-        ppt2->load_sources_from_disk = _TRUE_;
-      }
-      
-      /* If the sources folder does not exist, add it to the load run and compute the source functions */
-      else {
-
-        if (ppt2->perturbations2_verbose > 1)
-          printf ("     * source functions folder not found, will create it.\n");
-
-        class_test (mkdir (ppt2->sources_run_directory, 0777)!=0,
-                    ppt2->error_message,
-                    "could not create directory '%s', maybe it already exists?", ppt2->sources_run_directory);
-        
-        ppt2->load_sources_from_disk = _FALSE_;
-
-      } // end of if(sources_dir_exists)
-      
-    } // end of if(load_run)
-    
-    /* Create/open the status file. The 'a+' mode means that if the file does not exist it will be created,
-      but if it exist it won't be erased (append mode) */
-    sprintf(ppt2->sources_status_path, "%s/sources_status_file.txt", ppr->run_directory);
-    class_open(ppt2->sources_status_file, ppt2->sources_status_path, "a+", ppt2->error_message);
-    
-
-    // *** Allocate sources files
-    int index_k1;
-
-    if (ppt2->perturbations2_verbose > 2)
-      if (ppr->load_run == _FALSE_) printf ("     * run_storage: will create %d files to store the sources\n", ppt2->k_size);
-      else printf ("     * run_storage: will read the line of sight sources from %d files\n", ppt2->k_size);
+  /* Create the files to store the source functions in */
+  if ((ppr2->store_sources_to_disk == _TRUE_) || (ppr2->load_sources_from_disk == _TRUE_)) {
     
     /* We are going to store the sources in n=k_size files, one for each requested k1 */
     class_alloc (ppt2->sources_run_files, ppt2->k_size*sizeof(FILE *), ppt2->error_message);
     class_alloc (ppt2->sources_run_paths, ppt2->k_size*sizeof(char *), ppt2->error_message);
 
-    for (index_k1=0; index_k1<ppt2->k_size; ++index_k1) {
+    for (int index_k1=0; index_k1<ppt2->k_size; ++index_k1) {
       
       /* The name of each sources file will have the k1 index in it */
       class_alloc (ppt2->sources_run_paths[index_k1], _FILENAMESIZE_*sizeof(char), ppt2->error_message);
       sprintf (ppt2->sources_run_paths[index_k1], "%s/sources_%03d.dat", ppt2->sources_run_directory, index_k1);
       
     } // end of loop on index_k1
-
-  } // end of if(ppt2->store_sources_to_disk)
+    
+    if (ppr2->store_sources_to_disk == _TRUE_)
+      if (ppt2->perturbations2_verbose > 2)
+        printf ("     * will create %d files to store the sources\n", ppt2->k_size);
+    
+  } // end of if(ppr2->store_sources_to_disk)
 
   
   return _SUCCESS_;
@@ -6217,19 +5992,20 @@ int perturb2_free(
   if ((ppt2->has_perturbations2 == _TRUE_) && (ppt2->has_early_transfers1_only == _FALSE_)) {
     
     int k1_size = ppt2->k_size;
-    
+
+    /* Free the k1 level only if we are neither loading nor storing the sources to disk.  The memory
+    management in those two cases is handled separately, so that the sources are freed as soon
+    as they are not needed anymore via the source_load and sources_store functions. */
+    if ((ppr2->store_sources_to_disk==_FALSE_) && (ppr2->load_sources_from_disk==_FALSE_)) {
+      for (int index_k1 = 0; index_k1 < k1_size; ++index_k1) {
+
+        /* If the transfer2 module was loaded, ppt2->sources had already been freed  */
+        if (ppt2->has_allocated_sources[index_k1] == _TRUE_)
+          class_call(perturb2_free_k1_level(ppt2, index_k1), ppt2->error_message, ppt2->error_message); 
+      }
+    }
+
     for (int index_type = 0; index_type < ppt2->tp2_size; index_type++) {
-
-      /* Free the k1 level only if we are neither loading nor storing the sources to disk.  The memory
-        management in those two cases is handled separately, so that the sources are freed as soon
-        as they are not needed anymore. */
-      if ((ppt2->store_sources_to_disk==_FALSE_) && (ppt2->load_sources_from_disk==_FALSE_))
-        for (int index_k1 = 0; index_k1 < k1_size; ++index_k1) {
-
-          /* If the transfer2 module was loaded, ppt2->sources had already been freed  */
-          if (ppt2->has_allocated_sources[index_k1] == _TRUE_)
-            class_call(perturb2_free_k1_level(ppt2, index_k1), ppt2->error_message, ppt2->error_message); 
-        }
         
       free(ppt2->sources[index_type]);
       free(ppt2->tp2_labels[index_type]);
@@ -6313,7 +6089,7 @@ int perturb2_free(
     
 
     /* Close sources files and associated arrays */
-    if (ppt2->store_sources_to_disk == _TRUE_) {
+    if ((ppr2->store_sources_to_disk == _TRUE_) && (ppr2->load_sources_from_disk == _TRUE_)) {
     
       fclose(ppt2->sources_status_file);
     
@@ -6323,7 +6099,7 @@ int perturb2_free(
       free (ppt2->sources_run_files);
       free (ppt2->sources_run_paths);
     
-    } // end of if(ppt2->store_sources_to_disk)
+    }
 
 
     /* Close the debug files */
@@ -8785,34 +8561,31 @@ int perturb2_source_terms (
   double v_b_2 = ppw2->pvec_sources2[ppt->index_qs_v_b];
   double v_b_0_1 = -k1*v_b_1;
   double v_b_0_2 = -k2*v_b_2;
-  #define V_b_1(m) ((rot_1(1,m))*v_b_0_1)
-  #define V_b_2(m) ((rot_2(1,m))*v_b_0_2)
   
   /* Second-order baryon velocity from the dipole */
   double delta_b_1 = pvec_sources1[ppt->index_qs_delta_b];
   double delta_b_2 = pvec_sources2[ppt->index_qs_delta_b];
-  #define V_b(m) ((b(1,1,m))*one_third - delta_b_1*(V_b_2(m)) - delta_b_2*(V_b_1(m)))
-  
+    
   /* First-order photon velocity (for explanations on the following definitions, see comments in perturb2_quadratic_sources) */
   double v_g_1 = ppw2->pvec_sources1[ppt->index_qs_v_g];
   double v_g_2 = ppw2->pvec_sources2[ppt->index_qs_v_g];
   double v_g_0_1 = -k1*v_g_1;
   double v_g_0_2 = -k2*v_g_2;
-  #define V_g_1(m) ((rot_1(1,m))*v_g_0_1)
-  #define V_g_2(m) ((rot_2(1,m))*v_g_0_2)
   
   /* Second-order photon velocity from the dipole */
   double delta_g_1 = pvec_sources1[ppt->index_qs_delta_g];
   double delta_g_2 = pvec_sources2[ppt->index_qs_delta_g];
-  #define V_g(m) ((I(1,m))*0.25 - delta_g_1*(V_g_2(m)) - delta_g_2*(V_g_1(m)))
   
-  
+
   /* Debug - check that the photon and baryon velocity coincide in the tight-coupling limit */
+  // #define V_b_1(m) ((rot_1(1,m))*v_b_0_1)
+  // #define V_b_2(m) ((rot_2(1,m))*v_b_0_2)
+  // #define V_b(m) ((b(1,1,m))*one_third - delta_b_1*(V_b_2(m)) - delta_b_2*(V_b_1(m)))
+  // #define V_g_1(m) ((rot_1(1,m))*v_g_0_1)
+  // #define V_g_2(m) ((rot_2(1,m))*v_g_0_2)
+  // #define V_g(m) ((I(1,m))*0.25 - delta_g_1*(V_g_2(m)) - delta_g_2*(V_g_1(m)))  
   // if ((index_k1 == 0) && (index_k2 == 1) && (index_k3 == 50))
   //   fprintf(stderr, "%17.7g %17.7g %17.7g %17.7g %17.7g %17.7g %17.7g\n", tau, V_g(0), V_b(0), V_g_1(0), V_b_1(0), V_g_2(0), V_b_2(0));
-  
-  
-  
   
   
   
@@ -9549,14 +9322,6 @@ int perturb2_source_terms (
     } // end of (has_sources_t)
   } // end of (has_integration_by_parts_of_los)
   
-  
-  #undef V_b
-  #undef V_g
-  #undef V_b_1
-  #undef V_b_2
-  #undef V_g_1
-  #undef V_g_2
-
   return _SUCCESS_;
 
 } // end of perturb2_source_terms
@@ -10199,8 +9964,6 @@ int perturb2_save_early_transfers (
     delta_g = I(0,0) + 8/3.*k1_dot_k2*v_g_1*v_g_2;
     pressure_g = 1/3. * ( I(0,0) + 8/3.*k1_dot_k2*v_g_1*v_g_2  );
   }
-  #define V_g(m) I(1,m)*0.25 - delta_g_1*(-k2_m[m+1]*v_g_2) - delta_g_2*(-k1_m[m+1]*v_g_1)
-  #define sigma_g(m) -2/15.*I(2,m) + 8/3.*k1_ten_k2[m+2]*v_g_1*v_g_2
 
   /* 'delta_g_adiab' is supposed to be equal to 4/3 * delta_b during tight coupling. */
   if (ppr2->compute_m[0] == _TRUE_)
@@ -10218,9 +9981,6 @@ int perturb2_save_early_transfers (
     delta_b = b(0,0,0) + 2*k1_dot_k2*v_b_1*v_b_2;
     pressure_b = 1/3. * ( ppw2->b_200 + 2*k1_dot_k2*v_b_1*v_b_2  );
   }
-
-  #define V_b(m) b(1,1,m)/3. - delta_b_1*(-k2_m[m+1]*v_b_2) - delta_b_2*(-k1_m[m+1]*v_b_1)
-  #define sigma_b(m) -2/15.*ppw2->b_22m[m] + 2*k1_ten_k2[m+2]*v_b_1*v_b_2
 
   /* Note that, for m=1, the pure and quadratic parts of V_b(1) are exactly equal at late
   times and give rise to a cancellation. Therefore, don't fully trust the velocities at
@@ -10247,10 +10007,6 @@ int perturb2_save_early_transfers (
       delta_cdm = cdm(0,0,0) + 2*k1_dot_k2*v_cdm_1*v_cdm_2;
       pressure_cdm = 1/3. * ( ppw2->cdm_200 + 2*k1_dot_k2*v_cdm_1*v_cdm_2  );
     }
-    #define V_cdm(m) cdm(1,1,m)/3. - delta_cdm_1*(-k2_m[m+1]*v_cdm_2) - delta_cdm_2*(-k1_m[m+1]*v_cdm_1)
-    #define sigma_cdm(m) -2/15.*ppw2->cdm_22m[m] + 2*k1_ten_k2[m+2]*v_cdm_1*v_cdm_2
-
-    
   } // end of if(has_cdm)
   
   
@@ -10265,15 +10021,18 @@ int perturb2_save_early_transfers (
     if (ppr2->compute_m[0] == _TRUE_) {
       delta_ur = N(0,0) + 8/3.*k1_dot_k2*v_ur_1*v_ur_2;
       pressure_ur = 1/3. * ( N(0,0) + 8/3.*k1_dot_k2*v_ur_1*v_ur_2  );
-    }
-    #define V_ur(m) N(1,m)*0.25 - delta_ur_1*(-k2_m[m+1]*v_ur_2) - delta_ur_2*(-k1_m[m+1]*v_ur_1)
-    #define sigma_ur(m) -2/15.*N(2,m) + 8/3.*k1_ten_k2[m+2]*v_ur_1*v_ur_2
-  
+    }  
   } // end of if(has_ur)
   
-  
-  
-  
+  /* Useful definitions for the velocities */
+  // #define V_g(m) I(1,m)*0.25 - delta_g_1*(-k2_m[m+1]*v_g_2) - delta_g_2*(-k1_m[m+1]*v_g_1)
+  // #define sigma_g(m) -2/15.*I(2,m) + 8/3.*k1_ten_k2[m+2]*v_g_1*v_g_2
+  // #define V_b(m) b(1,1,m)/3. - delta_b_1*(-k2_m[m+1]*v_b_2) - delta_b_2*(-k1_m[m+1]*v_b_1)
+  // #define sigma_b(m) -2/15.*ppw2->b_22m[m] + 2*k1_ten_k2[m+2]*v_b_1*v_b_2
+  // #define V_cdm(m) cdm(1,1,m)/3. - delta_cdm_1*(-k2_m[m+1]*v_cdm_2) - delta_cdm_2*(-k1_m[m+1]*v_cdm_1)
+  // #define sigma_cdm(m) -2/15.*ppw2->cdm_22m[m] + 2*k1_ten_k2[m+2]*v_cdm_1*v_cdm_2
+  // #define V_ur(m) N(1,m)*0.25 - delta_ur_1*(-k2_m[m+1]*v_ur_2) - delta_ur_2*(-k1_m[m+1]*v_ur_1)
+  // #define sigma_ur(m) -2/15.*N(2,m) + 8/3.*k1_ten_k2[m+2]*v_ur_1*v_ur_2  
   
   // ===========================================================================================
   // =                                Compute analytical limits                                =
@@ -10617,14 +10376,16 @@ int perturb2_save_early_transfers (
     int m = ppt2->m[index_m];
     sprintf(buffer, "vel_b_m%d", m);
     if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
-    else fprintf(file_tr, format_value, V_b(m));
+    else fprintf(file_tr, format_value,
+      b(1,1,m)/3. - delta_b_1*(-k2_m[m+1]*v_b_2) - delta_b_2*(-k1_m[m+1]*v_b_1));
   }
   // sigma_b[m]
   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
     int m = ppr2->m[index_m];
     sprintf(buffer, "sigma_b_m%d", m);
     if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
-    else fprintf(file_tr, format_value, sigma_b(m));    
+    else fprintf(file_tr, format_value,
+      -2/15.*ppw2->b_22m[m] + 2*k1_ten_k2[m+2]*v_b_1*v_b_2);
   }  
   // *** CDM fluid limit variables
   if (pba->has_cdm == _TRUE_ ) {
@@ -10642,7 +10403,8 @@ int perturb2_save_early_transfers (
         int m = ppt2->m[index_m];
         sprintf(buffer, "vel_cdm_m%d", m);
         if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
-        else fprintf(file_tr, format_value, V_cdm(m));
+        else fprintf(file_tr, format_value,
+          cdm(1,1,m)/3. - delta_cdm_1*(-k2_m[m+1]*v_cdm_2) - delta_cdm_2*(-k1_m[m+1]*v_cdm_1));
       }
     }  
     // sigma_cdm[m]
@@ -10650,7 +10412,8 @@ int perturb2_save_early_transfers (
       int m = ppr2->m[index_m];
       sprintf(buffer, "sigma_cdm_m%d", m);
       if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
-      else fprintf(file_tr, format_value, sigma_cdm(m));    
+      else fprintf(file_tr, format_value,
+        -2/15.*ppw2->cdm_22m[m] + 2*k1_ten_k2[m+2]*v_cdm_1*v_cdm_2);    
     }  
   }
    
@@ -10668,14 +10431,16 @@ int perturb2_save_early_transfers (
     int m = ppr2->m[index_m];
     sprintf(buffer, "vel_g_m%d", m);
     if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
-    else fprintf(file_tr, format_value, V_g(m));
+    else fprintf(file_tr, format_value,
+      I(1,m)*0.25 - delta_g_1*(-k2_m[m+1]*v_g_2) - delta_g_2*(-k1_m[m+1]*v_g_1));
   }
   // sigma_g[m]
   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
     int m = ppr2->m[index_m];
     sprintf(buffer, "sigma_g_m%d", m);
     if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
-    else fprintf(file_tr, format_value, sigma_g(m));
+    else fprintf(file_tr, format_value, 
+      -2/15.*I(2,m) + 8/3.*k1_ten_k2[m+2]*v_g_1*v_g_2);
   }
   
   // *** Neutrino fluid limit variables
@@ -10693,14 +10458,16 @@ int perturb2_save_early_transfers (
       int m = ppr2->m[index_m];
       sprintf(buffer, "vel_ur_m%d", m);
       if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
-      else fprintf(file_tr, format_value, V_ur(m));
+      else fprintf(file_tr, format_value,
+        N(1,m)*0.25 - delta_ur_1*(-k2_m[m+1]*v_ur_2) - delta_ur_2*(-k1_m[m+1]*v_ur_1));
     }
     // sigma_ur[m]
     for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
       int m = ppr2->m[index_m];
       sprintf(buffer, "sigma_ur_m%d", m);
       if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
-      else fprintf(file_tr, format_value, sigma_ur(m));
+      else fprintf(file_tr, format_value,
+        -2/15.*N(2,m) + 8/3.*k1_ten_k2[m+2]*v_ur_1*v_ur_2);
     }
   }
   
@@ -10862,17 +10629,6 @@ int perturb2_save_early_transfers (
   fprintf(file_tr, "\n");
   fprintf(file_qs, "\n");
   
-  #undef V_b
-  #undef sigma_b
-  #undef V_g
-  #undef sigma_g
-  #undef V_ur
-  #undef sigma_ur
-  #undef V_b
-  #undef sigma_b
-  #undef V_cdm
-  #undef sigma_cdm
-
   return _SUCCESS_;
 
 }
@@ -11110,9 +10866,6 @@ int perturb2_load_sources_from_disk(
   /* Allocate memory to keep the line-of-sight sources */
   class_call (perturb2_allocate_k1_level(ppt2, index_k1), ppt2->error_message, ppt2->error_message);
   
-  /* Running indexes */
-  int index_type, index_k2, index_k3;
-
   /* Open file for reading */
   class_open (ppt2->sources_run_files[index_k1], ppt2->sources_run_paths[index_k1], "rb", ppt2->error_message);
 
@@ -11120,9 +10873,9 @@ int perturb2_load_sources_from_disk(
   if (ppt2->perturbations2_verbose > 2)
     printf("     * reading line-of-sight source for index_k1=%d from '%s' ... \n", index_k1, ppt2->sources_run_paths[index_k1]);
   
-  for (index_type = 0; index_type < ppt2->tp2_size; ++index_type) {
+  for (int index_type = 0; index_type < ppt2->tp2_size; ++index_type) {
   
-    for (index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
+    for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
 
       int k3_size = ppt2->k3_size[index_k1][index_k2];
 
@@ -11166,7 +10919,7 @@ int perturb2_load_sources_from_disk(
   * Save the line of sight sources to disk for a given k1 value. The file were the sources will be saved
   * is given by ppt2->sources_run_paths[index_k1].
   */
-int perturb2_save_sources_to_disk(
+int perturb2_store_sources_to_disk(
         struct perturbs2 * ppt2,
         int index_k1
         )
@@ -11298,15 +11051,13 @@ int perturb2_free_k1_level(
 
   /* Issue an error if ppt2->sources[index_k1] has already been freed */
   class_test (ppt2->has_allocated_sources[index_k1] == _FALSE_,
-              ppt2->error_message,
-              "the index_k1=%d level of ppt2->sources is already free, stop to prevent error", index_k1);
-
-  int index_type, index_k2, index_k3;
+    ppt2->error_message,
+    "the index_k1=%d level of ppt2->sources is already free, stop to prevent error", index_k1);
 
   int k1_size = ppt2->k_size;
 
-  for (index_type = 0; index_type < ppt2->tp2_size; index_type++) {
-    for (index_k2 = 0; index_k2 <= index_k1; index_k2++)
+  for (int index_type = 0; index_type < ppt2->tp2_size; index_type++) {
+    for (int index_k2 = 0; index_k2 <= index_k1; index_k2++)
         free(ppt2->sources[index_type][index_k1][index_k2]);
   
     free(ppt2->sources[index_type][index_k1]);

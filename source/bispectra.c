@@ -71,7 +71,6 @@ int bispectra_init (
     pbi->error_message,
     pbi->error_message);
 
-
 	/* Debug - Print some bispectra configuration (make sure you're not loading the bispectrum from disk, though) */
   // for (int index_bt = 0; index_bt < pbi->bt_size; ++index_bt) {
   //   for (int index_l1 = 0; index_l1 < pbi->l_size; ++index_l1) {
@@ -156,12 +155,11 @@ int bispectra_free(
     free(pbi->index_l_triangular_min);
     free(pbi->index_l_triangular_max);
 
-  for(int index_l1=0; index_l1<pbi->l_size; ++index_l1) {
-    for(int index_l2=0; index_l2<=index_l1; ++index_l2)
-        free (pbi->index_l1_l2_l3[index_l1][index_l1-index_l2]);
-    free (pbi->index_l1_l2_l3[index_l1]);
-  } free (pbi->index_l1_l2_l3);
-
+    for(int index_l1=0; index_l1<pbi->l_size; ++index_l1) {
+      for(int index_l2=0; index_l2<=index_l1; ++index_l2)
+          free (pbi->index_l1_l2_l3[index_l1][index_l1-index_l2]);
+      free (pbi->index_l1_l2_l3[index_l1]);
+    } free (pbi->index_l1_l2_l3);
 
     /* Free pbi->bispectra */
     for (int index_bt=0; index_bt<pbi->bt_size; ++index_bt) {
@@ -174,9 +172,7 @@ int bispectra_free(
       } free (pbi->bispectra[index_bt]);
     } free (pbi->bispectra);
 
-
     /* Arrays specific to the primordial models */
-  
     if ((pbi->has_local_model == _TRUE_) || (pbi->has_equilateral_model == _TRUE_) || (pbi->has_orthogonal_model == _TRUE_)) {
         
       for (int index_bf=0; index_bf < pbi->bf_size; ++index_bf) {
@@ -459,7 +455,16 @@ int bispectra_indices (
     if (pbi->lensed_intrinsic == _TRUE_)
       strcpy (pbi->bt_labels[index_bt], "intrinsic(sqz,lens)");
     else
-      strcpy (pbi->bt_labels[index_bt], "intrinsic(sqz)");
+      strcpy (pbi->bt_labels[index_bt], "intrinsic(sqz,unl)");
+    pbi->bispectrum_type[index_bt] = analytical_bispectrum;
+    pbi->n[analytical_bispectrum]++;
+    pbi->has_reduced_bispectrum[index_bt] = _TRUE_;
+    index_bt++;
+  }
+
+  if (pbi->has_intrinsic_squeezed_unlensed == _TRUE_) {
+    pbi->index_bt_intrinsic_squeezed_unlensed = index_bt;
+    strcpy (pbi->bt_labels[index_bt], "intrinsic(sqz,unl)");
     pbi->bispectrum_type[index_bt] = analytical_bispectrum;
     pbi->n[analytical_bispectrum]++;
     pbi->has_reduced_bispectrum[index_bt] = _TRUE_;
@@ -613,15 +618,13 @@ int bispectra_indices (
       int index_l_triangular_min = 0;
       while (pbi->l[index_l_triangular_min] < l_triangular_min) ++index_l_triangular_min;
 
-
       /* Find the index corresponding to l_triangular_max inside pbi->l */
       class_test (l_triangular_max <= pbi->l[0],
         pbi->error_message,
         "could not fulfill triangular condition for l3 using the multipoles in pbi->l");
       
       int index_l_triangular_max = pbi->l_size-1;
-      while (pbi->l[index_l_triangular_max] > l_triangular_max) --index_l_triangular_max;
-    
+      while (pbi->l[index_l_triangular_max] > l_triangular_max) --index_l_triangular_max;    
 
       /* Fill pbi->index_l_triangular_min and pbi->l_triangular_size */
       pbi->index_l_triangular_min[index_l1][index_l2] = index_l_triangular_min;
@@ -684,13 +687,19 @@ int bispectra_indices (
   for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt) {
 
     pbi->window_function[index_bt] = NULL;
+    
+    /* Previously, SONG used to interpolate the bispectra in the two smallest l-multipoles. That
+    was not a good idea, and we needed to use window functions. Now we interpolate the two 
+    largest l's instead, and we don't need window functions anymore. */
+    continue;
 
     /* In absence of reionisation and for polarisation, better results are obtained without a window
     function. The reason is that the C_l's for polarisation are tiny at small l's without
     reionisation, so multiplying and dividing by the window functions creates numerical
     instabilities. The patology is stronger for bispectra that peak in the squeezed limit,
     as in that case the large scales are those where most of the signal comes from. */
-    
+    /* TODO: the above statement has to be corrected in terms of the new interpolation,
+    which relies on interpolating the two largest multipoles */
     if ((ppr->has_reionization == _FALSE_) && (pbi->has_bispectra_e == _TRUE_) && (pbi->bf_size > 1)) {
       continue;
     }
@@ -701,7 +710,6 @@ int bispectra_indices (
           
       else if ((pbi->has_intrinsic == _TRUE_) && (index_bt == pbi->index_bt_intrinsic))
         pbi->window_function[index_bt] = bispectra_local_window_function;
-        // pbi->window_function[index_bt] = bispectra_intrinsic_squeezed_bispectrum; /* CRAZY RESULTS */
           
       else if ((pbi->has_intrinsic_squeezed == _TRUE_) && (index_bt == pbi->index_bt_intrinsic_squeezed))
         pbi->window_function[index_bt] = bispectra_local_window_function;
@@ -791,65 +799,10 @@ int bispectra_indices (
   // ==============================================================================================
   
   
-  /* If it does not exist, create the directory for the bispectra.  Also create/open
-  a status file.  The status file is an ASCII file used to determine the bispectra type that
-  we already succesfully stored the bispectra. */
-  if (pbi->store_bispectra_to_disk == _TRUE_) {
+  /* Create the files to store the bispectra in */
+  if ((ppr->store_bispectra_to_disk == _TRUE_) || (ppr->load_bispectra_from_disk == _TRUE_)) {
 
-    sprintf(pbi->bispectra_run_directory, "%s/bispectra", ppr->run_directory);
-    
-    /* If we are not in a load run, just create the bispectra directory */
-    if (ppr->load_run == _FALSE_) {
-      class_test (mkdir (pbi->bispectra_run_directory, 0777)!=0,
-                  pbi->error_message,
-                  "could not create directory '%s', maybe it already exists?", pbi->bispectra_run_directory);
-    }
-    /* Otherwise, determine whether to skip the bispectrum module based on the content of the existence of the bispectra directory */
-    else {
-
-      struct stat st;
-      short bispectra_dir_exists = (stat(pbi->bispectra_run_directory, &st)==0);
-
-      /* If the bispectra folder already exists, assume that the bispectra have already been computed */
-      if (bispectra_dir_exists) {
-
-        if (pbi->bispectra_verbose > 1)
-          printf (" -> found bispectra folder.\n");
-
-        pbi->load_bispectra_from_disk = _TRUE_;
-      }
-      
-      /* If the bispectra folder does not exist, add it to the load run and compute the bispectra */
-      else {
-
-        if (pbi->bispectra_verbose > 1)
-          printf ("     * bispectra folder not found, will create it.\n");
-
-        class_test (mkdir (pbi->bispectra_run_directory, 0777)!=0,
-                    pbi->error_message,
-                    "could not create directory '%s', maybe it already exists?", pbi->bispectra_run_directory);
-        
-        pbi->load_bispectra_from_disk = _FALSE_;
-
-      } // end of if(bispectra_dir_exists)
-      
-    } // end of if(load_run)
-    
-  
-    /* Create/open the status file. The 'a+' mode means that if the file does not exist it will be created,
-    but if it exist it won't be erased (append mode) */
-    sprintf(pbi->bispectra_status_path, "%s/bispectra_status_file.txt", ppr->run_directory);
-    class_open(pbi->bispectra_status_file, pbi->bispectra_status_path, "a+", pbi->error_message);
-    
-  
-    // *** Allocate bispectra files
-    int index_bt;
-  
-    if (pbi->bispectra_verbose > 1)
-      if (ppr->load_run == _FALSE_)
-        printf ("     * will create %d files for the bispectra\n", pbi->bt_size);
-    
-    /* We are going to store the bispectra in n=k_size files, one for each requested k1 */
+    /* We are going to store the bispectra in n=bt_size files, one for each requested type of bispectrum */
     class_alloc (pbi->bispectra_run_files, pbi->bt_size*sizeof(FILE *), pbi->error_message);
     class_alloc (pbi->bispectra_run_paths, pbi->bt_size*sizeof(char *), pbi->error_message);
   
@@ -860,8 +813,12 @@ int bispectra_indices (
       sprintf (pbi->bispectra_run_paths[index_bt], "%s/bispectra_%s.dat", pbi->bispectra_run_directory, pbi->bt_labels[index_bt]);
       
     } // end of for(index_bt)
-  
-  } // end of if(pbi->store_bispectra_to_disk)
+
+    if (ppr->store_bispectra_to_disk == _TRUE_)
+      if (pbi->bispectra_verbose > 1)
+        printf ("     * will create %d files for the bispectra\n", pbi->bt_size);
+      
+  } // end of if(ppr->store_bispectra_to_disk)
   
   
 
@@ -1104,11 +1061,8 @@ int bispectra_cls (
     || (pbi->has_cmb_lensing_squeezed == _TRUE_)
     || (pbi->has_cmb_lensing_kernel == _TRUE_)) {
       
-      /* TODO: Consider implementing these values in the structure and then set in the Fisher matrix
-      estimator a condition 'if (l3>lmax_lensing_corrT) continue'. This would speed up the computation
-      of the estimator sensibly */
       pbi->lmax_lensing_corrT = 300;
-      pbi->lmax_lensing_corrE = 40;
+      pbi->lmax_lensing_corrE = 300;
       
       if ((l > pbi->lmax_lensing_corrT) && (pbi->has_bispectra_t == _TRUE_))
         pbi->cls[psp->index_ct_tp][l-2] = 0;
@@ -1341,7 +1295,7 @@ int bispectra_harmonic (
   /* Apart from the secondary bispectra in pbi->bispectra, all the arrays needed by the subsequent modules
   have been filled. If the user requested to load the bispectra from disk, we can stop the execution of
   this module now without regrets. */
-  if (pbi->load_bispectra_from_disk == _TRUE_) {
+  if (ppr->load_bispectra_from_disk == _TRUE_) {
     
     if (pbi->bispectra_verbose > 0)
       printf(" -> the intrinsic and non-separable bispectra will be read from disk\n");
@@ -1392,7 +1346,7 @@ int bispectra_harmonic (
   // =                                       Save bispectra to disk                                        =
   // =======================================================================================================
   
-  if (pbi->store_bispectra_to_disk == _TRUE_) {
+  if (ppr->store_bispectra_to_disk == _TRUE_) {
 
     for (int index_bt = 0; index_bt < pbi->bt_size; ++index_bt) {
 
@@ -2302,6 +2256,9 @@ int bispectra_analytical_init (
     
     else if ((pbi->has_intrinsic_squeezed == _TRUE_) && (index_bt == pbi->index_bt_intrinsic_squeezed))
       pbi->bispectrum_function[index_bt] = bispectra_intrinsic_squeezed_bispectrum;
+     
+    else if ((pbi->has_intrinsic_squeezed_unlensed == _TRUE_) && (index_bt == pbi->index_bt_intrinsic_squeezed_unlensed))
+      pbi->bispectrum_function[index_bt] = bispectra_intrinsic_squeezed_unlensed_bispectrum;
      
     else if ((pbi->has_quadratic_correction == _TRUE_) && (index_bt == pbi->index_bt_quadratic))
       pbi->bispectrum_function[index_bt] = bispectra_quadratic_bispectrum;
@@ -4706,6 +4663,58 @@ int bispectra_intrinsic_squeezed_bispectrum (
 }
 
 
+/**
+ * Same as above, but using the unlensed power spectrum, which gives more signal as the
+ * lensed C_l's oscillate less. See 'bispectra_intrinsic_squeezed_bispectrum' for details.
+ */
+
+int bispectra_intrinsic_squeezed_unlensed_bispectrum (
+     struct precision * ppr,
+     struct spectra * psp,
+     struct lensing * ple,
+     struct bispectra * pbi,
+     int l1, int l2, int l3,
+     int X, int Y, int Z,
+     double threej_l1_l2_l3_0_0_0,
+     double threej_l1_l2_l3_2_0_m2,
+     double threej_l1_l2_l3_m2_2_0,
+     double threej_l1_l2_l3_0_m2_2,
+     double * result
+     )
+{
+
+  /* Test that l3 is the smallest multipole */
+  class_test ((l1<l3) || (l2<l3),
+    pbi->error_message,
+    "in all squeezed approximations, make sure l3 is the smallest multipole");
+
+  /* We take l3 to be the long wavelength and l1 and l2 the short ones. This is the only sensible
+  choice as the l-loop we are into is constructed to have l1>=l2>=l3. */
+  double cl3_Zz = pbi->cls[pbi->index_ct_of_zeta_bf[ Z ]][l3-2];
+  double dcl1_XY = pbi->d_lsq_cls[pbi->index_ct_of_bf_bf[X][Y]][l1-2];
+  double dcl2_XY = pbi->d_lsq_cls[pbi->index_ct_of_bf_bf[X][Y]][l2-2];
+  
+  /* Ricci focussing in Lewis 2012 (eq. 4.1) */
+  double bolometric_T_lewis_ricci = - 0.5 * cl3_Zz * (dcl1_XY/l1 + dcl2_XY/l2);
+
+  /* Redshift modulation in Lewis 2012 (eq. 4.2). This exists only if Y=Z=temperature */
+  double bolometric_T_lewis_redshift = 0;
+          
+  if (pbi->has_bispectra_t == _TRUE_) {
+    double cl3_Zt_long = 0; double cl1_Xt_short = 0; double cl2_Yt_short = 0;
+    cl3_Zt_long = pbi->cls[pbi->index_ct_of_bf_bf[Z][pbi->index_bf_t]][l3-2];
+    if (Y == pbi->index_bf_t) cl1_Xt_short = pbi->cls[pbi->index_ct_of_bf_bf[X][pbi->index_bf_t]][l1-2];
+    if (X == pbi->index_bf_t) cl2_Yt_short = pbi->cls[pbi->index_ct_of_bf_bf[Y][pbi->index_bf_t]][l2-2];
+    bolometric_T_lewis_redshift = cl3_Zt_long * (cl1_Xt_short + cl2_Yt_short);
+  }
+          
+  /* Sum of Ricci focussing and redshift modulation */
+  *result = bolometric_T_lewis_ricci + bolometric_T_lewis_redshift;
+
+  return _SUCCESS_;
+
+}
+
 
 /** 
  * 
@@ -5014,6 +5023,7 @@ int bispectra_local_window_function (
      )
 {
 
+  /* Interpolate all bispectra with temperature's C_l1*C_l2 */
   if (pbi->has_bispectra_t == _TRUE_) {
     *result = 
         pbi->cls[psp->index_ct_tt][l1-2] * pbi->cls[psp->index_ct_tt][l2-2]
@@ -5029,6 +5039,17 @@ int bispectra_local_window_function (
   else {
     class_stop (pbi->error_message, "bispectra with two non-temperature fields are not implemented yet.\n");
   }
+
+  /* Interpolate only temperature */
+  // if ((pbi->has_bispectra_t == _TRUE_) && (X==pbi->index_bf_t) && (X==Y) && (X==Z)) {
+  //   *result = 
+  //       pbi->cls[psp->index_ct_tt][l1-2] * pbi->cls[psp->index_ct_tt][l2-2]
+  //     + pbi->cls[psp->index_ct_tt][l2-2] * pbi->cls[psp->index_ct_tt][l3-2]
+  //     + pbi->cls[psp->index_ct_tt][l3-2] * pbi->cls[psp->index_ct_tt][l1-2];
+  // }
+  // else {
+  //   *result = 1;
+  // }
 
   return _SUCCESS_;
 

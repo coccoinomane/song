@@ -530,20 +530,20 @@ int input2_init (
   // *** Set ppt2->has_pure_scattering_in_los
   class_call(parser_read_string(pfc,"include_pure_scattering_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
 
-  if ((flag1 == _TRUE_) && (strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL))
-    ppt2->has_pure_scattering_in_los = _FALSE_;
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+    ppt2->has_pure_scattering_in_los = _TRUE_;
 
   // *** Set ppt2->has_photon_monopole_in_los
   class_call(parser_read_string(pfc,"include_photon_monopole_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
 
-  if ((flag1 == _TRUE_) && (strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL))
-    ppt2->has_photon_monopole_in_los = _FALSE_;
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+    ppt2->has_photon_monopole_in_los = _TRUE_;
   
   // *** Set ppt2->has_quad_scattering_in_los
   class_call(parser_read_string(pfc,"include_quad_scattering_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
 
-  if ((flag1 == _TRUE_) && (strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL))
-    ppt2->has_quad_scattering_in_los = _FALSE_;
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+    ppt2->has_quad_scattering_in_los = _TRUE_;
 
   /* Metric sources exist only for temperature */
   if (ppt2->has_cmb_temperature == _TRUE_) {
@@ -551,14 +551,14 @@ int input2_init (
     // *** Set ppt2->has_metric_in_los
     class_call(parser_read_string(pfc,"include_metric_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
 
-    if ((flag1 == _TRUE_) && (strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL))
-      ppt2->has_metric_in_los = _FALSE_;
+    if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+      ppt2->has_metric_in_los = _TRUE_;
 
     // *** Set ppt2->has_quad_metric_in_los
     class_call(parser_read_string(pfc,"include_quad_metric_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
 
-    if ((flag1 == _TRUE_) && (strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL))
-      ppt2->has_quad_metric_in_los = _FALSE_;
+    if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+      ppt2->has_quad_metric_in_los = _TRUE_;
   }
 
   // *** Set ppt2->has_time_delay_in_los
@@ -600,7 +600,6 @@ int input2_init (
     if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
       ppt2->has_integrated_sachs_wolfe_in_los = _TRUE_;
 
-
     /* Avoid counting twice the same metric effect */
     if ((ppt2->has_sachs_wolfe_in_los == _TRUE_) || (ppt2->has_integrated_sachs_wolfe_in_los == _TRUE_))
       ppt2->has_metric_in_los = _FALSE_;
@@ -615,7 +614,6 @@ int input2_init (
       && (ppt2->has_quad_metric_in_los == _FALSE_) && (ppt2->has_time_delay_in_los == _FALSE_)
       && (ppt2->has_redshift_in_los == _FALSE_) && (ppt2->has_lensing_in_los == _FALSE_))
     ppt2->has_recombination_only = _TRUE_;
-  
 
   /* Should we define the SW effect as in Huang and Vernizzi 2013, i.e. including the -psi*psi contribution? */
   if (ppt2->has_sachs_wolfe_in_los == _TRUE_) {
@@ -989,59 +987,124 @@ int input2_init (
   
 
   // =============================================================================================
-  // =                           Storage of intermediate results                                 =
+  // =                                Disk storage of sources                                    =
   // =============================================================================================
 
+  /* Store to disk the second-order line of sight sources? */
+  class_call(parser_read_string(pfc,"store_sources",&(string1),&(flag1),errmsg),
+      errmsg,
+      errmsg);
+   
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+    ppr2->store_sources_to_disk = _TRUE_;
 
-  /* Which intermediate results should we store? */
-  if ( (ppr->store_run == _TRUE_) || (ppr->load_run == _TRUE_) ) {
+  sprintf(ppt2->sources_run_directory, "%s/sources", ppr->run_directory);
+
+  /* If we are not loading from disk, just create the source directory */
+  if ((ppr2->store_sources_to_disk == _TRUE_) && (ppr->load_run == _FALSE_)) {
+    
+    class_test (mkdir (ppt2->sources_run_directory, 0777) != 0,
+      errmsg,
+      "could not create directory '%s', maybe it already exists?", ppt2->sources_run_directory);
+  }
+  /* If we are in a run directory, checks if it already contains the source functions */
+  else if (ppr->load_run == _TRUE_) {
+
+    struct stat st;
+    short sources_dir_exists = (stat(ppt2->sources_run_directory, &st)==0);
+
+    /* If the sources directory exists, then we shall load the 2nd-order source functions from it */
+    if (sources_dir_exists) {
+      ppr2->store_sources_to_disk = _FALSE_;
+      ppr2->load_sources_from_disk = _TRUE_;
+      if (ppt2->perturbations2_verbose > 1)
+        printf (" -> found source functions folder in run directory.\n");
+    }
+    /* Otherwise, create it */
+    else if (ppr2->store_sources_to_disk == _TRUE_) {
+              
+      if (ppt2->perturbations2_verbose > 1)
+        printf (" -> source functions folder not found in run directory, will create it.\n");
+
+      class_test (mkdir (ppt2->sources_run_directory, 0777)!=0,
+        errmsg,
+        "could not create directory '%s', maybe it already exists?", ppt2->sources_run_directory);
+        
+      ppr2->load_sources_from_disk = _FALSE_;
+    }
+  }
+
+  /* Create/open the status file. The 'a+' mode means that if the file does not exist it will be created,
+  but if it exist it won't be erased (append mode) */
+  if (ppr2->store_sources_to_disk == _TRUE_) {
+    sprintf(ppt2->sources_status_path, "%s/sources_status_file.txt", ppr->run_directory);
+    class_open(ppt2->sources_status_file, ppt2->sources_status_path, "a+", errmsg);
+  }
+
+  class_test ((ppr2->store_sources_to_disk == _TRUE_) && (ppr2->load_sources_from_disk == _TRUE_),
+    errmsg,
+    "cannot load and save sources at the same time!");
     
 
-    // *** Store line of sight sources?
-    class_call(parser_read_string(pfc,"store_sources",&(string1),&(flag1),errmsg),
-        errmsg,
-        errmsg);
-     
-    if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-      ppt2->store_sources_to_disk = _TRUE_;
+  // =============================================================================================
+  // =                               Disk storage of transfers                                   =
+  // =============================================================================================
 
+  /* Store to disk the second-order transfer functions? */
+  class_call(parser_read_string(pfc,"store_transfers",&(string1),&(flag1),errmsg),
+      errmsg,
+      errmsg);
 
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+    ppr2->store_transfers_to_disk = _TRUE_;
 
-    // *** Store transfer functions?
-    class_call(parser_read_string(pfc,"store_transfers",&(string1),&(flag1),errmsg),
-        errmsg,
-        errmsg);
-     
-    if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-      ptr2->store_transfers_to_disk = _TRUE_;
+  sprintf(ptr2->transfers_run_directory, "%s/transfers", ppr->run_directory);
 
-
-  } // end of if (store_run)
-
-
-  /* The flag ppt2->store_sources_to_disk has two different meanings according to whether ppr->load_run is false
-    or true.  If ppr->load_run == _TRUE_, then store_sources_to_disk == _TRUE_ indicates that the run that we are
-    loading contains the sources.  If ppr->load_run == _FALSE_, then store_sources_to_disk == _TRUE_ means that we shall
-    save the sources to disk.  When ppt2->store_sources_to_disk is _FALSE_, we assume that there is no storing
-    nor loading of the sources.  As a consequence, when ppt2->store_sources_to_disk == _FALSE_ the usage of RAM
-    is maximized, as all the sources need to be stored in ppt2->sources at the same time.  This is why we define
-    the negation of ppt2->store_sources_to_disk as ppt2->keep_sources_in_memory.
+  /* If we are not loading from disk, just create the transfer directory */
+  if ((ppr2->store_transfers_to_disk == _TRUE_) && (ppr->load_run == _FALSE_)) {
     
-    The same reasoning applies to ptr2->store_transfers_to_disk. */
-  ppt2->load_sources_from_disk = _FALSE_;
-  if ((ppr->load_run==_TRUE_) && (ppt2->store_sources_to_disk==_TRUE_))
-    ppt2->load_sources_from_disk = _TRUE_;
+    class_test (mkdir (ptr2->transfers_run_directory, 0777) != 0,
+      errmsg,
+      "could not create directory '%s', maybe it already exists?", ptr2->transfers_run_directory);
+  }
+  /* If we are in a run directory, checks if it already contains the transfer functions */
+  else if (ppr->load_run == _TRUE_) {
 
+    struct stat st;
+    short transfers_dir_exists = (stat(ptr2->transfers_run_directory, &st)==0);
 
-  ptr2->load_transfers_from_disk = _FALSE_;
-  if ((ppr->load_run==_TRUE_) && (ptr2->store_transfers_to_disk==_TRUE_))
-    ptr2->load_transfers_from_disk = _TRUE_;
+    /* If the transfers directory exists, then we shall load the 2nd-order transfer functions from it */
+    if (transfers_dir_exists) {
+      ppr2->store_transfers_to_disk = _FALSE_;
+      ppr2->load_transfers_from_disk = _TRUE_;
+      if (ptr2->transfer2_verbose > 1)
+        printf (" -> found transfer functions folder in run directory.\n");
+    }
+    /* Otherwise, create it */
+    else if (ppr2->store_transfers_to_disk == _TRUE_) {
+              
+      if (ptr2->transfer2_verbose > 1)
+        printf (" -> transfer functions folder not found in run directory, will create it.\n");
 
+      class_test (mkdir (ptr2->transfers_run_directory, 0777)!=0,
+        errmsg,
+        "could not create directory '%s', maybe it already exists?", ptr2->transfers_run_directory);
+        
+      ppr2->load_transfers_from_disk = _FALSE_;
+    }
+  }
 
+  /* Create/open the status file. The 'a+' mode means that if the file does not exist it will be created,
+  but if it exist it won't be erased (append mode) */
+  if (ppr2->store_transfers_to_disk == _TRUE_) {
+    sprintf(ptr2->transfers_status_path, "%s/transfers_status_file.txt", ppr->run_directory);
+    class_open(ptr2->transfers_status_file, ptr2->transfers_status_path, "a+", errmsg);
+  }
 
-
-
-
+  class_test ((ppr2->store_transfers_to_disk == _TRUE_) && (ppr2->load_transfers_from_disk == _TRUE_),
+    errmsg,
+    "cannot load and save transfers at the same time!");
+    
 
   // =============================================================================================
   // =                                  Interpolation techniques                                 =
@@ -1059,7 +1122,8 @@ int input2_init (
     if (((strstr(string1,"linear") != NULL) || (strstr(string1,"LINEAR") != NULL)))
       ppr2->sources_time_interpolation = linear_interpolation;
 
-    else if (((strstr(string1,"cubic") != NULL) || (strstr(string1,"CUBIC") != NULL) || (strstr(string1,"spline") != NULL) || (strstr(string1,"SPLINE") != NULL)))
+    else if (((strstr(string1,"cubic") != NULL) || (strstr(string1,"CUBIC") != NULL)
+    || (strstr(string1,"spline") != NULL) || (strstr(string1,"SPLINE") != NULL)))
       ppr2->sources_time_interpolation = cubic_interpolation;
     
     else
@@ -1079,7 +1143,8 @@ int input2_init (
     if (((strstr(string1,"linear") != NULL) || (strstr(string1,"LINEAR") != NULL)))
       ppr2->sources_k3_interpolation = linear_interpolation;
 
-    else if (((strstr(string1,"cubic") != NULL) || (strstr(string1,"CUBIC") != NULL) || (strstr(string1,"spline") != NULL) || (strstr(string1,"SPLINE") != NULL)))
+    else if (((strstr(string1,"cubic") != NULL) || (strstr(string1,"CUBIC") != NULL)
+    || (strstr(string1,"spline") != NULL) || (strstr(string1,"SPLINE") != NULL)))
       ppr2->sources_k3_interpolation = cubic_interpolation;
     
     else
@@ -1459,7 +1524,6 @@ int input2_default_params (
   ppt2->has_perfect_baryons = _TRUE_;
   ppt2->has_perfect_cdm = _TRUE_;
   ptr2->has_transfers2_only = _FALSE_;
-  ppt2->store_sources_to_disk = _FALSE_;
   ppt2->rescale_quadsources = _TRUE_;
 
   ppt2->rescale_quadsources = _FALSE_;
@@ -1468,11 +1532,11 @@ int input2_default_params (
   ppt2->has_redshift_in_liouville = _TRUE_;
   ppt2->has_lensing_in_liouville = _TRUE_;
   
-  ppt2->has_pure_scattering_in_los = _TRUE_;
-  ppt2->has_photon_monopole_in_los = _TRUE_;
-  ppt2->has_quad_scattering_in_los = _TRUE_;
-  ppt2->has_metric_in_los = _TRUE_;
-  ppt2->has_quad_metric_in_los = _TRUE_;
+  ppt2->has_pure_scattering_in_los = _FALSE_;
+  ppt2->has_photon_monopole_in_los = _FALSE_;
+  ppt2->has_quad_scattering_in_los = _FALSE_;
+  ppt2->has_metric_in_los = _FALSE_;
+  ppt2->has_quad_metric_in_los = _FALSE_;
 
   ppt2->has_time_delay_in_los = _FALSE_;
   ppt2->has_redshift_in_los = _FALSE_;
@@ -1578,8 +1642,6 @@ int input2_default_params (
   ptr2->transfer2_verbose = 0;
   ptr2->k_sampling = class_transfer2_k_sampling;
   ptr2->tau_sampling = custom_transfer2_tau_sampling;
-  ptr2->store_transfers_to_disk = _FALSE_;
-
 
 
   // ============================================================
@@ -1614,14 +1676,18 @@ int input2_default_params (
 int input2_default_precision ( struct precision2 * ppr2 ) {
 
 
-  // ******      Tolerance       *******
+  // ===================================================================
+  // =                              Tolerance                          =
+  // ===================================================================
 
   ppr2->tol_perturb_integration_2nd_order=1.e-5;
 
 
 
 
-  // ******      Multipole limits       *******
+  // ==================================================================
+  // =                          Multipole limits                      =
+  // ==================================================================
 
   ppr2->m_max_2nd_order=0;
 
@@ -1647,7 +1713,9 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   ppr2->m[0] = 0;
 
 
-  // ******      Time samplings       *******
+  // ======================================================================
+  // =                            Time samplings                          =
+  // ======================================================================
 
   ppr2->perturb_sampling_stepsize_2nd_order = 0.08;
   ppr2->start_small_k_at_tau_c_over_tau_h_2nd_order = 0.0015;  /* decrease to start earlier in time */
@@ -1655,8 +1723,10 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
 
 
 
-  // ******        k-sampling      *******
-  
+  // =====================================================================
+  // =                             k samplings                           =
+  // =====================================================================
+
   /* CLASS smart sampling */
   ppr2->k_scalar_min_tau0_2nd_order = 1.;
   ppr2->k_scalar_max_tau0_over_l_max_2nd_order = 2.;
@@ -1670,32 +1740,42 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
 
   /* Transfer function tau-sampling (used only if ptr2->tau_sampling == custom_transfer2_tau_sampling) */
   ppr2->tau_step_trans_2nd_order = 0.25;
-
   
   /* Scalars */
   ppr2->k_min_scalars = 1e-4;
   ppr2->k_max_scalars = 0.1;  
   ppr2->k_size_scalars = 10;
 
-
   /* k-triangular */
   ppr2->k3_size_min = 5;
   ppr2->k3_size = 100;
   
 
-
-
-  // *******      Bessel functions       ********
+  // ====================================================================
+  // =                           Bessel functions                       =
+  // ====================================================================
   ppr2->bessel_j_cut_2nd_order = 1e-12;
   ppr2->bessel_J_cut_2nd_order = 1e-6;
   ppr2->bessel_x_step_2nd_order = 0.3;
 
 
 
-  // *******     Interpolation and integration      *********
+  // ======================================================================
+  // =                    Interpolation and integration                   =
+  // ======================================================================
+  
   ppr2->sources_time_interpolation = linear_interpolation;
   ppr2->sources_k3_interpolation = linear_interpolation;
 
+  
+  // ===============================================================================
+  // =                                  Technical stuff                            =
+  // ===============================================================================
+
+  ppr2->store_sources_to_disk = _FALSE_;
+  ppr2->load_sources_from_disk = _FALSE_;
+  ppr2->store_transfers_to_disk = _FALSE_;
+  ppr2->load_transfers_from_disk = _FALSE_;
 
   return _SUCCESS_;
 

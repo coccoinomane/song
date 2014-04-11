@@ -192,8 +192,11 @@ struct precision2
 	// =           Misc         =
 	// ==========================
 
-  ErrorMsg error_message;            /* Zone for writing error messages */
-
+  ErrorMsg error_message;         /* Zone for writing error messages */
+  short store_transfers_to_disk;  /* Should we store the transfer functions to disk? */
+  short load_transfers_from_disk; /* Should we load the transfer functions from disk? */
+  short store_sources_to_disk;    /* Should we store the source functions to disk? */
+  short load_sources_from_disk;   /* Should we load the source functions from disk? */
 
 
 };  /* end of struct precision2 declaration */

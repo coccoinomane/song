@@ -5,8 +5,6 @@
 #include "common2.h"
 
 
-
-
 // =============================================================
 // =                       Approximations                      =
 // =============================================================
@@ -470,17 +468,6 @@ struct perturbs2
   // =================================================================================
   // =                        Storage of intermediate results                        =
   // =================================================================================
-
-  /* Should we store the content of ppt2->sources to disk? */
-  short store_sources_to_disk;
-
-  /* Should we bother computing the sources, or they will be loaded from disk?  This flag is on only
-    if both ppr->load_run and 'store_sources_to_disk' are on. */
-  short load_sources_from_disk;
-
-  /* Should we keep the sources in the memory, rather than using the disk?  This flag is just the
-    negation of 'store_sources_to_disk' */
-  short keep_sources_in_memory;
 
   /* File that will keep track how how many sources files have been succesfully written */
   FILE * sources_status_file;
@@ -1299,7 +1286,7 @@ struct perturb2_parameters_and_workspace {
             struct perturb2_workspace * ppw2
             );
 
-    int perturb2_save_sources_to_disk(
+    int perturb2_store_sources_to_disk(
             struct perturbs2 * ppt2,
             int index_k1
             );
@@ -1325,5 +1312,7 @@ struct perturb2_parameters_and_workspace {
 #endif
 
 /**************************************************************/
+  
+  
 
 #endif

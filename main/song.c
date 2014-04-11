@@ -147,7 +147,7 @@ int main(int argc, char **argv) {
   //   return _FAILURE_;
   // }
   // 
-  // if (transfer2_free(&pt2,&tr2) == _FAILURE_) {
+  // if (transfer2_free(&pr2,&pt2,&tr2) == _FAILURE_) {
   //   printf("\n\nError in transfer2_free \n=>%s\n",tr2.error_message);
   //   return _FAILURE_;
   // }

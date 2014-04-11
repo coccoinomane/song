@@ -60,11 +60,15 @@ int compute_cls(
       printf ("Will increase l_max for lensed C_l's\n");
   }
 
-  /* Do not create the run directory twice */ 
+  /* Do not create nor use run directories */ 
+  pr.load_run = _FALSE_;
   class_call (parser_overwrite_entry (pfc, "store_run", "no", &found, error_message),
     error_message,
     error_message);
-  
+  class_call (parser_overwrite_entry (pfc, "store_bispectra", "no", &found, error_message),
+    error_message,
+    error_message);
+
   /* Re-read the parameters, this time from the modified 'file_content' structure. */
   class_call (input_init (pfc,&pr,pba,pth,&pt,&bs,&tr,&pm,psp,&bi,&fi,pnl,ple,&op,error_message),
     error_message,
@@ -81,7 +85,7 @@ int compute_cls(
   // =                                      Run CLASS                                     =
   // ======================================================================================
     
-  pt.perturbations_verbose = 0;
+  // pt.perturbations_verbose = 0;
   class_call (perturb_init(&pr,pba,pth,&pt),
     error_message,
     error_message);

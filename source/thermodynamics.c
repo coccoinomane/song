@@ -3328,7 +3328,7 @@ int thermodynamics_merge_reco_and_reio(
   /** - allocate arrays in thermo structure */
 
   class_alloc(pth->z_table,pth->tt_size*sizeof(double),pth->error_message);
-  class_alloc(pth->th_size*pth->tt_size*sizeof(double),pth->error_message);
+  class_alloc(pth->thermodynamics_table,pth->th_size*pth->tt_size*sizeof(double),pth->error_message);
   class_alloc(pth->d2thermodynamics_dz2_table,pth->th_size*pth->tt_size*sizeof(double),pth->error_message);  
   
   /** - fill these arrays */

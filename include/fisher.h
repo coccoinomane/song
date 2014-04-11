@@ -81,6 +81,7 @@ struct fisher {
   int index_ft_galileon_time;         /* Index for the bispectrum for the pi_dot^3 term in Galileon inflation */
   int index_ft_intrinsic;             /* Index for the bispectrum induced by nonlinear dynamics */
   int index_ft_intrinsic_squeezed;    /* Index for the intrinsic bispectrum in the squeezed limit */  
+  int index_ft_intrinsic_squeezed_unlensed; /* Index for the unlensed intrinsic bispectrum in the squeezed limit */  
   int index_ft_local_squeezed;        /* Index for the local-model bispectrum in the squeezed limit */  
   int index_ft_cosine;                /* Index for the oscillating bispectrum */  
   int index_ft_cmb_lensing;           /* Index for the bispectrum of CMB-lensing */  
@@ -175,12 +176,12 @@ struct fisher {
   in Eq. 5.25 of http://uk.arxiv.org/abs/1101.2234. The indexing of this array is slightly
   different from the others, because we will need to invert it with respect to the last two
   levels (see Eq. 5.35 ibidem):
-  fisher_matrix_CZ_l3[index_l3][index_ft_1*field_size+index_field_C][index_ft_2*field_size+index_field_Z] */
-  double *** fisher_matrix_CZ_l3;
+  fisher_matrix_CZ_smallest[index_l3][index_ft_1*field_size+index_field_C][index_ft_2*field_size+index_field_Z] */
+  double *** fisher_matrix_CZ_smallest;
 
   /* Same as the other arrays defined above, but used to contain the full result including lensing
   variance */
-  double *** fisher_matrix_lensvar_l3;
+  double *** fisher_matrix_lensvar_smallest;
   double *** fisher_matrix_lensvar_lmin;
   double *** inverse_fisher_matrix_lensvar_lmin;
   double ** sigma_fnl_lensvar_lmin;
@@ -237,7 +238,8 @@ struct fisher {
   
   short fisher_verbose;            /* Flag regulating the amount of information sent to standard output (none if set to zero) */                                                    
   char info[8192];                 /* Store Fisher matrix information to be printed out to screen and saved to file */
-  short interpolate_all_bispectra; /* Should we interpolate also the analytical bispectra? */
+  char info_lensvar[8192];         /* Same, also accounting for lensing-induced noise */
+  short always_interpolate_bispectra; /* Should we interpolate also the analytical bispectra? */
   ErrorMsg error_message;          /* Zone for writing error messages */
 
 };
@@ -436,12 +438,12 @@ extern "C" {
         struct bispectra * pbi,
         struct fisher * pfi,
         int index_bt,
-        int X,
-        int Y,
-        int Z,
         double l1,
         double l2,
         double l3,
+        int X,
+        int Y,
+        int Z,
         struct mesh_interpolation_workspace ** mesh,
         double * interpolated_value
         );
@@ -450,12 +452,12 @@ extern "C" {
         struct bispectra * pbi,
         struct fisher * pfi,
         int index_bt,
-        int X,
-        int Y,
-        int Z,
         double l1,
         double l2,
         double l3,
+        int X,
+        int Y,
+        int Z,
         struct mesh_interpolation_workspace ** mesh,
         double * interpolated_value
         );

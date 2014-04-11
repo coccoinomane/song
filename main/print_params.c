@@ -179,6 +179,7 @@ int main(int argc, char **argv) {
   printf("\tbi.has_galileon_model = %d\n", bi.has_galileon_model);
   printf("\tbi.has_intrinsic = %d\n", bi.has_intrinsic);
   printf("\tbi.has_intrinsic_squeezed = %d\n", bi.has_intrinsic_squeezed);
+  printf("\tbi.has_intrinsic_squeezed_unlensed = %d\n", bi.has_intrinsic_squeezed_unlensed);
   printf("\tbi.has_quadratic_correction = %d\n", bi.has_quadratic_correction);
   printf("\tbi.add_quadratic_correction = %d\n", bi.add_quadratic_correction);
   printf("\tbi.include_lensing_effects = %d\n", bi.include_lensing_effects);
@@ -186,20 +187,20 @@ int main(int argc, char **argv) {
   printf("\tpr.extend_lensed_cls = %d\n", pr.extend_lensed_cls);
 
   /* Fisher */
-  printf("\tfi.interpolate_all_bispectra = %d\n", fi.interpolate_all_bispectra);
-  printf("\tfi.l_min_estimator = %d\n", fi.l_min_estimator);
-  printf("\tfi.l_max_estimator = %d\n", fi.l_max_estimator);
-  printf("\tfi.bispectra_interpolation = %d\n", fi.bispectra_interpolation);
-  printf("\tfi.f_sky = %g\n", fi.f_sky);
-  for (int index_channel=0; index_channel < fi.n_channels; ++index_channel) {
-    printf("\tchannel %d: fi.beam = %g arcmins, %g radians\n",
-    index_channel, fi.beam[index_channel] * 60. / (_PI_/180.), fi.beam[index_channel]);
-    printf("\t           fi.noise_t = %g uK\n",
-    index_channel, sqrt(fi.noise_t[index_channel]) * 1e6*ba.T_cmb / fi.beam[index_channel]);
-    printf("\t           fi.noise_e = %g uK\n",
-    index_channel, sqrt(fi.noise_e[index_channel]) * 1e6*ba.T_cmb / fi.beam[index_channel]);
-  }
-  printf("\tfi.include_lensing_effects = %d\n", fi.include_lensing_effects);
+  // printf("\tfi.always_interpolate_bispectra = %d\n", fi.always_interpolate_bispectra);
+  // printf("\tfi.l_min_estimator = %d\n", fi.l_min_estimator);
+  // printf("\tfi.l_max_estimator = %d\n", fi.l_max_estimator);
+  // printf("\tfi.bispectra_interpolation = %d\n", fi.bispectra_interpolation);
+  // printf("\tfi.f_sky = %g\n", fi.f_sky);
+  // for (int index_channel=0; index_channel < fi.n_channels; ++index_channel) {
+  //   printf("\tchannel %d: fi.beam = %g arcmins, %g radians\n",
+  //   index_channel, fi.beam[index_channel] * 60. / (_PI_/180.), fi.beam[index_channel]);
+  //   printf("\t           fi.noise_t = %g uK\n",
+  //   index_channel, sqrt(fi.noise_t[index_channel]) * 1e6*ba.T_cmb / fi.beam[index_channel]);
+  //   printf("\t           fi.noise_e = %g uK\n",
+  //   index_channel, sqrt(fi.noise_e[index_channel]) * 1e6*ba.T_cmb / fi.beam[index_channel]);
+  // }
+  // printf("\tfi.include_lensing_effects = %d\n", fi.include_lensing_effects);
 
   /* Precision parameters - multipoles */
   // printf("* Precision parameters - multipoles\n");  
@@ -257,11 +258,12 @@ int main(int argc, char **argv) {
   /* Storage parameters */
   // printf("* Parameters related to the storage of intermediate results\n");
   // printf("\tpr.store_run = %d\n", pr.store_run);
+  // printf("\tpr.load_run = %d\n", pr.load_run);
   // printf("\tpr.append_date_to_run = %d\n", pr.append_date_to_run);
   // printf("\tpr.run_directory = %s\n", pr.run_directory);
-  // printf("\tpt2.store_sources_to_disk = %d\n", pt2.store_sources_to_disk);
-  // printf("\ttr2.store_transfers_to_disk = %d\n", tr2.store_transfers_to_disk);
-  // printf("\tbi.store_bispectra_to_disk = %d\n", bi.store_bispectra_to_disk);
+  // printf("\tpr2.store_sources_to_disk = %d\n", pr2.store_sources_to_disk);
+  // printf("\tpr2.store_transfers_to_disk = %d\n", pr2.store_transfers_to_disk);
+  // printf("\tpr.store_bispectra_to_disk = %d\n", pr.store_bispectra_to_disk);
 
   /* Approximations parameters */
   // printf("* Parameters related to the approximations adopted at second-order\n");

@@ -48,6 +48,7 @@ struct bispectra {
   short has_galileon_model;           /* Galileon inflation (arXiv:1108.0305) */
   short has_intrinsic;                /* Bispectrum induced by non-linear dynamics */
   short has_intrinsic_squeezed;       /* Squeezed limit for the 2nd-order bispectrum (Creminelli et al. 2012, Bartolo et al. 2012, Lewis 2012) */
+  short has_intrinsic_squeezed_unlensed; /* Same as above, but unlensed */
   short has_local_squeezed;           /* Squeezed limit for local model (Guangui et al. 1994) */
   short has_cosine_shape;             /* The above, multiplied by an oscillating function in l */
   short has_cmb_lensing;              /* CMB-lensing bispectrum (Eq. 4.5 of arxiv:1101.2234) */
@@ -63,6 +64,7 @@ struct bispectra {
   int index_bt_galileon_time;         /* Index for the bispectrum for the pi_dot^3 term in Galileon inflation */
   int index_bt_intrinsic;             /* Index for the bispectrum induced by nonlinear dynamics */
   int index_bt_intrinsic_squeezed;    /* Index for the intrinsic bispectrum in the squeezed limit */  
+  int index_bt_intrinsic_squeezed_unlensed; /* Index for the unlensed intrinsic bispectrum in the squeezed limit */  
   int index_bt_local_squeezed;        /* Index for the local-model bispectrum in the squeezed limit */  
   int index_bt_cosine;                /* Index for the oscillating bispectrum */  
   int index_bt_cmb_lensing;           /* Index for the bispectrum of CMB-lensing */
@@ -248,13 +250,13 @@ struct bispectra {
   /* In the local model, the primordial bispectrum is simply given by
         
     B = 2 * f_NL^local * (P(k1)*P(k2) + P(k1)*P(k3) + P(k2)*P(k3))
-        
-    which means that two of the separated integrals are equal. Here we follow the notation by
-    Komatsu and define two separable integrals, one with the primordial spectrum (beta) and one
-    without it (alpha). We use the notation of Komatsu, Spergel & Wandelt 2005; note that in
-    Komatsu et al 2001 alpha -> b_NL and beta -> b_L.
+      
+  which means that two of the separated integrals are equal. Here we follow the notation by
+  Komatsu and define two separable integrals, one with the primordial spectrum (beta) and one
+  without it (alpha). We use the notation of Komatsu, Spergel & Wandelt 2005; note that in
+  Komatsu et al 2001 alpha -> b_NL and beta -> b_L.
   
-    Each fiter function has an 'index_bf' level that goes over T,E,B...
+  Each fiter function has an 'index_bf' level that goes over T,E,B...
   */
   double *** alpha;              /* alpha[index_bf][index_l][index_r] for temperature */
   double *** beta;               /* beta[index_bf][index_l][index_r] for temperature */
@@ -266,10 +268,10 @@ struct bispectra {
               - 2 (P(k1)*P(k2)*P(k3))^(2/3)   + 5 symm.
               + (P(k1)*P(k2)^2*P(k3)^3)^(1/3) + 5 symm. ).
            
-     There are two extra separable integrals with respect to the local case, which we name 'gamma'
-     and 'delta' following Creminelli et al. 2006 (see eqs. 15-18).
+  There are two extra separable integrals with respect to the local case, which we name 'gamma'
+  and 'delta' following Creminelli et al. 2006 (see eqs. 15-18).
      
-     The same integrals are needed for the orthogonal shape (Senatore et al. 2010, eq. 3.2):
+  The same integrals are needed for the orthogonal shape (Senatore et al. 2010, eq. 3.2):
 
      B = 6 * ( - 3*P(k1)*P(k2) - 3*P(k1)*P(k3) - 3*P(k2)*P(k3)
                - 8*(P(k1)*P(k2)*P(k3))^(2/3)   + 5 symm.
@@ -318,13 +320,6 @@ struct bispectra {
   // ==========================================================================================
   // =                                        Disk IO                                         =
   // ==========================================================================================
-
-  /* Should we store the content of pbi->bispectra to disk? */
-  short store_bispectra_to_disk;
-
-  /* Should we bother computing the bispectra, or they will be loaded from disk? This flag is
-    on only if both ppr->load_run and 'store_bispectra_to_disk' are on. */
-  short load_bispectra_from_disk;
 
   /* Files where the bispectra will be stored (one file for each bispectra type) */
   char bispectra_run_directory[_FILENAMESIZE_];
@@ -925,6 +920,21 @@ extern "C" {
      
      
   int bispectra_intrinsic_squeezed_bispectrum (
+       struct precision * ppr,
+       struct spectra * psp,
+       struct lensing * ple,
+       struct bispectra * pbi,
+       int l1, int l2, int l3,
+       int X1, int X2, int X3,
+       double threej_l1_l2_l3_0_0_0,
+       double threej_l1_l2_l3_2_0_m2,
+       double threej_l1_l2_l3_m2_2_0,
+       double threej_l1_l2_l3_0_m2_2,
+       double * result
+       );
+
+
+  int bispectra_intrinsic_squeezed_unlensed_bispectrum (
        struct precision * ppr,
        struct spectra * psp,
        struct lensing * ple,

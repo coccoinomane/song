@@ -55,7 +55,8 @@ int bessel2_init(
   // *** Do we need to compute the 2nd-order projection functions?
   /* TODO: include a flag so that we don't compute them if we are loading the transfer
   functions from disk */
-  if ((pbs->l_max==0) || ((ppt2->has_cls == _FALSE_) && (ppt2->has_bispectra == _FALSE_))) {
+  if ((pbs->l_max==0) || ((ppt2->has_cls == _FALSE_) && (ppt2->has_bispectra == _FALSE_))
+  || ((ppr2->load_transfers_from_disk == _TRUE_) && (ppr->load_bispectra_from_disk == _TRUE_))) {
 
     if (pbs2->bessels2_verbose > 0)
       printf("No second-order projection functions needed. Second-order Bessel module skipped.\n");
