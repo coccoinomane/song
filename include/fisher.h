@@ -46,6 +46,84 @@ struct fisher {
   and using the lensed C_l's in the covariance matrix */
   short include_lensing_effects;
 
+
+  // ===========================================================================================
+  // =                               Indices of Fisher matrix                                  =
+  // ===========================================================================================
+  
+  /* Indices of the bispectra types to be included in the Fisher matrix */
+  int index_ft_local;                 /* Index for the bispectrum for a local model */
+  int index_ft_equilateral;           /* Index for the bispectrum for a equilateral model */
+  int index_ft_orthogonal;            /* Index for the bispectrum for a orthogonal model */
+  int index_ft_galileon_gradient;     /* Index for the bispectrum for the pi_dot*pi_grad^2 term in Galileon inflation */
+  int index_ft_galileon_time;         /* Index for the bispectrum for the pi_dot^3 term in Galileon inflation */
+  int index_ft_intrinsic;             /* Index for the bispectrum induced by nonlinear dynamics */
+  int index_ft_intrinsic_squeezed;    /* Index for the intrinsic bispectrum in the squeezed limit */  
+  int index_ft_intrinsic_squeezed_unlensed; /* Index for the unlensed intrinsic bispectrum in the squeezed limit */  
+  int index_ft_local_squeezed;        /* Index for the local-model bispectrum in the squeezed limit */  
+  int index_ft_cosine;                /* Index for the oscillating bispectrum */  
+  int index_ft_cmb_lensing;           /* Index for the bispectrum of CMB-lensing */  
+  int index_ft_cmb_lensing_squeezed;  /* Index for the bispectrum of CMB-lensing in the squeezed limit */  
+  int index_ft_cmb_lensing_kernel;    /* Index for the bispectrum of CMB-lensing in the squeezed limit (kernel only) */
+  int ft_size;                    /* Total number of bispectra types requested */
+  
+  /* Index of the first Fisher matrix line that does not refer to an analytical bispectrum. 
+  This is used for the allocation of the mesh interpolation grids */
+  int first_non_analytical_index_ft;
+  int has_only_analytical_bispectra;
+
+  /* Correspondence between rows of the Fisher matrix and the bispectra stored in pbi->bispectra[index_bt] */
+  int index_bt_of_ft[_MAX_NUM_BISPECTRA_];
+
+  /* Arrays that relate the bispectra in the Fisher module to quantities computed in the bispectrum module
+  See documentation for the equivalent arrays in bispectra.h */
+  char ft_labels[_MAX_NUM_BISPECTRA_][_MAX_LENGTH_LABEL_];
+
+  // ======================================================================================
+  // =                                 Indices of fields                                  =
+  // ======================================================================================
+
+  /* Which fields to include in the bispectrum analysis? By default use all that were computed
+  in the bispectrum module, unless they are explicitly ignored by the pfi->ignore_bf flags. */
+  short has_fisher_t;
+  short has_fisher_e;
+  short has_fisher_b;
+  short has_fisher_r;
+
+  /* Should we include in the Fisher matrix analysis all fields (T,E,B...) that were 
+  computed in the bispectrum module? This is the case by default, but sometimes
+  it is useful to restrict the analysis to only to one of them, for example to see the separate
+  effect of T and E in a run that has both. */
+  short ignore_t;
+  short ignore_e;
+  short ignore_b;
+  short ignore_r;
+
+  /* The fields considered in this module and in the Fisher one are denoted by indices 'ff'.
+  These can be temperature (T), E-polarisation (E), B-polarisation (B), Rayleigh (R)...  */
+  int index_ff_t;
+  int index_ff_e;
+  int index_ff_b;
+  int index_ff_r;
+  int ff_size;
+
+  /* Actual number of bispectra to be included in the Fisher matrix (usually 'ff_size' to
+  the power of 3, it is 8 for T and E: TTT, TTE, TET, ETT, EET, ETE, TEE, EEE) */
+  int n_probes;
+
+  /* Correspondence between the fields included in the Fisher matrix and the bispectra stored in
+  pbi->bispectra[index_bt][index_bf_X][index_bf_Y][index_bf_Z] */
+  int index_bf_of_ff[_MAX_NUM_FIELDS_];
+
+  /* Arrays that relate the fields in the Fisher module (T,E,B...) to quantities computed throughout
+  the code. See documentation for the equivalent arrays in bispectra.h */
+  int index_ct_of_phi_ff[_MAX_NUM_FIELDS_];
+  int index_ct_of_ff_ff[_MAX_NUM_FIELDS_][_MAX_NUM_FIELDS_];
+  int index_lt_of_ff_ff[_MAX_NUM_FIELDS_][_MAX_NUM_FIELDS_];
+  char ff_labels[_MAX_NUM_FIELDS_][_MAX_LENGTH_LABEL_]; /* T,E... */
+  char ffff_labels[_MAX_NUM_FIELDS_][_MAX_NUM_FIELDS_][_MAX_NUM_FIELDS_][_MAX_LENGTH_LABEL_]; /* TTT,EEE,TTE... */
+  
+
   // ===============================================================================
   // =                                 Arrays                                      =
   // ===============================================================================
@@ -72,30 +150,6 @@ struct fisher {
   int l2_size;
   int * l3;
   int l3_size;
-  
-  /* Indices of the bispectra types to be included in the Fisher matrix */
-  int index_ft_local;                 /* Index for the bispectrum for a local model */
-  int index_ft_equilateral;           /* Index for the bispectrum for a equilateral model */
-  int index_ft_orthogonal;            /* Index for the bispectrum for a orthogonal model */
-  int index_ft_galileon_gradient;     /* Index for the bispectrum for the pi_dot*pi_grad^2 term in Galileon inflation */
-  int index_ft_galileon_time;         /* Index for the bispectrum for the pi_dot^3 term in Galileon inflation */
-  int index_ft_intrinsic;             /* Index for the bispectrum induced by nonlinear dynamics */
-  int index_ft_intrinsic_squeezed;    /* Index for the intrinsic bispectrum in the squeezed limit */  
-  int index_ft_intrinsic_squeezed_unlensed; /* Index for the unlensed intrinsic bispectrum in the squeezed limit */  
-  int index_ft_local_squeezed;        /* Index for the local-model bispectrum in the squeezed limit */  
-  int index_ft_cosine;                /* Index for the oscillating bispectrum */  
-  int index_ft_cmb_lensing;           /* Index for the bispectrum of CMB-lensing */  
-  int index_ft_cmb_lensing_squeezed;  /* Index for the bispectrum of CMB-lensing in the squeezed limit */  
-  int index_ft_cmb_lensing_kernel;    /* Index for the bispectrum of CMB-lensing in the squeezed limit (kernel only) */
-  int fisher_size;                    /* Total number of bispectra types requested */
-  
-  /* Index of the first Fisher matrix line that does not refer to an analytical bispectrum. 
-  This is used for the allocation of the mesh interpolation grids */
-  int first_non_analytical_index_ft;
-  int has_only_analytical_bispectra;
-
-  /* Correspondence between rows of the Fisher matrix and bispectra stored in pbi->bispectra[index_bt] */
-  int index_bt_of_ft[_MAX_NUM_BISPECTRA_];
   
   /* Contribution to the Fisher matrix coming from a given l1 and for a given XYZ bispectrum,
   where XYZ=TTT,TTE,TET, etc. This is the sum over l2, l3, A, B, C of

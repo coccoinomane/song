@@ -146,12 +146,12 @@ int fisher_free(
 
   if (pfi->has_fisher == _TRUE_) {
 
-    for (int X = 0; X < pbi->bf_size; ++X) {
-      for (int Y = 0; Y < pbi->bf_size; ++Y) {
-        for (int Z = 0; Z < pbi->bf_size; ++Z) {        
+    for (int X = 0; X < pfi->ff_size; ++X) {
+      for (int Y = 0; Y < pfi->ff_size; ++Y) {
+        for (int Z = 0; Z < pfi->ff_size; ++Z) {        
           /* lmax */
           for (int index_l3=0; index_l3 < pfi->l3_size; ++index_l3) {          
-            for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+            for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
               free (pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l3][index_ft]);
               free (pfi->fisher_matrix_XYZ_lmax[X][Y][Z][index_l3][index_ft]);          
             }
@@ -160,7 +160,7 @@ int fisher_free(
           }
           /* lmin */
           for (int index_l1=0; index_l1 < pfi->l1_size; ++index_l1) {          
-            for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+            for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
               free (pfi->fisher_matrix_XYZ_smallest[X][Y][Z][index_l1][index_ft]);
               free (pfi->fisher_matrix_XYZ_lmin[X][Y][Z][index_l1][index_ft]);          
             }
@@ -191,9 +191,9 @@ int fisher_free(
     if (pfi->include_lensing_effects == _TRUE_) {
     
       for (int index_l1=0; index_l1 < pfi->l1_size; ++index_l1) {  
-        for (int index_bf=0; index_bf < pbi->bf_size; ++index_bf) {
-          for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-            free (pfi->fisher_matrix_CZ_smallest[index_l1][index_ft*pbi->bf_size+index_bf]);    
+        for (int index_ff=0; index_ff < pfi->ff_size; ++index_ff) {
+          for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
+            free (pfi->fisher_matrix_CZ_smallest[index_l1][index_ft*pfi->ff_size+index_ff]);    
           }
         }
         free (pfi->fisher_matrix_CZ_smallest[index_l1]);
@@ -203,7 +203,7 @@ int fisher_free(
 
     for(int index_l3=0; index_l3<pfi->l3_size; ++index_l3) {
     
-      for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+      for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
         free (pfi->fisher_matrix_lmax[index_l3][index_ft]);
         free (pfi->fisher_matrix_largest[index_l3][index_ft]);
         free (pfi->inverse_fisher_matrix_lmax[index_l3][index_ft]);
@@ -223,7 +223,7 @@ int fisher_free(
 
     for(int index_l1=0; index_l1<pfi->l1_size; ++index_l1) {
     
-      for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+      for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
         free (pfi->fisher_matrix_lmin[index_l1][index_ft]);
         free (pfi->fisher_matrix_smallest[index_l1][index_ft]);
         free (pfi->inverse_fisher_matrix_lmin[index_l1][index_ft]);
@@ -267,9 +267,9 @@ int fisher_free(
     /* Free cross-power spectrum */
     for (int l=pfi->l_min; l <= pfi->l_max; ++l) {
 
-      for (int index_bf=0; index_bf < pbi->bf_size; ++index_bf) {
-        free (pfi->C[l-2][index_bf]);
-        free (pfi->inverse_C[l-2][index_bf]);
+      for (int index_ff=0; index_ff < pfi->ff_size; ++index_ff) {
+        free (pfi->C[l-2][index_ff]);
+        free (pfi->inverse_C[l-2][index_ff]);
       }
       free (pfi->C[l-2]);
       free (pfi->inverse_C[l-2]);
@@ -278,8 +278,8 @@ int fisher_free(
     free (pfi->inverse_C);
       
     /* Free noise spectrum */
-    for (int index_bf=0; index_bf < pbi->bf_size; ++index_bf)
-      free(pfi->N_l[index_bf]);
+    for (int index_ff=0; index_ff < pfi->ff_size; ++index_ff)
+      free(pfi->N_l[index_ff]);
     free(pfi->N_l);
     
   } // end of if(has_fisher)
@@ -311,6 +311,90 @@ int fisher_indices (
 {
 
 
+  // ================================================================================================
+  // =                                   Which fields to use?                                       =
+  // ================================================================================================
+
+  /* Find out which fields (index_ff=T,E,B...) to include in the Fisher matrix analysis. By default use
+  all the fields that were computed in the bispectrum module (denoted by the indices index_bf), unless
+  they are explicitly ignored by the pfi->ignore_X flags. */
+  
+  int index_ff = 0;
+  
+  pfi->has_fisher_t = _FALSE_;
+  pfi->has_fisher_e = _FALSE_;
+  pfi->has_fisher_b = _FALSE_;
+  pfi->has_fisher_r = _FALSE_;
+    
+  if ((pbi->has_bispectra_t == _TRUE_) && (pfi->ignore_t == _FALSE_)) {
+    pfi->has_fisher_t = _TRUE_;
+    pfi->index_bf_of_ff[index_ff] = pbi->index_bf_t;
+    pfi->index_ff_t = index_ff++;
+  }
+  
+  if ((pbi->has_bispectra_e == _TRUE_) && (pfi->ignore_e == _FALSE_)) {
+    pfi->has_fisher_e = _TRUE_;
+    pfi->index_bf_of_ff[index_ff] = pbi->index_bf_e;
+    pfi->index_ff_e = index_ff++;
+  }
+  
+  if ((pbi->has_bispectra_b == _TRUE_) && (pfi->ignore_b == _FALSE_)) {
+    pfi->has_fisher_b = _TRUE_;
+    pfi->index_bf_of_ff[index_ff] = pbi->index_bf_b;
+    pfi->index_ff_b = index_ff++;
+  }
+  
+  if ((pbi->has_bispectra_r == _TRUE_) && (pfi->ignore_r == _FALSE_)) {
+    pfi->has_fisher_r = _TRUE_;
+    pfi->index_bf_of_ff[index_ff] = pbi->index_bf_r;
+    pfi->index_ff_r = index_ff++;
+  }
+  
+  pfi->ff_size = index_ff;
+  pfi->n_probes = pow(pfi->ff_size, 3);
+
+  class_test (pfi->ff_size < 1,
+    pfi->error_message,
+    "no probes requested");
+
+  /* Fill the arrays that relate the fields to quantities computed throughout the code */
+  for (int X = 0; X < pfi->ff_size; ++X) {
+    
+    int index_bf_X = pfi->index_bf_of_ff[X];    
+    pfi->index_ct_of_phi_ff[X] = pbi->index_ct_of_phi_bf[index_bf_X];
+    strcpy (pfi->ff_labels[X], pbi->bf_labels[index_bf_X]);
+
+    for (int Y = 0; Y < pfi->ff_size; ++Y) {
+
+      int index_bf_Y = pfi->index_bf_of_ff[Y];
+      pfi->index_ct_of_ff_ff[X][Y] = pbi->index_ct_of_bf_bf[index_bf_X][index_bf_Y];
+
+      if (pfi->include_lensing_effects == _TRUE_)
+        pfi->index_lt_of_ff_ff[X][Y] = pbi->index_lt_of_bf_bf[index_bf_X][index_bf_Y];
+      
+      for (int Z = 0; Z < pfi->ff_size; ++Z) {
+        
+        int index_bf_Z = pfi->index_bf_of_ff[Z];
+        strcpy (pfi->ffff_labels[X][Y][Z], pbi->bfff_labels[index_bf_X][index_bf_Y][index_bf_Z]);
+
+      } // Z
+    } // Y
+  } // X
+  
+  /* Print information on the Fisher matrix to be computed */
+  if (pfi->fisher_verbose > 0) {
+    printf (" -> Fisher matrix will consider %d field%s: ",
+      pfi->ff_size, (pfi->ff_size!=1)?"s":"");
+    for (int index_ff=0; index_ff < (pfi->ff_size-1); ++index_ff)
+      printf ("%s, ", pfi->ff_labels[index_ff]);
+    printf ("%s", pfi->ff_labels[pfi->ff_size-1]);
+    int n_ignored = pbi->bf_size - pfi->ff_size;
+    if (n_ignored > 0)
+      printf (" (ignoring %d)\n", n_ignored);
+    else
+      printf ("\n");
+  }
+    
   // ====================================================================================
   // =                              Which bispectra to use?                             =
   // ====================================================================================
@@ -322,48 +406,39 @@ int fisher_indices (
   int index_ft = 0;
   
   if (pbi->has_local_model) {
-    pfi->index_ft_local = index_ft;
     pfi->index_bt_of_ft[index_ft] = pbi->index_bt_local;
-    index_ft++;
+    pfi->index_ft_local = index_ft++;
   }
   if (pbi->has_equilateral_model) {
-    pfi->index_ft_equilateral = index_ft;
     pfi->index_bt_of_ft[index_ft] = pbi->index_bt_equilateral;
-    index_ft++;
+    pfi->index_ft_equilateral = index_ft++;
   }  
   if (pbi->has_orthogonal_model) {
-    pfi->index_ft_orthogonal = index_ft;
     pfi->index_bt_of_ft[index_ft] = pbi->index_bt_orthogonal;
-    index_ft++;
+    pfi->index_ft_orthogonal = index_ft++;
   }
   if (pbi->has_galileon_model) {
-    pfi->index_ft_galileon_gradient = index_ft;
     pfi->index_bt_of_ft[index_ft] = pbi->index_bt_galileon_gradient;
-    index_ft++;
+    pfi->index_ft_galileon_gradient = index_ft++;
     
-    pfi->index_ft_galileon_time = index_ft;
     pfi->index_bt_of_ft[index_ft] = pbi->index_bt_galileon_time;
-    index_ft++;
+    pfi->index_ft_galileon_time = index_ft++;
   }
   if (pbi->has_local_squeezed == _TRUE_) {
-    pfi->index_ft_local_squeezed = index_ft;
     pfi->index_bt_of_ft[index_ft] = pbi->index_bt_local_squeezed;
-    index_ft++;
+    pfi->index_ft_local_squeezed = index_ft++;
   }
   if (pbi->has_intrinsic_squeezed == _TRUE_) {
-    pfi->index_ft_intrinsic_squeezed = index_ft;
     pfi->index_bt_of_ft[index_ft] = pbi->index_bt_intrinsic_squeezed;
-    index_ft++;
+    pfi->index_ft_intrinsic_squeezed = index_ft++;
   }
   if (pbi->has_intrinsic_squeezed_unlensed == _TRUE_) {
-    pfi->index_ft_intrinsic_squeezed_unlensed = index_ft;
     pfi->index_bt_of_ft[index_ft] = pbi->index_bt_intrinsic_squeezed_unlensed;
-    index_ft++;
+    pfi->index_ft_intrinsic_squeezed_unlensed = index_ft++;
   }
   if (pbi->has_cosine_shape == _TRUE_) {
-    pfi->index_ft_cosine = index_ft;
     pfi->index_bt_of_ft[index_ft] = pbi->index_bt_cosine;
-    index_ft++;
+    pfi->index_ft_cosine = index_ft++;
   }
   /* If asking for lensing effects, the CMB-lensing bispectrum is automatically included
   in the Fisher matrix. It is important to avoid duplicates as otherwise the Fisher
@@ -371,34 +446,38 @@ int fisher_indices (
   of lensing variance. */
   if (pfi->include_lensing_effects == _FALSE_) {
     if (pbi->has_cmb_lensing == _TRUE_) {
-      pfi->index_ft_cmb_lensing = index_ft;
       pfi->index_bt_of_ft[index_ft] = pbi->index_bt_cmb_lensing;
-      index_ft++;
+      pfi->index_ft_cmb_lensing = index_ft++;
     }
     if (pbi->has_cmb_lensing_squeezed == _TRUE_) {
-      pfi->index_ft_cmb_lensing_squeezed = index_ft;
       pfi->index_bt_of_ft[index_ft] = pbi->index_bt_cmb_lensing_squeezed;
-      index_ft++;
+      pfi->index_ft_cmb_lensing_squeezed = index_ft++;
     }
   }
   if (pbi->has_cmb_lensing_kernel == _TRUE_) {
-    pfi->index_ft_cmb_lensing_kernel = index_ft;
     pfi->index_bt_of_ft[index_ft] = pbi->index_bt_cmb_lensing_kernel;
-    index_ft++;
+    pfi->index_ft_cmb_lensing_kernel = index_ft++;
   }
   if (pbi->has_intrinsic == _TRUE_) {
-    pfi->index_ft_intrinsic = index_ft;
     pfi->index_bt_of_ft[index_ft] = pbi->index_bt_intrinsic;
-    index_ft++;
+    pfi->index_ft_intrinsic = index_ft++;
   }
     
-  pfi->fisher_size = index_ft;  
+  pfi->ft_size = index_ft;  
 
+  /* Fill the arrays that relate the fields to quantities computed throughout the code */
+  for (int index_ft = 0; index_ft < pfi->ft_size; ++index_ft) {
+    int index_bt = pfi->index_bt_of_ft[index_ft];
+    strcpy (pfi->ft_labels[index_ft], pbi->bt_labels[index_bt]);
+  }
+
+  /* Print information on the Fisher matrix to be computed */
   if (pfi->fisher_verbose > 0) {
-    printf (" -> Fisher matrix will contain %d row%s: ", pfi->fisher_size, (pfi->fisher_size!=1)?"s":"");
-    for (int index_ft=0; index_ft < (pfi->fisher_size-1); ++index_ft)
-      printf ("%s, ", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
-    printf ("%s\n", pbi->bt_labels[pfi->index_bt_of_ft[pfi->fisher_size-1]]);
+    printf (" -> Fisher matrix will have %d row%s: ",
+      pfi->ft_size, (pfi->ft_size!=1)?"s":"");
+    for (int index_ft=0; index_ft < (pfi->ft_size-1); ++index_ft)
+      printf ("%s, ", pfi->ft_labels[index_ft]);
+    printf ("%s\n", pfi->ft_labels[pfi->ft_size-1]);
   }
 
 
@@ -482,9 +561,9 @@ int fisher_indices (
 
 
   /* Allocate arrays for the noise in the C_l's */
-  class_alloc (pfi->N_l, pbi->bf_size*sizeof(double *), pfi->error_message);
-  for (int index_bf=0; index_bf < pbi->bf_size; ++index_bf)
-    class_calloc (pfi->N_l[index_bf], pfi->full_l_size, sizeof(double), pfi->error_message);
+  class_alloc (pfi->N_l, pfi->ff_size*sizeof(double *), pfi->error_message);
+  for (int index_ff=0; index_ff < pfi->ff_size; ++index_ff)
+    class_calloc (pfi->N_l[index_ff], pfi->full_l_size, sizeof(double), pfi->error_message);
 
 
   // =================================================================================================
@@ -495,26 +574,26 @@ int fisher_indices (
   CRUCIAL that these arrays are initialised with calloc, as they will be incremented in the Fisher
   matrix estimator function.  */
   
-  class_alloc (pfi->fisher_matrix_XYZ_largest, pbi->bf_size*sizeof(double *****), pfi->error_message);
-  class_alloc (pfi->fisher_matrix_XYZ_lmax, pbi->bf_size*sizeof(double *****), pfi->error_message);
-  class_alloc (pfi->fisher_matrix_XYZ_smallest, pbi->bf_size*sizeof(double *****), pfi->error_message);
-  class_alloc (pfi->fisher_matrix_XYZ_lmin, pbi->bf_size*sizeof(double *****), pfi->error_message);
+  class_alloc (pfi->fisher_matrix_XYZ_largest, pfi->ff_size*sizeof(double *****), pfi->error_message);
+  class_alloc (pfi->fisher_matrix_XYZ_lmax, pfi->ff_size*sizeof(double *****), pfi->error_message);
+  class_alloc (pfi->fisher_matrix_XYZ_smallest, pfi->ff_size*sizeof(double *****), pfi->error_message);
+  class_alloc (pfi->fisher_matrix_XYZ_lmin, pfi->ff_size*sizeof(double *****), pfi->error_message);
 
-  for (int X = 0; X < pbi->bf_size; ++X) {
+  for (int X = 0; X < pfi->ff_size; ++X) {
 
-    class_alloc (pfi->fisher_matrix_XYZ_largest[X], pbi->bf_size*sizeof(double ****), pfi->error_message);
-    class_alloc (pfi->fisher_matrix_XYZ_lmax[X], pbi->bf_size*sizeof(double ****), pfi->error_message);
-    class_alloc (pfi->fisher_matrix_XYZ_smallest[X], pbi->bf_size*sizeof(double ****), pfi->error_message);
-    class_alloc (pfi->fisher_matrix_XYZ_lmin[X], pbi->bf_size*sizeof(double ****), pfi->error_message);
+    class_alloc (pfi->fisher_matrix_XYZ_largest[X], pfi->ff_size*sizeof(double ****), pfi->error_message);
+    class_alloc (pfi->fisher_matrix_XYZ_lmax[X], pfi->ff_size*sizeof(double ****), pfi->error_message);
+    class_alloc (pfi->fisher_matrix_XYZ_smallest[X], pfi->ff_size*sizeof(double ****), pfi->error_message);
+    class_alloc (pfi->fisher_matrix_XYZ_lmin[X], pfi->ff_size*sizeof(double ****), pfi->error_message);
         
-    for (int Y = 0; Y < pbi->bf_size; ++Y) {
+    for (int Y = 0; Y < pfi->ff_size; ++Y) {
 
-      class_alloc (pfi->fisher_matrix_XYZ_largest[X][Y], pbi->bf_size*sizeof(double ***), pfi->error_message);
-      class_alloc (pfi->fisher_matrix_XYZ_lmax[X][Y], pbi->bf_size*sizeof(double ***), pfi->error_message);
-      class_alloc (pfi->fisher_matrix_XYZ_smallest[X][Y], pbi->bf_size*sizeof(double ***), pfi->error_message);
-      class_alloc (pfi->fisher_matrix_XYZ_lmin[X][Y], pbi->bf_size*sizeof(double ***), pfi->error_message);
+      class_alloc (pfi->fisher_matrix_XYZ_largest[X][Y], pfi->ff_size*sizeof(double ***), pfi->error_message);
+      class_alloc (pfi->fisher_matrix_XYZ_lmax[X][Y], pfi->ff_size*sizeof(double ***), pfi->error_message);
+      class_alloc (pfi->fisher_matrix_XYZ_smallest[X][Y], pfi->ff_size*sizeof(double ***), pfi->error_message);
+      class_alloc (pfi->fisher_matrix_XYZ_lmin[X][Y], pfi->ff_size*sizeof(double ***), pfi->error_message);
 
-      for (int Z = 0; Z < pbi->bf_size; ++Z) {
+      for (int Z = 0; Z < pfi->ff_size; ++Z) {
 
         /* Arrays as a function of lmax (involves l3) */
         class_alloc (pfi->fisher_matrix_XYZ_largest[X][Y][Z], pfi->l3_size*sizeof(double **), pfi->error_message);
@@ -522,14 +601,14 @@ int fisher_indices (
 
         for (int index_l3=0; index_l3 < pfi->l3_size; ++index_l3) {
           
-          class_alloc (pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l3], pfi->fisher_size*sizeof(double *), pfi->error_message);
-          class_alloc (pfi->fisher_matrix_XYZ_lmax[X][Y][Z][index_l3], pfi->fisher_size*sizeof(double *), pfi->error_message);
+          class_alloc (pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l3], pfi->ft_size*sizeof(double *), pfi->error_message);
+          class_alloc (pfi->fisher_matrix_XYZ_lmax[X][Y][Z][index_l3], pfi->ft_size*sizeof(double *), pfi->error_message);
           
-          for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+          for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
             class_calloc (pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l3][index_ft],
-              pfi->fisher_size, sizeof(double), pfi->error_message);
+              pfi->ft_size, sizeof(double), pfi->error_message);
             class_calloc (pfi->fisher_matrix_XYZ_lmax[X][Y][Z][index_l3][index_ft],
-              pfi->fisher_size, sizeof(double), pfi->error_message);            
+              pfi->ft_size, sizeof(double), pfi->error_message);            
           }
         }
 
@@ -539,14 +618,14 @@ int fisher_indices (
 
         for (int index_l1=0; index_l1 < pfi->l1_size; ++index_l1) {
           
-          class_alloc (pfi->fisher_matrix_XYZ_smallest[X][Y][Z][index_l1], pfi->fisher_size*sizeof(double *), pfi->error_message);
-          class_alloc (pfi->fisher_matrix_XYZ_lmin[X][Y][Z][index_l1], pfi->fisher_size*sizeof(double *), pfi->error_message);
+          class_alloc (pfi->fisher_matrix_XYZ_smallest[X][Y][Z][index_l1], pfi->ft_size*sizeof(double *), pfi->error_message);
+          class_alloc (pfi->fisher_matrix_XYZ_lmin[X][Y][Z][index_l1], pfi->ft_size*sizeof(double *), pfi->error_message);
           
-          for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+          for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
             class_calloc (pfi->fisher_matrix_XYZ_smallest[X][Y][Z][index_l1][index_ft],
-              pfi->fisher_size, sizeof(double), pfi->error_message);
+              pfi->ft_size, sizeof(double), pfi->error_message);
             class_calloc (pfi->fisher_matrix_XYZ_lmin[X][Y][Z][index_l1][index_ft],
-              pfi->fisher_size, sizeof(double), pfi->error_message);
+              pfi->ft_size, sizeof(double), pfi->error_message);
           }
         } 
         
@@ -562,15 +641,15 @@ int fisher_indices (
   
   for (int index_l3=0; index_l3 < pfi->l3_size; ++index_l3) {
 
-    class_alloc (pfi->fisher_matrix_lmax[index_l3], pfi->fisher_size*sizeof(double *), pfi->error_message);
-    class_alloc (pfi->fisher_matrix_largest[index_l3], pfi->fisher_size*sizeof(double *), pfi->error_message);
-    class_alloc (pfi->inverse_fisher_matrix_lmax[index_l3], pfi->fisher_size*sizeof(double *), pfi->error_message);
-    class_calloc (pfi->sigma_fnl_lmax[index_l3], pfi->fisher_size, sizeof(double), pfi->error_message);
+    class_alloc (pfi->fisher_matrix_lmax[index_l3], pfi->ft_size*sizeof(double *), pfi->error_message);
+    class_alloc (pfi->fisher_matrix_largest[index_l3], pfi->ft_size*sizeof(double *), pfi->error_message);
+    class_alloc (pfi->inverse_fisher_matrix_lmax[index_l3], pfi->ft_size*sizeof(double *), pfi->error_message);
+    class_calloc (pfi->sigma_fnl_lmax[index_l3], pfi->ft_size, sizeof(double), pfi->error_message);
     
-    for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-      class_calloc (pfi->fisher_matrix_lmax[index_l3][index_ft], pfi->fisher_size, sizeof(double), pfi->error_message);
-      class_calloc (pfi->fisher_matrix_largest[index_l3][index_ft], pfi->fisher_size, sizeof(double), pfi->error_message);
-      class_calloc (pfi->inverse_fisher_matrix_lmax[index_l3][index_ft], pfi->fisher_size, sizeof(double), pfi->error_message);
+    for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
+      class_calloc (pfi->fisher_matrix_lmax[index_l3][index_ft], pfi->ft_size, sizeof(double), pfi->error_message);
+      class_calloc (pfi->fisher_matrix_largest[index_l3][index_ft], pfi->ft_size, sizeof(double), pfi->error_message);
+      class_calloc (pfi->inverse_fisher_matrix_lmax[index_l3][index_ft], pfi->ft_size, sizeof(double), pfi->error_message);
     }    
   }
 
@@ -582,15 +661,15 @@ int fisher_indices (
   
   for (int index_l1=0; index_l1 < pfi->l1_size; ++index_l1) {
 
-    class_alloc (pfi->fisher_matrix_lmin[index_l1], pfi->fisher_size*sizeof(double *), pfi->error_message);
-    class_alloc (pfi->fisher_matrix_smallest[index_l1], pfi->fisher_size*sizeof(double *), pfi->error_message);
-    class_alloc (pfi->inverse_fisher_matrix_lmin[index_l1], pfi->fisher_size*sizeof(double *), pfi->error_message);
-    class_calloc (pfi->sigma_fnl_lmin[index_l1], pfi->fisher_size, sizeof(double), pfi->error_message);
+    class_alloc (pfi->fisher_matrix_lmin[index_l1], pfi->ft_size*sizeof(double *), pfi->error_message);
+    class_alloc (pfi->fisher_matrix_smallest[index_l1], pfi->ft_size*sizeof(double *), pfi->error_message);
+    class_alloc (pfi->inverse_fisher_matrix_lmin[index_l1], pfi->ft_size*sizeof(double *), pfi->error_message);
+    class_calloc (pfi->sigma_fnl_lmin[index_l1], pfi->ft_size, sizeof(double), pfi->error_message);
     
-    for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-      class_calloc (pfi->fisher_matrix_lmin[index_l1][index_ft], pfi->fisher_size, sizeof(double), pfi->error_message);
-      class_calloc (pfi->fisher_matrix_smallest[index_l1][index_ft], pfi->fisher_size, sizeof(double), pfi->error_message);
-      class_calloc (pfi->inverse_fisher_matrix_lmin[index_l1][index_ft], pfi->fisher_size, sizeof(double), pfi->error_message);
+    for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
+      class_calloc (pfi->fisher_matrix_lmin[index_l1][index_ft], pfi->ft_size, sizeof(double), pfi->error_message);
+      class_calloc (pfi->fisher_matrix_smallest[index_l1][index_ft], pfi->ft_size, sizeof(double), pfi->error_message);
+      class_calloc (pfi->inverse_fisher_matrix_lmin[index_l1][index_ft], pfi->ft_size, sizeof(double), pfi->error_message);
     }    
   }
 
@@ -600,11 +679,11 @@ int fisher_indices (
     in Eq. 5.25 of Lewis et al. 2011 (see header file). */
     class_alloc (pfi->fisher_matrix_CZ_smallest, pfi->l1_size*sizeof(double **), pfi->error_message);
     for (int index_l1=0; index_l1 < pfi->l1_size; ++index_l1) {
-      class_alloc (pfi->fisher_matrix_CZ_smallest[index_l1], pbi->bf_size*pfi->fisher_size*sizeof(double *), pfi->error_message);
-      for (int index_bf=0; index_bf < pbi->bf_size; ++index_bf) {
-        for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-          class_calloc (pfi->fisher_matrix_CZ_smallest[index_l1][index_ft*pbi->bf_size+index_bf],
-          pbi->bf_size*pfi->fisher_size, sizeof(double), pfi->error_message);
+      class_alloc (pfi->fisher_matrix_CZ_smallest[index_l1], pfi->ff_size*pfi->ft_size*sizeof(double *), pfi->error_message);
+      for (int index_ff=0; index_ff < pfi->ff_size; ++index_ff) {
+        for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
+          class_calloc (pfi->fisher_matrix_CZ_smallest[index_l1][index_ft*pfi->ff_size+index_ff],
+          pfi->ff_size*pfi->ft_size, sizeof(double), pfi->error_message);
         }
       }
     }
@@ -617,15 +696,15 @@ int fisher_indices (
   
     for (int index_l1=0; index_l1 < pfi->l1_size; ++index_l1) {
 
-      class_alloc (pfi->fisher_matrix_lensvar_lmin[index_l1], pfi->fisher_size*sizeof(double *), pfi->error_message);
-      class_alloc (pfi->fisher_matrix_lensvar_smallest[index_l1], pfi->fisher_size*sizeof(double *), pfi->error_message);
-      class_alloc (pfi->inverse_fisher_matrix_lensvar_lmin[index_l1], pfi->fisher_size*sizeof(double *), pfi->error_message);
-      class_calloc (pfi->sigma_fnl_lensvar_lmin[index_l1], pfi->fisher_size, sizeof(double), pfi->error_message);
+      class_alloc (pfi->fisher_matrix_lensvar_lmin[index_l1], pfi->ft_size*sizeof(double *), pfi->error_message);
+      class_alloc (pfi->fisher_matrix_lensvar_smallest[index_l1], pfi->ft_size*sizeof(double *), pfi->error_message);
+      class_alloc (pfi->inverse_fisher_matrix_lensvar_lmin[index_l1], pfi->ft_size*sizeof(double *), pfi->error_message);
+      class_calloc (pfi->sigma_fnl_lensvar_lmin[index_l1], pfi->ft_size, sizeof(double), pfi->error_message);
     
-      for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-        class_calloc (pfi->fisher_matrix_lensvar_lmin[index_l1][index_ft], pfi->fisher_size, sizeof(double), pfi->error_message);
-        class_calloc (pfi->fisher_matrix_lensvar_smallest[index_l1][index_ft], pfi->fisher_size, sizeof(double), pfi->error_message);
-        class_calloc (pfi->inverse_fisher_matrix_lensvar_lmin[index_l1][index_ft], pfi->fisher_size, sizeof(double), pfi->error_message);
+      for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
+        class_calloc (pfi->fisher_matrix_lensvar_lmin[index_l1][index_ft], pfi->ft_size, sizeof(double), pfi->error_message);
+        class_calloc (pfi->fisher_matrix_lensvar_smallest[index_l1][index_ft], pfi->ft_size, sizeof(double), pfi->error_message);
+        class_calloc (pfi->inverse_fisher_matrix_lensvar_lmin[index_l1][index_ft], pfi->ft_size, sizeof(double), pfi->error_message);
       }    
     }
   } // end of if(include_lensing_effects)
@@ -647,13 +726,13 @@ int fisher_indices (
   interpolated at all */
   pfi->first_non_analytical_index_ft = 0;
   while (pbi->bispectrum_type[pfi->index_bt_of_ft[pfi->first_non_analytical_index_ft]] == analytical_bispectrum
-  && (pfi->first_non_analytical_index_ft<pfi->fisher_size))
+  && (pfi->first_non_analytical_index_ft<pfi->ft_size))
     pfi->first_non_analytical_index_ft++;
   
   /* No need to compute meshes if all bispectra are analytical, as interpolation is not
   needed in this case */
   pfi->has_only_analytical_bispectra = _FALSE_;
-  if (pfi->first_non_analytical_index_ft == pfi->fisher_size)
+  if (pfi->first_non_analytical_index_ft == pfi->ft_size)
     pfi->has_only_analytical_bispectra = _TRUE_;
   
   if ((pfi->bispectra_interpolation == mesh_interpolation_3D)
@@ -907,19 +986,19 @@ int fisher_noise (
   // =                       Read in the noise values for the fields                   =
   // ===================================================================================
 
-  double noise[pbi->bf_size][pfi->n_channels];
+  double noise[pfi->ff_size][pfi->n_channels];
   
-  for (int index_bf=0; index_bf < pbi->bf_size; ++index_bf) {
+  for (int index_ff=0; index_ff < pfi->ff_size; ++index_ff) {
     for (int index_channel=0; index_channel < pfi->n_channels; ++index_channel) {
 
-      if ((pbi->has_bispectra_t == _TRUE_) && (index_bf == pbi->index_bf_t))
-        noise[index_bf][index_channel] = pfi->noise_t[index_channel];
+      if ((pfi->has_fisher_t == _TRUE_) && (index_ff == pfi->index_ff_t))
+        noise[index_ff][index_channel] = pfi->noise_t[index_channel];
 
-      if ((pbi->has_bispectra_e == _TRUE_) && (index_bf == pbi->index_bf_e))
-        noise[index_bf][index_channel] = pfi->noise_e[index_channel];
+      if ((pfi->has_fisher_e == _TRUE_) && (index_ff == pfi->index_ff_e))
+        noise[index_ff][index_channel] = pfi->noise_e[index_channel];
 
-      if ((pbi->has_bispectra_r == _TRUE_) && (index_bf == pbi->index_bf_r))
-        noise[index_bf][index_channel] = pfi->noise_r[index_channel];
+      if ((pfi->has_fisher_r == _TRUE_) && (index_ff == pfi->index_ff_r))
+        noise[index_ff][index_channel] = pfi->noise_r[index_channel];
     }
   }
 
@@ -936,12 +1015,12 @@ int fisher_noise (
     printf ("%g", pfi->beam[pfi->n_channels-1] * 60 * 180./_PI_);
     printf (" (arcmin)");
     
-    for (int index_bf=0; index_bf < pbi->bf_size; ++index_bf) {
+    for (int index_ff=0; index_ff < pfi->ff_size; ++index_ff) {
 
-      printf (", sigma_%s=", pbi->bf_labels[index_bf]);
+      printf (", sigma_%s=", pfi->ff_labels[index_ff]);
       for (int index_channel=0; index_channel < pfi->n_channels-1; ++index_channel)
-        printf ("%g,", sqrt(noise[index_bf][index_channel]) * 1e6*pba->T_cmb / pfi->beam[index_channel]);
-      printf ("%g", sqrt(noise[index_bf][pfi->n_channels-1]) * 1e6*pba->T_cmb / pfi->beam[pfi->n_channels-1]);
+        printf ("%g,", sqrt(noise[index_ff][index_channel]) * 1e6*pba->T_cmb / pfi->beam[index_channel]);
+      printf ("%g", sqrt(noise[index_ff][pfi->n_channels-1]) * 1e6*pba->T_cmb / pfi->beam[pfi->n_channels-1]);
       printf (" (uK)");
     }
     printf ("\n");
@@ -954,7 +1033,7 @@ int fisher_noise (
   // ===================================================================================
   
   /* Eeach frequency channel contributes to the inverse noise with a 1/N contribution */
-  for (int index_bf=0; index_bf < pbi->bf_size; ++index_bf) {
+  for (int index_ff=0; index_ff < pfi->ff_size; ++index_ff) {
     for (int l=pfi->l_min; l <= pfi->l_max; ++l) {
       for (int index_channel=0; index_channel < pfi->n_channels; ++index_channel) {
 
@@ -965,22 +1044,22 @@ int fisher_noise (
           "stop to prevent overflow. Reduce experiment_beam_fwhm to something more reasonable, or set it to zero.")
         
         /* Inverse contribution to l from the considered channel */
-        pfi->N_l[index_bf][l-2] += 1. / (noise[index_bf][index_channel] * exp(beam_exponent));
+        pfi->N_l[index_ff][l-2] += 1. / (noise[index_ff][index_channel] * exp(beam_exponent));
       }
 
       /* Invert back */
-      pfi->N_l[index_bf][l-2] = 1. / pfi->N_l[index_bf][l-2];
+      pfi->N_l[index_ff][l-2] = 1. / pfi->N_l[index_ff][l-2];
 
       /* Is this really needed? If the C_l's are infinite, it means that the signal is
       swamped by the noise, which is not an error */
-      class_test (fabs(pfi->N_l[index_bf][l-2]) > _HUGE_,
+      class_test (fabs(pfi->N_l[index_ff][l-2]) > _HUGE_,
         pfi->error_message,
         "stopping to avoid infinities, reduce noise parameters: pfi->N_%d(%s) = %g",
-        l, pbi->bf_labels[index_bf], pfi->N_l[index_bf][l-2]);
+        l, pfi->ff_labels[index_ff], pfi->N_l[index_ff][l-2]);
     
       /* Some debug */
       // double factor = 1e12*pba->T_cmb*pba->T_cmb*l*(l+1)/(2*_PI_);
-      // fprintf (stderr, "%d %g %g\n", l, pfi->N_l[pbi->index_bf_t][l-2], factor*pfi->N_l[pbi->index_bf_t][l-2]);
+      // fprintf (stderr, "%d %g %g\n", l, pfi->N_l[pfi->index_ff_t][l-2], factor*pfi->N_l[pfi->index_ff_t][l-2]);
     
     } // end of for(l=2)
   } // end of for(T,E,...)
@@ -1132,12 +1211,12 @@ int fisher_compute (
   
   /* Account for partial sky coverage by multiplying the Fisher matrix by the sky fraction.
   Also, symmetrise the Fisher matrix. */
-  for (int X = 0; X < pbi->bf_size; ++X) {
-    for (int Y = 0; Y < pbi->bf_size; ++Y) {
-      for (int Z = 0; Z < pbi->bf_size; ++Z) {
+  for (int X = 0; X < pfi->ff_size; ++X) {
+    for (int Y = 0; Y < pfi->ff_size; ++Y) {
+      for (int Z = 0; Z < pfi->ff_size; ++Z) {
     
-        for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
-          for (int index_ft_2=index_ft_1; index_ft_2 < pfi->fisher_size; ++index_ft_2) {
+        for (int index_ft_1=0; index_ft_1 < pfi->ft_size; ++index_ft_1) {
+          for (int index_ft_2=index_ft_1; index_ft_2 < pfi->ft_size; ++index_ft_2) {
 
             for (int index_l3=0; index_l3<pfi->l3_size; ++index_l3) {
               pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l3][index_ft_1][index_ft_2] *= pfi->f_sky;
@@ -1159,8 +1238,8 @@ int fisher_compute (
 
   /* Do the same for F_bar(l3,C,Z), which is needed to compute the lensing variance correction */
   if (pfi->include_lensing_effects == _TRUE_) {
-    for (int i=0; i < pbi->bf_size*pfi->fisher_size; ++i) {
-      for (int j=0; j < pbi->bf_size*pfi->fisher_size; ++j) {
+    for (int i=0; i < pfi->ff_size*pfi->ft_size; ++i) {
+      for (int j=0; j < pfi->ff_size*pfi->ft_size; ++j) {
         for (int index_l1=0; index_l1<pfi->l1_size; ++index_l1) {
           pfi->fisher_matrix_CZ_smallest[index_l1][i][j] *= pfi->f_sky;
           pfi->fisher_matrix_CZ_smallest[index_l1][j][i] = pfi->fisher_matrix_CZ_smallest[index_l1][i][j];
@@ -1198,8 +1277,8 @@ int fisher_compute (
       pfi->error_message);
    
     /* Find the total Fisher matrix by summing 'fisher_matrix_lensvar_smallest' over l1 */
-    for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
-      for (int index_ft_2=0; index_ft_2 < pfi->fisher_size; ++index_ft_2) {
+    for (int index_ft_1=0; index_ft_1 < pfi->ft_size; ++index_ft_1) {
+      for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2) {
   
         double accumulator = 0;
   
@@ -1220,7 +1299,7 @@ int fisher_compute (
   
    for (int index_l1=0; index_l1<pfi->l1_size; ++index_l1)
      InverseMatrix (pfi->fisher_matrix_lensvar_lmin[index_l1],
-       pfi->fisher_size, pfi->inverse_fisher_matrix_lensvar_lmin[index_l1]);
+       pfi->ft_size, pfi->inverse_fisher_matrix_lensvar_lmin[index_l1]);
          
   } // end of lensing variance
   
@@ -1231,18 +1310,18 @@ int fisher_compute (
   
   /* So far we have computed the Fisher matrix for each value of l1; now we sum those values
   to obtain the Fisher matrix for each value of l_max */
-  for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
-    for (int index_ft_2=0; index_ft_2 < pfi->fisher_size; ++index_ft_2) {
+  for (int index_ft_1=0; index_ft_1 < pfi->ft_size; ++index_ft_1) {
+    for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2) {
 
       /* We need to build the cumulative Fisher distribution, so we need accumulators. */
       double accumulator;
-      double accumulator_XYZ[pbi->bf_size][pbi->bf_size][pbi->bf_size];
+      double accumulator_XYZ[pfi->ff_size][pfi->ff_size][pfi->ff_size];
 
       /* Initialize the accumulators */
       accumulator = 0;
-      for (int X = 0; X < pbi->bf_size; ++X)
-        for (int Y = 0; Y < pbi->bf_size; ++Y)
-          for (int Z = 0; Z < pbi->bf_size; ++Z)
+      for (int X = 0; X < pfi->ff_size; ++X)
+        for (int Y = 0; Y < pfi->ff_size; ++Y)
+          for (int Z = 0; Z < pfi->ff_size; ++Z)
             accumulator_XYZ[X][Y][Z] = 0.;
 
       // -----------------------------------------------------------------------
@@ -1262,10 +1341,10 @@ int fisher_compute (
         'fisher_matrix_XYZ_smallest' to build the Fisher matrix. */
         if (pfi->include_lensing_effects == _TRUE_) {
 
-          for (int C=0; C < pbi->bf_size; ++C) {
-            for (int Z=0; Z < pbi->bf_size; ++Z) {
+          for (int C=0; C < pfi->ff_size; ++C) {
+            for (int Z=0; Z < pfi->ff_size; ++Z) {
                   
-              double l1_contribution = pfi->fisher_matrix_CZ_smallest[index_l1][index_ft_1*pbi->bf_size+C][index_ft_2*pbi->bf_size+Z];
+              double l1_contribution = pfi->fisher_matrix_CZ_smallest[index_l1][index_ft_1*pfi->ff_size+C][index_ft_2*pfi->ff_size+Z];
               pfi->fisher_matrix_smallest[index_l1][index_ft_1][index_ft_2] += l1_contribution;
               if (pfi->bispectra_interpolation == mesh_interpolation_2D)
                 l1_contribution *= pwf->delta_l[index_l1];
@@ -1277,9 +1356,9 @@ int fisher_compute (
         } // if lensing effects
         else {
 
-          for (int X = 0; X < pbi->bf_size; ++X) {
-            for (int Y = 0; Y < pbi->bf_size; ++Y) {
-              for (int Z = 0; Z < pbi->bf_size; ++Z) {
+          for (int X = 0; X < pfi->ff_size; ++X) {
+            for (int Y = 0; Y < pfi->ff_size; ++Y) {
+              for (int Z = 0; Z < pfi->ff_size; ++Z) {
 
                 /* Contribution from this l1 to the total (X+Y+Z) Fisher matrix */
                 double l1_contribution = pfi->fisher_matrix_XYZ_smallest[X][Y][Z][index_l1][index_ft_1][index_ft_2];
@@ -1316,7 +1395,7 @@ int fisher_compute (
             
       /* Compute the inverse Fisher matrix */
       for (int index_l1=0; index_l1<pfi->l1_size; ++index_l1)
-        InverseMatrix (pfi->fisher_matrix_lmin[index_l1], pfi->fisher_size, pfi->inverse_fisher_matrix_lmin[index_l1]);
+        InverseMatrix (pfi->fisher_matrix_lmin[index_l1], pfi->ft_size, pfi->inverse_fisher_matrix_lmin[index_l1]);
 
             
       // -----------------------------------------------------------------------------
@@ -1326,15 +1405,15 @@ int fisher_compute (
       /* Build the Fisher matrix as a function of the maximum l in the survey lmax, as:
       sum_{lmin<=l3<=lmax} fisher_matrix_XYZ_smallest */
       accumulator = 0;
-      for (int X = 0; X < pbi->bf_size; ++X)
-        for (int Y = 0; Y < pbi->bf_size; ++Y)
-          for (int Z = 0; Z < pbi->bf_size; ++Z)
+      for (int X = 0; X < pfi->ff_size; ++X)
+        for (int Y = 0; Y < pfi->ff_size; ++Y)
+          for (int Z = 0; Z < pfi->ff_size; ++Z)
             accumulator_XYZ[X][Y][Z] = 0.;
 
       for (int index_l3=0; index_l3<pfi->l3_size; ++index_l3) {
-        for (int X = 0; X < pbi->bf_size; ++X) {
-          for (int Y = 0; Y < pbi->bf_size; ++Y) {
-            for (int Z = 0; Z < pbi->bf_size; ++Z) {
+        for (int X = 0; X < pfi->ff_size; ++X) {
+          for (int Y = 0; Y < pfi->ff_size; ++Y) {
+            for (int Z = 0; Z < pfi->ff_size; ++Z) {
       
               double l3_contribution = pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l3][index_ft_1][index_ft_2];
               pfi->fisher_matrix_largest[index_l3][index_ft_1][index_ft_2] += l3_contribution;
@@ -1359,13 +1438,13 @@ int fisher_compute (
   } // end of for (ft_1)
     
   for (int index_l3=0; index_l3<pfi->l3_size; ++index_l3)
-    InverseMatrix (pfi->fisher_matrix_lmax[index_l3], pfi->fisher_size, pfi->inverse_fisher_matrix_lmax[index_l3]);
+    InverseMatrix (pfi->fisher_matrix_lmax[index_l3], pfi->ft_size, pfi->inverse_fisher_matrix_lmax[index_l3]);
 
   /* Simple consistency check: the sum from above (l3) should be equal to the sum from below (l1).
   The test cannot be performed for the lensing variance row/column of the Fisher matrix because,
   in that case, the l3 arrays are not rescaled while the l1 ones are. */
-  for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
-    for (int index_ft_2=0; index_ft_2 < pfi->fisher_size; ++index_ft_2) {
+  for (int index_ft_1=0; index_ft_1 < pfi->ft_size; ++index_ft_1) {
+    for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2) {
   
       if ((pfi->include_lensing_effects==_TRUE_)
       && ((index_ft_1==pfi->index_ft_cmb_lensing_kernel)
@@ -1383,13 +1462,13 @@ int fisher_compute (
 
   /* Print the signal to noise as a function of l_max for all the analised bispectra */
   // fprintf (stderr, "%4s ", "l");
-  // for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)    
-  //   fprintf (stderr, "%20s ", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
+  // for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft)    
+  //   fprintf (stderr, "%20s ", pfi->ft_labels[index_ft]);
   // fprintf (stderr, "\n");
   // 
   // for (int index_l1=0; index_l1<pfi->l1_size; ++index_l1) {
   //   fprintf (stderr, "%4d ", pfi->l1[index_l1]);
-  //   for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
+  //   for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft)
   //     fprintf (stderr, "%20.7g ", sqrt(pfi->fisher_matrix_lmax[index_l1][index_ft][index_ft]));
   //   fprintf (stderr, "\n");
   // }
@@ -1406,13 +1485,13 @@ int fisher_compute (
     sprintf (pfi->info, "%sFisher matrix for l_max = %d:\n",
       pfi->info, MIN (pfi->l_max_estimator, pfi->l_max));
     
-    for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
+    for (int index_ft_1=0; index_ft_1 < pfi->ft_size; ++index_ft_1) {
       
-      sprintf (pfi->info, "%s\t%20s\t", pfi->info, pbi->bt_labels[pfi->index_bt_of_ft[index_ft_1]]);
+      sprintf (pfi->info, "%s\t%20s\t", pfi->info, pfi->ft_labels[index_ft_1]);
       
       sprintf (pfi->info, "%s(", pfi->info);
       
-      for (int index_ft_2=0; index_ft_2 < pfi->fisher_size; ++index_ft_2)
+      for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2)
         sprintf (pfi->info, "%s %11.4g ", pfi->info, pfi->fisher_matrix_lmin[0][index_ft_1][index_ft_2]);
 
       sprintf (pfi->info, "%s)\n", pfi->info);
@@ -1423,13 +1502,13 @@ int fisher_compute (
       sprintf (pfi->info_lensvar, "%sFisher matrix for l_max = %d:\n",
         pfi->info_lensvar, MIN (pfi->l_max_estimator, pfi->l_max));
     
-      for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
+      for (int index_ft_1=0; index_ft_1 < pfi->ft_size; ++index_ft_1) {
       
-        sprintf (pfi->info_lensvar, "%s\t%20s\t", pfi->info_lensvar, pbi->bt_labels[pfi->index_bt_of_ft[index_ft_1]]);
+        sprintf (pfi->info_lensvar, "%s\t%20s\t", pfi->info_lensvar, pfi->ft_labels[index_ft_1]);
       
         sprintf (pfi->info_lensvar, "%s(", pfi->info_lensvar);
       
-        for (int index_ft_2=0; index_ft_2 < pfi->fisher_size; ++index_ft_2)
+        for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2)
           sprintf (pfi->info_lensvar, "%s %11.4g ", pfi->info_lensvar, pfi->fisher_matrix_lensvar_lmin[0][index_ft_1][index_ft_2]);
 
         sprintf (pfi->info_lensvar, "%s)\n", pfi->info_lensvar);
@@ -1438,18 +1517,18 @@ int fisher_compute (
   }
   
   /* Print the correlation matrix */
-  if ((pfi->fisher_verbose > 0) && (pfi->fisher_size>1)) {
+  if ((pfi->fisher_verbose > 0) && (pfi->ft_size>1)) {
 
     sprintf (pfi->info, "%sCorrelation matrix for l_max = %d:\n",
       pfi->info, MIN (pfi->l_max_estimator, pfi->l_max));
     
-    for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
+    for (int index_ft_1=0; index_ft_1 < pfi->ft_size; ++index_ft_1) {
       
-      sprintf (pfi->info, "%s\t%20s\t", pfi->info, pbi->bt_labels[pfi->index_bt_of_ft[index_ft_1]]);
+      sprintf (pfi->info, "%s\t%20s\t", pfi->info, pfi->ft_labels[index_ft_1]);
       
       sprintf (pfi->info, "%s(", pfi->info);
       
-      for (int index_ft_2=0; index_ft_2 < pfi->fisher_size; ++index_ft_2)
+      for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2)
         sprintf (pfi->info, "%s %11.4g ", pfi->info,
         pfi->fisher_matrix_lmin[0][index_ft_1][index_ft_2]
         /sqrt(pfi->fisher_matrix_lmin[0][index_ft_1][index_ft_1]
@@ -1463,13 +1542,13 @@ int fisher_compute (
       sprintf (pfi->info_lensvar, "%sCorrelation matrix for l_max = %d:\n",
         pfi->info_lensvar, MIN (pfi->l_max_estimator, pfi->l_max));
     
-      for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
+      for (int index_ft_1=0; index_ft_1 < pfi->ft_size; ++index_ft_1) {
       
-        sprintf (pfi->info_lensvar, "%s\t%20s\t", pfi->info_lensvar, pbi->bt_labels[pfi->index_bt_of_ft[index_ft_1]]);
+        sprintf (pfi->info_lensvar, "%s\t%20s\t", pfi->info_lensvar, pfi->ft_labels[index_ft_1]);
       
         sprintf (pfi->info_lensvar, "%s(", pfi->info_lensvar);
       
-        for (int index_ft_2=0; index_ft_2 < pfi->fisher_size; ++index_ft_2)
+        for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2)
           sprintf (pfi->info_lensvar, "%s %11.4g ", pfi->info_lensvar,
           pfi->fisher_matrix_lensvar_lmin[0][index_ft_1][index_ft_2]
           /sqrt(pfi->fisher_matrix_lensvar_lmin[0][index_ft_1][index_ft_1]
@@ -1485,13 +1564,13 @@ int fisher_compute (
   
     sprintf (pfi->info, "%sReciprocal of the inverse Fisher matrix:\n", pfi->info);
     
-    for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
+    for (int index_ft_1=0; index_ft_1 < pfi->ft_size; ++index_ft_1) {
       
-      sprintf (pfi->info, "%s\t%20s\t", pfi->info, pbi->bt_labels[pfi->index_bt_of_ft[index_ft_1]]);
+      sprintf (pfi->info, "%s\t%20s\t", pfi->info, pfi->ft_labels[index_ft_1]);
       
       sprintf (pfi->info, "%s(", pfi->info);
       
-      for (int index_ft_2=0; index_ft_2 < pfi->fisher_size; ++index_ft_2)
+      for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2)
         sprintf (pfi->info, "%s %11.4g ", pfi->info, 1/pfi->inverse_fisher_matrix_lmin[0][index_ft_1][index_ft_2]);
   
       sprintf (pfi->info, "%s)\n", pfi->info);
@@ -1501,13 +1580,13 @@ int fisher_compute (
     
       sprintf (pfi->info_lensvar, "%sReciprocal of the inverse Fisher matrix:\n", pfi->info_lensvar);
     
-      for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
+      for (int index_ft_1=0; index_ft_1 < pfi->ft_size; ++index_ft_1) {
       
-        sprintf (pfi->info_lensvar, "%s\t%20s\t", pfi->info_lensvar, pbi->bt_labels[pfi->index_bt_of_ft[index_ft_1]]);
+        sprintf (pfi->info_lensvar, "%s\t%20s\t", pfi->info_lensvar, pfi->ft_labels[index_ft_1]);
       
         sprintf (pfi->info_lensvar, "%s(", pfi->info_lensvar);
       
-        for (int index_ft_2=0; index_ft_2 < pfi->fisher_size; ++index_ft_2)
+        for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2)
           sprintf (pfi->info_lensvar, "%s %11.4g ", pfi->info_lensvar, 1/pfi->inverse_fisher_matrix_lensvar_lmin[0][index_ft_1][index_ft_2]);
   
         sprintf (pfi->info_lensvar, "%s)\n", pfi->info_lensvar);
@@ -1520,13 +1599,13 @@ int fisher_compute (
   
     sprintf (pfi->info, "%sfnl matrix (diagonal: 1/sqrt(F_ii), upper: F_12/F_11, lower: F_12/F_22):\n", pfi->info);
     
-    for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
+    for (int index_ft_1=0; index_ft_1 < pfi->ft_size; ++index_ft_1) {
       
-      sprintf (pfi->info, "%s\t%20s\t", pfi->info, pbi->bt_labels[pfi->index_bt_of_ft[index_ft_1]]);
+      sprintf (pfi->info, "%s\t%20s\t", pfi->info, pfi->ft_labels[index_ft_1]);
       
       sprintf (pfi->info, "%s(", pfi->info);
       
-      for (int index_ft_2=0; index_ft_2 < pfi->fisher_size; ++index_ft_2) {
+      for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2) {
   
         /* Diagonal elements = 1/sqrt(F_ii) */ 
         if (index_ft_1==index_ft_2)
@@ -1543,13 +1622,13 @@ int fisher_compute (
     
       sprintf (pfi->info_lensvar, "%sfnl matrix:\n", pfi->info_lensvar);
     
-      for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
+      for (int index_ft_1=0; index_ft_1 < pfi->ft_size; ++index_ft_1) {
       
-        sprintf (pfi->info_lensvar, "%s\t%20s\t", pfi->info_lensvar, pbi->bt_labels[pfi->index_bt_of_ft[index_ft_1]]);
+        sprintf (pfi->info_lensvar, "%s\t%20s\t", pfi->info_lensvar, pfi->ft_labels[index_ft_1]);
       
         sprintf (pfi->info_lensvar, "%s(", pfi->info_lensvar);
       
-        for (int index_ft_2=0; index_ft_2 < pfi->fisher_size; ++index_ft_2) {
+        for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2) {
   
           /* Diagonal elements = 1/sqrt(F_ii) */ 
           if (index_ft_1==index_ft_2)
@@ -1566,19 +1645,19 @@ int fisher_compute (
   
   /* Print the Fisher matrix for all the bispectra (TTT,TTE,TET...). This tells us which bispectrum
   contributes the most to the total signal-to-noise. */
-  if ((pfi->fisher_verbose > 2) && (pbi->bf_size > 1)) {
+  if ((pfi->fisher_verbose > 2) && (pfi->ff_size > 1)) {
   
-    for (int X = 0; X < pbi->bf_size; ++X) {
-      for (int Y = 0; Y < pbi->bf_size; ++Y) {
-        for (int Z = 0; Z < pbi->bf_size; ++Z) {
+    for (int X = 0; X < pfi->ff_size; ++X) {
+      for (int Y = 0; Y < pfi->ff_size; ++Y) {
+        for (int Z = 0; Z < pfi->ff_size; ++Z) {
   
-          sprintf (pfi->info, "%s     * %s contribution (percent)\n", pfi->info, pbi->bfff_labels[X][Y][Z]);
+          sprintf (pfi->info, "%s     * %s contribution (percent)\n", pfi->info, pfi->ffff_labels[X][Y][Z]);
   
-          for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
+          for (int index_ft_1=0; index_ft_1 < pfi->ft_size; ++index_ft_1) {
       
             sprintf (pfi->info, "%s\t%20s\t(", pfi->info, "");
       
-            for (int index_ft_2=0; index_ft_2 < pfi->fisher_size; ++index_ft_2)
+            for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2)
               sprintf (pfi->info, "%s %8.3g ", pfi->info,
                 pfi->fisher_matrix_XYZ_lmax[X][Y][Z][pfi->l1_size-1][index_ft_1][index_ft_2]/
                 pfi->fisher_matrix_lmin[0][index_ft_1][index_ft_2]*100);
@@ -1783,21 +1862,26 @@ int fisher_cross_correlate_nodes (
           by three C_l's. When dealing with two probes (eg. T and E -> TTT,TTE,TET,ETT,TEE,ETE,EET,EEE),
           each element of the Fisher matrix, contains a quadratic sum over the 8 available bispectra,
           for a total of 64 terms. */
-          for (int X = 0; X < pbi->bf_size; ++X) { for (int A = 0; A < pbi->bf_size; ++A) {
-          for (int Y = 0; Y < pbi->bf_size; ++Y) { for (int B = 0; B < pbi->bf_size; ++B) {
-          for (int Z = 0; Z < pbi->bf_size; ++Z) { for (int C = 0; C < pbi->bf_size; ++C) {
+          for (int X = 0; X < pfi->ff_size; ++X) { for (int A = 0; A < pfi->ff_size; ++A) {
+          for (int Y = 0; Y < pfi->ff_size; ++Y) { for (int B = 0; B < pfi->ff_size; ++B) {
+          for (int Z = 0; Z < pfi->ff_size; ++Z) { for (int C = 0; C < pfi->ff_size; ++C) {
 
             double inverse_covariance = C1[A][X] * C2[B][Y] * C3[C][Z];
 
-            for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
-              for (int index_ft_2=index_ft_1; index_ft_2 < pfi->fisher_size; ++index_ft_2) {              
+            for (int index_ft_1=0; index_ft_1 < pfi->ft_size; ++index_ft_1) {
+              for (int index_ft_2=index_ft_1; index_ft_2 < pfi->ft_size; ++index_ft_2) {
+                
+                double b_1 = pbi->bispectra[pfi->index_bt_of_ft[index_ft_1]]
+                             [pfi->index_bf_of_ff[A]][pfi->index_bf_of_ff[B]][pfi->index_bf_of_ff[C]][index_l1_l2_l3];
+
+                double b_2 = pbi->bispectra[pfi->index_bt_of_ft[index_ft_2]]
+                             [pfi->index_bf_of_ff[X]][pfi->index_bf_of_ff[Y]][pfi->index_bf_of_ff[Z]][index_l1_l2_l3];
 
                 double fisher = one_over_delta *
                                 interpolation_weight *
                                 threej_000_squared *
                                 inverse_covariance *
-                                pbi->bispectra[pfi->index_bt_of_ft[index_ft_1]][A][B][C][index_l1_l2_l3] *                             
-                                pbi->bispectra[pfi->index_bt_of_ft[index_ft_2]][X][Y][Z][index_l1_l2_l3];
+                                b_1 * b_2;
                                 
                 #pragma omp atomic
                 pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l1][index_ft_1][index_ft_2] += fisher;
@@ -2016,14 +2100,14 @@ int fisher_cross_correlate_mesh (
     thread = omp_get_thread_num();
     #endif
 
-    /* As many interpolations as the total number of bispectra (pfi->fisher_size * pbi->bf_size^3) */
-    class_alloc_parallel (interpolated_bispectra[thread], pfi->fisher_size*sizeof(double ***), pfi->error_message);
-    for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-      class_alloc_parallel (interpolated_bispectra[thread][index_ft], pbi->bf_size*sizeof(double **), pfi->error_message);
-      for (int X = 0; X < pbi->bf_size; ++X) {
-        class_alloc_parallel (interpolated_bispectra[thread][index_ft][X], pbi->bf_size*sizeof(double *), pfi->error_message);
-        for (int Y = 0; Y < pbi->bf_size; ++Y)
-          class_alloc_parallel (interpolated_bispectra[thread][index_ft][X][Y], pbi->bf_size*sizeof(double), pfi->error_message);
+    /* As many interpolations as the total number of bispectra (pfi->ft_size * pfi->ff_size^3) */
+    class_alloc_parallel (interpolated_bispectra[thread], pfi->ft_size*sizeof(double ***), pfi->error_message);
+    for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
+      class_alloc_parallel (interpolated_bispectra[thread][index_ft], pfi->ff_size*sizeof(double **), pfi->error_message);
+      for (int X = 0; X < pfi->ff_size; ++X) {
+        class_alloc_parallel (interpolated_bispectra[thread][index_ft][X], pfi->ff_size*sizeof(double *), pfi->error_message);
+        for (int Y = 0; Y < pfi->ff_size; ++Y)
+          class_alloc_parallel (interpolated_bispectra[thread][index_ft][X][Y], pfi->ff_size*sizeof(double), pfi->error_message);
       }
     }
 
@@ -2161,7 +2245,7 @@ int fisher_cross_correlate_mesh (
 
           /* Uncomment to consider only squeezed configurations, with l1 superhorizon at recombination.
           This matches the "Maldacena" limit used in Creminelli et al. 2004. */
-          // if (!((l1<=100) && (l2>=10*l1))) {
+          // if (!((l1<=50) && (l2>=20*l1))) {
           //   #pragma omp atomic
           //   counter++;
           //   continue;
@@ -2177,14 +2261,19 @@ int fisher_cross_correlate_mesh (
           /* Obtain all the bispectra in this (l1,l2,l3) configuration, either via interpolation or
           by direct computation (if the bispectrum can be expressed in a simple analytical form).
           These loops go over all the possible bispectra, eg. local_ttt, equilateral_ete, intrinsic_ttt. */
-          for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+          for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
             
             int index_bt = pfi->index_bt_of_ft[index_ft];
             
-            for (int X = 0; X < pbi->bf_size; ++X) {
-              for (int Y = 0; Y < pbi->bf_size; ++Y) {
-                for (int Z = 0; Z < pbi->bf_size; ++Z) {
+            for (int X = 0; X < pfi->ff_size; ++X) {
+              for (int Y = 0; Y < pfi->ff_size; ++Y) {
+                for (int Z = 0; Z < pfi->ff_size; ++Z) {
               
+                  /* Corresponding field indices in the bispectrum module */
+                  int X_ = pfi->index_bf_of_ff[X];
+                  int Y_ = pfi->index_bf_of_ff[Y];
+                  int Z_ = pfi->index_bf_of_ff[Z];
+
                   /* Compute analytical bispectra */
                   if (pbi->bispectrum_type[index_bt] == analytical_bispectrum) {
                 
@@ -2197,14 +2286,14 @@ int fisher_cross_correlate_mesh (
                     class_call_parallel ((*pbi->bispectrum_function[index_bt]) (
                                              ppr, psp, ple, pbi,
                                              l3, l2, l1, /* smallest one goes in third position  */
-                                             X, Y, Z,
+                                             X_, Y_, Z_,
                                              threej_000[l3-l3_min_000],
                                              threej_20m2[l3-l3_min_20m2],
                                              threej_m220[l3-l3_min_m220],
                                              threej_0m22[l3-l3_min_0m22],
                                              &interpolated_bispectra[thread][index_ft][X][Y][Z]),
                       pbi->error_message,
-                      pbi->error_message);
+                      pfi->error_message);
 
                   } 
                   /* Interpolate all other bispectra */
@@ -2239,7 +2328,7 @@ int fisher_cross_correlate_mesh (
                     // if ((l1==1000)) {
                     // // if ((l1==63)&&(l2==38)&&(l3==27)) {
                     //   printf ("INTERPOLATED: %s_%s(%d,%d,%d) = %g\n",
-                    //     pbi->bt_labels[pfi->index_bt_of_ft[index_ft]], pbi->bfff_labels[X][Y][Z], l1, l2, l3,
+                    //     pfi->ft_labels[index_ft], pfi->ffff_labels[X][Y][Z], l1, l2, l3,
                     //     interpolated_bispectra[thread][index_ft][X][Y][Z]);
                     // }
 
@@ -2250,14 +2339,14 @@ int fisher_cross_correlate_mesh (
                       class_call_parallel ((*pbi->window_function[index_bt]) (
                                               ppr, psp, ple, pbi,
                                               l3, l2, l1, /* smallest one goes in third position  */
-                                              X, Y, Z,
+                                              X_, Y_, Z_,
                                               threej_000[l3-l3_min_000],
                                               threej_20m2[l3-l3_min_20m2],
                                               threej_m220[l3-l3_min_m220],
                                               threej_0m22[l3-l3_min_0m22],
                                               &inverse_window),
                         pbi->error_message,
-                        pbi->error_message);
+                        pfi->error_message);
 
                     interpolated_bispectra[thread][index_ft][X][Y][Z] *= inverse_window;
                   } 
@@ -2302,14 +2391,14 @@ int fisher_cross_correlate_mesh (
           by three C_l's. When dealing with two probes (eg. T and E -> TTT,TTE,TET,ETT,TEE,ETE,EET,EEE),
           each element of the Fisher matrix, contains a quadratic sum over the 8 available bispectra,
           for a total of 64 terms. */
-          for (int X = 0; X < pbi->bf_size; ++X) { for (int A = 0; A < pbi->bf_size; ++A) {
-          for (int Y = 0; Y < pbi->bf_size; ++Y) { for (int B = 0; B < pbi->bf_size; ++B) {
-          for (int Z = 0; Z < pbi->bf_size; ++Z) { for (int C = 0; C < pbi->bf_size; ++C) {
+          for (int X = 0; X < pfi->ff_size; ++X) { for (int A = 0; A < pfi->ff_size; ++A) {
+          for (int Y = 0; Y < pfi->ff_size; ++Y) { for (int B = 0; B < pfi->ff_size; ++B) {
+          for (int Z = 0; Z < pfi->ff_size; ++Z) { for (int C = 0; C < pfi->ff_size; ++C) {
 
             double inverse_covariance = C1[C][Z] * C2[B][Y] * C3[A][X];
 
-            for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
-              for (int index_ft_2=index_ft_1; index_ft_2 < pfi->fisher_size; ++index_ft_2) {              
+            for (int index_ft_1=0; index_ft_1 < pfi->ft_size; ++index_ft_1) {
+              for (int index_ft_2=index_ft_1; index_ft_2 < pfi->ft_size; ++index_ft_2) {              
 
                 double fisher = one_over_delta *
                                 inverse_covariance *
@@ -2328,14 +2417,12 @@ int fisher_cross_correlate_mesh (
                 }
 
                 /* Fisher matrix as a function of the smallest multipole */
-                #pragma omp atomic
                 pfi->fisher_matrix_XYZ_smallest[X][Y][Z][index_l1][index_ft_1][index_ft_2] += fisher;
                 
                 /* Needed to compute the lensing variance. This is equivalent to \bar{F} in Eq. 5.25 
                 of http://uk.arxiv.org/abs/1101.2234 */
                 if (pfi->include_lensing_effects == _TRUE_)
-                  #pragma omp atomic
-                  pfi->fisher_matrix_CZ_smallest[index_l1][index_ft_1*pbi->bf_size+C][index_ft_2*pbi->bf_size+Z] += fisher;
+                  pfi->fisher_matrix_CZ_smallest[index_l1][index_ft_1*pfi->ff_size+C][index_ft_2*pfi->ff_size+Z] += fisher;
                 
               } // ft_2
             } // ft_1
@@ -2361,9 +2448,9 @@ int fisher_cross_correlate_mesh (
     // -                              Free memory                            -
     // ------------------------------------------------------------------------
     
-    for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
-      for (int X = 0; X < pbi->bf_size; ++X) {
-        for (int Y = 0; Y < pbi->bf_size; ++Y) {
+    for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
+      for (int X = 0; X < pfi->ff_size; ++X) {
+        for (int Y = 0; Y < pfi->ff_size; ++Y) {
           free (interpolated_bispectra[thread][index_ft][X][Y]); }
         free (interpolated_bispectra[thread][index_ft][X]); }
       free (interpolated_bispectra[thread][index_ft]); }
@@ -2418,12 +2505,12 @@ int fisher_cross_cls (
 
   for (int l=pfi->l_min; l <= pfi->l_max; ++l) {
 
-    class_alloc (pfi->C[l-2], pbi->bf_size*sizeof(double*), pfi->error_message);
-    class_alloc (pfi->inverse_C[l-2], pbi->bf_size*sizeof(double*), pfi->error_message);
+    class_alloc (pfi->C[l-2], pfi->ff_size*sizeof(double*), pfi->error_message);
+    class_alloc (pfi->inverse_C[l-2], pfi->ff_size*sizeof(double*), pfi->error_message);
 
-    for (int index_bf=0; index_bf < pbi->bf_size; ++index_bf) {
-      class_alloc (pfi->C[l-2][index_bf], pbi->bf_size*sizeof(double), pfi->error_message);
-      class_alloc (pfi->inverse_C[l-2][index_bf], pbi->bf_size*sizeof(double), pfi->error_message);
+    for (int index_ff=0; index_ff < pfi->ff_size; ++index_ff) {
+      class_alloc (pfi->C[l-2][index_ff], pfi->ff_size*sizeof(double), pfi->error_message);
+      class_alloc (pfi->inverse_C[l-2][index_ff], pfi->ff_size*sizeof(double), pfi->error_message);
     }
   }
 
@@ -2435,17 +2522,17 @@ int fisher_cross_cls (
   Eq. 5.2 of Lewis and Challinor, 2011). */
 
   double ** cls = pbi->cls;
-  int index_cls[pbi->bf_size][pbi->bf_size];
-  for (int X=0; X < pbi->bf_size; ++X)
-    for (int Y=0; Y < pbi->bf_size; ++Y)
-      index_cls[X][Y] = pbi->index_ct_of_bf_bf[X][Y];
+  int index_cls[pfi->ff_size][pfi->ff_size];
+  for (int X=0; X < pfi->ff_size; ++X)
+    for (int Y=0; Y < pfi->ff_size; ++Y)
+      index_cls[X][Y] = pfi->index_ct_of_ff_ff[X][Y];
 
   if (pfi->include_lensing_effects == _TRUE_) {
   
     cls = pbi->lensed_cls;
-    for (int X=0; X < pbi->bf_size; ++X)
-      for (int Y=0; Y < pbi->bf_size; ++Y)
-        index_cls[X][Y] = pbi->index_lt_of_bf_bf[X][Y];
+    for (int X=0; X < pfi->ff_size; ++X)
+      for (int Y=0; Y < pfi->ff_size; ++Y)
+        index_cls[X][Y] = pfi->index_lt_of_ff_ff[X][Y];
   }
 
   // ==========================================================================
@@ -2458,8 +2545,8 @@ int fisher_cross_cls (
   eg. C_l^TT and C_l^EE have noise but C_l^TE does not. */
   
   for (int l=pfi->l_min; l <= pfi->l_max; ++l) {  
-    for (int X = 0; X < pbi->bf_size; ++X) {
-      for (int Y = 0; Y < pbi->bf_size; ++Y) {
+    for (int X = 0; X < pfi->ff_size; ++X) {
+      for (int Y = 0; Y < pfi->ff_size; ++Y) {
 
         /* Compute ij element */
         pfi->C[l-2][X][Y] = cls[index_cls[X][Y]][l-2];
@@ -2476,7 +2563,7 @@ int fisher_cross_cls (
     }
     
     /* Compute the inverse of C_l^ij for the considered l */
-    InverseMatrix (pfi->C[l-2], pbi->bf_size, pfi->inverse_C[l-2]);
+    InverseMatrix (pfi->C[l-2], pfi->ff_size, pfi->inverse_C[l-2]);
     
     /* Debug - print the Cl's */
     // double factor = 1e12*pba->T_cmb*pba->T_cmb*l*(l+1)/(2*_PI_);
@@ -2535,7 +2622,7 @@ int fisher_lensing_variance (
   the field (T,E...) and bispectrum types (local template, intrinsic, lensing...) 
   dimensions flattened in a single one. This mixing is explained in the last page
   of Sec. 5 in arxiv:1101.2234  */
-  int N = pfi->fisher_size * pbi->bf_size;
+  int N = pfi->ft_size * pfi->ff_size;
 
   /* Parallelization variables */
   int number_of_threads = 1;
@@ -2591,9 +2678,9 @@ int fisher_lensing_variance (
       matrix elements of the local and intrinsic bispectra. */
       int l_max = 0;
     
-      if (pbi->has_bispectra_t == _TRUE_)
+      if (pfi->has_fisher_t == _TRUE_)
         l_max = MAX (l_max, pbi->lmax_lensing_corrT);
-      if (pbi->has_bispectra_e == _TRUE_)
+      if (pfi->has_fisher_e == _TRUE_)
         l_max = MAX (l_max, pbi->lmax_lensing_corrE);
     
       if (l1>l_max)
@@ -2661,8 +2748,8 @@ int fisher_lensing_variance (
       when the first term in square brackets (C_ZP*C_CP) vanishes while the second one (C_tot_CZ*C_PP)
       doesn't. This might happen for l>100 where C_l^{T\phi} is very small. See also comment to that
       equation in the paper.  */
-      for (int C=0; C < pbi->bf_size; ++C) {
-        for (int Z=0; Z < pbi->bf_size; ++Z) {
+      for (int C=0; C < pfi->ff_size; ++C) {
+        for (int Z=0; Z < pfi->ff_size; ++Z) {
             
           /* Compute the extra noise due to lensing. The cross-correlation between the two fields
           (C_tot_CZ) should include the instrument noise, as specified below Eq. 5.1 of Lewis
@@ -2671,14 +2758,14 @@ int fisher_lensing_variance (
           C_ZP*C_CP in order to avoid numerical issues (we cannot trust neither C_ZP nor C_CP
           for l>~100) */
           double C_tot_CZ = pfi->C[l1-2][C][Z];
-          double C_CP = pbi->cls[pbi->index_ct_of_phi_bf[ C ]][l1-2];
-          double C_ZP = pbi->cls[pbi->index_ct_of_phi_bf[ Z ]][l1-2];
+          double C_CP = pbi->cls[pfi->index_ct_of_phi_ff[ C ]][l1-2];
+          double C_ZP = pbi->cls[pfi->index_ct_of_phi_ff[ Z ]][l1-2];
           double C_PP = pbi->cls[psp->index_ct_pp][l1-2];
           double noise_correction = (C_ZP*C_CP + C_tot_CZ*C_PP)/(2*l1+1);
   
           /* Contribution to the inverse Fisher matrix from this (l1,Z,C) */
-          int index_C = pfi->index_ft_cmb_lensing_kernel*pbi->bf_size+C;
-          int index_Z = pfi->index_ft_cmb_lensing_kernel*pbi->bf_size+Z;
+          int index_C = pfi->index_ft_cmb_lensing_kernel*pfi->ff_size+C;
+          int index_Z = pfi->index_ft_cmb_lensing_kernel*pfi->ff_size+Z;
           inverse_f_bar[thread][index_C][index_Z] += noise_correction;
 
           /* Debug - print out the correction to F_bar(l1,C,Z)^-1. To plot the file in gnuplot, do:
@@ -2687,20 +2774,20 @@ int fisher_lensing_variance (
           every 4::3 w li t "noise EE” */
           // if (l1<200)
           //   fprintf (stderr, "%4d %4s %4s %17g %17g %17g %17g %17g %17g %17g\n",
-          //     l1, pbi->bf_labels[C], pbi->bf_labels[Z],
+          //     l1, pfi->ff_labels[C], pfi->ff_labels[Z],
           //     noise_correction,
           //     C_ZP*C_CP/(2*l1+1),
           //     C_tot_CZ*C_PP/(2*l1+1),
           //     inverse_f_bar[thread][index_C][index_Z],
           //     (pbi->has_intrinsic==_TRUE_)?
-          //     C_ZP*C_CP*inverse_f_bar[thread][pfi->index_ft_intrinsic*pbi->bf_size+C]
-          //     [pfi->index_ft_intrinsic*pbi->bf_size+Z]:0,
+          //     C_ZP*C_CP*inverse_f_bar[thread][pfi->index_ft_intrinsic*pfi->ff_size+C]
+          //     [pfi->index_ft_intrinsic*pfi->ff_size+Z]:0,
           //     (pbi->has_intrinsic_squeezed==_TRUE_)?
-          //     C_ZP*C_CP*inverse_f_bar[thread][pfi->index_ft_intrinsic_squeezed*pbi->bf_size+C]
-          //     [pfi->index_ft_intrinsic_squeezed*pbi->bf_size+Z]:0,
+          //     C_ZP*C_CP*inverse_f_bar[thread][pfi->index_ft_intrinsic_squeezed*pfi->ff_size+C]
+          //     [pfi->index_ft_intrinsic_squeezed*pfi->ff_size+Z]:0,
           //     (pbi->has_local_model==_TRUE_)?
-          //     C_ZP*C_CP*inverse_f_bar[thread][pfi->index_ft_local*pbi->bf_size+C]
-          //     [pfi->index_ft_local*pbi->bf_size+Z]:0
+          //     C_ZP*C_CP*inverse_f_bar[thread][pfi->index_ft_local*pfi->ff_size+C]
+          //     [pfi->index_ft_local*pfi->ff_size+Z]:0
           //   );
 
           /* Debug - print r_l. This should match Fig. 3 of Lewis et al. 2011 when considering only
@@ -2741,11 +2828,11 @@ int fisher_lensing_variance (
       InverseMatrix (inverse_f_bar[thread], N, f[thread]);
 
       /* Check that the inversion didn't produce nans */
-      for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1)
-        for (int index_ft_2=0; index_ft_2 < pfi->fisher_size; ++index_ft_2)
-          for (int C=0; C < pbi->bf_size; ++C)
-            for (int Z=0; Z < pbi->bf_size; ++Z)
-              class_test_parallel (isnan (f[thread][index_ft_1*pbi->bf_size+C][index_ft_2*pbi->bf_size+Z]),
+      for (int index_ft_1=0; index_ft_1 < pfi->ft_size; ++index_ft_1)
+        for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2)
+          for (int C=0; C < pfi->ff_size; ++C)
+            for (int Z=0; Z < pfi->ff_size; ++Z)
+              class_test_parallel (isnan (f[thread][index_ft_1*pfi->ff_size+C][index_ft_2*pfi->ff_size+Z]),
                 pfi->error_message,
                 "stopping to prevent nans");
 
@@ -2757,11 +2844,11 @@ int fisher_lensing_variance (
       /* Sum over (Z,C) to obtain the optimal Fisher matrix */
       lensing_variance_final_step:
 
-      for (int index_ft_1=0; index_ft_1 < pfi->fisher_size; ++index_ft_1) {
-        for (int index_ft_2=0; index_ft_2 < pfi->fisher_size; ++index_ft_2) {
+      for (int index_ft_1=0; index_ft_1 < pfi->ft_size; ++index_ft_1) {
+        for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2) {
       
-          for (int C=0; C < pbi->bf_size; ++C) {
-            for (int Z=0; Z < pbi->bf_size; ++Z) {
+          for (int C=0; C < pfi->ff_size; ++C) {
+            for (int Z=0; Z < pfi->ff_size; ++Z) {
 
               /* So far we have been using the kernel of the CMB-lensing bispectrum (Eq. 5.20 of
               arXiv:1101.2234). The reason for doing so is to avoid numerical noise in the term
@@ -2770,17 +2857,17 @@ int fisher_lensing_variance (
               by C_l1^{i\psi}*C_l1^{j\psi}. */
               double correction = 1;
               if (index_ft_1 == pfi->index_ft_cmb_lensing_kernel)
-                correction *= pbi->cls[pbi->index_ct_of_phi_bf[ C ]][l1-2];
+                correction *= pbi->cls[pfi->index_ct_of_phi_ff[ C ]][l1-2];
               if (index_ft_2 == pfi->index_ft_cmb_lensing_kernel)
-                correction *= pbi->cls[pbi->index_ct_of_phi_bf[ Z ]][l1-2];
+                correction *= pbi->cls[pfi->index_ct_of_phi_ff[ Z ]][l1-2];
 
               #pragma omp atomic
               pfi->fisher_matrix_lensvar_smallest[index_l1][index_ft_1][index_ft_2]
-                += correction * f[thread][index_ft_1*pbi->bf_size+C][index_ft_2*pbi->bf_size+Z];
+                += correction * f[thread][index_ft_1*pfi->ff_size+C][index_ft_2*pfi->ff_size+Z];
     
               /* Rescale also the zero-signal matrix */
               #pragma omp atomic
-              pfi->fisher_matrix_CZ_smallest[index_l1][index_ft_1*pbi->bf_size+C][index_ft_2*pbi->bf_size+Z]
+              pfi->fisher_matrix_CZ_smallest[index_l1][index_ft_1*pfi->ff_size+C][index_ft_2*pfi->ff_size+Z]
                 *= correction;
             
             } // Z
@@ -2825,33 +2912,33 @@ int fisher_allocate_interpolation_mesh(
   
   /* Allocate one mesh interpolation workspace per type of bispectrum */
   class_alloc ((*mesh_workspaces),
-    pfi->fisher_size*sizeof(struct mesh_interpolation_workspace *****),
+    pfi->ft_size*sizeof(struct mesh_interpolation_workspace *****),
     pfi->error_message);
 
     /* Allocate worspaces and intialize counters */
-  for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+  for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
     
     /* The analytical bispectra are never interpolated */
     if (pbi->bispectrum_type[pfi->index_bt_of_ft[index_ft]] == analytical_bispectrum)
       continue;
 
     class_alloc ((*mesh_workspaces)[index_ft],
-      pbi->bf_size*sizeof(struct mesh_interpolation_workspace ****),
+      pfi->ff_size*sizeof(struct mesh_interpolation_workspace ****),
       pfi->error_message);
 
-      for (int X = 0; X < pbi->bf_size; ++X) {
+      for (int X = 0; X < pfi->ff_size; ++X) {
 
         class_alloc ((*mesh_workspaces)[index_ft][X],
-          pbi->bf_size*sizeof(struct mesh_interpolation_workspace ***),
+          pfi->ff_size*sizeof(struct mesh_interpolation_workspace ***),
           pfi->error_message);
 
-        for (int Y = 0; Y < pbi->bf_size; ++Y) {
+        for (int Y = 0; Y < pfi->ff_size; ++Y) {
           
           class_alloc ((*mesh_workspaces)[index_ft][X][Y],
-            pbi->bf_size*sizeof(struct mesh_interpolation_workspace **),
+            pfi->ff_size*sizeof(struct mesh_interpolation_workspace **),
             pfi->error_message);
 
-          for (int Z = 0; Z < pbi->bf_size; ++Z) {
+          for (int Z = 0; Z < pfi->ff_size; ++Z) {
 
             class_alloc ((*mesh_workspaces)[index_ft][X][Y][Z],
               pfi->n_meshes*sizeof(struct mesh_interpolation_workspace *),
@@ -2897,14 +2984,14 @@ int fisher_free_interpolation_mesh(
         )
 {
 
-  for (int index_ft=(pfi->fisher_size-1); index_ft >= pfi->first_non_analytical_index_ft; --index_ft) {
+  for (int index_ft=(pfi->ft_size-1); index_ft >= pfi->first_non_analytical_index_ft; --index_ft) {
   
     if (pbi->bispectrum_type[pfi->index_bt_of_ft[index_ft]] == analytical_bispectrum)
       continue;
   
-    for (int X = (pbi->bf_size-1); X >= 0; --X) {
-      for (int Y = (pbi->bf_size-1); Y >= 0; --Y) {
-        for (int Z = (pbi->bf_size-1); Z >= 0; --Z) {
+    for (int X = (pfi->ff_size-1); X >= 0; --X) {
+      for (int Y = (pfi->ff_size-1); Y >= 0; --Y) {
+        for (int Z = (pfi->ff_size-1); Z >= 0; --Z) {
           for (int index_mesh=0; index_mesh < pfi->n_meshes; ++index_mesh) {
 
             if (((index_mesh == 0) && (pfi->l_turnover[0] <= pbi->l[0]))
@@ -2953,7 +3040,7 @@ int fisher_create_3D_interpolation_mesh(
   
   if (pfi->fisher_verbose > 0)
     printf (" -> preparing the interpolation mesh for %d bispectr%s\n",
-    pfi->fisher_size*pbi->n_probes, ((pfi->fisher_size*pbi->n_probes)!=1?"a":"um"));
+    pfi->ft_size*pfi->n_probes, ((pfi->ft_size*pfi->n_probes)!=1?"a":"um"));
 
   // ==================================================================================
   // =                                Create meshes                                   =
@@ -2973,7 +3060,7 @@ int fisher_create_3D_interpolation_mesh(
   
   int abort = _FALSE_;
 
-  for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+  for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
 
     int index_bt = pfi->index_bt_of_ft[index_ft];
 
@@ -2981,9 +3068,14 @@ int fisher_create_3D_interpolation_mesh(
     if (pbi->bispectrum_type[index_bt] == analytical_bispectrum)
       continue;
     
-    for (int X = 0; X < pbi->bf_size; ++X) {
-      for (int Y = 0; Y < pbi->bf_size; ++Y) {
-        for (int Z = 0; Z < pbi->bf_size; ++Z) {
+    for (int X = 0; X < pfi->ff_size; ++X) {
+      for (int Y = 0; Y < pfi->ff_size; ++Y) {
+        for (int Z = 0; Z < pfi->ff_size; ++Z) {
+          
+          /* Corresponding field indices in the bispectrum module */
+          int X_ = pfi->index_bf_of_ff[X];
+          int Y_ = pfi->index_bf_of_ff[Y];
+          int Z_ = pfi->index_bf_of_ff[Z];
 
           // ---------------------------------------------------------------------------
           // -                          Rearrange the bispectra                        -
@@ -3022,26 +3114,26 @@ int fisher_create_3D_interpolation_mesh(
                   class_call_parallel ((*pbi->window_function[index_bt]) (
                                 ppr, psp, ple, pbi,
                                 l3, l2, l1,
-                                X, Y, Z,
+                                X_, Y_, Z_,
                                 dump,
                                 dump,
                                 dump,
                                 dump,
                                 &inverse_window),
                     pbi->error_message,
-                    pbi->error_message);
+                    pfi->error_message);
                 }
                 
                 /* The 0th element of 'values' is the function to be interpolated. The natural scaling for the bispectrum
                 (both the templates and the second-order one) is given by Cl1*Cl2 + Cl2*Cl3 + Cl1*Cl3, which we adopt
                 as a window function. When available, we always use the C_l's for the temperature, as they are approximately
                 the same order of magnitude for all l's, contrary to those for polarization which are very small for l<200. */
-                values[index_l1_l2_l3][0] = pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3] / inverse_window;
+                values[index_l1_l2_l3][0] = pbi->bispectra[index_bt][X_][Y_][Z_][index_l1_l2_l3] / inverse_window;
 
                 /* Debug - print the values at the nodes */
                 // if ((l1==50)&&(l2==30)&&(l3==20)) {
                 //   printf ("%s_%s = %g\n",
-                //     pbi->bt_labels[index_bt], pbi->bfff_labels[X][Y][Z],
+                //     pbi->bt_labels[index_bt], pbi->bfff_labels[X_][Y_][Z_],
                 //     values[index_l1_l2_l3][0]);
                 // }
 
@@ -3078,7 +3170,7 @@ int fisher_create_3D_interpolation_mesh(
 
             if (pfi->fisher_verbose > 2) 
               printf ("     * computing mesh for bispectrum %s_%s(%d)\n",
-              pbi->bt_labels[index_bt], pbi->bfff_labels[X][Y][Z], index_mesh);
+              pbi->bt_labels[index_bt], pfi->ffff_labels[X][Y][Z], index_mesh);
    
             /* Skip the fine grid if the turnover point is smaller than than the smallest multipole */
             if ((index_mesh == 0) && (pfi->l_turnover[0] <= pbi->l[0])) {
@@ -3238,7 +3330,7 @@ int fisher_create_2D_interpolation_mesh(
   for (int index_l2_l3=0; index_l2_l3 < n_points; ++index_l2_l3)
     class_calloc (values[index_l2_l3], 3, sizeof(double), pfi->error_message);
 
-  for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+  for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
 
     int index_bt = pfi->index_bt_of_ft[index_ft];
 
@@ -3246,9 +3338,14 @@ int fisher_create_2D_interpolation_mesh(
     if (pbi->bispectrum_type[index_bt] == analytical_bispectrum)
       continue;
     
-    for (int X = 0; X < pbi->bf_size; ++X) {
-      for (int Y = 0; Y < pbi->bf_size; ++Y) {
-        for (int Z = 0; Z < pbi->bf_size; ++Z) {
+    for (int X = 0; X < pfi->ff_size; ++X) {
+      for (int Y = 0; Y < pfi->ff_size; ++Y) {
+        for (int Z = 0; Z < pfi->ff_size; ++Z) {
+
+          /* Corresponding field indices in the bispectrum module */
+          int X_ = pfi->index_bf_of_ff[X];
+          int Y_ = pfi->index_bf_of_ff[Y];
+          int Z_ = pfi->index_bf_of_ff[Z];
 
           // ---------------------------------------------------------------------------
           // -                          Rearrange the bispectra                        -
@@ -3285,14 +3382,14 @@ int fisher_create_2D_interpolation_mesh(
                 class_call ((*pbi->window_function[index_bt]) (
                               ppr, psp, ple, pbi,
                               l3, l2, l1, /* smallest one goes in third position  */
-                              X, Y, Z,
+                              X_, Y_, Z_,
                               dump,
                               dump,
                               dump,
                               dump,
                               &inverse_window),
                   pbi->error_message,
-                  pbi->error_message);
+                  pfi->error_message);
 
               }
 
@@ -3300,30 +3397,30 @@ int fisher_create_2D_interpolation_mesh(
               (both the templates and the second-order one) is given by Cl1*Cl2 + Cl2*Cl3 + Cl1*Cl3, which we adopt
               as a window function. When available, we always use the C_l's for the temperature, as they are approximately
               the same order of magnitude for all l's, contrary to those for polarization which are very small for l<200. */
-              values[index_l2_l3][0] = pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3] / inverse_window;
+              values[index_l2_l3][0] = pbi->bispectra[index_bt][X_][Y_][Z_][index_l1_l2_l3] / inverse_window;
               
               /* Debug - print the values at the nodes, quick check */
               // if ((l1==1000)) {
               // // if ((l1==63)&&(l2==38)&&(l3==27)) {
               //   printf ("AT THE NODE: %s_%s(%d,%d,%d) = %g\n",
-              //     pbi->bt_labels[index_bt], pbi->bfff_labels[X][Y][Z], l1, l2, l3,
+              //     pbi->bt_labels[index_bt], pbi->bfff_labels[X_][Y_][Z_], l1, l2, l3,
               //     values[index_l2_l3][0]);
               // }
               
               /* Debug - print to file the effect of the window function, as a function of (l2,l3).
               Plot with splot [:] "interp.dat" u 1:2:(($3)) lw 2 */
-              // if ((l1==6) && (X==0) && (Y==0) && (Z==0)) {
+              // if ((l1==6) && (X_==0) && (Y_==0) && (Z_==0)) {
               //   fprintf (stderr, "%5d %5d %12.4g %12.4g %12.4g %s %s %s %s\n",
-              //     l2, l3, pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3], inverse_window, values[index_l2_l3][0],
-              //     pbi->bt_labels[index_bt], pbi->bf_labels[X], pbi->bf_labels[Y], pbi->bf_labels[Z]);
+              //     l2, l3, pbi->bispectra[index_bt][X_][Y_][Z_][index_l1_l2_l3], inverse_window, values[index_l2_l3][0],
+              //     pbi->bt_labels[index_bt], pbi->bf_labels[X_], pbi->bf_labels[Y_], pbi->bf_labels[Z_]);
               // }
 
               /* Debug - print to file the effect of the window function, as a function of (l1,l2)
               Plot with splot [:] "interp.dat" u 1:2:(($3)) lw 2 */  
-              // if ((l3==1770) && (X==1) && (Y==1) && (Z==0)) {
+              // if ((l3==1770) && (X_==1) && (Y_==1) && (Z_==0)) {
               //   fprintf (stderr, "%5d %5d %12.4g %12.4g %12.4g %s %s %s %s\n",
-              //     l1, l2, pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3], inverse_window, values[index_l2_l3][0],
-              //     pbi->bt_labels[index_bt], pbi->bf_labels[X], pbi->bf_labels[Y], pbi->bf_labels[Z]);
+              //     l1, l2, pbi->bispectra[index_bt][X_][Y_][Z_][index_l1_l2_l3], inverse_window, values[index_l2_l3][0],
+              //     pbi->bt_labels[index_bt], pbi->bf_labels[X_], pbi->bf_labels[Y_], pbi->bf_labels[Z_]);
               // }
 
               /* 2nd to 3rd arguments are the coordinates */
@@ -3359,7 +3456,7 @@ int fisher_create_2D_interpolation_mesh(
 
             if (pfi->fisher_verbose > 3) 
               printf ("     * computing mesh for bispectrum %s_%s(%d)\n",
-              pbi->bt_labels[index_bt], pbi->bfff_labels[X][Y][Z], index_mesh);
+              pbi->bt_labels[index_bt], pfi->ffff_labels[X][Y][Z], index_mesh);
    
             /* Skip the fine grid if the turnover point is smaller than than the smallest multipole */
             if ((index_mesh == 0) && (pfi->l_turnover[0] <= pbi->l[0])) {
@@ -3516,8 +3613,8 @@ int fisher_interpolate_bispectrum_mesh_3D (
   if (isnan(*interpolated_value))
     printf ("@@@ WARNING: Interpolated b(%g,%g,%g) = %g for bispectrum %s_%s!!!\n",
     l1, l2, l3, *interpolated_value,
-    pbi->bt_labels[pfi->index_bt_of_ft[index_ft]],
-    pbi->bfff_labels[X][Y][Z]);
+    pfi->ft_labels[index_ft],
+    pfi->ffff_labels[X][Y][Z]);
   
   return _SUCCESS_;
   
@@ -3559,8 +3656,8 @@ int fisher_interpolate_bispectrum_mesh_2D (
   if (isnan(*interpolated_value))
     printf ("@@@ WARNING: Interpolated b(%g,%g,%g) = %g for bispectrum %s_%s!!!\n",
     l1, l2, l3, *interpolated_value,
-    pbi->bt_labels[pfi->index_bt_of_ft[index_ft]],
-    pbi->bfff_labels[X][Y][Z]);
+    pfi->ft_labels[index_ft],
+    pfi->ffff_labels[X][Y][Z]);
   
   return _SUCCESS_;
   

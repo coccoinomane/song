@@ -167,40 +167,44 @@ int main(int argc, char **argv) {
   // printf("\tpt2.primordial_local_fnl_phi = %g\n", pt2.primordial_local_fnl_phi);
 
   /* Bispectrum */
-  printf("* Bispectrum parameters\n");
-  printf("\tpt2.has_bispectra = %d\n", pt2.has_bispectra);
-  printf("\tbi.has_bispectra = %d\n", bi.has_bispectra);
-  printf("\tbi.r_min = %g\n", bi.r_min);
-  printf("\tbi.r_max = %g\n", bi.r_max);
-  printf("\tbi.r_size = %d\n", bi.r_size);  
-  printf("\tbi.has_local_model = %d\n", bi.has_local_model);
-  printf("\tbi.has_equilateral_model = %d\n", bi.has_equilateral_model);
-  printf("\tbi.has_orthogonal_model = %d\n", bi.has_orthogonal_model);
-  printf("\tbi.has_galileon_model = %d\n", bi.has_galileon_model);
-  printf("\tbi.has_intrinsic = %d\n", bi.has_intrinsic);
-  printf("\tbi.has_intrinsic_squeezed = %d\n", bi.has_intrinsic_squeezed);
-  printf("\tbi.has_intrinsic_squeezed_unlensed = %d\n", bi.has_intrinsic_squeezed_unlensed);
-  printf("\tbi.has_quadratic_correction = %d\n", bi.has_quadratic_correction);
-  printf("\tbi.add_quadratic_correction = %d\n", bi.add_quadratic_correction);
-  printf("\tbi.include_lensing_effects = %d\n", bi.include_lensing_effects);
-  printf("\tbi.lensed_intrinsic = %d\n", bi.lensed_intrinsic);
-  printf("\tpr.extend_lensed_cls = %d\n", pr.extend_lensed_cls);
+  // printf("* Bispectrum parameters\n");
+  // printf("\tpt2.has_bispectra = %d\n", pt2.has_bispectra);
+  // printf("\tbi.has_bispectra = %d\n", bi.has_bispectra);
+  // printf("\tbi.r_min = %g\n", bi.r_min);
+  // printf("\tbi.r_max = %g\n", bi.r_max);
+  // printf("\tbi.r_size = %d\n", bi.r_size);  
+  // printf("\tbi.has_local_model = %d\n", bi.has_local_model);
+  // printf("\tbi.has_equilateral_model = %d\n", bi.has_equilateral_model);
+  // printf("\tbi.has_orthogonal_model = %d\n", bi.has_orthogonal_model);
+  // printf("\tbi.has_galileon_model = %d\n", bi.has_galileon_model);
+  // printf("\tbi.has_intrinsic = %d\n", bi.has_intrinsic);
+  // printf("\tbi.has_intrinsic_squeezed = %d\n", bi.has_intrinsic_squeezed);
+  // printf("\tbi.has_intrinsic_squeezed_unlensed = %d\n", bi.has_intrinsic_squeezed_unlensed);
+  // printf("\tbi.has_quadratic_correction = %d\n", bi.has_quadratic_correction);
+  // printf("\tbi.add_quadratic_correction = %d\n", bi.add_quadratic_correction);
+  // printf("\tbi.include_lensing_effects = %d\n", bi.include_lensing_effects);
+  // printf("\tbi.lensed_intrinsic = %d\n", bi.lensed_intrinsic);
+  // printf("\tpr.extend_lensed_cls = %d\n", pr.extend_lensed_cls);
 
   /* Fisher */
-  // printf("\tfi.always_interpolate_bispectra = %d\n", fi.always_interpolate_bispectra);
-  // printf("\tfi.l_min_estimator = %d\n", fi.l_min_estimator);
-  // printf("\tfi.l_max_estimator = %d\n", fi.l_max_estimator);
-  // printf("\tfi.bispectra_interpolation = %d\n", fi.bispectra_interpolation);
-  // printf("\tfi.f_sky = %g\n", fi.f_sky);
-  // for (int index_channel=0; index_channel < fi.n_channels; ++index_channel) {
-  //   printf("\tchannel %d: fi.beam = %g arcmins, %g radians\n",
-  //   index_channel, fi.beam[index_channel] * 60. / (_PI_/180.), fi.beam[index_channel]);
-  //   printf("\t           fi.noise_t = %g uK\n",
-  //   index_channel, sqrt(fi.noise_t[index_channel]) * 1e6*ba.T_cmb / fi.beam[index_channel]);
-  //   printf("\t           fi.noise_e = %g uK\n",
-  //   index_channel, sqrt(fi.noise_e[index_channel]) * 1e6*ba.T_cmb / fi.beam[index_channel]);
-  // }
-  // printf("\tfi.include_lensing_effects = %d\n", fi.include_lensing_effects);
+  printf("\tfi.always_interpolate_bispectra = %d\n", fi.always_interpolate_bispectra);
+  printf("\tfi.l_min_estimator = %d\n", fi.l_min_estimator);
+  printf("\tfi.l_max_estimator = %d\n", fi.l_max_estimator);
+  printf("\tfi.bispectra_interpolation = %d\n", fi.bispectra_interpolation);
+  printf("\tfi.f_sky = %g\n", fi.f_sky);
+  for (int index_channel=0; index_channel < fi.n_channels; ++index_channel) {
+    printf("\tchannel %d: fi.beam = %g arcmins, %g radians\n",
+    index_channel, fi.beam[index_channel] * 60. / (_PI_/180.), fi.beam[index_channel]);
+    printf("\t           fi.noise_t = %g uK\n",
+    index_channel, sqrt(fi.noise_t[index_channel]) * 1e6*ba.T_cmb / fi.beam[index_channel]);
+    printf("\t           fi.noise_e = %g uK\n",
+    index_channel, sqrt(fi.noise_e[index_channel]) * 1e6*ba.T_cmb / fi.beam[index_channel]);
+  }
+  printf("\tfi.include_lensing_effects = %d\n", fi.include_lensing_effects);
+  printf("\tfi.ignore_t = %d\n", fi.ignore_t);
+  printf("\tfi.ignore_e = %d\n", fi.ignore_e);
+  printf("\tfi.ignore_b = %d\n", fi.ignore_b);
+  printf("\tfi.ignore_r = %d\n", fi.ignore_r);
 
   /* Precision parameters - multipoles */
   // printf("* Precision parameters - multipoles\n");  

@@ -258,22 +258,22 @@ int output_fisher(
   // --------------------------------------------------------------------------
   
   fprintf (fisher_file_lmax, "%20s ", "l_max");
-  for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+  for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
     sprintf (label, "F_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
     fprintf (fisher_file_lmax, "%20s ", label);
   }
-  for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+  for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
     sprintf (label, "F_cum_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
     fprintf (fisher_file_lmax, "%20s ", label);
   }
   fprintf (fisher_file_lmax, "\n");
   
   fprintf (fisher_file_lmin, "%20s ", "l_min");
-  for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+  for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
     sprintf (label, "F_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
     fprintf (fisher_file_lmin, "%20s ", label);
   }
-  for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+  for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
     sprintf (label, "F_cum_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
     fprintf (fisher_file_lmin, "%20s ", label);
   }
@@ -288,10 +288,10 @@ int output_fisher(
     
     fprintf (fisher_file_lmax, "%20d ", pfi->l3[index_l3]);
 
-    for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
+    for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft)
       fprintf (fisher_file_lmax, "%20.7g ", (pfi->fisher_matrix_largest[index_l3][index_ft][index_ft]));
 
-    for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
+    for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft)
       fprintf (fisher_file_lmax, "%20.7g ", (pfi->fisher_matrix_lmax[index_l3][index_ft][index_ft]));
 
     fprintf (fisher_file_lmax, "\n");
@@ -302,10 +302,10 @@ int output_fisher(
   
     fprintf (fisher_file_lmin, "%20d ", pfi->l1[index_l1]);
 
-    for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
+    for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft)
       fprintf (fisher_file_lmin, "%20.7g ", (pfi->fisher_matrix_smallest[index_l1][index_ft][index_ft]));
 
-    for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
+    for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft)
       fprintf (fisher_file_lmin, "%20.7g ", (pfi->fisher_matrix_lmin[index_l1][index_ft][index_ft]));
 
     fprintf (fisher_file_lmin, "\n");
@@ -343,11 +343,11 @@ int output_fisher(
     // --------------------------------------------------------------------------
   
     fprintf (fisher_file_lmin, "%20s ", "l_min");
-    for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+    for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
       sprintf (label, "F_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
       fprintf (fisher_file_lmin, "%20s ", label);
     }
-    for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+    for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
       sprintf (label, "F_cum_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
       fprintf (fisher_file_lmin, "%20s ", label);
     }
@@ -361,10 +361,10 @@ int output_fisher(
   
       fprintf (fisher_file_lmin, "%20d ", pfi->l1[index_l1]);
 
-      for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
+      for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft)
         fprintf (fisher_file_lmin, "%20.7g ", (pfi->fisher_matrix_lensvar_smallest[index_l1][index_ft][index_ft]));
 
-      for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
+      for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft)
         fprintf (fisher_file_lmin, "%20.7g ", (pfi->fisher_matrix_lensvar_lmin[index_l1][index_ft][index_ft]));
 
       fprintf (fisher_file_lmin, "\n");
@@ -435,11 +435,11 @@ int output_fisher(
           // --------------------------------------------------------------------------
           
           fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20s ", "l_max");
-          for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+          for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
             sprintf (label, "F_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
             fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20s ", label);
           }
-          for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+          for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
             sprintf (label, "F_cum_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
             fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20s ", label);
           }
@@ -447,11 +447,11 @@ int output_fisher(
 
             
           fprintf (fisher_file_XYZ_lmin[X][Y][Z], "%20s ", "l_min");
-          for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+          for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
             sprintf (label, "F_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
             fprintf (fisher_file_XYZ_lmin[X][Y][Z], "%20s ", label);
           }
-          for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft) {
+          for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
             sprintf (label, "F_cum_%s", pbi->bt_labels[pfi->index_bt_of_ft[index_ft]]);
             fprintf (fisher_file_XYZ_lmin[X][Y][Z], "%20s ", label);
           }
@@ -466,11 +466,11 @@ int output_fisher(
             
             fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20d ", pfi->l3[index_l3]);
           
-            for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
+            for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft)
               fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20.7g ",
                 (pfi->fisher_matrix_XYZ_largest[X][Y][Z][index_l3][index_ft][index_ft]));
           
-            for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
+            for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft)
               fprintf (fisher_file_XYZ_lmax[X][Y][Z], "%20.7g ",
                 (pfi->fisher_matrix_XYZ_lmax[X][Y][Z][index_l3][index_ft][index_ft]));
           
@@ -482,11 +482,11 @@ int output_fisher(
           
             fprintf (fisher_file_XYZ_lmin[X][Y][Z], "%20d ", pfi->l1[index_l1]);
         
-            for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
+            for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft)
               fprintf (fisher_file_XYZ_lmin[X][Y][Z], "%20.7g ",
                 (pfi->fisher_matrix_XYZ_smallest[X][Y][Z][index_l1][index_ft][index_ft]));
         
-            for (int index_ft=0; index_ft < pfi->fisher_size; ++index_ft)
+            for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft)
               fprintf (fisher_file_XYZ_lmin[X][Y][Z], "%20.7g ",
                 (pfi->fisher_matrix_XYZ_lmin[X][Y][Z][index_l1][index_ft][index_ft]));
         
@@ -669,7 +669,7 @@ int output_cl(
 				   pop,
 				   &out_dcl,
 				   file_name,
-           "total dln(l*l*C_l)/dln(l*l)",
+           "total dln(l*l*C_l)/dln(l)",
 				   ple->l_lensed_max
 				   ),
 	       pop->error_message,

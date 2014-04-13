@@ -2279,7 +2279,6 @@ less than %d values for 'experiment_beam_fwhm'", _N_FREQUENCY_CHANNELS_MAX_);
         errmsg,
         "the number of entries for 'experiment_beam_fwhm' and 'experiment_noise_t' must be equal");
 
-
       /* Compute the actual noise, as in astro-ph/0506396v2. A negative value implies infinite noise,
       which is equivalent to ignoring the frequency channel for this field */
       for (i=0; i<int1; i++) {
@@ -2340,7 +2339,7 @@ less than %d values for 'experiment_beam_fwhm'", _N_FREQUENCY_CHANNELS_MAX_);
 
       class_test(int1 != pfi->n_channels,
         errmsg,
-        "the number of entries for 'experiment_beam_fwhm' and 'experiment_noise_t' must be equal");
+        "the number of entries for 'experiment_beam_fwhm' and 'experiment_noise_r' must be equal");
 
       /* Compute the actual noise, as in astro-ph/0506396v2. A negative value implies infinite noise,
       which is equivalent to ignoring the frequency channel for this field */
@@ -2355,6 +2354,26 @@ less than %d values for 'experiment_beam_fwhm'", _N_FREQUENCY_CHANNELS_MAX_);
     }
   } // end of T noise
   
+  
+  class_call(parser_read_string(pfc,"ignored_fields_in_fisher",&(string1),&(flag1),errmsg),
+      errmsg,
+      errmsg);
+  
+  if (flag1 == _TRUE_) {
+  
+    if ((strstr(string1,"t") != NULL) || (strstr(string1,"T") != NULL))
+      pfi->ignore_t = _TRUE_;
+
+    if ((strstr(string1,"e") != NULL) || (strstr(string1,"E") != NULL))
+      pfi->ignore_e = _TRUE_;
+
+    if ((strstr(string1,"b") != NULL) || (strstr(string1,"B") != NULL))
+      pfi->ignore_b = _TRUE_;
+
+    if ((strstr(string1,"r") != NULL) || (strstr(string1,"R") != NULL))
+      pfi->ignore_r = _TRUE_;
+
+  }
 
   // ==========================================================================================
   // =                                 Create run directory                                   =
@@ -2874,6 +2893,11 @@ int input_default_params(
   pfi->beam[0] = 0;
   pfi->noise_t[0] = 0;
   pfi->noise_e[0] = 0;
+  pfi->noise_r[0] = 0;
+  pfi->ignore_t = _FALSE_;
+  pfi->ignore_e = _FALSE_;
+  pfi->ignore_b = _FALSE_;
+  pfi->ignore_r = _FALSE_;
   pfi->include_lensing_effects = _FALSE_;
   
 
