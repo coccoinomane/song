@@ -442,25 +442,6 @@ int input2_init (
     ppt2->has_quadratic_collision = _FALSE_;
   }
 
-  // *** Set ppt2->has_time_delay_in_liouville
-  class_call(parser_read_string(pfc,"include_time_delay_in_liouville",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
-  if ((flag1 == _TRUE_) && (strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL))
-    ppt2->has_time_delay_in_liouville = _FALSE_;
-
-  // *** Set ppt2->has_redshift_in_liouville
-  class_call(parser_read_string(pfc,"include_redshift_in_liouville",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
-  if ((flag1 == _TRUE_) && (strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL))
-    ppt2->has_redshift_in_liouville = _FALSE_;
-
-  // *** Set ppt2->has_lensing_in_liouville
-  class_call(parser_read_string(pfc,"include_lensing_in_liouville",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
-  if ((flag1 == _TRUE_) && (strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL))
-    ppt2->has_lensing_in_liouville = _FALSE_;
-
-
   // *** Set ppt->polarization and ppt2->has_polarization2
   class_call(parser_read_string(pfc,"polarization_second_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
      
@@ -1528,10 +1509,6 @@ int input2_default_params (
 
   ppt2->rescale_quadsources = _FALSE_;
 
-  ppt2->has_time_delay_in_liouville = _TRUE_;
-  ppt2->has_redshift_in_liouville = _TRUE_;
-  ppt2->has_lensing_in_liouville = _TRUE_;
-  
   ppt2->has_pure_scattering_in_los = _FALSE_;
   ppt2->has_photon_monopole_in_los = _FALSE_;
   ppt2->has_quad_scattering_in_los = _FALSE_;
@@ -1588,8 +1565,8 @@ int input2_default_params (
   ppt2->ur_fluid_approximation = ufa2_none;
   ppt2->ur_fluid_trigger_tau_over_tau_k = 15;
   
-  ppt2->no_radiation_approximation = nra2_none;
-  ppt2->no_radiation_approximation_rho_m_over_rho_r = 5;
+  ppt2->no_radiation_approximation = nra2_fluid;
+  ppt2->no_radiation_approximation_rho_m_over_rho_r = 100;
 
 
   // *** Choose equations
@@ -1597,7 +1574,7 @@ int input2_default_params (
 
 
   // *** Time sampling
-  ppt2->tau_start_evolution = 5;
+  ppt2->tau_start_evolution = 1;
 
   ppt2->recombination_max_to_end_ratio = 1000;
 
@@ -1610,8 +1587,8 @@ int input2_default_params (
   ppt2->match_final_time_los = _FALSE_;
   
   // *** K sampling
-  ppt2->k_sampling = lin_k_sampling;
-  ppt2->k3_sampling = lin_k3_sampling;
+  ppt2->k_sampling = smart_sources_k_sampling;
+  ppt2->k3_sampling = smart_k3_sampling;
 
 
   // *** Technical parameters
@@ -1691,23 +1668,21 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
 
   ppr2->m_max_2nd_order=0;
 
-  ppr2->l_max_g_2nd_order=6;
-  ppr2->l_max_g_quadsources=6;
-  ppr2->l_max_pol_g_2nd_order=6;
-  ppr2->l_max_pol_g_quadsources=6;
-  ppr2->l_max_ur_2nd_order=6; 
-  ppr2->l_max_ur_quadsources=6;   
-  ppr2->l_max_g_ten_2nd_order=6;
-  ppr2->l_max_g_ten_quadsources=6;
-  ppr2->l_max_pol_g_ten_2nd_order=6;
-  ppr2->l_max_pol_g_ten_quadsources=6;
+  ppr2->l_max_g_2nd_order=10;
+  ppr2->l_max_pol_g_2nd_order=10;
+  ppr2->l_max_ur_2nd_order=10; 
+  ppr2->l_max_g_ten_2nd_order=10;
+  ppr2->l_max_pol_g_ten_2nd_order=10;
 
-  ppr2->l_max_los_t=4;
-  ppr2->l_max_los_quadratic_t=4;
-  ppr2->l_max_los_p=4;
-  ppr2->l_max_los_quadratic_p=4;
+  ppr2->l_max_g_quadsources=-1;
+  ppr2->l_max_pol_g_quadsources=-1;
+  ppr2->l_max_g_ten_quadsources=-1;
+  ppr2->l_max_pol_g_ten_quadsources=-1;
+  ppr2->l_max_ur_quadsources=-1;
 
-  
+  ppr2->l_max_los_t=ppr2->l_max_los_quadratic_t=2;
+  ppr2->l_max_los_p=ppr2->l_max_los_quadratic_p=2;
+
   /* By default, compute only the scalar (m=0) modes */
   ppr2->m_size = 1;
   ppr2->m[0] = 0;
@@ -1717,7 +1692,7 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   // =                            Time samplings                          =
   // ======================================================================
 
-  ppr2->perturb_sampling_stepsize_2nd_order = 0.08;
+  ppr2->perturb_sampling_stepsize_2nd_order = 0.4;
   ppr2->start_small_k_at_tau_c_over_tau_h_2nd_order = 0.0015;  /* decrease to start earlier in time */
   ppr2->start_large_k_at_tau_h_over_tau_k_2nd_order = 0.07;    /* decrease to start earlier in time */
 
@@ -1736,10 +1711,10 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   ppr2->k_scalar_step_transition_2nd_order = 0.2;
 
   /* Transfer function k-sampling (used only if ptr2->k_sampling == class_transfer2_k_sampling) */
-  ppr2->k_step_trans_scalars_2nd_order = 0.04;
+  ppr2->k_step_trans_scalars_2nd_order = 0.004;
 
   /* Transfer function tau-sampling (used only if ptr2->tau_sampling == custom_transfer2_tau_sampling) */
-  ppr2->tau_step_trans_2nd_order = 0.25;
+  ppr2->tau_step_trans_2nd_order = 4;
   
   /* Scalars */
   ppr2->k_min_scalars = 1e-4;

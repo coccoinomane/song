@@ -85,11 +85,6 @@ int main(int argc, char **argv) {
   /* Equations parameters */
   // printf("\tpt2.phi_prime_eq = %d\n", pt2.phi_prime_eq);
   
-	/* Quadratic terms in the differential system */
-  // printf("\tpt2.has_time_delay_in_liouville = %d\n", pt2.has_time_delay_in_liouville);
-  // printf("\tpt2.has_redshift_in_liouville = %d\n", pt2.has_redshift_in_liouville);
-  // printf("\tpt2.has_lensing_in_liouville = %d\n", pt2.has_lensing_in_liouville);
-	
   /* LOS effects at first order */
   // printf("* Line-of-sight effects at first order\n");
   // printf("\tpt.has_scattering_in_los = %d\n", pt.has_scattering_in_los);

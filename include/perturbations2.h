@@ -133,14 +133,6 @@ struct perturbs2
   int perturbed_recombination_use_approx;   /* Shall we use the approximation in eq. 3.23 of Senatore et al. 2009? */
 
 
-
-  /* Terms in the quadratic sources of the differential system (photons only). Please refer to
-  eq. 2.5 of http://arxiv.org/abs/1302.0832 for their meaning */
-  short has_time_delay_in_liouville;            /* Shall we include the time-delay term for photons? */
-	short has_redshift_in_liouville;              /* Shall we include the redshift term for photons? */
-  short has_lensing_in_liouville;               /* Shall we include the lensing term for photons? */
-
-
   /* Is it ok to evolve the system only up to recombination time?  This is _TRUE_ only if both
   'has_lensing_in_los' and 'has_metric_in_los' are _FALSE_, i.e. if the only contribution to the
   line-of-sight integral comes from visibility function terms.  */

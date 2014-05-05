@@ -130,9 +130,9 @@ tau_step_trans_2nd_order = 4
 
 
 ## Bispectrum integration, choose between no_extrapolation, flat_extrapolation, linear_extrapolation
-bispectra_k3_extrapolation = no_extrapolation
-extra_k3_oscillations_right = 100
-extra_k3_oscillations_left = 100
+bispectra_k3_extrapolation = flat_extrapolation
+extra_k3_oscillations_right = 50
+extra_k3_oscillations_left = 50
 
 
 ## Bispectrum interpolation in (l1,l2,l3)

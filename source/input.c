@@ -3163,16 +3163,16 @@ int input_default_precision ( struct precision * ppr ) {
   ppr->extend_lensed_cls = _FALSE_;
     
   /* Quadsources time-sampling */
-  ppr->perturb_sampling_stepsize_quadsources = 0.08;
+  ppr->perturb_sampling_stepsize_quadsources = 0.03;
 
   /* Interpolation and integration */
   ppr->quadsources_time_interpolation = cubic_interpolation;
   ppr->bessels_interpolation = linear_interpolation;
   ppr->transfers_k1_interpolation = linear_interpolation;
   ppr->transfers_k2_interpolation = linear_interpolation;
-  ppr->bispectra_k3_extrapolation = no_k3_extrapolation;
-  ppr->extra_k3_oscillations_left = 0;
-  ppr->extra_k3_oscillations_right = 0;
+  ppr->bispectra_k3_extrapolation = flat_k3_extrapolation;
+  ppr->extra_k3_oscillations_left = 50;
+  ppr->extra_k3_oscillations_right = 50;
 
   /* Storage of intermediate results */
   ppr->store_run == _FALSE_;

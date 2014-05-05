@@ -42,6 +42,11 @@ or off. */
 // -                          Shortcuts for quadratic sources                         -
 // ------------------------------------------------------------------------------------
 
+/* Set this coefficient to 2 if you expanded the perturbations as X ~ X^(1) + 1/2 * X^(2),
+or to unity if you use X ~ X^(1) + X^(2) instead. This feature is not fully implented
+yet, hence for the time being keep it equal to 2 */
+#define quad_coefficient 2
+
 /* Shortcuts to access the full quadratic sources, as computed by perturb2_quadratic_sources or
 interpolated by perturb2_quadratic_sources_at_tau. */
 #define dI_qs2(l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_g + lm(l,m)]

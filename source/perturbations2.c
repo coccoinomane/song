@@ -384,6 +384,11 @@ int perturb2_indices_of_perturbs(
     (ppt2->has_cmb_polarization_b == _FALSE_),
     ppt2->error_message, "please specify a probe");
 
+  /* Synchronous gauge not supported yet */
+  class_test (ppt->gauge == synchronous,
+    ppt2->error_message,
+    "synchronous gauge is not supported at second order yet");
+
   /* E-modes and B-modes start from l=2 */
   class_test (
     (ppr2->l_max_los_p<2) || (ppr2->l_max_los_p<2),
@@ -7323,7 +7328,7 @@ int perturb2_quadratic_sources (
   /* Interpolate first-order sources at the desired time */
   else {
         
-    // *** Interpolate first-order quantities (ppw2->psources_1)
+    /* Interpolate first-order quantities in tau and k1 (ppw2->psources_1) */
     class_call (perturb_quadsources_at_tau_for_all_types (
                  ppr,
                  ppt,
@@ -7337,7 +7342,7 @@ int perturb2_quadratic_sources (
        ppt->error_message,
        ppt2->error_message);
   
-    // *** Interpolate first-order quantities (ppw2->psources_2)  
+    /* Interpolate first-order quantities in tau and k2 (ppw2->psources_2) */ 
     class_call (perturb_quadsources_at_tau_for_all_types (
                  ppr,
                  ppt,
@@ -7351,7 +7356,7 @@ int perturb2_quadratic_sources (
       ppt->error_message,
       ppt2->error_message);    
       
-    /* Interpolate background-related quantities in TAU (pvecback) */
+    /* Interpolate background-related quantities in tau (pvecback) */
     class_call (background_at_tau(
                  pba,
                  tau, 
@@ -7362,7 +7367,7 @@ int perturb2_quadratic_sources (
       pba->error_message,
       ppt2->error_message);
 
-    /* Interpolate thermodynamics-related quantities in TAU (pvecthermo) */
+    /* Interpolate thermodynamics-related quantities in tau (pvecthermo) */
     class_call (thermodynamics_at_z(
                  pba,
                  pth,
@@ -7450,12 +7455,8 @@ int perturb2_quadratic_sources (
 
 
   // ==============================================================================================
-  // =                                     Metric perturbations                                   =
+  // =                                   Energy momentum tensor                                   =
   // ==============================================================================================
- 
-  // -----------------------------------------------------
-  // -               Energy momentum tensor              -
-  // -----------------------------------------------------
 
   /* Since we adopt beta-moments and not fluid variables, the quadratic part of the energy momentum tensor
   is particularly simple. The only quadratic contribution comes from the tetrad transformation of T^i0, and
@@ -7477,26 +7478,24 @@ int perturb2_quadratic_sources (
   potential phi */
   if (ppr2->compute_m[0] == _TRUE_) {
  
-    // *******      Photon contribution       ********
+    /* Photon contribution */
     rho_g = pvecback[pba->index_bg_rho_g];        
     rho_dipole_1         =  rho_g*I_1_tilde(1);
     rho_dipole_2         =  rho_g*I_2_tilde(1);
  
- 
-    // *******      Baryon contribution       ********
+    /* Baryon contribution */
     rho_b = pvecback[pba->index_bg_rho_b];
     rho_dipole_1         +=  rho_b*pvec_sources1[ppt->index_qs_dipole_b];
     rho_dipole_2         +=  rho_b*pvec_sources2[ppt->index_qs_dipole_b];
  
- 
-    // *******      CDM contribution       ********
+    /* CDM contribution */
     if (pba->has_cdm == _TRUE_) {
       rho_cdm = pvecback[pba->index_bg_rho_cdm];
       rho_dipole_1         +=  rho_cdm*pvec_sources1[ppt->index_qs_dipole_cdm];
       rho_dipole_2         +=  rho_cdm*pvec_sources2[ppt->index_qs_dipole_cdm];
     }
- 
-    // *******      Neutrinos/UR relics contribution       ********
+    
+    /* Neutrinos/ur relics contribution */
     if (pba->has_ur == _TRUE_) {
       rho_ur = pvecback[pba->index_bg_rho_ur];
       rho_dipole_1         +=  rho_ur*N_1_tilde(1);
@@ -7507,9 +7506,9 @@ int perturb2_quadratic_sources (
  
 
 
-  // -----------------------------------------------------
-  // -                   Einstein tensor                 -
-  // -----------------------------------------------------
+  // ==============================================================================================
+  // =                                      Einstein tensor                                       =
+  // ==============================================================================================
   
   /* Shortcuts */
   double phi_1, phi_2, psi_1, psi_2, phi_prime_1, phi_prime_2;
@@ -7667,35 +7666,30 @@ int perturb2_quadratic_sources (
           if (l==1)
             dI_qs2(1,m) = 4 * (k1_m[m+1]*psi_1*(psi_2-phi_2) + k2_m[m+1]*psi_2*(psi_1-phi_1));
           
-          /* Time-delay, lensing and redshift contributions. Here we write down the 3rd and 4th row of
+          /* Time-delay, redshift and lensing contributions. Here we write down the 3rd and 4th row of
           eq. 143 of BF2010, equivalent to eqs. A.43 and A.44 of P2010. The coupling coefficients R are
           basically equal to l*C, hence the associated terms are important also for very high l's. All
           the R-terms come from the lensing part of Boltzmann equation, and are difficult to treat
           in the line-of-sight formalism. */
-          if (ppt2->has_time_delay_in_liouville == _TRUE_)
-            dI_qs2(l,m) +=   I_2_tilde(l+1) * c_plus_22(l,m)*k2*(phi_1+psi_1)
-                           - I_2_tilde(l-1) * c_minus_22(l,m)*k2*(phi_1+psi_1)
-                           /* Symmetrisation */
-                           + I_1_tilde(l+1) * c_plus_11(l,m)*k1*(phi_2+psi_2)
-                           - I_1_tilde(l-1) * c_minus_11(l,m)*k1*(phi_2+psi_2);
+          dI_qs2(l,m) +=   I_2_tilde(l+1) * c_plus_22(l,m)*k2*(phi_1+psi_1)
+                         - I_2_tilde(l-1) * c_minus_22(l,m)*k2*(phi_1+psi_1)
+                         /* Symmetrisation */
+                         + I_1_tilde(l+1) * c_plus_11(l,m)*k1*(phi_2+psi_2)
+                         - I_1_tilde(l-1) * c_minus_11(l,m)*k1*(phi_2+psi_2);
      
+          dI_qs2(l,m) += - 4*phi_prime_1*I_2(l,m)
+                         + I_2_tilde(l+1) * 4 * c_plus_12(l,m)*k1*psi_1
+                         - I_2_tilde(l-1) * 4 * c_minus_12(l,m)*k1*psi_1
+                         /* Symmetrisation */
+                         - 4*phi_prime_2*I_1(l,m)
+                         + I_1_tilde(l+1) * 4 * c_plus_21(l,m)*k2*psi_2
+                         - I_1_tilde(l-1) * 4 * c_minus_21(l,m)*k2*psi_2;
 
-          if (ppt2->has_redshift_in_liouville == _TRUE_)
-            dI_qs2(l,m) += - 4*phi_prime_1*I_2(l,m)
-                           + I_2_tilde(l+1) * 4 * c_plus_12(l,m)*k1*psi_1
-                           - I_2_tilde(l-1) * 4 * c_minus_12(l,m)*k1*psi_1
-                           /* Symmetrisation */
-                           - 4*phi_prime_2*I_1(l,m)
-                           + I_1_tilde(l+1) * 4 * c_plus_21(l,m)*k2*psi_2
-                           - I_1_tilde(l-1) * 4 * c_minus_21(l,m)*k2*psi_2;
-
-          if (ppt2->has_lensing_in_liouville == _TRUE_)
-            dI_qs2(l,m) +=   I_2_tilde(l+1) * r_plus_12(l,m)*k1*(phi_1+psi_1)
-                           - I_2_tilde(l-1) * r_minus_12(l,m)*k1*(phi_1+psi_1)
-                           /* Symmetrisation */
-                           + I_1_tilde(l+1) * r_plus_21(l,m)*k2*(phi_2+psi_2)
-                           - I_1_tilde(l-1) * r_minus_21(l,m)*k2*(phi_2+psi_2);
-      
+          dI_qs2(l,m) +=   I_2_tilde(l+1) * r_plus_12(l,m)*k1*(phi_1+psi_1)
+                         - I_2_tilde(l-1) * r_minus_12(l,m)*k1*(phi_1+psi_1)
+                         /* Symmetrisation */
+                         + I_1_tilde(l+1) * r_plus_21(l,m)*k2*(phi_2+psi_2)
+                         - I_1_tilde(l-1) * r_minus_21(l,m)*k2*(phi_2+psi_2);
 
           /* Uncomment the following lines to include all effects nonetheless */
           // dI_qs2(l,m) += - 4*phi_prime_1*I_2(l,m) 
@@ -8375,11 +8369,6 @@ int perturb2_source_terms (
   double k1_dot_k2 = ppw2->k1_dot_k2;
   double * k1_m = ppw2->k1_m;
   double * k2_m = ppw2->k2_m;
-
-  /* Set this coefficient to 2 if you expanded the perturbations as X ~ X^(1) + 1/2 * X^(2),
-  or to unity if you use X ~ X^(1) + X^(2) instead. This function is not fully implented
-  yet, hence for the time being keep it equal to 2 */
-  double quad_coefficient = 2;
   
   // ======================================================================================
   // =                          Interpolate needed quantities                             =
@@ -8388,9 +8377,8 @@ int perturb2_source_terms (
   /* Call functions that will fill pvec___ arrays with useful quantities.  Do not alter the order
   in which these functions are called, since they all rely on the quantities computed by the
   previous ones. */
-         
-  
-  // *** Interpolate background-related quantities (pvecback)
+
+  /* Interpolate background-related quantities (pvecback) */
   class_call (background_at_tau(
                 pba,
                 tau,
@@ -8408,7 +8396,7 @@ int perturb2_source_terms (
   double H = pvecback[pba->index_bg_H];
   double Y = log10(a/pba->a_eq);  
   
-  // *** Interpolate thermodynaics-related quantities (pvecthermo)
+  /* Interpolate thermodynanics related quantities (pvecthermo) */
   class_call (thermodynamics_at_z(
                 pba,
                 pth,
@@ -8428,16 +8416,16 @@ int perturb2_source_terms (
   /* Have a look at the thermodynamics quantities */
   // fprintf (stderr, "%13g %13g = %g\n", tau, Hc/kappa_dot);
   
-  // *** Interpolate quadratic sources (ppw2->pvec_quadsources)
+  /* Interpolate quadratic sources (ppw2->pvec_quadsources) */
   
   /* Because we need the quadratic part of the collision term, too, we 
   use 'perturb2_quadratic_sources' rather than 'perturb2_quadratic_sources_at_tau'.
   In fact, the latter would only interpolate the full quadratic sources, while
-  the latter gives as an output that and the collisional part separately.
-  Since we need to compute the quadsources at a time that was not computed
-  in the first-order module (i.e. not contained in ppt->tau_sampling), we use
-  interpolation. This is achieved by specifying a negative index in the
-  arguments of 'perturb2_quadratic_sources'. */
+  the former gives as an output that and the collisional part separately.
+  We use interpolation because the quadratic sources were computed in
+  ppt->tau_sampling while here we need them in ppt2->tau_sampling.
+  This is achieved by specifying a negative index in the arguments of
+  'perturb2_quadratic_sources'. */
   if (ppt2->has_quadratic_sources == _TRUE_) {
     class_call (perturb2_quadratic_sources(
                   ppr,
@@ -8504,9 +8492,8 @@ int perturb2_source_terms (
   
   
   
-  // *** Shortcuts for metric variables
-    
-  /* Newtonian gauge */
+  /* Shortcuts for metric variables */
+
   double phi=0, phi_1=0, phi_2=0, psi=0, psi_1=0, psi_2=0, phi_prime=0, phi_prime_1=0, phi_prime_2=0;
   double omega_m1=0, omega_m1_prime=0, gamma_m2_prime=0;
   
@@ -8586,11 +8573,9 @@ int perturb2_source_terms (
   //   fprintf(stderr, "%17.7g %17.7g %17.7g %17.7g %17.7g %17.7g %17.7g\n", tau, V_g(0), V_b(0), V_g_1(0), V_b_1(0), V_g_2(0), V_b_2(0));
   
   
-  
   // =========================================================================================
   // =                               Perturbed recombination                                 =
   // =========================================================================================
-    
   
   /* 'delta_e' is the density contrast of free electrons, which we assume to be equal to 'delta_b'
   if perturbed recombination is not requested. */
