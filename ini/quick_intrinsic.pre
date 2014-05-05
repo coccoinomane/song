@@ -39,12 +39,12 @@ k_scalar_step_transition=0.2
 # ==================================================================
 
 # Second-order k-sampling REF.PRE
-k_scalar_min_tau0_2nd_order = 0.01
-k_scalar_max_tau0_over_l_max_2nd_order = 2
-k_scalar_step_sub_2nd_order = 0.1
-k_scalar_linstep_super_2nd_order = 0.025
-k_scalar_logstep_super_2nd_order = 1.2
-k_scalar_step_transition_2nd_order = 0.2
+# k_scalar_min_tau0_2nd_order = 0.01
+# k_scalar_max_tau0_over_l_max_2nd_order = 2
+# k_scalar_step_sub_2nd_order = 0.1
+# k_scalar_linstep_super_2nd_order = 0.025
+# k_scalar_logstep_super_2nd_order = 1.2
+# k_scalar_step_transition_2nd_order = 0.2
 
 # Second-order k-sampling INSTANTANEOUS FOR DEBUG
 # k_scalar_min_tau0_2nd_order = 0.1
@@ -55,12 +55,12 @@ k_scalar_step_transition_2nd_order = 0.2
 # k_scalar_step_transition_2nd_order = 0.2
 
 # Second-order k-sampling QUICK FOR DEBUG
-# k_scalar_min_tau0_2nd_order = 0.1
-# k_scalar_max_tau0_over_l_max_2nd_order = 2
-# k_scalar_step_sub_2nd_order = 1
-# k_scalar_linstep_super_2nd_order = 0.5
-# k_scalar_logstep_super_2nd_order = 1.5
-# k_scalar_step_transition_2nd_order = 0.2
+k_scalar_min_tau0_2nd_order = 0.1
+k_scalar_max_tau0_over_l_max_2nd_order = 2
+k_scalar_step_sub_2nd_order = 1
+k_scalar_linstep_super_2nd_order = 0.5
+k_scalar_logstep_super_2nd_order = 1.5
+k_scalar_step_transition_2nd_order = 0.2
 
 # Second-order sampling for k3 (lin, log, smart, angle)
 sources2_k3_sampling = smart
@@ -103,7 +103,7 @@ custom_tau_size_quadsources = 1000
 custom_tau_mode_quadsources = log               # either lin, log or class (best: log)
 
 # Timesampling for the first-order line-of-sight sources
-start_sources_at_tau_c_over_tau_h = 0.01
+start_sources_at_tau_c_over_tau_h = 0.001
 perturb_sampling_stepsize = 0.05
 match_final_time_los = no
 
@@ -386,8 +386,8 @@ below a certain treshold with respect to the matter density.  Turn on this appro
 into radiation multipoles today.  Note that this approximation does not affect the Cl's or the bispectrum, as these
 only depend on the multipoles computed during recombination (at least for what concerns the intrinsically second-order
 terms).
-no_radiation_approximation_2nd_order = 2
-no_radiation_approximation_rho_m_over_rho_r_2nd_order = 100
+no_radiation_approximation_2nd_order = 0
+no_radiation_approximation_rho_m_over_rho_r_2nd_order = 1000
 
 
 

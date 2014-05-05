@@ -156,7 +156,7 @@ int perturb_init(
        ppt->error_message,
        "In the synchronous gauge, the Rayleigh scattering is not implemented yet");
 
-  if(((ppt->has_integrated_sachs_wolfe_in_los == _TRUE_) || (ppt->has_sachs_wolfe_in_los == _TRUE_)) && (pth->has_rayleigh_scattering == _TRUE_))
+  if(((ppt->has_isw == _TRUE_) || (ppt->has_sw == _TRUE_)) && (pth->has_rayleigh_scattering == _TRUE_))
     printf ("WARNING: The SW and ISW effects have not been tested with Rayleigh scattering. Do not trust results.");
 
 
@@ -1841,38 +1841,6 @@ int perturb_workspace_init(
 
   ppw->index_st_ddS2 = index_st;
   index_st++;
-  
-  // *** MY MODIFICATIONS ***
-
-  /* Include sources for Rayleigh scattering */
-  ppw->index_st_g_thomson = index_st;
-  index_st++;
-
-  ppw->index_st_exp_m_kappa_thomson = index_st;
-  index_st++;
-
-
-  
-  /* Add psi and psi', needed to add the SW and ISW effect to the line-of-sight sources */
-  if ((ppt->gauge == newtonian) && ((ppt->has_integrated_sachs_wolfe_in_los == _TRUE_) || (ppt->has_sachs_wolfe_in_los == _TRUE_))) {
-
-    ppw->index_st_g = index_st;
-    index_st++;
-
-    ppw->index_st_exp_m_kappa = index_st;
-    index_st++;
-    
-    ppw->index_st_psi = index_st;
-    index_st++;
-
-    ppw->index_st_psi_prime = index_st;
-    index_st++;    
-
-    ppw->index_st_phi_prime = index_st;
-    index_st++;
-  } // end of if(has_isw)
-
-  // *** END MY MODIFICATIONS ***
   
   ppw->st_size = index_st;
 
@@ -4949,7 +4917,7 @@ int perturb_einstein(
   double epsilon,q,q2,cg2_ncdm,w_ncdm,rho_ncdm_bg,p_ncdm_bg,pseudo_p_ncdm;
   double rho_pk,delta_rho_pk;
   double w;
-
+  
   /** - wavenumber and scale factor related quantities */ 
 
   k2 = k*k;
@@ -4974,7 +4942,6 @@ int perturb_einstein(
   delta_g = y[ppw->pv->index_pt_delta_g];
   theta_g = y[ppw->pv->index_pt_theta_g];
   shear_g = y[ppw->pv->index_pt_shear_g];
-
       }
       else {
 
@@ -4992,9 +4959,10 @@ int perturb_einstein(
       delta_g = y[ppw->pv->index_pt_delta_g];
       theta_g = y[ppw->pv->index_pt_theta_g];
       
-      /* first-order tight-coupling approximation for photon shear */
+      /* first-order tight-coupling approximation for photon shear (eq. 2.24 and 2.25 of Blas et al. 2011)*/
       if (ppt->gauge == newtonian) {
-        shear_g = 16./45./ppw->pvecthermo[pth->index_th_dkappa]*y[ppw->pv->index_pt_theta_g];
+        double tau_c = 1./ppw->pvecthermo[pth->index_th_dkappa]; /* inverse of opacity */
+        shear_g = 16./45.*tau_c*theta_g;
       }
       else {
         shear_g = 0.; /* in the synchronous gauge, the
@@ -5239,13 +5207,18 @@ int perturb_einstein(
       // ================================================
 
       /* This is just the longitudinal Einstein equation */
-      ppw->pvecmetric[ppw->index_mt_phi_prime] = -a_prime_over_a*psi + 1.5 * (a2/k2) * rho_plus_p_theta;
+      double phi_prime = -a_prime_over_a*psi + 1.5 * (a2/k2) * rho_plus_p_theta;
+      ppw->pvecmetric[ppw->index_mt_phi_prime] = phi_prime;
 
       /* We could get phi' also from the Poisson equation and get the same result */
       // ppw->pvecmetric[ppw->index_mt_phi_prime] = - a_prime_over_a*psi
       //                                            - k2/(3*a_prime_over_a)*phi
       //                                            - a2 * delta_rho/(2*a_prime_over_a);
 
+      
+      // ======================================================================
+      // =                    Radiation streaming approx.                     =
+      // ======================================================================
 
       /* eventually, infer radiation streaming approximation for gamma and nur */
       if (ppw->approx[ppw->index_ap_rsa] == (int)rsa_on) {
@@ -5383,11 +5356,9 @@ int perturb_einstein(
       /* eventually, infer first-order tight-coupling approximation for photon
       shear, then correct the total shear */
       if (ppw->approx[ppw->index_ap_tca] == (int)tca_on) {
-  
-        shear_g = 16./45./ppw->pvecthermo[pth->index_th_dkappa]*(y[ppw->pv->index_pt_theta_g]+k2*alpha);
-    
-        rho_plus_p_shear += 4./3.*ppw->pvecback[pba->index_bg_rho_g]*shear_g;
-  
+        
+          shear_g = 16./45./ppw->pvecthermo[pth->index_th_dkappa]*(y[ppw->pv->index_pt_theta_g]+k2*alpha);  
+          
       }
   
       // ==================================
@@ -5398,15 +5369,20 @@ int perturb_einstein(
       ppw->pvecmetric[ppw->index_mt_alpha_prime] = 
   - 4.5 * (a2/k2) * rho_plus_p_shear + y[ppw->pv->index_pt_eta] - 2.*a_prime_over_a*alpha; /* alpha' = (h''+6eta'')/2k2 */
 
-    }
-  }
+
+    } // end of synchronous gauge
+  } // end of scalars
 
   /* nothing to be done for tensors: only one propagating degree of
      freedom, no constraint equation */
 
+
+
   return _SUCCESS_;
 
 }
+
+
 
 /**
  * Compute the terms contributing to the source functions.
@@ -5542,6 +5518,26 @@ int perturb_source_terms_1st_order(
 	       ppt->error_message,
 	       error_message);
 
+    /** - compute psi_prime, needed to add the ISW effect */
+
+    double psi_prime = 0;
+
+    if ((ppt->gauge == newtonian) && (ppt->has_isw == _TRUE_)) {
+    
+      class_call(perturb_compute_psi_prime (
+                   ppr,
+                   pba,
+                   pth,
+                   ppt,
+                   tau,
+                   y,
+                   dy,
+                   &(psi_prime),
+                   ppw),
+        ppt->error_message,
+        error_message);
+    }
+
     /** - compute quantities depending on approximation schemes */
 
     if (ppw->approx[ppw->index_ap_rsa] == (int)rsa_on) {
@@ -5584,7 +5580,10 @@ int perturb_source_terms_1st_order(
             // *** MY MODIFICATIONS ***
       
             /* We break down the line of sight sources into difference contributions */
+            double S0_delta_g=0, S0_scattering=0, S1_scattering=0, dS2_scattering=0;
+            double S0_metric=0, S1_metric=0, dS2_metric=0;
       
+            /* Shortcuts */
             double g = pvecthermo[pth->index_th_g];
             double dg = pvecthermo[pth->index_th_dg];
             double exp_m_kappa = pvecthermo[pth->index_th_exp_m_kappa];
@@ -5593,47 +5592,41 @@ int perturb_source_terms_1st_order(
             double psi = pvecmetric[ppw->index_mt_psi];
             double phi_prime = pvecmetric[ppw->index_mt_phi_prime];
       
-            /* S0 */
-            double S0_scattering = g*Pi/16. + (dg*theta_b + g*theta_b_prime) / k2;      
-            double S0_delta_g = g * delta_g/4.;
-            double S0_metric = exp_m_kappa * phi_prime;
-      
-            /* S1 */
-            double S1_scattering = 0;
-            double S1_metric = exp_m_kappa * psi;
-      
-            /* dS2 */
-            double dS2_scattering = 3./16. * (dg*Pi + g*Pi_prime) / k2;
-            double dS2_metric = 0;
-      
-            /* Include scattering contribution, if requested. */
-            if (ppt->has_scattering_in_los == _TRUE_) {
-              source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S0] = S0_scattering;
-              source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S1] = S1_scattering;
-              source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_dS2] = dS2_scattering;
-            }
-      
-            /* Include the photon density term, if requested (useful to test approximations) */
+            /* Monopole source */
             if (ppt->has_photon_monopole_in_los == _TRUE_) {
-              source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S0] += S0_delta_g;
+              S0_delta_g = g * delta_g/4;
             }
-      
-            /* Include the metric part, if requested. Note that ppt->has_metric_in_los is true only if 
-            has_sachs_wolfe_in_los and has_integrated_sachs_wolfe_in_los are both false. */
+            
+            /* Scattering sources */
+            if (ppt->has_scattering_in_los == _TRUE_) { 
+              S0_scattering = g*Pi/16 + (dg*theta_b + g*theta_b_prime) / k2;
+              S1_scattering = 0;
+              dS2_scattering = 3./16 * (dg*Pi + g*Pi_prime) / k2;
+            }
+            
+            /* Metric sources */
             if (ppt->has_metric_in_los == _TRUE_) {
-              source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S0] += S0_metric;
-              source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S1] += S1_metric;
-              source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_dS2] += dS2_metric;
-            }      
-      
-            /* Store temporary values for later addition of the SW & ISW effects */
-            if ((ppt->has_integrated_sachs_wolfe_in_los == _TRUE_) || (ppt->has_sachs_wolfe_in_los == _TRUE_)) {
-              source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_g] = pvecthermo[pth->index_th_g];
-              source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_exp_m_kappa] = pvecthermo[pth->index_th_exp_m_kappa];
-              source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_psi] = pvecmetric[ppw->index_mt_psi];
-              source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_phi_prime] = pvecmetric[ppw->index_mt_phi_prime];
+              S0_metric = exp_m_kappa * phi_prime;
+              S1_metric = exp_m_kappa * psi;
+            }
+            else {
+              if (ppt->has_sw == _TRUE_)
+                S0_metric += g * psi;
+                
+              if (ppt->has_isw == _TRUE_)
+                S0_metric += exp_m_kappa * (phi_prime + psi_prime);
             }
 
+            /* Sum up the sources */
+            source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S0]
+              = S0_delta_g + S0_scattering + S0_metric;
+
+            source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S1]
+              = S1_scattering + S1_metric;
+
+            source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_dS2]
+              = dS2_scattering + dS2_metric;
+      
             // *** ORIGINAL CLASS
       
             // /* S0 */
@@ -5701,6 +5694,10 @@ int perturb_source_terms_1st_order(
     	  /* newtonian gauge */
     	  if (ppt->gauge == newtonian) {
 
+          /* We break down the line of sight sources into difference contributions */
+          double S0_delta_g=0, S0_scattering=0, S1_scattering=0, dS2_scattering=0;
+          double S0_metric=0, S1_metric=0, dS2_metric=0;
+    
           /* Thomson visibility function & opacity */
           double g_thomson = pvecthermo[pth->index_th_thomson_g];
           double dg_thomson = pvecthermo[pth->index_th_thomson_dg];
@@ -5720,45 +5717,41 @@ int perturb_source_terms_1st_order(
 
           /* ... then, subtract the Thomson-only sources */
         
-          /* S0 */
-          double S0_scattering = g_thomson*Pi/16. + (dg_thomson*theta_b + g_thomson*theta_b_prime) / k2;      
-          double S0_delta_g = g_thomson * delta_g/4.;
-          double S0_metric = exp_m_kappa_thomson * phi_prime;
-              
-          /* S1 */
-          double S1_scattering = 0;
-          double S1_metric = exp_m_kappa_thomson * psi;
-              
-          /* dS2 */
-          double dS2_scattering = 3./16. * (dg_thomson*Pi + g_thomson*Pi_prime) / k2;
-          double dS2_metric = 0;
-              
-          if (ppt->has_scattering_in_los == _TRUE_) {
-            source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S0] -= S0_scattering;
-            source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S1] -= S1_scattering;
-            source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_dS2] -= dS2_scattering;
-          }
-              
+          /* Monopole source */
           if (ppt->has_photon_monopole_in_los == _TRUE_) {
-            source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S0] -= S0_delta_g;
+            S0_delta_g = g_thomson * delta_g/4;
           }
-              
-          /* Include the metric part, if requested. Note that ppt->has_metric_in_los is true only if 
-          has_sachs_wolfe_in_los and has_integrated_sachs_wolfe_in_los are both false. */
+          
+          /* Scattering sources */
+          if (ppt->has_scattering_in_los == _TRUE_) { 
+            S0_scattering = g_thomson*Pi/16 + (dg_thomson*theta_b + g_thomson*theta_b_prime) / k2;
+            S1_scattering = 0;
+            dS2_scattering = 3./16. * (dg_thomson*Pi + g_thomson*Pi_prime) / k2;
+          }
+          
+          /* Metric sources */
           if (ppt->has_metric_in_los == _TRUE_) {
-            source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S0] -= S0_metric;
-            source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S1] -= S1_metric;
-            source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_dS2] -= dS2_metric;
-          }      
+            S0_metric = exp_m_kappa_thomson * phi_prime;
+            S1_metric = exp_m_kappa_thomson * psi;
+          }
+          else {
+            if (ppt->has_sw == _TRUE_)
+              S0_metric += g_thomson * psi;
               
-          /* Store temporary values for later addition of the SW & ISW effects */
-          if ((ppt->has_integrated_sachs_wolfe_in_los == _TRUE_) || (ppt->has_sachs_wolfe_in_los == _TRUE_)) {
-            source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_g_thomson] = g_thomson;
-            source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_exp_m_kappa_thomson] = exp_m_kappa_thomson;
-            source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_psi] = psi;
-            source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_phi_prime] = phi_prime;
+            if (ppt->has_isw == _TRUE_)
+              S0_metric += exp_m_kappa_thomson * (phi_prime + psi_prime);
           }
 
+          /* Sum up the sources */
+          source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S0]
+            -= S0_delta_g + S0_scattering + S0_metric;
+
+          source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S1]
+            -= S1_scattering + S1_metric;
+
+          source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_dS2]
+            -= dS2_scattering + dS2_metric;
+              
         } // end of if(newtonian)
 
       } // end of if(rayleigh)
@@ -5989,19 +5982,132 @@ int perturb_source_terms_1st_order(
     }
   }
 
-  /* Some debug */
-  // if (k < 0.08) {
+
+  /* Debug */
+  // if (ppw->index_k == 200) {
   //   
   //   fprintf (stderr, "%12.7g %17.7g %17.7g\n",
   //     tau,
   //     pvecmetric[ppw->index_mt_psi],
-  //     delta_g
+  //     psi_prime
   //     );
   // }
   
   return _SUCCESS_;
 
 }
+
+
+
+// *** MY MODIFICATIONS ***
+
+/** Compute the derivative of the gravitational potential with respect to conformal time
+ * (psi_prime) in Newtonian gauge, needed for the ISW effect. We compute it here,
+ * in a separate function rather than in perturb_einstein, for two reasons. First, 
+ * psi_prime is not needed to solve the differential system, and it would be a waste of
+ * time to compute it at every step of the integrator. Secondly, to obtain psi_prime
+ * we first need to access the velocity and shear derivatives and perturb_einstein does
+ * not have access to the vector 'dy' that contains them.
+ *
+ * This function needs to be called after the background, thermodynamics and einstein 
+ * variables have been interpolated.
+ *
+ * Note that here I do not consider the contribution to psi_prime from the non-CDM
+ * species (should do).
+ */
+
+int perturb_compute_psi_prime(
+       struct precision * ppr,
+       struct background * pba,
+       struct thermo * pth,
+       struct perturbs * ppt,
+       double tau,
+       double * y,
+       double * dy,
+       double * psi_prime,
+       struct perturb_workspace * ppw)
+{
+
+  /* Shortcuts */
+  double k = ppt->k[ppt->index_md_scalars][ppw->index_k];  
+  double k2 = k * k;
+  double a2 = ppw->pvecback[pba->index_bg_a]*ppw->pvecback[pba->index_bg_a];
+  double a_prime_over_a = ppw->pvecback[pba->index_bg_a]*ppw->pvecback[pba->index_bg_H];
+
+  // ===================================================================
+  // =                          Compute shear                          =
+  // ===================================================================
+
+  double theta_g=0;
+  double shear_g=0;
+  double shear_ur=0;
+  double shear_g_prime=0;
+  double shear_ur_prime=0;
+  double rho_plus_p_shear;
+  double rho_plus_p_shear_prime;
+
+  /* Compute shear_prime contribution from photons */
+  if (ppw->approx[ppw->index_ap_tca] == (int)tca_off) {
+
+    /* No approximations */
+    if (ppw->approx[ppw->index_ap_rsa] == (int)rsa_off) {
+      shear_g = y[ppw->pv->index_pt_shear_g];
+      shear_g_prime = dy[ppw->pv->index_pt_shear_g];
+    }
+
+  }
+
+  /* Tight coupling approximation */
+  else {
+
+    /* Use first-order tca for photon shear (eq. 2.24 and 2.25 of Blas et al. 2011) */
+    double tau_c = 1./ppw->pvecthermo[pth->index_th_dkappa]; /* inverse of opacity */
+    double dtau_c = -ppw->pvecthermo[pth->index_th_ddkappa]*tau_c*tau_c; /* its first derivative wrt conformal time */
+    double theta_g = dy[ppw->pv->index_pt_theta_g]; /* this is always defined because rsa=off when tca=on */
+    double theta_prime = dy[ppw->pv->index_pt_theta_g]; /* this is always defined because rsa=off when tca=on */
+    shear_g = 16./45.*tau_c*theta_g;
+    shear_g_prime = 16./45.*(tau_c*(theta_prime)+dtau_c*(theta_g));
+  }
+
+
+  /* Compute shear_prime contribution from ur species */
+  if (pba->has_ur == _TRUE_) {
+
+    /* shear always neglected in free streaming approximation */
+    if (ppw->approx[ppw->index_ap_rsa] == (int)rsa_off) {
+      shear_ur = y[ppw->pv->index_pt_shear_ur];
+      shear_ur_prime = dy[ppw->pv->index_pt_shear_ur];
+    }
+
+  }
+
+  /* Compute the total shear_prime perturbations */
+  rho_plus_p_shear = 4./3.*ppw->pvecback[pba->index_bg_rho_g]*shear_g;
+  rho_plus_p_shear_prime = 4./3.*ppw->pvecback[pba->index_bg_rho_g]*shear_g_prime;
+
+  if (pba->has_ur == _TRUE_) {
+    rho_plus_p_shear = rho_plus_p_shear + 4./3.*ppw->pvecback[pba->index_bg_rho_ur]*shear_ur;
+    rho_plus_p_shear_prime = rho_plus_p_shear_prime + 4./3.*ppw->pvecback[pba->index_bg_rho_ur]*shear_ur_prime;
+  }
+
+  // ==================================================================
+  // =                        Equation for psi'                       =
+  // ==================================================================
+
+  /* The derivative of the gravitational potential psi, needed to compute the ISW effect */
+  *psi_prime = ppw->pvecmetric[ppw->index_mt_phi_prime] - 4.5 * (a2/k2)
+    * (rho_plus_p_shear_prime - 2*a_prime_over_a*rho_plus_p_shear);
+
+  /* Debug - print psi_prime together with psi */
+  // if (ppw->index_k == 200)
+  //   fprintf (stderr, "%15g %15g %15g\n", tau, ppw->pvecmetric[ppw->index_mt_psi], *psi_prime);
+  
+  return _SUCCESS_;
+
+}
+
+// *** END OF MY MODIFICATIONS ***
+
 
 /**
  * Infer source functions from source terms.
@@ -6133,168 +6239,12 @@ int perturb_sources_1st_order(
 
     }
 
-
-
-    // *** MY MODIFICATIONS ***
-    
-    /* Add SW and ISW if needed */
-
-    if ((ppt->has_scalars == _TRUE_) && (index_mode == ppt->index_md_scalars)) {    
-
-      if (ppt->gauge == newtonian) {
-
-        // *****    Temperature sources    ***** 
-
-        if ((ppt->has_source_T == _TRUE_) && (index_type == ppt->index_tp_t)) {
-
-          /* Add the Sachs wolfe effect to the source function, if requested */
-          if (ppt->has_sachs_wolfe_in_los == _TRUE_) {
-
-            for (index_tau=0; index_tau < ppt->tau_size; ++index_tau) {
-
-              double g = ppw->source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_g];
-              double psi = ppw->source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_psi];
-
-              ppt->sources[index_mode][index_ic * ppt->tp_size[index_mode] + index_type][index_tau * ppt->k_size[index_mode] + index_k]
-                += g*psi;
-
-              /* Some debug of the SW effect */
-              // if (ppw->index_k==300) {
-              //   double tau = ppt->tau_sampling[index_tau];
-              //   ppw->source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_psi];
-              //   fprintf (stderr, "%20.7g %20.7g %20.7g %20.7g\n", tau, g*psi, psi, g);
-              // }
-
-            } // end of for(index_tau)
-            
-          } // end of if(has_SW)
-
-
-          /* Add the ISW effect to the source function, if requested */
-          if (ppt->has_integrated_sachs_wolfe_in_los == _TRUE_) {
-
-            /* Compute the conformal time derivative of psi */
-            class_call(array_derive1_order2_table_line_to_line(
-                           ppt->tau_sampling,
-                           ppt->tau_size,
-                           ppw->source_term_table[index_type],
-                           ppw->st_size,
-                           ppw->index_st_psi,
-                           ppw->index_st_psi_prime,
-                           ppt->error_message),
-                 ppt->error_message,
-                 ppt->error_message);      
-
-            /* Some debug of the ISW effect */
-            // if (ppw->index_k==100) {
-            //   fprintf (stderr, "# k=%g\n", ppt->k[index_mode][ppw->index_k]);
-            //   fprintf (stderr, "%20s %20s %20s %20s %20s %20s %20s %20s\n", "tau", "isw", "psi", "psi'", "phi'", "exp_m_kappa", "source_noISW", "source_withISW");
-            // }
-
-            /* Add the ISW effect to the source function */
-            for (index_tau=0; index_tau < ppt->tau_size; ++index_tau) {
-        
-              double exp_m_kappa = ppw->source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_exp_m_kappa];
-              double psi_prime = ppw->source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_psi_prime];
-              double phi_prime = ppw->source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_phi_prime];        
-              double isw = exp_m_kappa * (psi_prime + phi_prime);
-        
-              /* Uncomment the following to turn off ISW after a certain point */
-
-              /* In redshift */
-              // double tau = ppt->tau_sampling[index_tau];
-              // class_call (background_at_tau(pba, tau, pba->normal_info, pba->inter_normal, &(ppw->last_index_back), ppw->pvecback),
-              //   pba->error_message,
-              //   ppt->error_message);
-              // double z = 1./ppw->pvecback[pba->index_bg_a] - 1;
-              // if (z < 10)
-              //   isw = 0;
-
-              /* In tau */
-              // double tau = ppt->tau_sampling[index_tau];
-              // if (tau > 13000)
-              //   isw = 0;
-      
-              ppt->sources[index_mode][index_ic * ppt->tp_size[index_mode] + index_type][index_tau * ppt->k_size[index_mode] + index_k] += isw;
-
-              /* Some debug of the ISW effect */
-              // if (ppw->index_k==300) {
-              //   double tau = ppt->tau_sampling[index_tau];
-              //   double psi = ppw->source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_psi];
-              //   fprintf (stderr, "%20.7g %20.7g %20.7g %20.7g %20.7g %20.7g %20.7g %20.7g\n", tau, exp_m_kappa*(psi_prime + phi_prime), psi, psi_prime, phi_prime, exp_m_kappa, source_noISW, source_withISW);
-              // }
-
-            } // end of for(index_tau)
-
-          } // end of if(has_ISW==_TRUE_)    
-
-        } // end of if(temperature)
-        
-        
-        // *****    Rayleigh scattering    ***** 
-        
-        if ((ppt->has_source_r == _TRUE_) && (index_type == ppt->index_tp_r)) {
-
-          if (ppt->has_sachs_wolfe_in_los == _TRUE_) {
-
-            for (index_tau=0; index_tau < ppt->tau_size; ++index_tau) {
-
-              double g_total = ppw->source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_g];
-              double g_thomson = ppw->source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_g_thomson];
-              double psi = ppw->source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_psi];
-
-              /* Contribution due to Rayleigh scattering only */
-              ppt->sources[index_mode][index_ic * ppt->tp_size[index_mode] + ppt->index_tp_r][index_tau * ppt->k_size[index_mode] + index_k]
-                += (g_total - g_thomson) * psi;
-
-            } // end of for(index_tau)
-            
-          } // end of if(has_SW)
-
-
-          /* ... and the ISW due to Thomson scattering */
-          if (ppt->has_integrated_sachs_wolfe_in_los == _TRUE_) {
-
-            /* Compute the conformal time derivative of psi */
-            class_call(array_derive1_order2_table_line_to_line(
-                           ppt->tau_sampling,
-                           ppt->tau_size,
-                           ppw->source_term_table[index_type],
-                           ppw->st_size,
-                           ppw->index_st_psi,
-                           ppw->index_st_psi_prime,
-                           ppt->error_message),
-                 ppt->error_message,
-                 ppt->error_message);      
-
-            /* Add the ISW effect to the source function */
-            for (index_tau=0; index_tau < ppt->tau_size; ++index_tau) {
-        
-              double exp_m_kappa_total = ppw->source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_exp_m_kappa_thomson];
-              double exp_m_kappa_thomson = ppw->source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_exp_m_kappa_thomson];
-              double psi_prime = ppw->source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_psi_prime];
-              double phi_prime = ppw->source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_phi_prime];        
-
-              /* Contribution due to Rayleigh scattering only */        
-              ppt->sources[index_mode][index_ic * ppt->tp_size[index_mode] + ppt->index_tp_r][index_tau * ppt->k_size[index_mode] + index_k] 
-                += (exp_m_kappa_total - exp_m_kappa_thomson) * (psi_prime + phi_prime);
-              
-            } // end of for(index_tau)
-
-          } // end of if(has_ISW==_TRUE_)    
-        } // end of if(rayleigh)
-        
-      } // end of if(gauge==newtonian)
-    } // end of if(has_scalars)
-
-    // *** END OF MY MODIFICATIONS ***
-
   } /* end of loop over types */
 
 
   // *** MY MODIFICATIONS ***
 
-  /* Some debug - print a custom number of sources */
+  /* Debug - print a custom number of sources */
   // if (index_k == 30) {
   //   int md = ppt->index_md_scalars;
   //   for (index_tau=0; index_tau < ppt->tau_size; ++index_tau) {
@@ -7478,8 +7428,6 @@ int perturb_derivs(double tau,
   }
 
 
-
-
   // *** MY MODIFICATIONS ***
 
   /* Print some quantities to stderr (save to file with ./class params.ini params.pre 2> file.txt ) */
@@ -7787,14 +7735,14 @@ int perturb_indices_of_perturbs_2nd_order_eqs(
       
       /* Newtonian gauge metric variables */
       if (ppt->gauge == newtonian) {
+
         ppt->index_qs_psi = index_type++;
 
         ppt->index_qs_phi = index_type++;
         
         ppt->index_qs_phi_prime = index_type++;
 
-        /* Compute psi_prime for the second-order ISW effect */
-        // ppt->index_qs_psi_prime = index_type++;
+        ppt->index_qs_psi_prime = index_type++;
         
       }
       
@@ -7817,9 +7765,8 @@ int perturb_indices_of_perturbs_2nd_order_eqs(
       ppt->index_qs_dipole_b = index_type++;      
 
       /* Perturbations to the fraction of free electrons */ 
-      if (ppt->has_perturbed_recombination) {
+      if (ppt->has_perturbed_recombination)
         ppt->index_qs_delta_Xe = index_type++;
-      }
       
       // ****** Cold dark matter *******
       if (pba->has_cdm == _TRUE_) {
@@ -7968,18 +7915,9 @@ int perturb_source_terms_2nd_order_eqs(
               )
 {
 
-  // ========================================
-  // =        Rename structure fields       =
-  // ========================================
 
   /* Shortcuts to avoid heavy notations */
   struct perturb_parameters_and_workspace * pppaw = parameters_and_workspace;
-
-  double k = pppaw->k;
-  int index_mode = pppaw->index_mode;
-  int index_ic = pppaw->index_ic;
-  int index_k = pppaw->index_k;
-
   struct precision * ppr = pppaw->ppr;
   struct background * pba = pppaw->pba;
   struct perturbs * ppt = pppaw->ppt;
@@ -7990,14 +7928,21 @@ int perturb_source_terms_2nd_order_eqs(
   double * pvecmetric = ppw->pvecmetric;
   double * pvecthermo = ppw->pvecthermo;  
   
+  double k = pppaw->k;
+  int index_mode = pppaw->index_mode;
+  int index_ic = pppaw->index_ic;
+  int index_k = pppaw->index_k;
+
+  /* Table that will contain (tau,k) values for a given mode and initial condition */
+  double *** quadsources = ppt->quadsources;
   int qs_size = ppt->qs_size[index_mode];
-  double *** quadsources = ppt->quadsources;    /* Table that will contain (tau,k) values for a given mode and initial condition */
+  int time_and_wavemode_index = index_tau*ppt->k_size[index_mode] + index_k;
 
 
 
-  // ================================================================
-  // =              Compute support quantities                      =
-  // ================================================================
+  // ===============================================================================================
+  // =                                      Interpolate at tau                                     =
+  // ===============================================================================================
 
   /* Fill pvecback */
   class_call(background_at_tau(pba,
@@ -8033,9 +7978,10 @@ int perturb_source_terms_2nd_order_eqs(
     ppt->error_message,
     error_message);  
 
-  // ===========================
-  // = Sort out approximations =
-  // ===========================
+
+  // ===========================================================================================
+  // =                                     Matter variables                                    =
+  // ===========================================================================================
 
   /* Assign perturbations associated to photons and neutrinos according to the considered approximation. */
   double delta_g,theta_g,shear_g,l3_g;
@@ -8047,10 +7993,12 @@ int perturb_source_terms_2nd_order_eqs(
   double monopole_ur, dipole_ur, quadrupole_ur, octupole_ur;  
   double pol0_g,pol1_g,pol2_g,pol3_g;
   double phi,psi;
-  int l;                  /* Will index all the multipoles with l>3 */
+  int l;
 
 
-  // ******** PHOTONS **********
+  // --------------------------------------------------------------------------------
+  // -                                  Photons                                     -
+  // --------------------------------------------------------------------------------
 
   /* Take care of photons.  We need to do this because, if the rsa approximation is on,
   then delta_g won't be evolved and calling y[ppw->pv->index_pt_delta_g] may give
@@ -8124,7 +8072,10 @@ int perturb_source_terms_2nd_order_eqs(
     quadrupole_E = y[ppw->pv->index_pt_monopole_E + 2];
 
 
-  // ******** BARYONS **********
+  // --------------------------------------------------------------------------------
+  // -                                  Baryons                                     -
+  // --------------------------------------------------------------------------------
+
   /* Convert fluid variables to Boltzmann multipoles. See comment for photons, above.
   The difference here is that we do not have quadrupole and octupole because baryons
   are a perfect fluid at first-order.  Moreover, w=0 so that the dipole gets a 
@@ -8134,16 +8085,22 @@ int perturb_source_terms_2nd_order_eqs(
 
 
 
-  // ******** COLD DARK MATTER **********
+  // --------------------------------------------------------------------------------
+  // -                                    CDM                                       -
+  // --------------------------------------------------------------------------------
+
   /* Convert fluid variables to Boltzmann multipoles. See comment for photons, above. */
   monopole_cdm      =    y[ppw->pv->index_pt_delta_cdm];
   dipole_cdm        =    3*y[ppw->pv->index_pt_theta_cdm]/k;
 
 
-  // ******** NEUTRINOS **********
+
+  // --------------------------------------------------------------------------------
+  // -                                 Neutrinos                                    -
+  // --------------------------------------------------------------------------------
+
   /* Radiation streaming & ufa approximation, neutrinos.  Moments with l>2 are automatically
-    zero in both tca and ufa approximations. 
-    (Taken from the print_variables function in vanilla CLASS) */
+  zero in both tca and ufa approximations (taken from the print_variables function in vanilla CLASS) */
   if (pba->has_ur == _TRUE_) {
     if (ppw->approx[ppw->index_ap_rsa]==(int)rsa_off) {
       /* delta, theta, shear are evolved also in the ufa approximation */
@@ -8170,23 +8127,46 @@ int perturb_source_terms_2nd_order_eqs(
   }  // end of if(ur)
 
 
-  /* Index associated to the tau-k level of the source array */
-  int time_and_wavemode_index = index_tau*ppt->k_size[index_mode] + index_k;
+  // ===========================================================================================
+  // =                                     Metric variables                                    =
+  // ===========================================================================================
 
-  // ================
-  // = Scalar modes =
-  // ================
+  double psi_prime = 0;
+  double alpha_prime, h_prime_prime, eta_prime_prime, h;
+
   if ((ppt->has_scalars == _TRUE_) && (index_mode == ppt->index_md_scalars)) {
 
-    // ******** ALL GAUGES **********
     double delta_cdm = y[ppw->pv->index_pt_delta_cdm];
     double theta_cdm;
     if (ppt->gauge != synchronous)
       theta_cdm = y[ppw->pv->index_pt_theta_cdm];
 
+    
+    // -------------------------------------------------------------------------
+    // -                             Newtonian gauge                           -
+    // -------------------------------------------------------------------------
 
-    // ******** SYNCHRONOUS GAUGE **********
-    double alpha_prime, h_prime_prime, eta_prime_prime, h;
+    if (ppt->gauge == newtonian) {
+    
+      class_call(perturb_compute_psi_prime (
+                   ppr,
+                   pba,
+                   pth,
+                   ppt,
+                   tau,
+                   y,
+                   dy,
+                   &(psi_prime),
+                   ppw),
+        ppt->error_message,
+        error_message);
+      
+    }
+
+
+    // -------------------------------------------------------------------------
+    // -                           Synchronous gauge                           -
+    // -------------------------------------------------------------------------
     
     if (ppt->gauge == synchronous) {
     
@@ -8200,9 +8180,9 @@ int perturb_source_terms_2nd_order_eqs(
       eta_prime_prime = 1.0/6.0 * (2.0*k*k * alpha_prime - h_prime_prime);
     
       /* By looking at the initial conditions (eq. 96 of Ma & Berty), one can deduce that delta_cdm = -1./2. h at very
-        early times.  But from eq. 42, one also sees that
-        delta_c' = -1./2. h',
-        which implies, together with the initial conditions, that h = -2. delta_c     */
+      early times.  But from eq. 42, one also sees that
+      delta_c' = -1./2. h',
+      which implies, together with the initial conditions, that h = -2. delta_c     */
       h = -2. * delta_cdm;
             
       /* Gravitational potentials from the gauge transformation */
@@ -8215,11 +8195,14 @@ int perturb_source_terms_2nd_order_eqs(
     }
     
     
-    // ========================================================
-    // =                Store source terms                    =
-    // ========================================================
+    // =============================================================================================
+    // =                                  Store source terms                                       =
+    // =============================================================================================
 
-    // ********  METRIC VARIABLES *********
+    // ---------------------------------------------------------------
+    // -                        Metric variables                     -
+    // ---------------------------------------------------------------
+    
     if (ppt->gauge == synchronous) {
       // eta 
       quadsources[index_mode][index_ic*qs_size + ppt->index_qs_eta][time_and_wavemode_index] = y[ppw->pv->index_pt_eta];
@@ -8246,6 +8229,7 @@ int perturb_source_terms_2nd_order_eqs(
       quadsources[index_mode][index_ic*qs_size + ppt->index_qs_psi][time_and_wavemode_index] = psi;
       strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_psi],"psi");          
     }
+    
     if (ppt->gauge == newtonian) {    
       // psi
       quadsources[index_mode][index_ic*qs_size + ppt->index_qs_psi][time_and_wavemode_index] = pvecmetric[ppw->index_mt_psi];
@@ -8256,12 +8240,15 @@ int perturb_source_terms_2nd_order_eqs(
       // phi_prime
       quadsources[index_mode][index_ic*qs_size + ppt->index_qs_phi_prime][time_and_wavemode_index] = pvecmetric[ppw->index_mt_phi_prime];
       strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_phi_prime],"phi'");    
-      // psi_prime, will be filled in perturb2_sources
-      // strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_psi_prime],"psi'");    
+      // psi_prime
+      quadsources[index_mode][index_ic*qs_size + ppt->index_qs_psi_prime][time_and_wavemode_index] = psi_prime;
+      strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_psi_prime],"psi'");    
     }
 
-    //******* BARYONS *******    
-    // *** FLUID VARIABLES
+    // ---------------------------------------------------------------
+    // -                            Baryons                          -
+    // ---------------------------------------------------------------
+
     // delta_b
     quadsources[index_mode][index_ic*qs_size + ppt->index_qs_delta_b][time_and_wavemode_index] = y[ppw->pv->index_pt_delta_b];
     strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_delta_b],"delta_b");
@@ -8275,8 +8262,6 @@ int perturb_source_terms_2nd_order_eqs(
     quadsources[index_mode][index_ic*qs_size + ppt->index_qs_v_b_prime][time_and_wavemode_index] = -dy[ppw->pv->index_pt_theta_b]/k/k;
     strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_v_b_prime],"v_b_prime");
 
-
-    // *** KINETIC HIERARCHY
     // monopole_b
     quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_b][time_and_wavemode_index] = monopole_b;
     strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_monopole_b],"l0_b");
@@ -8284,7 +8269,6 @@ int perturb_source_terms_2nd_order_eqs(
     quadsources[index_mode][index_ic*qs_size + ppt->index_qs_dipole_b][time_and_wavemode_index] = dipole_b;
     strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_dipole_b],"l1_b");    
 
-    // *** PERTURBED RECOMBINATION
     // delta_Xe
     if (ppt->has_perturbed_recombination == _TRUE_) {
       quadsources[index_mode][index_ic*qs_size + ppt->index_qs_delta_Xe][time_and_wavemode_index] = y[ppw->pv->index_pt_delta_Xe];
@@ -8292,9 +8276,12 @@ int perturb_source_terms_2nd_order_eqs(
     }
 
 
-    //******* COLD DARK MATTER *******    
+    // ---------------------------------------------------------------
+    // -                              CDM                            -
+    // ---------------------------------------------------------------
+
     if (pba->has_cdm == _TRUE_) {
-      // *** FLUID VARIABLES
+
       // delta_cdm
       quadsources[index_mode][index_ic*qs_size + ppt->index_qs_delta_cdm][time_and_wavemode_index] = y[ppw->pv->index_pt_delta_cdm];
       strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_delta_cdm],"delta_cdm");
@@ -8313,21 +8300,19 @@ int perturb_source_terms_2nd_order_eqs(
         strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_v_cdm_prime],"v_cdm_prime");
       }
 
-      // *** KINETIC HIERARCHY
       // monopole_cdm
       quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_cdm][time_and_wavemode_index] = monopole_cdm;
       strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_monopole_cdm],"l0_cdm");
 
       if (ppt->gauge != synchronous) {
-        // dipole_cdm (not needed in synchronous gauge)
         quadsources[index_mode][index_ic*qs_size + ppt->index_qs_dipole_cdm][time_and_wavemode_index] = dipole_cdm;
         strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_dipole_cdm],"l1_cdm");
       }
     }
 
-    //******* PHOTONS TEMPERATURE *******
-
-    // *** FLUID VARIABLES
+    // ---------------------------------------------------------------------
+    // -                          Photon temperature                       -
+    // ---------------------------------------------------------------------
 
     // delta_g
     quadsources[index_mode][index_ic*qs_size + ppt->index_qs_delta_g][time_and_wavemode_index] = delta_g;
@@ -8342,10 +8327,10 @@ int perturb_source_terms_2nd_order_eqs(
     quadsources[index_mode][index_ic*qs_size + ppt->index_qs_shear_g][time_and_wavemode_index] = shear_g;
     strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_shear_g],"shear_g");
 
-    // *** KINETIC HIERARCHY    
-
-		// Note that the 2*l+1  factors comes from the fact that at first order we computed the Legendre expansion of
-		// the distribution function, while at second order we need the spherical harmonic expansion.
+		/* The 2*l+1  factors comes from the fact that at first order we computed the Legendre expansion of
+		the distribution function, while at second order we need the spherical harmonic expansion. */
+    
+    // monopole_g
     quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_g][time_and_wavemode_index] = monopole_g;
     strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_monopole_g],"I0");
     // dipole_g
@@ -8406,7 +8391,9 @@ int perturb_source_terms_2nd_order_eqs(
     }
 
 
-    //******* PHOTONS E-MODE POLARIZATION *******
+    // ---------------------------------------------------------------------
+    // -                            Photon E-modes                         -
+    // ---------------------------------------------------------------------
 
     if ((ppt->has_perturbations2 == _TRUE_) && (ppt->has_polarization2 == _TRUE_)) {
 
@@ -8433,30 +8420,12 @@ int perturb_source_terms_2nd_order_eqs(
     }
 
 
-    // // monopole_pol_g
-    // quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_E][time_and_wavemode_index]   = pol0_g;
-    // strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_monopole_E],"E0");
-    // // dipole_pol_g
-    // quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_E+1][time_and_wavemode_index] = 3*pol1_g;
-    // strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_monopole_E+1],"E1");
-    // // quadrupole_pol_pol_g        
-    // quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_E+2][time_and_wavemode_index] = 5*pol2_g;
-    // strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_monopole_E+2],"E2");
-    // // l3_pol_pol_g
-    // quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_E+3][time_and_wavemode_index] = 7*pol3_g;
-    // strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_monopole_E+3],"E3");      
-    // // Moments with l>3.  All of these are non-zero only when both the tca and rsa approximations are turned off.
-    // if ((ppw->approx[ppw->index_ap_rsa]==(int)rsa_off) && (ppw->approx[ppw->index_ap_tca]==(int)tca_off)) {
-    //   for (int l = 4; l <= ppr->l_max_pol_g; l++) { 
-    //     quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_E+l][time_and_wavemode_index] = (2*l+1.) * y[ppw->pv->index_pt_pol0_g+l];
-    //     sprintf(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_monopole_E+l], "E%d", l);
-    //   }
-    // }
+    // ----------------------------------------------------------------
+    // -                            Neutrinos                         -
+    // ----------------------------------------------------------------
 
-
-    //******* NEUTRINOS *******
     if (pba->has_ur == _TRUE_) {
-      // *** FLUID VARIABLES
+
       // delta_ur
       quadsources[index_mode][index_ic*qs_size + ppt->index_qs_delta_ur][time_and_wavemode_index] = delta_ur;
       strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_delta_ur],"delta_ur");
@@ -8469,7 +8438,8 @@ int perturb_source_terms_2nd_order_eqs(
       // shear_ur
       quadsources[index_mode][index_ic*qs_size + ppt->index_qs_shear_ur][time_and_wavemode_index] = shear_ur;
       strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_shear_ur],"shear_ur");
-      // *** KINETIC HIERARCHY    
+
+      // monopole_ur
       quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_ur][time_and_wavemode_index] = monopole_ur;
       strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_monopole_ur],"l0_ur");
       // dipole_ur
@@ -8482,8 +8452,8 @@ int perturb_source_terms_2nd_order_eqs(
       quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_ur+3][time_and_wavemode_index] = octupole_ur;
       strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_monopole_ur+3],"l3_ur");      
       /* Moments with l>3.  All of These are non-zero only when both the rsa and ufa approximations are turned off.
-  		  Note that the 2*l+1  factors comes from the fact that at first order we computed the Legendre expansion of
-  		  the distribution function, while at second order we need the spherical harmonic expansion. */
+  		Note that the 2*l+1  factors comes from the fact that at first order we computed the Legendre expansion of
+  		the distribution function, while at second order we need the spherical harmonic expansion. */
       if ((ppw->approx[ppw->index_ap_rsa]==(int)rsa_off) && (ppw->approx[ppw->index_ap_ufa]==(int)ufa_off)) {
         for (int l = 4; l <= ppr->l_max_ur; l++) { 
           quadsources[index_mode][index_ic*qs_size + ppt->index_qs_monopole_ur+l][time_and_wavemode_index] = (2.*l+1.) * y[ppw->pv->index_pt_delta_ur+l];
@@ -8497,12 +8467,12 @@ int perturb_source_terms_2nd_order_eqs(
   
   
   /* Some debug */
-  // if (k < 0.08) {
+  // if (ppw->index_k == 200) {
   //   
   //   fprintf (stderr, "%12.7g %17.7g %17.7g\n",
   //     tau,
   //     pvecmetric[ppw->index_mt_psi],
-  //     delta_g
+  //     psi_prime
   //     );
   // }
     

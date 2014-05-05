@@ -1757,7 +1757,7 @@ int perturb2_get_k_lists (
       ppt2->count_k_configurations += ppt2->k3_size[index_k1][index_k2];
 
       /* Some debug - print out the k3 list for a special configuration */      
-      // if ((index_k1==1) && (index_k2==0)) {
+      // if ((index_k1==23) && (index_k2==22)) {
       // 
       //   fprintf (stderr, "k1[%d]=%.17f, k2[%d]=%.17f, k3_size=%d, k3_min=%.17f, k3_max=%.17f\n",
       //     index_k1, k1, index_k2, k2, ppt2->k3_size[index_k1][index_k2], k3_min, k3_max);
@@ -3157,14 +3157,14 @@ int perturb2_workspace_init (
         if (ppr2->compute_m[0] == _TRUE_) {
 
           /* The Newtonian potential is part of both the SW and ISW effects */
-          if ((ppt2->has_integrated_sachs_wolfe_in_los == _TRUE_) || (ppt2->has_sachs_wolfe_in_los == _TRUE_)) {
+          if ((ppt2->has_isw == _TRUE_) || (ppt2->has_sw == _TRUE_)) {
             ppw2->index_st2_psi = index_st++;
           }
 
           /* We need the derivative of the gravitational potentials if we want to compute the ISW effect. While
             we obtain phi_prime directly from the differential system, we shall take the derivative of psi
             numerically in perturb2_sources. */
-          if (ppt2->has_integrated_sachs_wolfe_in_los == _TRUE_) {
+          if (ppt2->has_isw == _TRUE_) {
             ppw2->index_st2_psi_prime = index_st++;
             ppw2->index_st2_phi_prime = index_st++;
           }
@@ -3293,6 +3293,8 @@ int perturb2_workspace_init_quadratic_sources (
     /* Scalar potentials */
     if (ppr2->compute_m[0] == _TRUE_) {
       ppw2->index_qs2_psi = index_qs2++;                         /* Psi */
+      if (ppt2->has_isw == _TRUE_)  
+        ppw2->index_qs2_psi_prime = index_qs2++;                 /* Psi' */
       ppw2->index_qs2_phi_prime = index_qs2++;                   /* Phi' */
       ppw2->index_qs2_phi_prime_poisson = index_qs2++;           /* Phi' from the Poisson equation */
       ppw2->index_qs2_phi_prime_longitudinal = index_qs2++;      /* Phi' from the longitudinal equation */
@@ -7076,8 +7078,6 @@ int perturb2_einstein (
   if (ppt->gauge == synchronous) {
 
 
-    // ************          Scalar  potentials        ***************
-
     if (ppr2->compute_m[0] == _TRUE_) {
 
       // // =========================================
@@ -7149,7 +7149,109 @@ int perturb2_einstein (
 
 
 
+/** Compute the derivative of the gravitational potential with respect to conformal time
+ * (psi_prime) in Newtonian gauge, needed for the ISW effect. We compute it here,
+ * in a separate function rather than in perturb_einstein, for two reasons. First, 
+ * psi_prime is not needed to solve the differential system, and it would be a waste of
+ * time to compute it at every step of the integrator. Secondly, to obtain psi_prime
+ * we first need to access the velocity and shear derivatives and perturb_einstein does
+ * not have access to the vector 'dy' that contains them.
+ *
+ * This function needs to be called after the background, thermodynamics, einstein 
+ * and quadratic variables have been interpolated.
+ *
+ * TODO: when you will implement TCA at second order, copy the relevant lines from the first-order
+ * equivalent of this function (perturb2_compute_psi_prime)
+ */
 
+int perturb2_compute_psi_prime(
+       struct precision * ppr,
+       struct precision2 * ppr2,
+       struct background * pba,
+       struct thermo * pth,
+       struct perturbs * ppt,
+       struct perturbs2 * ppt2,
+       double tau,
+       double * y,
+       double * dy,
+       double * psi_prime,
+       struct perturb2_workspace * ppw2)
+{
+
+  /* Shortcuts */
+  double k = ppw2->k;
+  double k2 = k*k;
+  double a2 = ppw2->pvecback[pba->index_bg_a]*ppw2->pvecback[pba->index_bg_a];
+  double Hc = ppw2->pvecback[pba->index_bg_a]*ppw2->pvecback[pba->index_bg_H];
+
+  double v_b_1 = ppw2->pvec_sources1[ppt->index_qs_v_b];
+  double v_b_2 = ppw2->pvec_sources2[ppt->index_qs_v_b];
+  double v_b_1_prime = ppw2->pvec_sources1[ppt->index_qs_v_b_prime];
+  double v_b_2_prime = ppw2->pvec_sources2[ppt->index_qs_v_b_prime];
+
+  double v_cdm_1 = ppw2->pvec_sources1[ppt->index_qs_v_cdm];
+  double v_cdm_2 = ppw2->pvec_sources2[ppt->index_qs_v_cdm];
+  double v_cdm_1_prime = ppw2->pvec_sources1[ppt->index_qs_v_cdm_prime];
+  double v_cdm_2_prime = ppw2->pvec_sources2[ppt->index_qs_v_cdm_prime];
+
+  // ===================================================================
+  // =                          Compute shear                          =
+  // ===================================================================
+
+  /* To compute psi_prime we need rho*quadrupole' and rho*(1+3w)*quadrupole */
+  double rho_plus_3p_quadrupole=0, rho_quadrupole_prime=0;
+
+  /* Photons */
+  rho_plus_3p_quadrupole = 2*ppw2->pvecback[pba->index_bg_rho_g]*I(2,0);
+  rho_quadrupole_prime = ppw2->pvecback[pba->index_bg_rho_g]*dI(2,0);
+
+  /* Baryons */
+  rho_plus_3p_quadrupole += ppw2->pvecback[pba->index_bg_rho_b]*ppw2->b_22m[0];
+  double b_220_prime;
+  if (ppt2->has_perfect_baryons == _FALSE_) {
+    b_220_prime = db(2,2,0);
+  }
+  else { /* Compute derivative of 15 * k1_ten_k2[m+2] * v_b_1 * v_b_2 */
+    b_220_prime = 15 * ppw2->k1_ten_k2[0+2] * (v_b_1_prime*v_b_2 + v_b_1*v_b_2_prime);
+  }
+  rho_quadrupole_prime += ppw2->pvecback[pba->index_bg_rho_b]*b_220_prime;
+  
+  /* CDM */
+  if (pba->has_cdm == _TRUE_) {
+
+    rho_plus_3p_quadrupole +=  ppw2->pvecback[pba->index_bg_rho_cdm]*ppw2->cdm_22m[0];
+    double cdm_220_prime;
+    if (ppt2->has_perfect_cdm == _FALSE_) {
+      cdm_220_prime = dcdm(2,2,0);
+    }
+    else { /* Compute derivative of 15 * k1_ten_k2[m+2] * v_cdm_1 * v_cdm_2 */
+      cdm_220_prime = 15 * ppw2->k1_ten_k2[0+2] * (v_cdm_1_prime*v_cdm_2 + v_cdm_1*v_cdm_2_prime);
+    }
+    rho_quadrupole_prime += ppw2->pvecback[pba->index_bg_rho_cdm]*cdm_220_prime;
+  }
+  
+  /* Neutrinos */
+  if (pba->has_ur == _TRUE_) {
+    rho_plus_3p_quadrupole += 2*ppw2->pvecback[pba->index_bg_rho_ur]*N(2,0);
+    rho_quadrupole_prime += ppw2->pvecback[pba->index_bg_rho_ur]*dN(2,0);
+  }
+  
+  // ==================================================================
+  // =                        Equation for psi'                       =
+  // ==================================================================
+  
+  /* The derivative of the gravitational potential psi, needed to compute the ISW effect */
+  *psi_prime = ppw2->pvecmetric[ppw2->index_mt2_phi_prime] - 3/5. * (a2/k2)
+    * (rho_quadrupole_prime - Hc*rho_plus_3p_quadrupole)
+    + ppw2->pvec_quadsources[ppw2->index_qs2_psi_prime];
+  
+  /* Debug - print psi_prime together with psi */
+  // if (ppw2->index_k == 200)
+  //   fprintf (stderr, "%15g %15g %15g\n", tau, ppw2->pvecmetric[ppw2->index_mt2_psi], *psi_prime);
+
+  return _SUCCESS_;
+
+}
 
 
 
@@ -7511,7 +7613,7 @@ int perturb2_quadratic_sources (
   // ==============================================================================================
   
   /* Shortcuts */
-  double phi_1, phi_2, psi_1, psi_2, phi_prime_1, phi_prime_2;
+  double phi_1, phi_2, psi_1, psi_2, phi_prime_1, phi_prime_2, psi_prime_1, psi_prime_2;
   double eta_1, eta_2, eta_prime_1, eta_prime_2, eta_prime_prime_1, eta_prime_prime_2;
   double h_1, h_2, h_prime_1, h_prime_2, h_prime_prime_1, h_prime_prime_2; 
  
@@ -7542,7 +7644,6 @@ int perturb2_quadratic_sources (
     
     /* Code the Einstein tensor for synchronous gauge, TODO! */
     
- 
   }
  
  
@@ -7556,6 +7657,10 @@ int perturb2_quadratic_sources (
     psi_2 =  pvec_sources2[ppt->index_qs_psi];
     phi_prime_1 = pvec_sources1[ppt->index_qs_phi_prime];
     phi_prime_2 = pvec_sources2[ppt->index_qs_phi_prime];
+    if (ppt2->has_isw == _TRUE_) {
+      psi_prime_1 = pvec_sources1[ppt->index_qs_psi_prime];
+      psi_prime_2 = pvec_sources2[ppt->index_qs_psi_prime];
+    }
 
     /* Scalar potentials */
     if (ppr2->compute_m[0] == _TRUE_) {
@@ -7601,6 +7706,19 @@ int perturb2_quadratic_sources (
           + psi_1 * phi_2 * (     k1_ten_k2[2] +   k1_ten_k1[2]                  )
           + psi_2 * phi_1 * (     k1_ten_k2[2]                  +   k2_ten_k2[2] )
         ); 
+      
+      /* Conformal time derivative of the above, needed to compute psi_prime */    
+      if (ppt2->has_isw == _TRUE_) {
+        
+        pvec_quadsources[ppw2->index_qs2_psi_prime] = - 3./k_sq *
+          (
+              (phi_prime_1 * phi_2 + phi_1 * phi_prime_2) * ( - 3*k1_ten_k2[2] - 2*k1_ten_k1[2] - 2*k2_ten_k2[2] )
+            + (psi_prime_1 * psi_2 + psi_1 * psi_prime_2) * ( -   k1_ten_k2[2] -   k1_ten_k1[2] -   k2_ten_k2[2] )
+            + (psi_prime_1 * phi_2 + psi_1 * phi_prime_2) * (     k1_ten_k2[2] +   k1_ten_k1[2]                  )
+            + (psi_prime_2 * phi_1 + psi_2 * phi_prime_1) * (     k1_ten_k2[2]                  +   k2_ten_k2[2] )
+          );         
+      }
+      
 
     } // end of scalar modes
 
@@ -8416,9 +8534,8 @@ int perturb2_source_terms (
   /* Have a look at the thermodynamics quantities */
   // fprintf (stderr, "%13g %13g = %g\n", tau, Hc/kappa_dot);
   
-  /* Interpolate quadratic sources (ppw2->pvec_quadsources) */
-  
-  /* Because we need the quadratic part of the collision term, too, we 
+  /* Interpolate quadratic sources (ppw2->pvec_quadsources). Note that,
+  because we need the quadratic part of the collision term, too, we 
   use 'perturb2_quadratic_sources' rather than 'perturb2_quadratic_sources_at_tau'.
   In fact, the latter would only interpolate the full quadratic sources, while
   the former gives as an output that and the collisional part separately.
@@ -8444,7 +8561,7 @@ int perturb2_source_terms (
       error_message);
   }
   
-  // *** Interpolate first-order quantities (ppw2->psources_1)
+  /* Interpolate first-order quantities in tau and k1 (ppw2->psources_1) */
   class_call (perturb_quadsources_at_tau_for_all_types (
                 ppr,
                 ppt,
@@ -8458,7 +8575,7 @@ int perturb2_source_terms (
     ppt->error_message,
     error_message);
   
-  // *** Interpolate first-order quantities (ppw2->psources_2)  
+  /* Interpolate first-order quantities in tau and k2 (ppw2->psources_2) */
   class_call (perturb_quadsources_at_tau_for_all_types (
                 ppr,
                 ppt,
@@ -8476,7 +8593,7 @@ int perturb2_source_terms (
   double * pvec_sources1 = ppw2->pvec_sources1;
   double * pvec_sources2 = ppw2->pvec_sources2;
   
-  // *** Interpolate Einstein equations (pvecmetric)
+  /* Interpolate Einstein equations (pvecmetric) */
   class_call (perturb2_einstein (
                 ppr,
                 ppr2,
@@ -8490,7 +8607,27 @@ int perturb2_source_terms (
     ppt2->error_message,
     error_message);
   
+  /* Compute psi_prime, needed to add the ISW effect */
+  double psi_prime = 0;
+
+  if ((ppt->gauge == newtonian) && (ppt2->has_isw == _TRUE_) && (ppr2->compute_m[0] == _TRUE_)) {
   
+    class_call(perturb2_compute_psi_prime (
+                 ppr,
+                 ppr2,
+                 pba,
+                 pth,
+                 ppt,
+                 ppt2,
+                 tau,
+                 y,
+                 dy,
+                 &(psi_prime),
+                 ppw2),
+      ppt2->error_message,
+      error_message);
+  }
+
   
   /* Shortcuts for metric variables */
 
@@ -9293,11 +9430,11 @@ int perturb2_source_terms (
         if (ppr2->compute_m[0] == _TRUE_) {
   
           /* Store the gravitational potential, needed to compute both the SW and the ISW */
-          if ((ppt2->has_sachs_wolfe_in_los == _TRUE_) || (ppt2->has_integrated_sachs_wolfe_in_los == _TRUE_))
+          if ((ppt2->has_sw == _TRUE_) || (ppt2->has_isw == _TRUE_))
             ppw2->source_term_table[index_tau*ppw2->st2_size + ppw2->index_st2_psi] = psi;
           
           /* Store the derivative of the curvature potential, needed to compute the ISW */
-          if (ppt2->has_integrated_sachs_wolfe_in_los == _TRUE_)
+          if (ppt2->has_isw == _TRUE_)
             ppw2->source_term_table[index_tau*ppw2->st2_size + ppw2->index_st2_phi_prime] = phi_prime;
         }
         
@@ -9340,7 +9477,7 @@ int perturb2_sources (
         if (ppr2->compute_m[0] == _TRUE_) {
   
           /* Add the Sachs-Wolfe effect to S00*/
-          if (ppt2->has_sachs_wolfe_in_los == _TRUE_) {
+          if (ppt2->has_sw == _TRUE_) {
   
             for (int index_tau=0; index_tau < ppt2->tau_size-1; ++index_tau) {
   
@@ -9402,7 +9539,9 @@ int perturb2_sources (
     
   
           /* Add the integrated Sachs-Wolfe effect to S00 */
-          if (ppt2->has_integrated_sachs_wolfe_in_los == _TRUE_) {
+          if (ppt2->has_isw == _TRUE_) {
+    
+            double isw;
     
             /* Compute the time derivative of the second-order Newtonian potential */
             class_call( array_derive1_order2_table_line_to_line (
@@ -9426,8 +9565,43 @@ int perturb2_sources (
               double psi_prime = ppw2->source_term_table[index_tau*ppw2->st2_size + ppw2->index_st2_psi_prime];
               double phi_prime = ppw2->source_term_table[index_tau*ppw2->st2_size + ppw2->index_st2_phi_prime];
   
-              /* ISW contribution */
-              double isw = 4*exp_minus_kappa*(psi_prime + phi_prime);
+              // if (ppt2->use_zhiqi_sw == _FALSE_) {
+                isw = 4*exp_minus_kappa*(psi_prime + phi_prime);
+              // }
+              // else {
+              //   
+              //   class_call (perturb_quadsources_at_tau_for_all_types (
+              //                 ppr,
+              //                 ppt,
+              //                 ppt->index_md_scalars,
+              //                 ppt2->index_ic,
+              //                 ppw2->index_k1,
+              //                 tau,
+              //                 ppt->inter_normal,
+              //                 &(ppw2->last_index_sources),
+              //                 ppw2->pvec_sources1),
+              //     ppt->error_message,
+              //     ppt2->error_message);
+              //   
+              //   class_call (perturb_quadsources_at_tau_for_all_types (
+              //                 ppr,
+              //                 ppt,
+              //                 ppt->index_md_scalars,
+              //                 ppt2->index_ic,
+              //                 ppw2->index_k2,
+              //                 tau,
+              //                 ppt->inter_normal,
+              //                 &(ppw2->last_index_sources),                 
+              //                 ppw2->pvec_sources2),
+              //     ppt->error_message,
+              //     ppt2->error_message);
+              // 
+              //   double psi_1 = ppw2->pvec_sources1[ppt->index_qs_psi];
+              //   double psi_2 = ppw2->pvec_sources2[ppt->index_qs_psi];
+              //   double phi_1 = ppw2->pvec_sources1[ppt->index_qs_phi];
+              //   double phi_2 = ppw2->pvec_sources2[ppt->index_qs_phi];
+              //   
+              // }
             
               /* Uncomment the following to turn off ISW after a certain point */
               // double tau = ppt2->tau_sampling[index_tau];
@@ -9441,12 +9615,12 @@ int perturb2_sources (
               sources(ppt2->index_tp2_T + lm(0,0)) += isw;
   
               /* Some debug of the ISW effect */
-              // if ( (ppw2->index_k1==0) && (ppw2->index_k2==1) && (ppw2->index_k3==25)) {
-              //   double tau = ppt2->tau_sampling[index_tau];
-              //   double psi = ppw2->source_term_table[index_tau*ppw2->st2_size + ppw2->index_st2_psi];
-              //   fprintf (stderr, "%20f %20f %20f %20f %20f %20f\n",
-              //     tau, 4*exp_minus_kappa*(psi_prime + phi_prime), psi, psi_prime, phi_prime, exp_minus_kappa);
-              // }
+              if ( (ppw2->index_k1==23) && (ppw2->index_k2==22) && (ppw2->index_k3==21)) {
+                double tau = ppt2->tau_sampling[index_tau];
+                double psi = ppw2->source_term_table[index_tau*ppw2->st2_size + ppw2->index_st2_psi];
+                fprintf (stderr, "%20f %20f %20f %20f %20f %20f\n",
+                  tau, 4*exp_minus_kappa*(psi_prime + phi_prime), psi, psi_prime, phi_prime, exp_minus_kappa);
+              }
   
             } // end of for (index_tau)
   
@@ -9709,10 +9883,7 @@ int perturb2_save_early_transfers (
   /* Photon to baryon ratio */
   double r = pvecback[pba->index_bg_rho_g]/pvecback[pba->index_bg_rho_b];  
   
-  
-  // *** Interpolate quadratic sources
-  
-  /* The following functions fills ppw2->pvec_quadsources and ppw2->pvec_quadcollision */
+  /* Interpolate quadratic sources by filling ppw2->pvec_quadsources and ppw2->pvec_quadcollision */
   if (ppt2->has_quadratic_sources == _TRUE_) {
     class_call (perturb2_quadratic_sources(
                   ppr,
@@ -9731,7 +9902,7 @@ int perturb2_save_early_transfers (
       error_message);
   }
   
-  // *** Interpolate first-order quantities (ppw2->psources_1)
+  /* Interpolate first-order quantities (ppw2->psources_1) */
   class_call (perturb_quadsources_at_tau_for_all_types (
                ppr,
                ppt,
@@ -9745,7 +9916,7 @@ int perturb2_save_early_transfers (
      ppt->error_message,
      ppt2->error_message);
   
-  // *** Interpolate first-order quantities (ppw2->psources_2)  
+  /* Interpolate first-order quantities (ppw2->psources_2) */
   class_call (perturb_quadsources_at_tau_for_all_types (
                ppr,
                ppt,
@@ -9764,7 +9935,7 @@ int perturb2_save_early_transfers (
   double * pvec_sources2 = ppw2->pvec_sources2;
   
   
-  // *** Interpolate Einstein equations (pvecmetric)
+  /* Interpolate Einstein equations (pvecmetric) */
   class_call (perturb2_einstein (
                 ppr,
                 ppr2,
@@ -9778,7 +9949,26 @@ int perturb2_save_early_transfers (
     ppt2->error_message,
     error_message);
   
-   
+  /* Compute psi_prime */
+  double psi_prime = 0;
+
+  if ((ppt->gauge == newtonian) && (ppt2->has_isw == _TRUE_)) {
+
+    class_call(perturb2_compute_psi_prime (
+                 ppr,
+                 ppr2,
+                 pba,
+                 pth,
+                 ppt,
+                 ppt2,
+                 tau,
+                 y,
+                 dy,
+                 &(psi_prime),
+                 ppw2),
+      ppt2->error_message,
+      error_message);
+  }
   
   
   // =======================================================================================
@@ -9795,7 +9985,6 @@ int perturb2_save_early_transfers (
     phi_2 = pvec_sources2[ppt->index_qs_phi];
     phi_prime_1 = pvec_sources1[ppt->index_qs_phi_prime];
     phi_prime_2 = pvec_sources2[ppt->index_qs_phi_prime];
-
     
     /* Second-order scalar quantities */
     if (ppr2->compute_m[0] == _TRUE_) {
@@ -10246,6 +10435,17 @@ int perturb2_save_early_transfers (
       else {
        fprintf(file_tr, format_value, psi);
        fprintf(file_qs, format_value, pvec_quadsources[ppw2->index_qs2_psi]);
+      }
+      // psi_prime
+      if (ppt2->has_isw == _TRUE_) {
+        if (index_tau==0) {
+         fprintf(file_tr, format_label, "psi'", index_print_tr++);
+         fprintf(file_qs, format_label, "psi'", index_print_qs++);
+        }
+        else {
+         fprintf(file_tr, format_value, psi_prime);
+         fprintf(file_qs, format_value, pvec_quadsources[ppw2->index_qs2_psi_prime]);
+        }
       }
       // phi
       if (index_tau==0) fprintf(file_tr, format_label, "phi", index_print_tr++);

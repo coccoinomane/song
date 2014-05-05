@@ -90,8 +90,8 @@ int main(int argc, char **argv) {
   // printf("\tpt.has_scattering_in_los = %d\n", pt.has_scattering_in_los);
   // printf("\tpt.has_photon_monopole_in_los = %d\n", pt.has_photon_monopole_in_los);
   // printf("\tpt.has_metric_in_los = %d*\n", pt.has_metric_in_los);
-  // printf("\tpt.has_sachs_wolfe_in_los = %d\n", pt.has_sachs_wolfe_in_los);
-  // printf("\tpt.has_integrated_sachs_wolfe_in_los = %d\n", pt.has_integrated_sachs_wolfe_in_los);
+  // printf("\tpt.has_sw = %d\n", pt.has_sw);
+  // printf("\tpt.has_isw = %d\n", pt.has_isw);
   // printf("\tpt.has_recombination_only = %d\n", pt.has_recombination_only);
 
   /* LOS effects at second order */
@@ -105,8 +105,8 @@ int main(int argc, char **argv) {
   // printf("\tpt2.has_redshift_in_los = %d\n", pt2.has_redshift_in_los);
   // printf("\tpt2.has_lensing_in_los = %d\n", pt2.has_lensing_in_los);
   // printf("\tpt2.use_delta_tilde_in_los = %d\n", pt2.use_delta_tilde_in_los);
-  // printf("\tpt2.has_sachs_wolfe_in_los = %d*\n", pt2.has_sachs_wolfe_in_los);
-  // printf("\tpt2.has_integrated_sachs_wolfe_in_los = %d*\n", pt2.has_integrated_sachs_wolfe_in_los);  
+  // printf("\tpt2.has_sw = %d*\n", pt2.has_sw);
+  // printf("\tpt2.has_isw = %d*\n", pt2.has_isw);  
   // printf("\tpt2.has_recombination_only = %d\n", pt2.has_recombination_only);
 
   /* Time sampling for quadratic sources */

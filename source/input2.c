@@ -569,37 +569,33 @@ int input2_init (
   /* Metric sources exist only for temperature */
   if (ppt2->has_cmb_temperature == _TRUE_) {
 
-    // *** Set ppt2->has_sachs_wolfe_in_los
+    // *** Set ppt2->has_sw
     class_call(parser_read_string(pfc,"include_sachs_wolfe_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
 
     if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-      ppt2->has_sachs_wolfe_in_los = _TRUE_;
+      ppt2->has_sw = _TRUE_;
 
-    // *** Set ppt2->has_integrated_sachs_wolfe_in_los
+    // *** Set ppt2->has_isw
     class_call(parser_read_string(pfc,"include_integrated_sachs_wolfe_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
 
     if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-      ppt2->has_integrated_sachs_wolfe_in_los = _TRUE_;
+      ppt2->has_isw = _TRUE_;
 
     /* Avoid counting twice the same metric effect */
-    if ((ppt2->has_sachs_wolfe_in_los == _TRUE_) || (ppt2->has_integrated_sachs_wolfe_in_los == _TRUE_))
+    if ((ppt2->has_sw == _TRUE_) || (ppt2->has_isw == _TRUE_))
       ppt2->has_metric_in_los = _FALSE_;
-    
-    /* Set the integration_by_parts flag on if we need to obtain non-standard LOS source terms */
-    if ((ppt2->has_sachs_wolfe_in_los == _TRUE_) || (ppt2->has_integrated_sachs_wolfe_in_los == _TRUE_))
-      ppt2->has_integration_by_parts_of_los = _TRUE_;    
   }
 
   /* If effects that are not peaked at recombination are included, we need to extend the integration range up to today */
-  if ((ppt2->has_metric_in_los == _FALSE_) && (ppt2->has_integrated_sachs_wolfe_in_los == _FALSE_)
+  if ((ppt2->has_metric_in_los == _FALSE_) && (ppt2->has_isw == _FALSE_)
       && (ppt2->has_quad_metric_in_los == _FALSE_) && (ppt2->has_time_delay_in_los == _FALSE_)
       && (ppt2->has_redshift_in_los == _FALSE_) && (ppt2->has_lensing_in_los == _FALSE_))
     ppt2->has_recombination_only = _TRUE_;
 
   /* Should we define the SW effect as in Huang and Vernizzi 2013, i.e. including the -psi*psi contribution? */
-  if (ppt2->has_sachs_wolfe_in_los == _TRUE_) {
+  if (ppt2->has_sw == _TRUE_) {
     
-    // *** Set ppt2->has_sachs_wolfe_in_los
+    // *** Set ppt2->has_sw
     class_call(parser_read_string(pfc,"use_zhiqi_sw",&(string1),&(flag1),errmsg),errmsg,errmsg);
 
     if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
@@ -612,9 +608,9 @@ int input2_init (
   }
 
   /* Should we include only the early ISW effect? */
-  if (ppt2->has_integrated_sachs_wolfe_in_los == _TRUE_) {
+  if (ppt2->has_isw == _TRUE_) {
     
-    // *** Set ppt2->has_sachs_wolfe_in_los
+    // *** Set ppt2->has_sw
     class_call(parser_read_string(pfc,"only_early_isw",&(string1),&(flag1),errmsg),errmsg,errmsg);
 
     if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL))) {
@@ -653,10 +649,9 @@ int input2_init (
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL))) {
 
     ppt2->use_test_source = _TRUE_;
-    ppt2->has_sachs_wolfe_in_los = _FALSE_;
-    ppt2->has_integrated_sachs_wolfe_in_los = _FALSE_;
+    ppt2->has_sw = _FALSE_;
+    ppt2->has_isw = _FALSE_;
 		ppt2->has_recombination_only = _TRUE_;	
-		ppt2->has_integration_by_parts_of_los = _FALSE_;
 		
 	}
 
@@ -1521,10 +1516,9 @@ int input2_default_params (
 
   ppt2->use_delta_tilde_in_los = _FALSE_;
   
-  ppt2->has_integration_by_parts_of_los = _FALSE_;
-  ppt2->has_sachs_wolfe_in_los = _FALSE_;
+  ppt2->has_sw = _FALSE_;
   ppt2->use_zhiqi_sw = _FALSE_;
-  ppt2->has_integrated_sachs_wolfe_in_los = _FALSE_;
+  ppt2->has_isw = _FALSE_;
   ppt2->only_early_isw = _FALSE_;
 
 	ppt2->use_test_source = _FALSE_;

@@ -214,9 +214,9 @@ struct perturbs2
 
   /* Sachs-Wolfe (SW) and integrated Sachs-Wolfe (ISW) sources. These sources arise from the integration
   by parts of the purely second-order redshift term. */
-  short has_sachs_wolfe_in_los;               /* Shall we include the g*psi Sachs-Wolfe term in the LOS sources? */
+  short has_sw;               /* Shall we include the g*psi Sachs-Wolfe term in the LOS sources? */
   short use_zhiqi_sw;                         /* Consider the SW as 4*g*(psi-psi^2) rather than just 4*g*psi */
-  short has_integrated_sachs_wolfe_in_los;    /* Shall we include the e^-kappa*( phi'+psi') ISW term in the LOS sources? */
+  short has_isw;    /* Shall we include the e^-kappa*( phi'+psi') ISW term in the LOS sources? */
   short only_early_isw;                       /* Include only the early ISW, no late ISW */
 
 	/* If true, use an hard-coded test source */
@@ -257,7 +257,7 @@ struct perturbs2
    * useful if one adopts the flat-sky approximation to compute the bispectrum (as done in CMBQuick) because
    * in that formalism it is important that all effects are peaked at recombination.
    * 
-   *   The has_integration_by_parts_of_los flag is completely dependent on the flags ppt2->has_sachs_wolfe_in_los
+   *   The has_integration_by_parts_of_los flag is completely dependent on the flags ppt2->has_sw
    * and ppt2->has_integration_by_parts_of_los, and it is set in the input module.
    */
   short has_integration_by_parts_of_los;         /* Shall we perform integration by parts of the line-of-sight sources? */
@@ -678,7 +678,8 @@ struct perturb2_workspace
   int qs2_size;
 
   /* Quadratic sources for the metric, Newtonian gauge */
-  int index_qs2_psi;                     
+  int index_qs2_psi;
+  int index_qs2_psi_prime;
   int index_qs2_phi_prime;               
   int index_qs2_phi_prime_poisson;      
   int index_qs2_phi_prime_longitudinal;       
@@ -1143,6 +1144,19 @@ struct perturb2_parameters_and_workspace {
        double * y,
        struct perturb2_workspace * ppw2
        );
+
+    int perturb2_compute_psi_prime(
+           struct precision * ppr,
+           struct precision2 * ppr2,
+           struct background * pba,
+           struct thermo * pth,
+           struct perturbs * ppt,
+           struct perturbs2 * ppt2,
+           double tau,
+           double * y,
+           double * dy,
+           double * psi_prime,
+           struct perturb2_workspace * ppw2);
 
     int perturb2_source_terms(
            double tau,

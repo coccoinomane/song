@@ -1849,26 +1849,26 @@ int input_init(
 
 
 
-  // *** Set ppt->has_sachs_wolfe_in_los
+  // *** Set ppt->has_sw
   class_call(parser_read_string(pfc,"include_sachs_wolfe_in_los_1st_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
 
   if ((flag1 == _TRUE_) && (strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)) {
-    ppt->has_sachs_wolfe_in_los = _TRUE_;
+    ppt->has_sw = _TRUE_;
   }
 
-  // *** Set ppt->has_integrated_sachs_wolfe_in_los
+  // *** Set ppt->has_isw
   class_call(parser_read_string(pfc,"include_integrated_sachs_wolfe_in_los_1st_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
 
   if ((flag1 == _TRUE_) && (strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)) {
-    ppt->has_integrated_sachs_wolfe_in_los = _TRUE_;
+    ppt->has_isw = _TRUE_;
   }
 
   /* Avoid counting twice the same metric effect */
-  if ((ppt->has_sachs_wolfe_in_los == _TRUE_) || (ppt->has_integrated_sachs_wolfe_in_los == _TRUE_))
+  if ((ppt->has_sw == _TRUE_) || (ppt->has_isw == _TRUE_))
     ppt->has_metric_in_los = _FALSE_;
 
   /* If effects that are not peaked at recombination are included, we need to extend the integration range up to today */
-  // if ((ppt->has_metric_in_los == _FALSE_) && (ppt->has_integrated_sachs_wolfe_in_los == _FALSE_))
+  // if ((ppt->has_metric_in_los == _FALSE_) && (ppt->has_isw == _FALSE_))
   //   ppt->has_recombination_only = _TRUE_;
 
 
@@ -2822,8 +2822,8 @@ int input_default_params(
   ppt->has_scattering_in_los = _TRUE_;
   ppt->has_photon_monopole_in_los = _TRUE_;
   ppt->has_metric_in_los = _TRUE_;
-  ppt->has_sachs_wolfe_in_los = _FALSE_;
-  ppt->has_integrated_sachs_wolfe_in_los = _FALSE_;
+  ppt->has_sw = _FALSE_;
+  ppt->has_isw = _FALSE_;
 
   /* Alternative initial conditions at 1st order */
   ppt->has_ad_maberty=_FALSE_;

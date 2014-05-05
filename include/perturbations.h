@@ -390,6 +390,7 @@ struct perturbs
   int index_qs_phi;
   int index_qs_psi;
   int index_qs_phi_prime;
+  int index_qs_psi_prime;
                                    
   // *** Matter variables              
   int index_qs_delta_g;         
@@ -421,9 +422,6 @@ struct perturbs
   int index_qs_shear_ur;           
   int index_qs_monopole_ur;
   
-  /* Extra variable needed for the second-order ISW (disabled) */
-  int index_qs_psi_prime;
-
   /* Perturbation in the fraction of free electrons */
   int index_qs_delta_Xe;
 
@@ -455,8 +453,8 @@ struct perturbs
   /* Shall we include the Sachs-Wolfe (SW) and integrated Sachs-Wolfe (ISW) effects in the line-of-sight sources? Note
   when either of these flags is set to true, has_metric_in_los is always set to false to avoid double counting the
   effects. */
-  short has_sachs_wolfe_in_los;                  /* Shall we include the g*psi Sachs-Wolfe term in the LOS sources? */
-  short has_integrated_sachs_wolfe_in_los;       /* Shall we include the e^-kappa*( phi'+psi') ISW term in the LOS sources? */
+  short has_sw;                  /* Shall we include the g*psi Sachs-Wolfe term in the LOS sources? */
+  short has_isw;       /* Shall we include the e^-kappa*( phi'+psi') ISW term in the LOS sources? */
 
 
 
@@ -585,22 +583,7 @@ struct perturb_workspace
   int index_st_dS2;    /**< derivative S2' */
   int index_st_ddS2;   /**< derivative S2'' */
   int st_size;         /**< size of this vector */ 
-  
-  // *** MY MODIFICATIONS ***
-
-  /* Add the source terms needed to compute the SW and ISW effects (TODO: add synchronous gauge) */
-  int index_st_g;
-  int index_st_exp_m_kappa;
-  int index_st_psi;
-  int index_st_psi_prime;
-  int index_st_phi_prime;
-
-  /* Include sources for Rayleigh scattering */
-  int index_st_g_thomson;
-  int index_st_exp_m_kappa_thomson;
-
-  // *** END OF MY MODIFICATIONS ***
-  
+    
   //@}
 
 
@@ -929,6 +912,18 @@ struct perturb_parameters_and_workspace {
 			 double * y,
 			 struct perturb_workspace * ppw
 			 );
+
+    int perturb_compute_psi_prime(
+           struct precision * ppr,
+           struct background * pba,
+           struct thermo * pth,
+           struct perturbs * ppt,
+           double tau,
+           double * y,
+           double * dy,
+           double * psi_prime,
+           struct perturb_workspace * ppw
+           );
 
     int perturb_source_terms(
 			     double tau,
