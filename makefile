@@ -13,10 +13,6 @@ AR       = ar rv
 FC       = gfortran
 
 # Optimization flags.
-# The flags -fast, -O3 and -ffast-math seem to have the same effect, that is a factor 2 speed-up.
-# The fastest combination seems to be -O3 -ffast-math, whic delivers a speed-up of ~3.
-# Note that (i) the flag -ffast-math will produce different results at the 1 permille level,
-# and that (ii) debug won't work if the optimization is on.
 OPTFLAG    = -O
 
 # Openmp flag (comment for compiling without openmp)

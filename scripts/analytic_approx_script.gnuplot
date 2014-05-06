@@ -39,7 +39,7 @@ set logscale
 set multiplot layout 3,2
 do for [bf in types]  {
   file = root."_".bf.".txt"
-  plot [:] file u 1:(abs(1-($9/$10))) w li lw 4 title bf
+  plot [2:] [1e-5:100] file u 1:(abs(1-($9/$10))) w li lw 4 title bf
 }
 unset multiplot
 set output
@@ -57,5 +57,5 @@ types = "ttt tte ett eet tee eee"
 
 # Plot
 set logscale
-plot [2:] for [bf in types] root."_".bf.".txt" u 1:(abs(1-($9/$10))) w li lw 4 title bf
+plot [2:] [1e-5:100] for [bf in types] root."_".bf.".txt" u 1:(abs(1-($9/$10))) w li lw 4 title bf
 set output

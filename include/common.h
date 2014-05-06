@@ -60,8 +60,8 @@ typedef char FileName[_FILENAMESIZE_];
 #define _MINUSCULE_ 1.e-75
 
 #define _MAX_LENGTH_LABEL_ 64 /* Maximum length allowed for the label strings (e.g. for the perturbation variables such as 'phi', 'psi') */
-#define _MAX_NUM_BISPECTRA_ 32 /* Maximum number of bispectra that can be computed in any of the bispectra modules */    
-#define _MAX_NUM_FIELDS_ 2 /* Maximum number of fields (T, E, B...) that can be computed in any of the bispectra modules */    
+#define _MAX_NUM_BISPECTRA_ 32 /* Maximum number of bispectra that can be computed */
+#define _MAX_NUM_FIELDS_ 16 /* Maximum number of fields (T, E, B...) that can be computed */
 
 /* Possible parity states */
 #define _ODD_ 1

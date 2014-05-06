@@ -592,21 +592,13 @@ int input2_init (
       && (ppt2->has_redshift_in_los == _FALSE_) && (ppt2->has_lensing_in_los == _FALSE_))
     ppt2->has_recombination_only = _TRUE_;
 
-  /* Should we define the SW effect as in Huang and Vernizzi 2013, i.e. including the -psi*psi contribution? */
-  if (ppt2->has_sw == _TRUE_) {
-    
-    // *** Set ppt2->has_sw
-    class_call(parser_read_string(pfc,"use_zhiqi_sw",&(string1),&(flag1),errmsg),errmsg,errmsg);
+  /* Should we define the SW and ISW effects as in Huang and Vernizzi 2013, i.e. using
+  the exponential form of the potentials in the metric? */
+  class_call(parser_read_string(pfc,"use_exponential_potentials",&(string1),&(flag1),errmsg),errmsg,errmsg);
 
-    if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-      ppt2->use_zhiqi_sw = _TRUE_;
-    
-    class_test_permissive (ppt2->has_quad_metric_in_los == _TRUE_,
-      errmsg,
-      "flag 'use_zhiqi_sw' and 'quad_metric' are incompatible: you are double counting the psi*psi terms!");
-    
-  }
-
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+    ppt2->use_exponential_potentials = _TRUE_;
+  
   /* Should we include only the early ISW effect? */
   if (ppt2->has_isw == _TRUE_) {
     
@@ -618,16 +610,11 @@ int input2_init (
       ppt2->only_early_isw = _TRUE_;
 
       /* Unless other late time effects are included, stop integrating just after recombination */
-      if ((ppt2->has_metric_in_los == _FALSE_) && (ppt2->has_quad_metric_in_los == _FALSE_)
-          && (ppt2->has_time_delay_in_los == _FALSE_) && (ppt2->has_redshift_in_los == _FALSE_) && (ppt2->has_lensing_in_los == _FALSE_))
+      if ((ppt2->has_metric_in_los == _FALSE_) && (ppt2->has_isw == _FALSE_)
+          && (ppt2->has_quad_metric_in_los == _FALSE_) && (ppt2->has_time_delay_in_los == _FALSE_)
+          && (ppt2->has_redshift_in_los == _FALSE_) && (ppt2->has_lensing_in_los == _FALSE_))
         ppt2->has_recombination_only = _TRUE_;
-      else
-        class_test_permissive (1==1,
-          errmsg,
-          "flag 'only_early_isw' not implemented yet for 'quad_metric=yes'. Will just include the full ISW.");
-
     }
-
   }
 
 
@@ -1515,9 +1502,9 @@ int input2_default_params (
   ppt2->has_lensing_in_los = _FALSE_;
 
   ppt2->use_delta_tilde_in_los = _FALSE_;
-  
+
   ppt2->has_sw = _FALSE_;
-  ppt2->use_zhiqi_sw = _FALSE_;
+  ppt2->use_exponential_potentials = _FALSE_;
   ppt2->has_isw = _FALSE_;
   ppt2->only_early_isw = _FALSE_;
 

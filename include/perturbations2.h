@@ -5,9 +5,9 @@
 #include "common2.h"
 
 
-// =============================================================
-// =                       Approximations                      =
-// =============================================================
+// ======================================================================================
+// =                                   Approximations                                   =
+// ======================================================================================
 
 /**
  * Labels that denote the different ways in which each approximation scheme is implemented
@@ -75,9 +75,9 @@ struct perturbs2
 {
 
 
-  // ===========================================================================
-  // =                                 Output flags                            =
-  // ===========================================================================
+  // ====================================================================================
+  // =                                    Output flags                                  =
+  // ====================================================================================
 
   /* Do we need to compute 2nd order perturbations at all? */
   short has_perturbations2;
@@ -214,30 +214,15 @@ struct perturbs2
 
   /* Sachs-Wolfe (SW) and integrated Sachs-Wolfe (ISW) sources. These sources arise from the integration
   by parts of the purely second-order redshift term. */
-  short has_sw;               /* Shall we include the g*psi Sachs-Wolfe term in the LOS sources? */
-  short use_zhiqi_sw;                         /* Consider the SW as 4*g*(psi-psi^2) rather than just 4*g*psi */
-  short has_isw;    /* Shall we include the e^-kappa*( phi'+psi') ISW term in the LOS sources? */
-  short only_early_isw;                       /* Include only the early ISW, no late ISW */
-
-	/* If true, use an hard-coded test source */
-	short use_test_source;
-
-  /* Indices running on types (temperature, polarization, lensing, ...) */
-  int index_tp2_T;                    /* Index value for photon temperature */
-  int index_tp2_E;                    /* Index value for photon E-polarization */
-  int index_tp2_B;                    /* Index value for photon B-polarization */
-  int index_tp2_g;                    /* Index value for gravitational potential */
-  int n_sources_T;                    /* Number of sources to be computed for photon temperature */
-  int n_sources_E;                    /* Number of sources to be computed for photon E-polarization */
-  int n_sources_B;                    /* Number of sources to be computed for photon B-polarization */
-  int tp2_size;                       /* Number of source types that we need to compute */
-
-  /* Array of strings that contain the labels of the various source types
-  For example,  tp2_labels[index_tp2_phi] is equal to "phi" */
-  char ** tp2_labels;
+  short has_sw;                     /* Shall we include the g*psi Sachs-Wolfe term in the LOS sources? */
+  short has_isw;                    /* Shall we include the e^-kappa*( phi'+psi') ISW term in the LOS sources? */
+  short use_exponential_potentials; /* Use exponential potentials in constructing the line of sight sources? (see eq. 3.21 of my thesis) */
+  short only_early_isw;             /* Include only the early ISW, no late ISW */
 
 
-  /*   The following discussion is based on sec. 4.2 of http://arxiv.org/abs/1302.0832.
+  /* ~~~~~~~~~~~~~       INTEGRATION BY PARTS        ~~~~~~~~~~~~~~~~
+   *
+   * The following discussion is based on sec. 4.2 of http://arxiv.org/abs/1302.0832.
    * 
    *   The source terms forming the line of sight integral can be included as they appear, or they can be integrated
    * by parts.  Applying integration by parts to a term in the source S_l,m generates two terms
@@ -260,8 +245,24 @@ struct perturbs2
    *   The has_integration_by_parts_of_los flag is completely dependent on the flags ppt2->has_sw
    * and ppt2->has_integration_by_parts_of_los, and it is set in the input module.
    */
-  short has_integration_by_parts_of_los;         /* Shall we perform integration by parts of the line-of-sight sources? */
 
+
+	/* If true, use an hard-coded test source */
+	short use_test_source;
+
+  /* Indices running on types (temperature, polarization, lensing, ...) */
+  int index_tp2_T;                    /* Index value for photon temperature */
+  int index_tp2_E;                    /* Index value for photon E-polarization */
+  int index_tp2_B;                    /* Index value for photon B-polarization */
+  int index_tp2_g;                    /* Index value for gravitational potential */
+  int n_sources_T;                    /* Number of sources to be computed for photon temperature */
+  int n_sources_E;                    /* Number of sources to be computed for photon E-polarization */
+  int n_sources_B;                    /* Number of sources to be computed for photon B-polarization */
+  int tp2_size;                       /* Number of source types that we need to compute */
+
+  /* Array of strings that contain the labels of the various source types
+  For example,  tp2_labels[index_tp2_phi] is equal to "phi" */
+  char ** tp2_labels;
 
   // ===============================================================================
   // =                                  CMB fields                                 =
@@ -718,23 +719,12 @@ struct perturb2_workspace
   // ******************            Indices for the source terms          *********************
   
   /* Indices for the ppw2->source_term_table, used to perform the integration by parts of the line-of-sight sources.
-    We shall temporarily store in ppw2->source_term_table the results obtained from the differential system.
-    We cannot use the ppt2->sources array for this task, as we don't want to keep these intermediate results. The
-    advantage of using this buffer array ppw2->source_term_table is that we can obtain its derivatives once the evolution
-    of the system is over.
-   */
+  We shall temporarily store in ppw2->source_term_table the results obtained from the differential system.
+  We cannot use the ppt2->sources array for this task, as we don't want to keep these intermediate results. The
+  advantage of using this buffer array ppw2->source_term_table is that we can obtain its derivatives once the evolution
+  of the system is over. */
    
-  int index_st2_tau;                 /* Conformal time */
-  int index_st2_g;                   /* Visibility function g = kappa_dot*e^-kappa(tau,tau0) */
-  int index_st2_exp_minus_kappa;     /* Opacity factor e^-kappa(tau,tau0) */
-  int index_st2_psi;                 /* Gravitational potential pso. We need it to obtain the ISW line-of-sight term phi' + psi' */
-  int index_st2_psi_prime;           /* Derivative of the gravitational potential psi */
-  int index_st2_phi_prime;           /* Derivative of the gravitational potential phi */
-  int index_st2_S10;
-  int index_st2_S11;
-  int index_st2_dS10;
-  int index_st2_dS11;
-  int st2_size;                      /* Number of variables stored in pptw->source_term_table */ 
+  int st2_size;                       /* Number of variables stored in pptw->source_term_table */ 
 
   double * source_term_table;         /* Indexed as source_term_table[index_tau*ppw2->st2_size+index_st2] */
 

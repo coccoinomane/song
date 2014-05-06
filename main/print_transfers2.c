@@ -5,7 +5,9 @@
  * Print to screen the transfer array inside the transfer2 structure.  We shall print
  * a fixed k1-k2 slice, with k varying.
  *
- * usage:     print_transfers2 <ini file> [<pre file>] <index_k1> <index_k2> <index_tt>
+ *  usage:     ./print_transfers2 <ini file> <pre file> <index_k1> <index_k2> <format string>
+ *             ./print_transfers2 <run_directory> <index_k1> <index_k2> <format string>
+ *  example:   ./print_transfers2 params.ini params.pre 1 0 T_2_1
  *
  */
  
@@ -93,6 +95,12 @@ int main (int argc, char **argv) {
     return _FAILURE_;
   }
 
+  /* This file is meant only for computations that involve second-order perturbations */
+  if (pt2.has_perturbations2 == _FALSE_) {
+    printf ("\n\nThe computation you requested is linear. Use 'class' rather than 'song'.\n");
+    return _FAILURE_;
+  }
+
   /* Check that we are going to compute the needed transfer type */
   if (type == 'T') {
     if (pt2.has_cmb_temperature==_FALSE_) {
@@ -117,7 +125,6 @@ int main (int argc, char **argv) {
   ignored if loading from disk. Any bispectrum result (which is not loaded from disk) will be
   wrong */
   pt2.rescale_quadsources = _FALSE_;
-  
 
   if (background_init(&pr,&ba) == _FAILURE_) {
     printf("\n\nError running background_init \n=>%s\n",ba.error_message);
@@ -305,7 +312,7 @@ int main (int argc, char **argv) {
   
   /* Load the transfer functions if we stored them to disk previously, either during a separate
     run or during this run. */
-  if ( (tr2.load_transfers_from_disk == _TRUE_) || (tr2.store_transfers_to_disk == _TRUE_) ) {
+  if ( (pr2.load_transfers_from_disk == _TRUE_) || (pr2.store_transfers_to_disk == _TRUE_) ) {
     if (transfer2_load_transfers_from_disk(&pt2, &tr2, index_tt) == _FAILURE_) {
       printf("\n\nError in transfer2_load_transfers_from_disk \n=>%s\n", tr2.error_message);
       return _FAILURE_;
@@ -373,7 +380,7 @@ int main (int argc, char **argv) {
   
   
   /* Free the memory associated with the line-of-sight transfers for the considered k1 */
-  if ( (tr2.load_transfers_from_disk == _TRUE_) || (tr2.store_transfers_to_disk == _TRUE_) )
+  if ( (pr2.load_transfers_from_disk == _TRUE_) || (pr2.store_transfers_to_disk == _TRUE_) )
     if (transfer2_free_type_level(&pt2, &tr2, index_tt) == _FAILURE_) {
       printf("\n\nError in transfer2_free_type_level \n=>%s\n",tr2.error_message);
       return _FAILURE_;    

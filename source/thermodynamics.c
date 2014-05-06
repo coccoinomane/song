@@ -273,6 +273,14 @@ int thermodynamics_at_z(
      pth->error_message);
     }
   }
+  
+  /* Uncomment to neglect the effect of the baryon pressure */
+  // pvecthermo[pth->index_th_cb2] = 0;
+  // if (pth->compute_cb2_derivatives == _TRUE_) {
+  //   pvecthermo[pth->index_th_dcb2] = 0;
+  //   pvecthermo[pth->index_th_ddcb2] = 0;
+  // }
+  
   return _SUCCESS_;
 }
 

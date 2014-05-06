@@ -539,10 +539,13 @@ int perturb2_indices_of_perturbs(
 
   }
 
-
   /* Set the size of the sources to be stored */
   ppt2->tp2_size = index_type;
   ppt2->pf_size = index_pf;
+
+  class_test (ppt2->pf_size > _MAX_NUM_FIELDS_,
+   "exceeded maximum number of allowed fields, increase _MAX_NUM_FIELDS_ in common.h",
+   ppt2->error_message);
   
   if (ppt2->perturbations2_verbose > 1) {
     printf ("     * will compute tp2_size=%d source terms ( ", ppt2->tp2_size);
@@ -556,11 +559,6 @@ int perturb2_indices_of_perturbs(
   }  
   
   
-
-
-
-  // *** Allocate type-level of the arrays
-
   /* Allocate memory for the labels of the source types */
   class_alloc (ppt2->tp2_labels, ppt2->tp2_size*sizeof(char *), ppt2->error_message);
   for (index_type=0; index_type<ppt2->tp2_size; ++index_type)
@@ -569,7 +567,6 @@ int perturb2_indices_of_perturbs(
 
   /* Allocate the first level of the ppt2->sources array */
   class_alloc (ppt2->sources, ppt2->tp2_size * sizeof(double ***), ppt2->error_message);
-
 
 
 
@@ -3142,56 +3139,12 @@ int perturb2_workspace_init (
   computation of the line-of-sight sources. This is done only when the integration by parts of the LOS is active.  */
   int index_st = 0;    
 
-  if (ppt2->has_integration_by_parts_of_los == _TRUE_) {
-
-    /* The following quantities are always needed to perform the IBP */
-    ppw2->index_st2_tau = index_st++;
-    ppw2->index_st2_g = index_st++;
-    ppw2->index_st2_exp_minus_kappa = index_st++;
-  
-    if (ppt2->has_source_T == _TRUE_) {
-
-      if (ppt->gauge == newtonian) {
-
-        /* Scalar ISW */
-        if (ppr2->compute_m[0] == _TRUE_) {
-
-          /* The Newtonian potential is part of both the SW and ISW effects */
-          if ((ppt2->has_isw == _TRUE_) || (ppt2->has_sw == _TRUE_)) {
-            ppw2->index_st2_psi = index_st++;
-          }
-
-          /* We need the derivative of the gravitational potentials if we want to compute the ISW effect. While
-            we obtain phi_prime directly from the differential system, we shall take the derivative of psi
-            numerically in perturb2_sources. */
-          if (ppt2->has_isw == _TRUE_) {
-            ppw2->index_st2_psi_prime = index_st++;
-            ppw2->index_st2_phi_prime = index_st++;
-          }
-        } // end of if scalar modes
-
-        /* Vector ISW */
-        if (ppr2->compute_m[1] == _TRUE_) {
-          /* TODO: include vector modes ISW */
-        } // end of if vector modes
-        
-        /* Tensor ISW */
-        if (ppr2->compute_m[2] == _TRUE_) {
-          /* TODO: include tensor modes ISW */
-        } // end of if tensor modes
-        
-        
-      } // end of if(gauge==newtonian)
-    } // end of (has_sources_t)
-  } // end of (has_integration_by_parts_of_los)
-
   ppw2->st2_size = index_st;
-
 
   /* Allocate the source terms array */
   class_alloc (ppw2->source_term_table,
-              ppt2->tau_size*ppw2->st2_size*sizeof(double),
-              ppt2->error_message);
+    ppt2->tau_size*ppw2->st2_size*sizeof(double),
+    ppt2->error_message);
 
 
 
@@ -5393,7 +5346,7 @@ int perturb2_solve (
      ppt2->error_message);
 
 
-  /* Add to the sources the effects that depend on the time derivative of perturbations (e.g. the ISW effect) */
+  /* Add to the sources the effects that depend on the time derivative of perturbations */
   class_call (perturb2_sources (
                 ppr,
                 ppr2,
@@ -8607,31 +8560,10 @@ int perturb2_source_terms (
     ppt2->error_message,
     error_message);
   
-  /* Compute psi_prime, needed to add the ISW effect */
-  double psi_prime = 0;
-
-  if ((ppt->gauge == newtonian) && (ppt2->has_isw == _TRUE_) && (ppr2->compute_m[0] == _TRUE_)) {
-  
-    class_call(perturb2_compute_psi_prime (
-                 ppr,
-                 ppr2,
-                 pba,
-                 pth,
-                 ppt,
-                 ppt2,
-                 tau,
-                 y,
-                 dy,
-                 &(psi_prime),
-                 ppw2),
-      ppt2->error_message,
-      error_message);
-  }
-
   
   /* Shortcuts for metric variables */
-
-  double phi=0, phi_1=0, phi_2=0, psi=0, psi_1=0, psi_2=0, phi_prime=0, phi_prime_1=0, phi_prime_2=0;
+  double phi=0, phi_1=0, phi_2=0, psi=0, psi_1=0, psi_2=0, phi_prime=0, psi_prime=0, phi_prime_1=0, phi_prime_2=0, psi_prime_1=0, psi_prime_2=0;
+  double phi_exp=0, psi_exp=0, phi_exp_prime=0, psi_exp_prime=0;
   double omega_m1=0, omega_m1_prime=0, gamma_m2_prime=0;
   
   if (ppt->gauge == newtonian) {
@@ -8646,13 +8578,66 @@ int perturb2_source_terms (
     phi_prime_1 = pvec_sources1[ppt->index_qs_phi_prime];
     phi_prime_2 = pvec_sources2[ppt->index_qs_phi_prime];
 
+    if (ppt2->has_isw == _TRUE_) {
+      psi_prime_1 = pvec_sources1[ppt->index_qs_psi_prime];
+      psi_prime_2 = pvec_sources2[ppt->index_qs_psi_prime];
+    }
+
 
     /* Scalar potentials */
     if (ppr2->compute_m[0] == _TRUE_) {
-      phi_prime = pvecmetric[ppw2->index_mt2_phi_prime];
+
       phi = y[ppw2->pv->index_pt2_phi];
       psi = pvecmetric[ppw2->index_mt2_psi];
-    }
+      phi_prime = pvecmetric[ppw2->index_mt2_phi_prime];
+            
+      /* Compute psi_prime, needed to add the ISW effect */
+      if (ppt2->has_isw == _TRUE_)  
+        class_call (perturb2_compute_psi_prime (
+                     ppr,
+                     ppr2,
+                     pba,
+                     pth,
+                     ppt,
+                     ppt2,
+                     tau,
+                     y,
+                     dy,
+                     &(psi_prime),
+                     ppw2),
+          ppt2->error_message,
+          error_message);
+
+      
+      /* Exponential potentials, which appear in the metric as
+        g_00 = -e^(2*psi_exp)
+        g_ij = e^(-2*phi_exp) * delta_ij
+      rather than
+        g_00 = -(1+2*psi)
+        g_ij = 1-2*phi ,
+      so that, up to second order and expanding x~x^(1)+1/2x^(2),
+        phi_exp = phi + 2*phi*phi
+        psi_exp = psi - 2*psi*psi .
+      (See eqs. 3.22, 4.97, 4.100 of my thesis for details.) Using one or the other representation
+      does not affect the final result as long as we include all the sources in the line-of-sight
+      integration. The result is affected, however, if we only include some of the sources,
+      e.g. when including SW, ISW or quad_metric separately (cfr 4.97 and 4.100 of my thesis). */
+      phi_exp = phi + 2*phi_1*phi_2;
+      psi_exp = psi - 2*psi_1*psi_2;
+      phi_exp_prime = phi_prime + 2*(phi_1*phi_prime_2 + phi_prime_1*phi_2);
+      if (ppt2->has_isw == _TRUE_)
+        psi_exp_prime = psi_prime - 2*(psi_1*psi_prime_2 + psi_prime_1*psi_2);
+      
+      /* Should we use the linear potentials or the exponential ones? */
+      if (ppt2->use_exponential_potentials == _TRUE_) {
+        phi = phi_exp;
+        psi = psi_exp;
+        phi_prime = phi_exp_prime;
+        if (ppt2->has_isw == _TRUE_)
+          psi_prime = psi_exp_prime;
+      }
+      
+    } // end of m=0
     
     /* Vector potentials */
     if (ppr2->compute_m[1] == _TRUE_) {
@@ -8697,7 +8682,6 @@ int perturb2_source_terms (
   /* Second-order photon velocity from the dipole */
   double delta_g_1 = pvec_sources1[ppt->index_qs_delta_g];
   double delta_g_2 = pvec_sources2[ppt->index_qs_delta_g];
-  
 
   /* Debug - check that the photon and baryon velocity coincide in the tight-coupling limit */
   // #define V_b_1(m) ((rot_1(1,m))*v_b_0_1)
@@ -8830,17 +8814,29 @@ int perturb2_source_terms (
             source += kappa_dot * I(0,0);
 
           /* Intrinsic metric term. This gives part of the ISW effect. The other half comes from the 
-          integration by parts of the similar dipole term. */
-          if (ppt2->has_metric_in_los == _TRUE_)
+          integration by parts of the 4*k*psi term in the dipole. */
+          if (ppt2->has_metric_in_los == _TRUE_) {
             source += 4 * phi_prime;
+          }
+          /* SW and ISW effects, coming from the monopole term 4*phi_prime and from the integration
+          by parts of the 4*k*psi term in the dipole */
+          else {
+            
+            if (ppt2->has_sw == _TRUE_)
+              source += 4 * kappa_dot * psi;
+            
+            if (ppt2->has_isw == _TRUE_)
+              source += 4 * (phi_prime + psi_prime);
+          }
 
-          /* Quadratic metric contribution from the Liouville operator */
-          if (ppt2->has_quad_metric_in_los == _TRUE_)
+          /* Quadratic metric contribution from the Liouville operator. The monopole
+          contribution exists only if using the standard linear potentials (cfr 4.97 and 4.100
+          of my thesis) */
+          if ((ppt2->has_quad_metric_in_los == _TRUE_) && (ppt2->use_exponential_potentials == _FALSE_))
             source += 8 * (phi_1*phi_prime_2 + phi_2*phi_prime_1);
 
         }
 
-  
         // *** Dipole source
   
         else if (l==1) {
@@ -8853,13 +8849,18 @@ int perturb2_source_terms (
           other half of the ISW effect. We add it only if we integrate by parts. */
           if (ppt2->has_metric_in_los == _TRUE_) {
             if (m == 0) source += 4 * k * psi;
-            if (m == 1) source += - 4 * omega_m1_prime;
+            if ((m == 1) && (ppt2->has_isw == _TRUE_)) source += - 4 * omega_m1_prime;
           }
 
-          /* Quadratic metric contribution from the Liouville operator */
+          /* Quadratic metric contribution from the Liouville operator  */
           if (ppt2->has_quad_metric_in_los == _TRUE_)
-            source += - 4 * (k1_m[m+1]*psi_1*(psi_2-phi_2) + k2_m[m+1]*psi_2*(psi_1-phi_1));
-
+            
+            /* Using the exponential potentials induces a sign difference in the dipole term
+            (cfr 4.97 and 4.100 of my thesis) */
+            if (ppt2->use_exponential_potentials == _FALSE_)
+              source += - 4 * (k1_m[m+1]*psi_1*(psi_2-phi_2) + k2_m[m+1]*psi_2*(psi_1-phi_1));
+            else
+              source += - 4 * (k1_m[m+1]*psi_1*(-psi_2-phi_2) + k2_m[m+1]*psi_2*(-psi_1-phi_1));
         }
 
 
@@ -8873,7 +8874,7 @@ int perturb2_source_terms (
 
           /* Tensor metric contribution */
           if (ppt2->has_metric_in_los == _TRUE_)
-            if (m==2) source += 4 * gamma_m2_prime;
+            if ((m==2) && (ppt2->has_isw == _TRUE_)) source += 4 * gamma_m2_prime;
         
         }
 
@@ -9404,44 +9405,6 @@ int perturb2_source_terms (
   // 
   // } // end of if has_delta_tilde
   
-  
-  
-  // ==================================================================================================
-  // =                                Prepare for integration by parts                                =
-  // ==================================================================================================
-    
-  /* In order to compute the sources using integration by parts, we need to take derivatives with
-  respect to conformal time. Doing it at this stage is not possible, as this function only knows
-  only about the perturbations at the time index_tau.
-  
-  We store the quantities that need to be derived in the array ppw2->source_term_table. We shall
-  derive them after the evolution of the system ended, inside the perturb2_sources function. */
-  
-  if (ppt2->has_integration_by_parts_of_los == _TRUE_) {
-  
-    ppw2->source_term_table[index_tau*ppw2->st2_size + ppw2->index_st2_g] = g;
-    ppw2->source_term_table[index_tau*ppw2->st2_size + ppw2->index_st2_exp_minus_kappa] = exp_minus_kappa;
-  
-    if (ppt2->has_source_T == _TRUE_) {
-  
-      if (ppt->gauge == newtonian) {
-  
-        /* Scalar ISW */
-        if (ppr2->compute_m[0] == _TRUE_) {
-  
-          /* Store the gravitational potential, needed to compute both the SW and the ISW */
-          if ((ppt2->has_sw == _TRUE_) || (ppt2->has_isw == _TRUE_))
-            ppw2->source_term_table[index_tau*ppw2->st2_size + ppw2->index_st2_psi] = psi;
-          
-          /* Store the derivative of the curvature potential, needed to compute the ISW */
-          if (ppt2->has_isw == _TRUE_)
-            ppw2->source_term_table[index_tau*ppw2->st2_size + ppw2->index_st2_phi_prime] = phi_prime;
-        }
-        
-      } // end of if(gauge==newtonian)
-    } // end of (has_sources_t)
-  } // end of (has_integration_by_parts_of_los)
-  
   return _SUCCESS_;
 
 } // end of perturb2_source_terms
@@ -9463,176 +9426,6 @@ int perturb2_sources (
   struct perturbs2 * ppt2,
   struct perturb2_workspace * ppw2)
 {
-  
-  // **********        Deal with integration by parts          **********
-  
-  /* Here we compute some of the line of sight sources by integration by parts */
-  if (ppt2->has_integration_by_parts_of_los == _TRUE_) {
-      
-    if (ppt2->has_source_T == _TRUE_) {
-  
-      if (ppt->gauge == newtonian) {
-  
-        /* Scalar effects */
-        if (ppr2->compute_m[0] == _TRUE_) {
-  
-          /* Add the Sachs-Wolfe effect to S00*/
-          if (ppt2->has_sw == _TRUE_) {
-  
-            for (int index_tau=0; index_tau < ppt2->tau_size-1; ++index_tau) {
-  
-              /* Visibility function */
-              double g = ppw2->source_term_table[index_tau*ppw2->st2_size + ppw2->index_st2_g];
-  
-              /* Potentials derivatives */
-              double psi = ppw2->source_term_table[index_tau*ppw2->st2_size + ppw2->index_st2_psi];
-  
-              /* SW contribution */
-              if (ppt2->use_zhiqi_sw == _FALSE_) {
-                sources(ppt2->index_tp2_T + lm(0,0)) += 4*g*psi;
-              }
-              else {
-              
-                double tau = ppt2->tau_sampling[index_tau];
-              
-                class_call (perturb_quadsources_at_tau_for_all_types (
-                              ppr,
-                              ppt,
-                              ppt->index_md_scalars,
-                              ppt2->index_ic,
-                              ppw2->index_k1,
-                              tau,
-                              ppt->inter_normal,
-                              &(ppw2->last_index_sources),
-                              ppw2->pvec_sources1),
-                  ppt->error_message,
-                  ppt2->error_message);
-  
-                class_call (perturb_quadsources_at_tau_for_all_types (
-                              ppr,
-                              ppt,
-                              ppt->index_md_scalars,
-                              ppt2->index_ic,
-                              ppw2->index_k2,
-                              tau,
-                              ppt->inter_normal,
-                              &(ppw2->last_index_sources),                 
-                              ppw2->pvec_sources2),
-                  ppt->error_message,
-                  ppt2->error_message);
-
-                double psi_1 = ppw2->pvec_sources1[ppt->index_qs_psi];
-                double psi_2 = ppw2->pvec_sources2[ppt->index_qs_psi];
-
-                sources(ppt2->index_tp2_T + lm(0,0)) += 4*g*(psi-psi_1*psi_2);
-
-                /* Debug */
-                // if ((ppw2->index_k1==1) && (ppw2->index_k2==0) && (ppw2->index_k3==2)) {
-                //   fprintf (stderr, "%g %g %g\n", tau, 4*g*psi, -4*g*psi_1*psi_2);
-                // }
-              
-              }
-
-            } // end of for (index_tau)
-      
-          } // end of if(has_sw)
-    
-  
-          /* Add the integrated Sachs-Wolfe effect to S00 */
-          if (ppt2->has_isw == _TRUE_) {
-    
-            double isw;
-    
-            /* Compute the time derivative of the second-order Newtonian potential */
-            class_call( array_derive1_order2_table_line_to_line (
-                          ppt2->tau_sampling,
-                          ppt2->tau_size,
-                          ppw2->source_term_table,
-                          ppw2->st2_size,
-                          ppw2->index_st2_psi,
-                          ppw2->index_st2_psi_prime,
-                          ppt2->error_message),
-              ppt2->error_message,
-              ppt2->error_message);
-  
-            /* Add the ISW contribution to the S00 source function for the temperature */    
-            for (int index_tau=0; index_tau < ppt2->tau_size-1; ++index_tau) {
-  
-              /* Opacity factor */
-              double exp_minus_kappa = ppw2->source_term_table[index_tau*ppw2->st2_size + ppw2->index_st2_exp_minus_kappa];
-  
-              /* Potentials derivatives */
-              double psi_prime = ppw2->source_term_table[index_tau*ppw2->st2_size + ppw2->index_st2_psi_prime];
-              double phi_prime = ppw2->source_term_table[index_tau*ppw2->st2_size + ppw2->index_st2_phi_prime];
-  
-              // if (ppt2->use_zhiqi_sw == _FALSE_) {
-                isw = 4*exp_minus_kappa*(psi_prime + phi_prime);
-              // }
-              // else {
-              //   
-              //   class_call (perturb_quadsources_at_tau_for_all_types (
-              //                 ppr,
-              //                 ppt,
-              //                 ppt->index_md_scalars,
-              //                 ppt2->index_ic,
-              //                 ppw2->index_k1,
-              //                 tau,
-              //                 ppt->inter_normal,
-              //                 &(ppw2->last_index_sources),
-              //                 ppw2->pvec_sources1),
-              //     ppt->error_message,
-              //     ppt2->error_message);
-              //   
-              //   class_call (perturb_quadsources_at_tau_for_all_types (
-              //                 ppr,
-              //                 ppt,
-              //                 ppt->index_md_scalars,
-              //                 ppt2->index_ic,
-              //                 ppw2->index_k2,
-              //                 tau,
-              //                 ppt->inter_normal,
-              //                 &(ppw2->last_index_sources),                 
-              //                 ppw2->pvec_sources2),
-              //     ppt->error_message,
-              //     ppt2->error_message);
-              // 
-              //   double psi_1 = ppw2->pvec_sources1[ppt->index_qs_psi];
-              //   double psi_2 = ppw2->pvec_sources2[ppt->index_qs_psi];
-              //   double phi_1 = ppw2->pvec_sources1[ppt->index_qs_phi];
-              //   double phi_2 = ppw2->pvec_sources2[ppt->index_qs_phi];
-              //   
-              // }
-            
-              /* Uncomment the following to turn off ISW after a certain point */
-              // double tau = ppt2->tau_sampling[index_tau];
-              // class_call (background_at_tau(pba, tau, pba->normal_info, pba->inter_normal, &(ppw2->last_index_back), ppw2->pvecback),
-              //      pba->error_message,
-              //      ppt2->error_message);
-              // double z = 1./ppw2->pvecback[pba->index_bg_a] - 1;
-              // if (z < 30)
-              //   isw = 0;
-            
-              sources(ppt2->index_tp2_T + lm(0,0)) += isw;
-  
-              /* Some debug of the ISW effect */
-              if ( (ppw2->index_k1==23) && (ppw2->index_k2==22) && (ppw2->index_k3==21)) {
-                double tau = ppt2->tau_sampling[index_tau];
-                double psi = ppw2->source_term_table[index_tau*ppw2->st2_size + ppw2->index_st2_psi];
-                fprintf (stderr, "%20f %20f %20f %20f %20f %20f\n",
-                  tau, 4*exp_minus_kappa*(psi_prime + phi_prime), psi, psi_prime, phi_prime, exp_minus_kappa);
-              }
-  
-            } // end of for (index_tau)
-  
-          } // end of if(has_ISW)
-          
-        } // end of scalar_modes
-        
-      } // end of if(gauge==newtonian)
-  
-    } // end of if (has_source_T)
-    
-  } // end of if (has_integration_by_parts_of_los)
   
     
   return _SUCCESS_;   

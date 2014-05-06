@@ -297,7 +297,7 @@ int bispectra_indices (
   pbi->bf_size = index_bf;
   pbi->n_probes = pow(pbi->bf_size, 3);
 
-  class_test (pbi->bf_size > _MAX_NUM_FIELDS_,
+  class_test (pbi->bf_size > 2,
     pbi->error_message,
     "we cannot compute the bispectrum for more than %d fields (e.g. T and E), reduce your expectations :-)", pbi->bf_size);
 
@@ -542,6 +542,9 @@ int bispectra_indices (
 
   pbi->bt_size = index_bt;
 
+  class_test (pbi->bt_size > _MAX_NUM_BISPECTRA_,
+   "exceeded maximum number of allowed bispectra, increase _MAX_NUM_BISPECTRA_ in common.h",
+   pbi->error_message);
 
   /* Are the Wigner 3j-symbols needed to compute the requested bispectra? */
   pbi->need_3j_symbols = ((pbi->has_bispectra_e) &&
