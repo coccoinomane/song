@@ -610,7 +610,7 @@ int input2_init (
       ppt2->only_early_isw = _TRUE_;
 
       /* Unless other late time effects are included, stop integrating just after recombination */
-      if ((ppt2->has_metric_in_los == _FALSE_) && (ppt2->has_isw == _FALSE_)
+      if ((ppt2->has_metric_in_los == _FALSE_)
           && (ppt2->has_quad_metric_in_los == _FALSE_) && (ppt2->has_time_delay_in_los == _FALSE_)
           && (ppt2->has_redshift_in_los == _FALSE_) && (ppt2->has_lensing_in_los == _FALSE_))
         ppt2->has_recombination_only = _TRUE_;

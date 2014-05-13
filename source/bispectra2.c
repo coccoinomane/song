@@ -96,14 +96,9 @@ int bispectra2_indices (
 
   /* For |m|>0, it is not possible to obtain the reduced form of the intrinsic bispectrum
   (see comment for 'has_reduced_bispectrum' in bispectra.h) */
-  for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt) {
-
-    if ((pbi->has_intrinsic == _TRUE_) && (index_bt == pbi->index_bt_intrinsic)) {
-      if (ppr2->m_max_2nd_order>0)
-        pbi->has_reduced_bispectrum[index_bt] = _FALSE_; /* see comment in bispectra.h */
-    }
-  }
-  
+  if (pbi->has_intrinsic == _TRUE_)
+    if (ppr2->m_max_2nd_order > 0)
+        pbi->has_reduced_bispectrum[pbi->index_bt_intrinsic] = _FALSE_; /* see comment in bispectra.h */
 
   return _SUCCESS_;
 
@@ -138,8 +133,16 @@ int bispectra2_harmonic (
 {
 
 
-  /* If the user requested to load the bispectra from disk, we can stop the execution of this function here */
+  /* If the user requested to load the bispectra from disk, then stop the execution
+  of this function here */
   if (ppr->load_bispectra_from_disk == _TRUE_) {
+
+    /* Uncomment to artificially add the quadratic correction arising from the redshift and 
+    temperature effects */
+    // class_call (bispectra2_add_quadratic_corrections (ppr,ppr2,pba,ppt,ppt2,pbs,pbs2,ptr,ptr2,ppm,psp,pbi),
+    //   pbi->error_message,
+    //   pbi->error_message);
+
     return _SUCCESS_;
   }
 
@@ -202,86 +205,12 @@ int bispectra2_harmonic (
   // =                               Add four-point corrections                             =
   // ========================================================================================
 
-  /* In the following loop, we add the correction that turns the brightness bispectrum, which we
-  computed above, into the bolometric temperature bispectrum (see Sec. 3.2 of http://arxiv.org/abs/1401.3296).
-  The loop will run only for the intrinsic bispectra, as for the primary ones there is no difference between
-  brightness and bolometric temperature. 
-  
-  We also add the correction needed to correctly absorb the redshift term, as explained in Sec. 3.1 of
-  http://arxiv.org/abs/1401.3296.
-  
-  If you would rather ignore these corrections, set the flag 'quadratic_corrections_to_intrinsic = no'
-  in the parameter file. */
-
-  if ((pbi->has_quadratic_correction == _TRUE_) && (pbi->add_quadratic_correction == _TRUE_)) {
-    for (int index_bt = 0; index_bt < pbi->bt_size; ++index_bt) {
-  
-      /* Skip the bispectrum if it not of the non-separable type */
-      if (pbi->bispectrum_type[index_bt] != intrinsic_bispectrum)
-        continue;
-  
-      for (int X=0; X < pbi->bf_size; ++X) {
-        for (int Y=0; Y < pbi->bf_size; ++Y) {
-          for (int Z=0; Z < pbi->bf_size; ++Z) {
-  
-            for (int index_l1 = 0; index_l1 < pbi->l_size; ++index_l1) {
-      
-              int l1 = pbi->l[index_l1];
-              double C_l1 = pbi->cls[psp->index_ct_tt][pbi->l[index_l1]-2];
-      
-              for (int index_l2 = 0; index_l2 <= index_l1; ++index_l2) {
-  
-                int l2 = pbi->l[index_l2];     
-                double C_l2 = pbi->cls[psp->index_ct_tt][pbi->l[index_l2]-2];
-                   
-                /* Determine the limits for l3, which come from the triangular inequality |l1-l2| <= l3 <= l1+l2 */
-                int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
-                int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
-                   
-                for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {
-                    
-                  int l3 = pbi->l[index_l3];  
-                  double C_l3 = pbi->cls[psp->index_ct_tt][pbi->l[index_l3]-2];
-                
-                  /* Index of the current (l1,l2,l3) configuration */
-                  long int index_l1_l2_l3 = pbi->index_l1_l2_l3[index_l1][index_l1-index_l2][index_l3_max-index_l3];
-                
-                  /* By default, we assume the standard correction to convert brightness temperature
-                  in bolometric temperature */              
-                  double bolometric_correction = - 3/8. * pbi->bispectra[pbi->index_bt_quadratic][X][Y][Z][index_l1_l2_l3];
-                
-                  /* If the transfer functions are for delta_tilde, and not delta, we need a different correction to
-                  obtain the bolometric temperature (see Huang & Vernizzi 2012, Fidler, Pettinari et al. 2014) */
-                  double delta_tilde_correction = 0;
-                          
-                  if (ppt2->use_delta_tilde_in_los == _TRUE_)
-                    delta_tilde_correction = + 4/8. * pbi->bispectra[pbi->index_bt_quadratic][X][Y][Z][index_l1_l2_l3];
-                
-                  /* We assume that when the quadratic sources are not included, the user is trying to run the
-                  code as a first-order one, and hence we turn off the bolometric temperature correction. */
-                  if (ppt2->has_quadratic_sources == _FALSE_)
-                    bolometric_correction = delta_tilde_correction = 0;
-                
-                  /* Add the correction */
-                  pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3] += bolometric_correction + delta_tilde_correction;
-              
-                  /* Update the counter */
-                  #pragma omp atomic
-                  pbi->count_memorised_for_bispectra++;
-  
-                  /* Check against nan's */
-                  if (isnan(pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3]))
-                    printf ("\n### WARNING ###\nb(%d,%d,%d) = %g!!!\n\n",
-                    pbi->l[index_l1], pbi->l[index_l2], pbi->l[index_l3], pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3]);
-  
-                } // end of for(index_l3)
-              } // end of for(index_l2)
-            } // end of for(index_l1)
-          } // end of for(field X)
-        } // end of for(field Y)
-      } // end of for(field X) 
-    } // end of for(index_bt)
-  } // end of if(has_quadratic_correction)
+  /* Add to the intrinsic bispectrum with the quadratic correction intended to turn the brightness
+  temperature to the bolometric one (Sec. 3.2 of http://arxiv.org/abs/1401.3296), and absorb the
+  redshift term of Boltzmann equation (Sec. 3.1 of http://arxiv.org/abs/1401.3296). */
+  class_call (bispectra2_add_quadratic_corrections (ppr,ppr2,pba,ppt,ppt2,pbs,pbs2,ptr,ptr2,ppm,psp,pbi),
+    pbi->error_message,
+    pbi->error_message);
 
   /* Check that we correctly filled the bispectra array */
   class_test_permissive (pbi->count_allocated_for_bispectra != pbi->count_memorised_for_bispectra,
@@ -807,6 +736,10 @@ int bispectra2_intrinsic_init (
                   pwb->unsymmetrised_bispectrum[X][Y][Z][index_l1][index_l2][index_l3-index_l3_min]
                 + pwb->unsymmetrised_bispectrum[Y][X][Z][index_l2][index_l1][index_l3-index_l3_min]
                 + pwb->unsymmetrised_bispectrum[Z][Y][X][index_l3][index_l2][index_l1-index_l1_min];
+
+                /* Update the counter */
+                #pragma omp atomic
+                pbi->count_memorised_for_bispectra++;
 
               } // end of for(Z)
             } // end of for(Y)
@@ -2862,3 +2795,89 @@ int bispectra2_intrinsic_geometrical_factors (
   return _SUCCESS_;
 
 }
+
+
+/**
+ * Add to the intrinsic bispectrum with the quadratic correction intended to:
+ * 1) Turn the brightness temperature to the bolometric one (Sec. 3.2 of http://arxiv.org/abs/1401.3296).
+ * 2) Absorb the redshift term of Boltzmann equation (Sec. 3.1 of http://arxiv.org/abs/1401.3296). 
+ * The two contributions partially cancel. The loop will run only for the intrinsic bispectra, as for
+ * the primary ones there is no difference between brightness and bolometric temperature, and the
+ * redshift term is only first order.
+ * 
+ * If you would rather ignore these corrections, set the flag 'add_quadratic_corrections = no' or 
+ * 'quadratic_sources = no' in the parameter file.
+ */
+int bispectra2_add_quadratic_corrections (
+    struct precision * ppr,
+    struct precision2 * ppr2,
+    struct background * pba,
+    struct perturbs * ppt,
+    struct perturbs2 * ppt2,
+    struct bessels * pbs,
+    struct bessels2 * pbs2,
+    struct transfers * ptr,
+    struct transfers2 * ptr2,
+    struct primordial * ppm,
+    struct spectra * psp,
+    struct bispectra * pbi
+    )
+{
+
+   /* We assume that when the quadratic sources are not included (ppt2->has_quadratic_sources==_FALSE), the
+   user is trying to run SONG as a first-order one, and hence we turn off the quadratic corrections. */
+  if ((pbi->add_quadratic_correction == _FALSE_) || (ppt2->has_quadratic_sources == _FALSE_))
+    return _SUCCESS_;
+  
+  if (pbi->bispectra_verbose > 0)
+    printf (" -> adding temperature & redshift corrections to the intrinsic bispectrum\n");
+  
+  for (int index_bt = 0; index_bt < pbi->bt_size; ++index_bt) {
+
+    if (pbi->bispectrum_type[index_bt] != intrinsic_bispectrum)
+      continue;
+
+    for (int X=0; X < pbi->bf_size; ++X) {
+      for (int Y=0; Y < pbi->bf_size; ++Y) {
+        for (int Z=0; Z < pbi->bf_size; ++Z) {
+
+          for (int index_l1 = 0; index_l1 < pbi->l_size; ++index_l1) {
+    
+            for (int index_l2 = 0; index_l2 <= index_l1; ++index_l2) {
+
+              /* Determine the limits for l3, which come from the triangular inequality |l1-l2| <= l3 <= l1+l2 */
+              int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
+              int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
+                 
+              for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {
+                  
+                long int index_l1_l2_l3 = pbi->index_l1_l2_l3[index_l1][index_l1-index_l2][index_l3_max-index_l3];
+              
+                /* Bolometric temperature correction (Sec. 3.2 of http://arxiv.org/abs/1401.3296) */
+                double bolometric_correction = - 3/8. * pbi->bispectra[pbi->index_bt_quadratic][X][Y][Z][index_l1_l2_l3];
+              
+                /* Redshift term correction (Sec. 3.1 of http://arxiv.org/abs/1401.3296) */
+                double delta_tilde_correction = 0;
+                        
+                if (ppt2->use_delta_tilde_in_los == _TRUE_)
+                  delta_tilde_correction = + 4/8. * pbi->bispectra[pbi->index_bt_quadratic][X][Y][Z][index_l1_l2_l3];
+
+                /* Add the correction */
+                pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3] += bolometric_correction + delta_tilde_correction;
+            
+                /* Check against nan's */
+                if (isnan(pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3]))
+                  printf ("\n### WARNING ###\nb(%d,%d,%d) = %g!!!\n\n",
+                  pbi->l[index_l1], pbi->l[index_l2], pbi->l[index_l3], pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3]);
+
+              } // end of for(index_l3)
+            } // end of for(index_l2)
+          } // end of for(index_l1)
+        } // end of for(field X)
+      } // end of for(field Y)
+    } // end of for(field X) 
+  } // end of for(index_bt)
+  
+  return _SUCCESS_;
+  
+} // end of bispectra2_add_quadratic_corrections

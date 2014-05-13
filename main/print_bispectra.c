@@ -238,6 +238,10 @@ int main(int argc, char **argv) {
   /* Always compute the local squeezed approximation as it is used as a normalisation to show
   the intrinsic bispectrum in the squeezed limit */
   bi.has_local_squeezed = _TRUE_;
+
+  /* Always compute the quadratic correction as it is used to compute the bolometric temperature
+  correction */
+  bi.has_quadratic_correction = _TRUE_;
   
   if (background_init(&pr,&ba) == _FAILURE_) {
     printf("\n\nError running background_init \n=>%s\n",ba.error_message);
@@ -676,9 +680,6 @@ int main(int argc, char **argv) {
     fprintf (stderr, "%25s(%03d) ", "cl_XX_short", index_print++);
     fprintf (stderr, "%25s(%03d) ", "cl_XX_long", index_print++);
     
-    /* In the squeezed limit, the local bispectrum is equal to -5*(Cl1*Cl2+Cl1*Cl3+Cl2*Cl3) */
-    // fprintf (stderr, "%25s(%03d) ", "-5*(Cl1*Cl2+Cl1*Cl3+Cl2*Cl3)", index_print++);  
-
   } // end of(PRINT_SQUEEZED_SMALL_OR_LARGE_SCALE)
   
   fprintf(stderr, "\n");
@@ -811,26 +812,45 @@ int main(int argc, char **argv) {
         else if ((l3>=l2) && (l2>=l1))
           bolometric_T = bi.bispectra[index_bt][Z][Y][X][index_l1_l2_l3];
         
-        /* ADD BY HAND THE QUADRATIC CORRECTIONS (temp + redshift) */
-        // bolometric_T += (4-3)/8. * bi.bispectra[bi.index_bt_quadratic][X][Y][Z][index_l1_l2_l3];
-        
+                
         /* Corrective factor to convert the BOLOMETRIC TEMPERATURE bispectrum to the BRIGHTNESS TEMPERATURE bispectrum.
-        These are related by: BRIGHTNESS = BOLOMETRIC + 3*(Cl1*Cl2 + Cl2*Cl3 + Cl1*Cl3). See, e.g., Pitrou et al. 2010
-        or eq. 2.14 Nitta et al. 2009.
+        For temperature, these are related by: BRIGHTNESS = BOLOMETRIC + 3*(Cl1*Cl2 + Cl2*Cl3 + Cl1*Cl3). See, e.g.,
+        Pitrou et al. (2010) or eq. 2.14 Nitta et al. (2009). In the general polarised case, refer to Sec. 3.1 of Fidler,
+        Pettinari et al. (2014). Note that the redshift correction appears (Sec. 3.2, ibidem) adds linearly to 
+        the temperature one with a +4 coefficient:
+        redshift_correction = +4/8. * bi.bispectra[bi.index_bt_quadratic][X][Y][Z][index_l1_l2_l3].
 
         IMPORTANT: subtracting the temperature correction produces numerical noise if the bispectrum
         is small, as it is the case when m!=0. This happens because in the bispectrum module we summed
         the (big) temperature correction to the (small) bispectrum and here we are subtracting it.
         However, this is only a visualisation issue relevant to this function that does not affect Song. */
-        /* TODO: update for polarization. This means loading a full bispectrum rather than computing it here
-        on the fly */
-        double Cl1 = sp.cl[pt.index_md_scalars][index_l1 * sp.ct_size + bi.index_ct_of_bf_bf[X][X]];
-        double Cl2 = sp.cl[pt.index_md_scalars][index_l2 * sp.ct_size + bi.index_ct_of_bf_bf[X][X]];
-        double Cl3 = sp.cl[pt.index_md_scalars][index_l3 * sp.ct_size + bi.index_ct_of_bf_bf[X][X]];
-        double temperature_correction = 3*(Cl1*Cl2 + Cl1*Cl3 + Cl2*Cl3);
-  
+        
+        double quadratic_correction;
+        
+             if ((l1>=l2) && (l2>=l3))
+          quadratic_correction = bi.bispectra[bi.index_bt_quadratic][X][Y][Z][index_l1_l2_l3];
+        else if ((l1>=l3) && (l3>=l2))
+          quadratic_correction = bi.bispectra[bi.index_bt_quadratic][X][Z][Y][index_l1_l2_l3];
+        else if ((l2>=l1) && (l1>=l3))
+          quadratic_correction = bi.bispectra[bi.index_bt_quadratic][Y][X][Z][index_l1_l2_l3];
+        else if ((l2>=l3) && (l3>=l1))
+          quadratic_correction = bi.bispectra[bi.index_bt_quadratic][Y][Z][X][index_l1_l2_l3];
+        else if ((l3>=l1) && (l1>=l2))
+          quadratic_correction = bi.bispectra[bi.index_bt_quadratic][Z][X][Y][index_l1_l2_l3];
+        else if ((l3>=l2) && (l2>=l1))
+          quadratic_correction = bi.bispectra[bi.index_bt_quadratic][Z][Y][X][index_l1_l2_l3];
+        
+        /* The temperature and redshift corrections have the same structure (see long comment above) */
+        double temperature_correction = -3/8. * quadratic_correction;
+        double redshift_correction = +4/8. * quadratic_correction; 
+        
+        /* Uncomment to manually add the temperature & redshift corrections to the bispectrum
+        if they weren't already added */
+        // if (bi.add_quadratic_correction == _FALSE_)
+        //   bolometric_T += temperature_correction + redshift_correction;
+        
         /* Value of the brightness temperature bispectrum */
-        double brightness_T = bolometric_T + temperature_correction;
+        double brightness_T = bolometric_T - temperature_correction;
 
         /* Only for the intrinsic bispectra there is distinction between bolometric and brightness temperature.
         We also kill the quadratic contributions when pt2.has_quadratic_sources=_FALSE_  */
@@ -954,46 +974,44 @@ int main(int argc, char **argv) {
           double cl_Xz_short = bi.cls[index_ct_Xz][l_short-2];
 
           /* We include an l-dependent normalisation factor so that the comparison between numerical and analytical 
-          result won't depend on the adopted conventions for the Cl's or the primordial power spectrum.
-          A good candidate would have been the approximation for the local squeezed limit, given by
-          - 5 / (12 * cl_Xz_long * cl_YZ_short). However, this normalisation function crosses the zero, and would
-          result in infinities. Therefore we choose simply - 1 / (12 * cl_TT_long * cl_TT_short) for the TTT and mixed
-          bispectra, and - 1 / (12 * cl_EE_long * cl_EE_short) for the EEE bispectrum. */
+          results won't depend on the adopted conventions for the Cl's or the primordial power spectrum.
+          By default we use the squeezed-limit of the local fnl=1 model, given by 
+          6 * cl1_Xz * (cl2_YZ + cl3_YZ), so that the amplitude of the resulting curve is close to the fnl bias.
+          However, this normalisation function crosses the zero when Y and Z are different (e.g. Cl_TE), and would
+          thus result in infinities. To avoid this, when Y is different from Z we just normalise the bispectrum
+          using 6 * cl1_Xz * (cl2_YY + cl3_ZZ). */
           double normalisation;
-
-          if (bi.has_local_squeezed == _TRUE_) {
-                 if ((l1>=l2) && (l2>=l3))
-              normalisation = 1/bi.bispectra[bi.index_bt_local_squeezed][X][Y][Z][index_l1_l2_l3];
-            else if ((l1>=l3) && (l3>=l2))
-              normalisation = 1/bi.bispectra[bi.index_bt_local_squeezed][X][Z][Y][index_l1_l2_l3];
-            else if ((l2>=l1) && (l1>=l3))
-              normalisation = 1/bi.bispectra[bi.index_bt_local_squeezed][Y][X][Z][index_l1_l2_l3];
-            else if ((l2>=l3) && (l3>=l1))
-              normalisation = 1/bi.bispectra[bi.index_bt_local_squeezed][Y][Z][X][index_l1_l2_l3];
-            else if ((l3>=l1) && (l1>=l2))
-              normalisation = 1/bi.bispectra[bi.index_bt_local_squeezed][Z][X][Y][index_l1_l2_l3];
-            else if ((l3>=l2) && (l2>=l1))
-              normalisation = 1/bi.bispectra[bi.index_bt_local_squeezed][Z][Y][X][index_l1_l2_l3];
+          
+          /* If Y==Z, normalise using the squeezed limit of the local model with fnl=1 */
+          if ((Y==Z) && (bi.has_local_squeezed == _TRUE_)) {
+               if ((l1>=l2) && (l2>=l3))
+            normalisation = bi.bispectra[bi.index_bt_local_squeezed][X][Y][Z][index_l1_l2_l3];
+          else if ((l1>=l3) && (l3>=l2))
+            normalisation = bi.bispectra[bi.index_bt_local_squeezed][X][Z][Y][index_l1_l2_l3];
+          else if ((l2>=l1) && (l1>=l3))
+            normalisation = bi.bispectra[bi.index_bt_local_squeezed][Y][X][Z][index_l1_l2_l3];
+          else if ((l2>=l3) && (l3>=l1))
+            normalisation = bi.bispectra[bi.index_bt_local_squeezed][Y][Z][X][index_l1_l2_l3];
+          else if ((l3>=l1) && (l1>=l2))
+            normalisation = bi.bispectra[bi.index_bt_local_squeezed][Z][X][Y][index_l1_l2_l3];
+          else if ((l3>=l2) && (l2>=l1))
+            normalisation = bi.bispectra[bi.index_bt_local_squeezed][Z][Y][X][index_l1_l2_l3];
           }
+          /* If Y!=Z, avoid the YZ cross-correlation which would result in spikes */
           else {
-            if (bi.has_bispectra_t == _TRUE_)
-              normalisation = - 1 / (12 * bi.cls[sp.index_ct_tt][l_long-2] * bi.cls[sp.index_ct_tt][l_short-2]);
-            else if (bi.bf_size == 1)
-              normalisation = - 1 / (12 * bi.cls[bi.index_ct_of_bf_bf[X][X]][l_long-2] * bi.cls[bi.index_ct_of_bf_bf[X][X]][l_short-2]);
-            else {
-              printf ("ERROR: case of 2 non-temperature fields not implemented yet.\n");
-            }
+            normalisation = 6 * bi.cls[bi.index_ct_of_zeta_bf[X]][l_long-2]
+              * (bi.cls[bi.index_ct_of_bf_bf[Y][Y]][l_short-2] + bi.cls[bi.index_ct_of_bf_bf[Z][Z]][l_short-2]);
           }
         
           /* Normalized version of the brightness temperature bispectrum */
-          double brightness_T_normalized = normalisation * brightness_T;
+          double brightness_T_normalized = brightness_T / normalisation;
           
           /* Normalized version of the bolometric temperature bispectrum */
-          double bolometric_T_normalized = normalisation * bolometric_T;
+          double bolometric_T_normalized = bolometric_T / normalisation;
           
           /* Normalized temperature correction. Note that in this squeezed_small_scale limit, it is also given by
-          -3 * cl_long*cl_short * (2 + cl_short/cl_long) * normalisation */
-          double temperature_correction_normalized = normalisation * temperature_correction;
+          -3 * cl_long*cl_short * (2 + cl_short/cl_long) / normalisation */
+          double temperature_correction_normalized = temperature_correction / normalisation;
           
           // -----------------------------------------------------------------
           // -                         Lewis 2012                            -
@@ -1005,7 +1023,7 @@ int main(int argc, char **argv) {
           double dcl_YZ_short = bi.d_lsq_cls[bi.index_ct_of_bf_bf[Y][Z]][l_short-2];
           
           /* Ricci focussing in Lewis 2012 (eq. 4.1) */
-          double bolometric_T_lewis_ricci = normalisation * (- cl_Xz_long * dcl_YZ_short/l_short);
+          double bolometric_T_lewis_ricci = (- cl_Xz_long * dcl_YZ_short/l_short) / normalisation;
           
           /* Redshift modulation in Lewis 2012 (eq. 4.2). This exists only if Y=Z=temperature */
           double bolometric_T_lewis_redshift = 0;
@@ -1015,7 +1033,7 @@ int main(int argc, char **argv) {
             cl_Xt_long = bi.cls[bi.index_ct_of_bf_bf[X][bi.index_bf_t]][l_long-2];
             if (Z == bi.index_bf_t) cl_Yt_short = bi.cls[bi.index_ct_of_bf_bf[Y][bi.index_bf_t]][l_short-2];
             if (Y == bi.index_bf_t) cl_Zt_short = bi.cls[bi.index_ct_of_bf_bf[Z][bi.index_bf_t]][l_short-2];
-            bolometric_T_lewis_redshift = normalisation * (cl_Xt_long * (cl_Yt_short + cl_Zt_short));
+            bolometric_T_lewis_redshift = (cl_Xt_long * (cl_Yt_short + cl_Zt_short)) / normalisation;
           }
           
           /* Sum of Ricci focussing and redshift modulation */
@@ -1028,7 +1046,7 @@ int main(int argc, char **argv) {
           /* Lensing contribution, that is eq. 4.3 in CPV2011 */
           double cos_theta = (l*l - l_long*l_long - l_short*l_short)/(2.*l_long*l_short);
           double cos_2_theta = cos_theta*cos_theta - (1-cos_theta*cos_theta);
-          double bolometric_T_cpv_lensing = normalisation * 6*cl_XX_long*(cl_XX_short*2*cos_2_theta - (1 + cos_2_theta)*dcl_YZ_short/l_short);
+          double bolometric_T_cpv_lensing = (6*cl_XX_long*(cl_XX_short*2*cos_2_theta - (1 + cos_2_theta)*dcl_YZ_short/l_short)) / normalisation;
           
           // -------------------------------------------------------
           // -                 Print extra columns                 -

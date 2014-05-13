@@ -536,7 +536,7 @@ int bispectra_indices (
     strcpy (pbi->bt_labels[index_bt], "intrinsic");
     pbi->bispectrum_type[index_bt] = intrinsic_bispectrum;
     pbi->n[intrinsic_bispectrum]++;
-    pbi->has_reduced_bispectrum[index_bt] = _TRUE_;
+    pbi->has_reduced_bispectrum[index_bt] = _TRUE_; /* will be overwritten in bispectra2.c */
     index_bt++;
   }
 
@@ -4621,7 +4621,7 @@ int bispectra_intrinsic_squeezed_bispectrum (
   //   *result = 0;
   //   return _SUCCESS_;
   // }
-    
+
   /* We take l3 to be the long wavelength and l1 and l2 the short ones. This is the only sensible
   choice as the l-loop we are into is constructed to have l1>=l2>=l3. */
   double cl3_Zz = pbi->cls[pbi->index_ct_of_zeta_bf[ Z ]][l3-2];
@@ -4917,27 +4917,6 @@ int bispectra_quadratic_bispectrum (
           + 4 * S_X2 * (threej_l3_l1_l2_0_FX2_mFX2*C_l3_X3_I*C_l1_X1_TX2 + threej_l3_l1_l2_FX2_0_mFX2*C_l3_X3_TX2*C_l1_X1_I)
           + 4 * S_X3 * (threej_l1_l2_l3_0_FX3_mFX3*C_l1_X1_I*C_l2_X2_TX3 + threej_l1_l2_l3_FX3_0_mFX3*C_l1_X1_TX3*C_l2_X2_I);
 
-
-  /* Previously: */
-  // double threej_F_X3_mF_X3 = value[thread][l1_l2_l3_0_FX3_mFX3][l3 - min[thread][l1_l2_l3_0_FX3_mFX3]];
-  // double threej_0_mF_X3 = value[thread][l1_l2_l3_FX3_0_mFX3][l3 - min[thread][l1_l2_l3_FX3_0_mFX3]];
-  // double T_X3_term = 4 * S_X3 * (threej_F_X3_mF_X3*C_l1_X1_I*C_l2_X2_TX3 + threej_0_mF_X3*C_l1_X1_TX3*C_l2_X2_I);
-  //             
-  // double threej_F_X1_mF_X1 = value[thread][l2_l3_l1_0_FX1_mFX1][l3 - min[thread][l2_l3_l1_0_FX1_mFX1]];
-  // double threej_0_mF_X1 = value[thread][l2_l3_l1_FX1_0_mFX1][l3 - min[thread][l2_l3_l1_FX1_0_mFX1]];
-  // double T_X1_term = 4 * S_X1 * (threej_F_X1_mF_X1*C_l2_X2_I*C_l3_X3_TX1 + threej_0_mF_X1*C_l2_X2_TX1*C_l3_X3_I);
-  //             
-  // double three_j_F_X2_mF_X2 = value[thread][l3_l1_l2_0_FX2_mFX2][l3 - min[thread][l3_l1_l2_0_FX2_mFX2]];
-  // double three_j_0_mF_X2 = value[thread][l3_l1_l2_FX2_0_mFX2][l3 - min[thread][l3_l1_l2_FX2_0_mFX2]];
-  // double T_X2_term = 4 * S_X2 * (three_j_F_X2_mF_X2*C_l3_X3_I*C_l1_X1_TX2 + three_j_0_mF_X2*C_l3_X3_TX2*C_l1_X1_I);
-  //             
-  // /* Perform the sum over the three possible positions of the second-order perturbation */
-  // *result = (T_X3_term + T_X2_term + T_X1_term);
-  // 
-  // /* Compute the reduced bispectrum */
-  // *result /= value[thread][l1_l2_l3_0_0_0][l3 - min[thread][l1_l2_l3_0_0_0]];
-
-
   /* Check that for <TTT> the correction is equal to 8 * (C_l1*C_l2 + C_l1*C_l3 + C_l2*C_l3) */
   if ((pbi->has_bispectra_t==_TRUE_) && (X1==pbi->index_bf_t) && (X1==X2) && (X1==X3)) {
     double exact = ttt;
@@ -4950,8 +4929,7 @@ int bispectra_quadratic_bispectrum (
 
   /* Debug. Print the quadratic contribution */
   // printf ("B_quadratic_%3s[%3d,%3d,%3d] = %g\n",
-  //   pbi->bfff_labels[X][Y][Z], l1, l2, l3,
-  //   *result);
+  //   pbi->bfff_labels[X][Y][Z], l1, l2, l3, *result);
 
   end_quadratic: ;
   
