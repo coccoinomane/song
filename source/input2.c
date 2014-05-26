@@ -261,6 +261,12 @@ int input2_init (
   } // end of bispectrum_types parsing
   
 
+  /* If second-order perturbations are requested, make sure to compute the derivatives of
+  the baryon sound-speed. These are needed to obtain the contribution of the effective baryon
+  pressure at second-order */
+  if (ppt2->has_perturbations2 == _TRUE_)
+    pth->compute_cb2_derivatives = _TRUE_;
+
 
   // ====================================================================================
   // =                           Perturbations, time sampling                           =

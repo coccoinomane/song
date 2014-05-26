@@ -1659,8 +1659,8 @@ int fisher_compute (
       
             for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2)
               sprintf (pfi->info, "%s %8.3g ", pfi->info,
-                pfi->fisher_matrix_XYZ_lmax[X][Y][Z][pfi->l1_size-1][index_ft_1][index_ft_2]/
-                pfi->fisher_matrix_lmin[0][index_ft_1][index_ft_2]*100);
+                pfi->fisher_matrix_XYZ_lmax[X][Y][Z][pfi->l3_size-1][index_ft_1][index_ft_2]/
+                pfi->fisher_matrix_lmax[pfi->l3_size-1][index_ft_1][index_ft_2]*100);
   
             sprintf (pfi->info, "%s)\n", pfi->info);
           }

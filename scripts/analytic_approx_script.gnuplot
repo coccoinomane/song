@@ -1,9 +1,13 @@
 # Arguments
 # root: should be in the format path/file_name without extension.
-#       example: gnuplot analytic_approx_script.gnuplot -e "root='<run dir>/squeezed_small_6_intrinsic'"
+#       example: gnuplot analytic_approx_script.gnuplot -e "root='<run dir>/squeezed_small_6/squeezed_small_6_intrinsic'"
 
 # Determine parameters
 types = "ttt tte tet ett eet ete tee eee"
+l_min = 6
+l_max = 3000
+frac_min = 1e-3
+frac_max = 10
 
 # ==========================================
 # = PLOT INTRINSIC VS ANALYTICAL BISPECTRA =
@@ -18,7 +22,7 @@ unset logscale
 set multiplot layout 4,2
 do for [bf in types]  {
   file = root."_".bf.".txt"
-  plot [:] file u 1:9 w li lw 4 title bf, "" u 1:10 w li lw 4 title "approx"
+  plot [l_min:l_max] file u 1:9 w li lw 4 title bf, "" u 1:10 w li lw 4 title "approx"
 }
 unset multiplot
 set output
@@ -39,7 +43,7 @@ set logscale
 set multiplot layout 3,2
 do for [bf in types]  {
   file = root."_".bf.".txt"
-  plot [2:] [1e-5:100] file u 1:(abs(1-($9/$10))) w li lw 4 title bf
+  plot [l_min:l_max] [frac_min:frac_max] file u 1:(abs(1-($9/$10))) w li lw 4 title bf
 }
 unset multiplot
 set output
@@ -57,5 +61,5 @@ types = "ttt tte ett eet tee eee"
 
 # Plot
 set logscale
-plot [2:] [1e-5:100] for [bf in types] root."_".bf.".txt" u 1:(abs(1-($9/$10))) w li lw 4 title bf
+plot [l_min:l_max] [frac_min:frac_max] for [bf in types] root."_".bf.".txt" u 1:(abs(1-($9/$10))) w li lw 4 title bf
 set output

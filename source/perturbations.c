@@ -5614,7 +5614,8 @@ int perturb_source_terms_1st_order(
                 S0_metric += g * psi;
                 
               if (ppt->has_isw == _TRUE_)
-                S0_metric += exp_m_kappa * (phi_prime + psi_prime);
+                // if (tau < 623)
+                  S0_metric += exp_m_kappa * (phi_prime + psi_prime);
             }
 
             /* Sum up the sources */
@@ -6720,6 +6721,10 @@ int perturb_derivs(double tau,
 	+ metric_euler
 	+ cb2*k2*delta_b
 	+ R*pvecthermo[pth->index_th_dkappa]*(theta_g-theta_b);
+    
+    // if (k==ppt->k[0][0])
+    // if (k==ppt->k[0][ppt->k_size[0]-1])
+    //   printf ("%17g %17g %17g %17g\n", tau, dy[ppw->pv->index_pt_theta_b], cb2*k2*delta_b, cb2);
     
     }
   

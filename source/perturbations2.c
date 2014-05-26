@@ -2286,8 +2286,9 @@ int perturb2_timesampling_for_sources (
     /* We start sampling the quadratic sources at the time when we start to evolve the second-order
       system.  */
     class_test (ppt2->tau_start_evolution == 0,
-                ppt2->error_message,
-                "a variable starting integration time is not supported yet.  To implement it, you should first determine a starting integration time for the first-order system, maybe by using the bisection technique applied to k_min");
+      ppt2->error_message,
+      "a variable starting integration time is not supported yet.  To implement it, you should first\
+determine a starting integration time for the first-order system, maybe by using the bisection technique applied to k_min");
 
     double tau_ini_quadsources = MIN (ppt2->tau_sampling[0], ppt2->tau_start_evolution);
   
@@ -3341,8 +3342,10 @@ int perturb2_workspace_init_quadratic_sources (
   index_qs2 += ppw2->n_hierarchy_b;    
 
   /* When evolving a perfect fluid, we set the beta-moments with n=2 to be proportional to v*v */
-  if (ppt2->has_perfect_baryons == _TRUE_)
+  if (ppt2->has_perfect_baryons == _TRUE_) {
+    ppw2->index_qs2_dd_b = index_qs2++;
     ppw2->index_qs2_vv_b = index_qs2++;
+  }
 
 
   // ----------------------------------------------
@@ -6813,9 +6816,34 @@ int perturb2_einstein (
     int m = ppt2->m[index_m];
         
     if (ppt2->has_perfect_baryons == _TRUE_) {
+
+      /* Baryon contribution to b200 and b22m, assuming no pressure */
       double vv_b = ppw2->pvec_quadsources[ppw2->index_qs2_vv_b];
       if (m==0) ppw2->b_200 = - 2 * ppw2->k1_dot_k2 * vv_b;
       ppw2->b_22m[m] = 15 * ppw2->k1_ten_k2[m+2] * vv_b;
+      
+      /* Uncomment to include the effective contribution of baryon pressure. See my May 2014 notes
+      on "Baryon eqs including pressure". Note that b_200 in this case still reduces to the simple
+      version (-2*k1_dot_k2*vv_b) when cb2=0.
+      TODO: include same modification in the baryon quadratic sources for continuity and Euler equations.
+      To do so, look in get_boltzmann_equation.nb for the quadratic terms of the monopole and dipole
+      equations for the massive hierarchy, and include in SONG the red 2Delta00 terms as
+      3 * cb2 * delta_b */
+      // if (m==0) {
+      // 
+      //   double cb2 = pvecthermo[pth->index_th_cb2];    /* Baryon sound speed */
+      //   double cb2_dot = pvecthermo[pth->index_th_dcb2];    /* Derivative wrt conformal time of baryon sound speed */
+      //
+      //   double dd_b = ppw2->pvec_quadsources[ppw2->index_qs2_dd_b];
+      //   ppw2->b_200 =  3 * cb2 * b(0,0,0) - 2 * (1-3*cb2) * ppw2->k1_dot_k2 * vv_b + cb2_dot/Hc * dd_b;
+      // 
+      //   // if ((ppw2->index_k1==(ppt2->k_size-1)) && (ppw2->index_k2==(ppt2->k_size-1)) && (ppw2->index_k3==(ppt2->k_size-1)))
+      //   //   printf ("%17g %17g %17g\n", tau, -2*ppw2->k1_dot_k2*vv_b, ppw2->b_200);
+      // }
+
+      /* TODO: include effective shear in b22m, in the same way we introduce the effective pressure
+      in b200. I need to define another effective quantity like the sound of speed, viscosity? */
+      
     }
     else {      /* Use the evolved variables */
       if (m==0) ppw2->b_200 = b(2,0,0);
@@ -6824,9 +6852,8 @@ int perturb2_einstein (
 
     if (pba->has_cdm == _TRUE_) {
       
-      double vv_cdm = ppw2->pvec_quadsources[ppw2->index_qs2_vv_cdm];
-
       if (ppt2->has_perfect_cdm == _TRUE_) {
+        double vv_cdm = ppw2->pvec_quadsources[ppw2->index_qs2_vv_cdm];
         if (m==0) ppw2->cdm_200 = - 2 * ppw2->k1_dot_k2 * vv_cdm;
         ppw2->cdm_22m[m] = 15 * ppw2->k1_ten_k2[m+2] * vv_cdm;
       }
@@ -8377,9 +8404,11 @@ int perturb2_quadratic_sources (
   // =                                  Other quadratic sources                            =
   // =======================================================================================
 
-  /* Store velocity*velocity terms */
-  if (ppt2->has_perfect_baryons == _TRUE_)
+  /* Store delta*delta and velocity*velocity terms */
+  if (ppt2->has_perfect_baryons == _TRUE_) {
+    pvec_quadsources[ppw2->index_qs2_dd_b] = delta_b_1 * delta_b_2;
     pvec_quadsources[ppw2->index_qs2_vv_b] = v_b_1 * v_b_2;
+  }
 
   if (pba->has_cdm == _TRUE_)
     if (ppt2->has_perfect_cdm == _TRUE_)

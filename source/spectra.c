@@ -216,8 +216,10 @@ int spectra_cl_at_l(
 
 // *** MY MODIFICATIONS ***
 
-/* Same as 'spectra_cl_at_l', but for the logarithmic derivative of the C_l's. (Note that, with
-respect to 'spectra_cl_at_l', this function is a simple find and replace of psp->cl and psp->ddcl.) */
+/**
+ * Interpolate d/dl(l^2*C_l) at a given l. This function is a simple find and replace of 'spectra_cl_at_l'
+ * where 'psp->cl' and 'psp->ddcl' are substituted by 'psp->d_lsq_cl' and 'psp->spline_d_lsq_cl', respectively.
+ */
 int spectra_dcl_at_l(
 		    struct spectra * psp,
 		    double l,
@@ -1722,7 +1724,7 @@ int spectra_cls(
 	       psp->error_message,
 	       psp->error_message);
 	       
-    // *** MY MODIFICATION ***
+    // *** MY MODIFICATIONS ***
     
     /* Compute the first derivative of the l^2*C_l. To do so, we first compute and store l^2*C_l and then take its
     derivative. This is numerically more stable than computing 2*l*C_l + l^2*dC_l because the function l^2*C_l is
@@ -1772,27 +1774,6 @@ int spectra_cls(
                     psp->error_message),
         psp->error_message,
         psp->error_message);
-      
-      /* Compute the logarithmic derivative of l^2 * Cl (needed to compute the bispectrum
-      analytical approximations in the squeezed limit) */
-      for (index_ic1 = 0; index_ic1 < psp->ic_size[index_mode]; index_ic1++) {
-        for (index_ic2 = index_ic1; index_ic2 < psp->ic_size[index_mode]; index_ic2++) {
-
-          index_ic1_ic2 = index_symmetric_matrix(index_ic1,index_ic2,psp->ic_size[index_mode]);
-
-          for (index_l=0; index_l < ptr->l_size[index_mode]; index_l++) {
-
-            double l = ptr->l[index_l];
-
-	          for (index_ct = 0; index_ct < psp->ct_size; index_ct++) {
-
-              double lsq_cl = psp->lsq_cl[index_mode][(index_l * psp->ic_ic_size[index_mode] + index_ic1_ic2) * psp->ct_size + index_ct];
-              double d_lsq_cl = psp->d_lsq_cl[index_mode][(index_l * psp->ic_ic_size[index_mode] + index_ic1_ic2) * psp->ct_size + index_ct];
-              
-        	  }
-	        }
-        }
-      }
 
       /* Compute second derivative of d_lsq_cl in view of spline interpolation */
       class_call(array_spline_table_lines(psp->l,

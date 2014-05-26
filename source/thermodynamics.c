@@ -280,7 +280,7 @@ int thermodynamics_at_z(
   //   pvecthermo[pth->index_th_dcb2] = 0;
   //   pvecthermo[pth->index_th_ddcb2] = 0;
   // }
-  
+
   return _SUCCESS_;
 }
 

@@ -4613,6 +4613,12 @@ int bispectra_intrinsic_squeezed_bispectrum (
     pbi->error_message,
     "in all squeezed approximations, make sure l3 is the smallest multipole");
 
+  /* Uncomment to exclude the polarisation when it is assigned the large-scale mode */
+  // if ((pbi->has_bispectra_e==_TRUE_) && (Z==pbi->index_bf_e)) {
+  //   *result = 0;
+  //   return _SUCCESS_;
+  // }
+
   /* Uncomment to restrict the approximation to squeezed configurations, as in Sec. 6 of Creminelli,
   Pitrou & Vernizzi 2011. Note that in our case the smallest mode is l3, while in that paper it
   is l1. IMPORTANT: setting a bispectrum to zero might screw up some matrix inversions done in the

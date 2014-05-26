@@ -341,6 +341,11 @@ int main(int argc, char **argv) {
   //   printf("\n\nError in fisher_init \n=>%s\n",fi.error_message);
   //   return _FAILURE_;
   // }
+  // 
+  // if (output_init(&ba,&pt,&sp,&nl,&le,&bi,&fi,&op) == _FAILURE_) {
+  //   printf("\n\nError in output_init \n=>%s\n",op.error_message);
+  //   return _FAILURE_;
+  // }  
   
   // =================================================================================
   // =                          Which bispectra to print?                            =
