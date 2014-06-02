@@ -849,9 +849,8 @@ int main(int argc, char **argv) {
         double temperature_correction = -3/8. * quadratic_correction;
         double redshift_correction = +4/8. * quadratic_correction; 
         
-        /* Uncomment to manually add the temperature & redshift corrections to the bispectrum
-        if they weren't already added */
-        // if (bi.add_quadratic_correction == _FALSE_)
+        /* Add the temperature & redshift corrections to the bispectrum manually */
+        // if (pbi2->add_quadratic_correction == _TRUE_)
         //   bolometric_T += temperature_correction + redshift_correction;
         
         /* Value of the brightness temperature bispectrum */

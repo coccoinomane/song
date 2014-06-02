@@ -2251,6 +2251,7 @@ int fisher_cross_correlate_mesh (
           //   continue;
           // }        
 
+
           // ---------------------------------------------------------------------------
           // -                              Obtain bispectra                           -
           // ---------------------------------------------------------------------------
@@ -2268,7 +2269,19 @@ int fisher_cross_correlate_mesh (
             for (int X = 0; X < pfi->ff_size; ++X) {
               for (int Y = 0; Y < pfi->ff_size; ++Y) {
                 for (int Z = 0; Z < pfi->ff_size; ++Z) {
-              
+
+                  /* Uncomment to ignore configurations where the temperature is evaluated at a resolution
+                  larger than 3000, which is the limit after which foregrounds are likely to dominate */
+                  // int l_max_T = 3000;
+                  // if (pbi->has_bispectra_t) {
+                  //   if (((X==pbi->index_bf_t) && (l3>l_max_T))
+                  //   || ((Y==pbi->index_bf_t) && (l2>l_max_T))
+                  //   || ((Z==pbi->index_bf_t) && (l1>l_max_T))) {
+                  //     interpolated_bispectra[thread][index_ft][X][Y][Z] = 0;
+                  //     continue;
+                  //   }
+                  // }
+
                   /* Corresponding field indices in the bispectrum module */
                   int X_ = pfi->index_bf_of_ff[X];
                   int Y_ = pfi->index_bf_of_ff[Y];
@@ -2286,7 +2299,7 @@ int fisher_cross_correlate_mesh (
                     class_call_parallel ((*pbi->bispectrum_function[index_bt]) (
                                              ppr, psp, ple, pbi,
                                              l3, l2, l1, /* smallest one goes in third position  */
-                                             X_, Y_, Z_,
+                                             X_, Y_, Z_, /* need underscore because they are bispectra field indices */
                                              threej_000[l3-l3_min_000],
                                              threej_20m2[l3-l3_min_20m2],
                                              threej_m220[l3-l3_min_m220],
@@ -2305,7 +2318,7 @@ int fisher_cross_correlate_mesh (
                                              pbi, pfi,
                                              index_ft,
                                              l3, l2, l1, /* smallest one goes in third position  */
-                                             X, Y, Z,
+                                             X, Y, Z, /* no underscore because they are Fisher field indices */
                                              mesh_workspaces[index_ft][X][Y][Z],
                                              &interpolated_bispectra[thread][index_ft][X][Y][Z]),
                         pfi->error_message,
@@ -2317,7 +2330,7 @@ int fisher_cross_correlate_mesh (
                                              pbi, pfi,
                                              index_ft,
                                              l3, l2, l1, /* smallest one goes in third position  */
-                                             X, Y, Z,
+                                             X, Y, Z, /* no underscore because they are Fisher field indices */
                                              mesh_workspaces[index_ft][X][Y][Z],
                                              &interpolated_bispectra[thread][index_ft][X][Y][Z]),
                         pfi->error_message,

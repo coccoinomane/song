@@ -1876,7 +1876,17 @@ int input_init(
   if (ppt->gauge == synchronous)
     ppt->has_cl_cmb_zeta = _FALSE_;  
 
+  /* Should the curvature perturbation zeta only include contributions from recombination?
+  I.e. should we ignore reionisation when computing zeta? */
+  if ((ppt->has_cl_cmb_zeta == _TRUE_) && (pth->reio_parametrization!=reio_none)) {
 
+    class_call(parser_read_string(pfc,"recombination_only_zeta",&(string1),&(flag1),errmsg),
+        errmsg,
+        errmsg);
+ 
+    if ((flag1 == _TRUE_) && ((strstr(string1,"n") != NULL) || (strstr(string1,"N") != NULL)))
+      ppt->recombination_only_zeta = _FALSE_;
+  }
 
 
   // *****      Tau sampling for quadratic sources      ******
@@ -2199,7 +2209,7 @@ or 'linear_extrapolation'.", "");
     }
   }
 
-  /* Do not include the lensed C_l's in the squeezed approximation for the intrinsic
+  /* If requested, do not include the lensed C_l's in the squeezed approximation for the intrinsic
   bispectrum */
   if (pbi->include_lensing_effects == _TRUE_) {
 
@@ -2209,6 +2219,17 @@ or 'linear_extrapolation'.", "");
    
     if ((flag1 == _TRUE_) && ((strstr(string1,"n") != NULL) || (strstr(string1,"N") != NULL)))
       pbi->lensed_intrinsic = _FALSE_;
+  }
+
+  if (pfi->include_lensing_effects == _TRUE_) {
+    
+    class_call(parser_read_string(pfc,"compute_lensing_variance_lmax",&(string1),&(flag1),errmsg),
+        errmsg,
+        errmsg);
+
+    if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+      pfi->compute_lensing_variance_lmax = _TRUE_;
+    
   }
 
 
@@ -2815,7 +2836,7 @@ int input_default_params(
   
 
   // ===========================================================
-  // =                     perturb1 structure                  =
+  // =                     Perturbs structure                  =
   // ===========================================================
 
   /* What is in the line-of-sight integral? */
@@ -2829,10 +2850,9 @@ int input_default_params(
   ppt->has_ad_maberty=_FALSE_;
   ppt->has_zero_ic=_FALSE_;  
 
-  /* Compute zeta variable? */
-  ppt->has_cl_cmb_zeta = _FALSE_;
-
-  ppt->has_bispectra = _FALSE_;
+  ppt->has_cl_cmb_zeta = _FALSE_; /* Compute zeta variable? */
+  ppt->recombination_only_zeta = _TRUE_; /* Is zeta evaluated exclusively at recombination? */
+  ppt->has_bispectra = _FALSE_; /* Do we need bispectra? */
 
   // ==========================================================
   // =                 Perturbed recombination                =

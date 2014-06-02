@@ -930,7 +930,7 @@ int perturb_timesampling_for_sources_1st_order(
 				   pvecthermo),
 	       pth->error_message,
 	       ppt->error_message);
-    
+        
     class_test(pvecback[pba->index_bg_a]*
 	       pvecback[pba->index_bg_H]/
 	       pvecthermo[pth->index_th_dkappa] > 
@@ -5490,6 +5490,8 @@ int perturb_source_terms_1st_order(
 	     pth->error_message,
 	     error_message);
 
+  double z = 1/pvecback[pba->index_bg_a]-1;
+
   /* scalars */
   if ((ppt->has_scalars == _TRUE_) && (index_mode == ppt->index_md_scalars)) {
 
@@ -5768,6 +5770,10 @@ int perturb_source_terms_1st_order(
       	  source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S0] =
       	    + 3./16. * pvecthermo[pth->index_th_g] * Pi /x/x;  
       	}
+        
+        // printf ("z=%g, E source = %g\n", 1/pvecback[pba->index_bg_a]-1,
+        //   source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S0]);
+        
       }
 
 
@@ -5796,16 +5802,28 @@ int perturb_source_terms_1st_order(
           double Omega_r = pvecback[pba->index_bg_Omega_r];
           double w_rad = 1/3.;
           double w_lambda = -1;
+          double g = pvecthermo[pth->index_th_g];
           
-          /* Primordial curvature perturbation, as used in Lewis 2012. This is equivalent to the actual curvature
-          perturbation only on superhorizon scales. */
-          // double zeta = delta_g/4. - phi;
+          /* Restrict contributions to zeta only at recombination, i.e. exclude reioniation */
+          if ((ppt->recombination_only_zeta == _TRUE_) && (pth->reio_parametrization != reio_none)) {
+
+            g /= exp(-pth->tau_reio);
+
+            if (z < pth->z_reio_start)
+              g = 0;
+          } // end of if (recombination_only_zeta)
+          
+          /* Primordial curvature perturbation, as defined in Lewis 2012. This is equivalent to the actual curvature
+          perturbation only on superhorizon scales. Note that Fig. 3 of Lewis 2012 seems to show the 'true' curvature
+          perturbation defined below rather than delta_g/4 - phi */
+          // double zeta = delta_g/4 - phi;
 
           /* Actual curvature perturbation */
           double w_tot = w_rad*Omega_r + w_lambda*Omega_lambda;
           double zeta = - phi - 2/(3.*(1+w_tot)) * (psi + phi_prime/Hc);
   
-        	source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S0] = pvecthermo[pth->index_th_g] * zeta;
+        	source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S0] = g * zeta;
+
         }
       }
 

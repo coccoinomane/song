@@ -58,6 +58,7 @@ int main(int argc, char **argv) {
   // printf("\tpt2.has_perfect_baryons = %d\n", pt2.has_perfect_baryons);
   // printf("\tpt2.has_perfect_cdm = %d\n", pt2.has_perfect_cdm);
   // printf("\tpt.has_cl_cmb_zeta = %d\n", pt.has_cl_cmb_zeta);
+  // printf("\tpt.recombination_only_zeta = %d\n", pt.recombination_only_zeta);
   // printf("\tpt2.perturbations2_verbose = %d\n", pt2.perturbations2_verbose);
 
   
@@ -196,6 +197,7 @@ int main(int argc, char **argv) {
     index_channel, sqrt(fi.noise_e[index_channel]) * 1e6*ba.T_cmb / fi.beam[index_channel]);
   }
   printf("\tfi.include_lensing_effects = %d\n", fi.include_lensing_effects);
+  printf("\tfi.compute_lensing_variance_lmax = %d\n", fi.compute_lensing_variance_lmax);
   printf("\tfi.ignore_t = %d\n", fi.ignore_t);
   printf("\tfi.ignore_e = %d\n", fi.ignore_e);
   printf("\tfi.ignore_b = %d\n", fi.ignore_b);

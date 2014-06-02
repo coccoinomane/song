@@ -280,6 +280,23 @@ int thermodynamics_at_z(
   //   pvecthermo[pth->index_th_dcb2] = 0;
   //   pvecthermo[pth->index_th_ddcb2] = 0;
   // }
+  
+  /* Uncomment to neglect reionisation. It only works for temperature. */
+  // if (pth->reio_parametrization != reio_none) {
+  // 
+  //   pvecthermo[pth->index_th_exp_m_kappa] /= exp(-pth->tau_reio);
+  //   pvecthermo[pth->index_th_g] /= exp(-pth->tau_reio);
+  // 
+  //   if (z < pth->z_reio_start) {
+  //     pvecthermo[pth->index_th_exp_m_kappa] = 0;
+  //     pvecthermo[pth->index_th_g] = 0;
+  //     pvecthermo[pth->index_th_dg] = 0;
+  //     pvecthermo[pth->index_th_ddg] = 0;
+  //     pvecthermo[pth->index_th_dkappa] = 0;
+  //     pvecthermo[pth->index_th_ddkappa] = 0;
+  //     pvecthermo[pth->index_th_dddkappa] = 0;
+  //   }
+  // }
 
   return _SUCCESS_;
 }
@@ -1992,6 +2009,9 @@ int thermodynamics_reionization(
 
     free(preio->reionization_parameters);
 
+    /* Pass to the thermodynamics structure the redshift where reionization starts */
+    pth->z_reio_start = preio->reionization_parameters[preio->index_reio_start];
+
     return _SUCCESS_;
 
   }
@@ -2072,6 +2092,9 @@ int thermodynamics_reionization(
          pth->error_message);
     
     pth->tau_reio=preio->reionization_optical_depth;
+    
+    /* Pass to the thermodynamics structure the redshift where reionization starts */
+    pth->z_reio_start = preio->reionization_parameters[preio->index_reio_start];
     
     return _SUCCESS_;
     

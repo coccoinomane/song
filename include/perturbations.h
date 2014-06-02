@@ -135,6 +135,11 @@ struct perturbs
                                            This is needed to reproduce the analytical approximation of the
                                            squeezed temperature bispectrum in Lewis
                                            2012 (arxiv.org/abs/1204.5018). */
+    
+  short recombination_only_zeta;      /**< should the curvature perturbation zeta only include contributions
+                                           from recombination? I.e. ignore reionisation? */
+
+    
   // *** END OF MY MODIFICATIONS ***
   short has_cl_cmb_lensing_potential; /**< do we need Cl's for CMB lensing potential? */
   short has_cl_density;               /**< do we need Cl's for matter density? */

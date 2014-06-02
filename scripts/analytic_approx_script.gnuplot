@@ -5,13 +5,15 @@
 # Determine parameters
 types = "ttt tte tet ett eet ete tee eee"
 l_min = 6
-l_max = 3000
+l_max = 4000
 frac_min = 1e-3
 frac_max = 10
 
 # ==========================================
 # = PLOT INTRINSIC VS ANALYTICAL BISPECTRA =
 # ==========================================
+
+unset multiplot
 
 # Uncomment to save to file
 set terminal pdf size 9in,6in

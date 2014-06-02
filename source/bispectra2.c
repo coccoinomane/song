@@ -136,13 +136,6 @@ int bispectra2_harmonic (
   /* If the user requested to load the bispectra from disk, then stop the execution
   of this function here */
   if (ppr->load_bispectra_from_disk == _TRUE_) {
-
-    /* Uncomment to artificially add the quadratic correction arising from the redshift and 
-    temperature effects */
-    // class_call (bispectra2_add_quadratic_corrections (ppr,ppr2,pba,ppt,ppt2,pbs,pbs2,ptr,ptr2,ppm,psp,pbi),
-    //   pbi->error_message,
-    //   pbi->error_message);
-
     return _SUCCESS_;
   }
 

@@ -46,6 +46,13 @@ struct fisher {
   and using the lensed C_l's in the covariance matrix */
   short include_lensing_effects;
 
+  /* Should we compute the Fisher matrix for all the l's up to l_max, rather than only for l_max?
+  When lensing variance is not requested the flag is not needed, as the computation of the Fisher
+  matrix naturally yields F(l) up to l=l_max. With lensing variance, however, computing F(l)
+  requires running the Fisher module separately for each l, because the lensing variance algorithm
+  used in SONG (Lewis et al 2011, Sec. 5) includes a sum over l1 (smallest multipole in the Fisher
+  summation) rather than over l3 (larger multipole in the Fisher summation). */
+  short compute_lensing_variance_lmax;
 
   // ===========================================================================================
   // =                               Indices of Fisher matrix                                  =
