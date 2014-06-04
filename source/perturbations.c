@@ -5811,6 +5811,7 @@ int perturb_source_terms_1st_order(
 
             if (z < pth->z_reio_start)
               g = 0;
+            
           } // end of if (recombination_only_zeta)
           
           /* Primordial curvature perturbation, as defined in Lewis 2012. This is equivalent to the actual curvature

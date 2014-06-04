@@ -231,14 +231,6 @@ struct fisher {
   // ==========================================================================================
   // =                                   Lensing variance                                     =
   // ==========================================================================================
-  
-  /* Same as fisher_matrix_XYZ_smallest, but keeping track of the Z and C field indices instead.
-  This is needed to compute the lensing variance, and corresponds to \bar{F}_{l_1 i p}
-  in Eq. 5.25 of http://uk.arxiv.org/abs/1101.2234. The indexing of this array is slightly
-  different from the others, because we will need to invert it with respect to the last two
-  levels (see Eq. 5.35 ibidem):
-  fisher_matrix_CZ_smallest[index_l3][index_ft_1*field_size+index_field_C][index_ft_2*field_size+index_field_Z] */
-  double *** fisher_matrix_CZ_smallest;
 
   /* Same as the other arrays defined above, but used to contain the full result including lensing
   variance */
@@ -246,7 +238,27 @@ struct fisher {
   double *** fisher_matrix_lensvar_lmin;
   double *** inverse_fisher_matrix_lensvar_lmin;
   double ** sigma_fnl_lensvar_lmin;
+  double *** fisher_matrix_lensvar_lmax; /* Indexed with index_l1 rather than index_l3! */
+  double *** inverse_fisher_matrix_lensvar_lmax; /* Indexed with index_l1 rather than index_l3! */
+  double ** sigma_fnl_lensvar_lmax; /* Indexed with index_l1 rather than index_l3! */
   
+  /* Same as fisher_matrix_XYZ_smallest, but keeping track of the Z and C field indices instead.
+  This is needed to compute the lensing variance, and corresponds to \bar{F}_{l_1 i p}
+  in Eq. 5.25 of http://uk.arxiv.org/abs/1101.2234. The indexing of this array is slightly
+  different from the others, because we will need to invert it with respect to the last two
+  levels (see Eq. 5.35 ibidem):
+  fisher_matrix_CZ_smallest[index_l3]
+                           [index_ft_1*field_size+index_field_C]
+                           [index_ft_2*field_size+index_field_Z] */
+  double *** fisher_matrix_CZ_smallest;
+
+  /* Same as above but contains also an l3-level:
+  fisher_matrix_CZ_smallest_largest[index_l1]
+                                   [index_l3]
+                                   [index_ft_1*field_size+index_field_C]
+                                   [index_ft_2*field_size+index_field_Z] */
+  double **** fisher_matrix_CZ_smallest_largest;
+
 
   // ==========================================================================================
   // =                                       Noise model                                      =
@@ -449,6 +461,10 @@ extern "C" {
         struct fisher_workspace * pw
         );
 
+  int fisher_sky_coverage (
+         struct fisher * pfi
+         );
+
   int fisher_lensing_variance (
           struct precision * ppr,
           struct background * pba,
@@ -459,7 +475,8 @@ extern "C" {
           struct spectra * psp,
           struct lensing * ple,
           struct bispectra * pbi,
-          struct fisher * pfi
+          struct fisher * pfi,
+          struct fisher_workspace * pw
           );
 
   int fisher_allocate_interpolation_mesh(

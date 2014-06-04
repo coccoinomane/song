@@ -273,7 +273,7 @@ int transfer2_init(
   /* Four loops over k1, k2, transfer type and k follow */
   for (int index_k1 = 0; index_k1 < ppt2->k_size; ++index_k1) {
 
-    if (ppt2->perturbations2_verbose > 1)
+    if (ptr2->transfer2_verbose > 1)
       printf ("     * computing transfer functions today for index_k1=%d of %d, k1=%g\n",
         index_k1, ppt2->k_size, ppt2->k[index_k1]);
 
@@ -1287,8 +1287,11 @@ to do linear interpolation.\n",
 
 
 
-/* Due to the triangular condition on the wavevectors (k3 = k1 + k2), the integration range will depend on
-the given (k1,k2) pair. The size of k3_grid is contained in ptr2->k_size_k1k2[index_k1][index_k2]. */
+/**
+ * Due to the triangular condition on the wavevectors (k3 = k1 + k2), the integration range
+ * will depend on the given (k1,k2) pair. The size of k3_grid is contained in
+ * ptr2->k_size_k1k2[index_k1][index_k2].
+ */
 int transfer2_get_k3_list (
       struct precision * ppr,
       struct precision2 * ppr2,

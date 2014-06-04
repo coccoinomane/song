@@ -1006,8 +1006,8 @@ int input2_init (
   /* Create/open the status file. The 'a+' mode means that if the file does not exist it will be created,
   but if it exist it won't be erased (append mode) */
   if (ppr2->store_sources_to_disk == _TRUE_) {
-    sprintf(ppt2->sources_status_path, "%s/sources_status_file.txt", ppr->run_directory);
-    class_open(ppt2->sources_status_file, ppt2->sources_status_path, "a+", errmsg);
+    // sprintf(ppt2->sources_status_path, "%s/sources_status_file.txt", ppr->run_directory);
+    // class_open(ppt2->sources_status_file, ppt2->sources_status_path, "a+", errmsg);
   }
 
   class_test ((ppr2->store_sources_to_disk == _TRUE_) && (ppr2->load_sources_from_disk == _TRUE_),
@@ -1066,8 +1066,8 @@ int input2_init (
   /* Create/open the status file. The 'a+' mode means that if the file does not exist it will be created,
   but if it exist it won't be erased (append mode) */
   if (ppr2->store_transfers_to_disk == _TRUE_) {
-    sprintf(ptr2->transfers_status_path, "%s/transfers_status_file.txt", ppr->run_directory);
-    class_open(ptr2->transfers_status_file, ptr2->transfers_status_path, "a+", errmsg);
+    // sprintf(ptr2->transfers_status_path, "%s/transfers_status_file.txt", ppr->run_directory);
+    // class_open(ptr2->transfers_status_file, ptr2->transfers_status_path, "a+", errmsg);
   }
 
   class_test ((ppr2->store_transfers_to_disk == _TRUE_) && (ppr2->load_transfers_from_disk == _TRUE_),

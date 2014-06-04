@@ -5,7 +5,7 @@
 # Determine parameters
 types = "ttt tte tet ett eet ete tee eee"
 l_min = 6
-l_max = 4000
+l_max = 3000
 frac_min = 1e-3
 frac_max = 10
 

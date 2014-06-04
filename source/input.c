@@ -2528,8 +2528,8 @@ less than %d values for 'experiment_beam_fwhm'", _N_FREQUENCY_CHANNELS_MAX_);
   /* Create/open the status file. The 'a+' mode means that if the file does not exist it will be created,
   but if it exist it won't be erased (append mode) */
   if (ppr->store_bispectra_to_disk == _TRUE_) {
-    sprintf(pbi->bispectra_status_path, "%s/bispectra_status_file.txt", ppr->run_directory);
-    class_open(pbi->bispectra_status_file, pbi->bispectra_status_path, "a+", errmsg);
+    // sprintf(pbi->bispectra_status_path, "%s/bispectra_status_file.txt", ppr->run_directory);
+    // class_open(pbi->bispectra_status_file, pbi->bispectra_status_path, "a+", errmsg);
   }
 
   class_test ((ppr->store_bispectra_to_disk == _TRUE_) && (ppr->load_bispectra_from_disk == _TRUE_),
