@@ -183,25 +183,25 @@ int main(int argc, char **argv) {
   // printf("\tpr.extend_lensed_cls = %d\n", pr.extend_lensed_cls);
 
   /* Fisher */
-  printf("\tfi.always_interpolate_bispectra = %d\n", fi.always_interpolate_bispectra);
-  printf("\tfi.l_min_estimator = %d\n", fi.l_min_estimator);
-  printf("\tfi.l_max_estimator = %d\n", fi.l_max_estimator);
-  printf("\tfi.bispectra_interpolation = %d\n", fi.bispectra_interpolation);
-  printf("\tfi.f_sky = %g\n", fi.f_sky);
-  for (int index_channel=0; index_channel < fi.n_channels; ++index_channel) {
-    printf("\tchannel %d: fi.beam = %g arcmins, %g radians\n",
-    index_channel, fi.beam[index_channel] * 60. / (_PI_/180.), fi.beam[index_channel]);
-    printf("\t           fi.noise_t = %g uK\n",
-    index_channel, sqrt(fi.noise_t[index_channel]) * 1e6*ba.T_cmb / fi.beam[index_channel]);
-    printf("\t           fi.noise_e = %g uK\n",
-    index_channel, sqrt(fi.noise_e[index_channel]) * 1e6*ba.T_cmb / fi.beam[index_channel]);
-  }
-  printf("\tfi.include_lensing_effects = %d\n", fi.include_lensing_effects);
-  printf("\tfi.compute_lensing_variance_lmax = %d\n", fi.compute_lensing_variance_lmax);
-  printf("\tfi.ignore_t = %d\n", fi.ignore_t);
-  printf("\tfi.ignore_e = %d\n", fi.ignore_e);
-  printf("\tfi.ignore_b = %d\n", fi.ignore_b);
-  printf("\tfi.ignore_r = %d\n", fi.ignore_r);
+  // printf("\tfi.always_interpolate_bispectra = %d\n", fi.always_interpolate_bispectra);
+  // printf("\tfi.l_min_estimator = %d\n", fi.l_min_estimator);
+  // printf("\tfi.l_max_estimator = %d\n", fi.l_max_estimator);
+  // printf("\tfi.bispectra_interpolation = %d\n", fi.bispectra_interpolation);
+  // printf("\tfi.f_sky = %g\n", fi.f_sky);
+  // for (int index_channel=0; index_channel < fi.n_channels; ++index_channel) {
+  //   printf("\tchannel %d: fi.beam = %g arcmins, %g radians\n",
+  //   index_channel, fi.beam[index_channel] * 60. / (_PI_/180.), fi.beam[index_channel]);
+  //   printf("\t           fi.noise_t = %g uK\n",
+  //   index_channel, sqrt(fi.noise_t[index_channel]) * 1e6*ba.T_cmb / fi.beam[index_channel]);
+  //   printf("\t           fi.noise_e = %g uK\n",
+  //   index_channel, sqrt(fi.noise_e[index_channel]) * 1e6*ba.T_cmb / fi.beam[index_channel]);
+  // }
+  // printf("\tfi.include_lensing_effects = %d\n", fi.include_lensing_effects);
+  // printf("\tfi.compute_lensing_variance_lmax = %d\n", fi.compute_lensing_variance_lmax);
+  // printf("\tfi.ignore_t = %d\n", fi.ignore_t);
+  // printf("\tfi.ignore_e = %d\n", fi.ignore_e);
+  // printf("\tfi.ignore_b = %d\n", fi.ignore_b);
+  // printf("\tfi.ignore_r = %d\n", fi.ignore_r);
 
   /* Precision parameters - multipoles */
   // printf("* Precision parameters - multipoles\n");  
@@ -257,14 +257,18 @@ int main(int argc, char **argv) {
   // printf("\tpt2.l_max_debug = %d\n", pt2.l_max_debug);
 
   /* Storage parameters */
-  // printf("* Parameters related to the storage of intermediate results\n");
-  // printf("\tpr.store_run = %d\n", pr.store_run);
-  // printf("\tpr.load_run = %d\n", pr.load_run);
-  // printf("\tpr.append_date_to_run = %d\n", pr.append_date_to_run);
-  // printf("\tpr.run_directory = %s\n", pr.run_directory);
-  // printf("\tpr2.store_sources_to_disk = %d\n", pr2.store_sources_to_disk);
-  // printf("\tpr2.store_transfers_to_disk = %d\n", pr2.store_transfers_to_disk);
-  // printf("\tpr.store_bispectra_to_disk = %d\n", pr.store_bispectra_to_disk);
+  printf("* Parameters related to the storage of intermediate results\n");
+  printf("\tpr.store_run = %d\n", pr.store_run);
+  printf("\tpr.load_run = %d\n", pr.load_run);
+  printf("\tpr.append_date_to_run = %d\n", pr.append_date_to_run);
+  printf("\tpr.run_dir = %s\n", pr.run_dir);
+  printf("\tpr.data_dir = %s\n", pr.data_dir);
+  printf("\tpr2.store_sources_to_disk = %d\n", pr2.store_sources_to_disk);
+  printf("\tpt2.sources_dir = %s\n", pt2.sources_dir);
+  printf("\tpr2.store_transfers_to_disk = %d\n", pr2.store_transfers_to_disk);
+  printf("\ttr2.transfers_dir = %s\n", tr2.transfers_dir);
+  printf("\tpr.store_bispectra_to_disk = %d\n", pr.store_bispectra_to_disk);
+  printf("\tbi.bispectra_dir = %s\n", bi.bispectra_dir);
 
   /* Approximations parameters */
   // printf("* Parameters related to the approximations adopted at second-order\n");

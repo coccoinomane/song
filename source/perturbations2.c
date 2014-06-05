@@ -617,14 +617,14 @@ int perturb2_indices_of_perturbs(
   if ((ppr2->store_sources_to_disk == _TRUE_) || (ppr2->load_sources_from_disk == _TRUE_)) {
     
     /* We are going to store the sources in n=k_size files, one for each requested k1 */
-    class_alloc (ppt2->sources_run_files, ppt2->k_size*sizeof(FILE *), ppt2->error_message);
-    class_alloc (ppt2->sources_run_paths, ppt2->k_size*sizeof(char *), ppt2->error_message);
+    class_alloc (ppt2->sources_files, ppt2->k_size*sizeof(FILE *), ppt2->error_message);
+    class_alloc (ppt2->sources_paths, ppt2->k_size*sizeof(char *), ppt2->error_message);
 
     for (int index_k1=0; index_k1<ppt2->k_size; ++index_k1) {
       
       /* The name of each sources file will have the k1 index in it */
-      class_alloc (ppt2->sources_run_paths[index_k1], _FILENAMESIZE_*sizeof(char), ppt2->error_message);
-      sprintf (ppt2->sources_run_paths[index_k1], "%s/sources_%03d.dat", ppt2->sources_run_directory, index_k1);
+      class_alloc (ppt2->sources_paths[index_k1], _FILENAMESIZE_*sizeof(char), ppt2->error_message);
+      sprintf (ppt2->sources_paths[index_k1], "%s/sources_%03d.dat", ppt2->sources_dir, index_k1);
       
     } // end of loop on index_k1
     
@@ -6055,10 +6055,10 @@ int perturb2_free(
       fclose(ppt2->sources_status_file);
     
       for (int index_k1=0; index_k1<ppt2->k_size; ++index_k1)
-        free (ppt2->sources_run_paths[index_k1]);
+        free (ppt2->sources_paths[index_k1]);
     
-      free (ppt2->sources_run_files);
-      free (ppt2->sources_run_paths);
+      free (ppt2->sources_files);
+      free (ppt2->sources_paths);
     
     }
 
@@ -10857,7 +10857,7 @@ int perturb2_quadratic_sources_at_tau_cubic_spline (
 
 /**
   * Load the line of sight sources from disk for a given k1 value. The sources will be read from the file
-  * given in ppt2->sources_run_paths[index_k1].
+  * given in ppt2->sources_paths[index_k1].
   *
   * This function is used in the transfer2.c module.
   *
@@ -10872,11 +10872,11 @@ int perturb2_load_sources_from_disk(
   class_call (perturb2_allocate_k1_level(ppt2, index_k1), ppt2->error_message, ppt2->error_message);
   
   /* Open file for reading */
-  class_open (ppt2->sources_run_files[index_k1], ppt2->sources_run_paths[index_k1], "rb", ppt2->error_message);
+  class_open (ppt2->sources_files[index_k1], ppt2->sources_paths[index_k1], "rb", ppt2->error_message);
 
   /* Print some debug */
   if (ppt2->perturbations2_verbose > 2)
-    printf("     * reading line-of-sight source for index_k1=%d from '%s' ... \n", index_k1, ppt2->sources_run_paths[index_k1]);
+    printf("     * reading line-of-sight source for index_k1=%d from '%s' ... \n", index_k1, ppt2->sources_paths[index_k1]);
   
   for (int index_type = 0; index_type < ppt2->tp2_size; ++index_type) {
   
@@ -10890,13 +10890,13 @@ int perturb2_load_sources_from_disk(
               ppt2->sources[index_type][index_k1][index_k2],
               sizeof(double),
               n_to_read,
-              ppt2->sources_run_files[index_k1]);
+              ppt2->sources_files[index_k1]);
 
         /* Read a chunk with all the time values for this set of (type,k1,k2,k3) */
         class_test( n_read != n_to_read,
           ppt2->error_message,
           "Could not read in '%s' file, read %d entries but expected %d",
-          ppt2->sources_run_paths[index_k1], n_read, n_to_read);
+          ppt2->sources_paths[index_k1], n_read, n_to_read);
 
         /* Update the counter for the values stored in ppt2->sources */
         #pragma omp atomic
@@ -10907,7 +10907,7 @@ int perturb2_load_sources_from_disk(
   } // end of for (index_type)
   
   /* Close file */
-  fclose(ppt2->sources_run_files[index_k1]);
+  fclose(ppt2->sources_files[index_k1]);
   
   // if (ppt2->perturbations2_verbose > 2)
   //   printf ("Done.\n");
@@ -10922,7 +10922,7 @@ int perturb2_load_sources_from_disk(
 
 /**
   * Save the line of sight sources to disk for a given k1 value. The file were the sources will be saved
-  * is given by ppt2->sources_run_paths[index_k1].
+  * is given by ppt2->sources_paths[index_k1].
   */
 int perturb2_store_sources_to_disk(
         struct perturbs2 * ppt2,
@@ -10931,7 +10931,7 @@ int perturb2_store_sources_to_disk(
 {
 
   /* Open file for writing */
-  class_open (ppt2->sources_run_files[index_k1], ppt2->sources_run_paths[index_k1], "wb", ppt2->error_message);
+  class_open (ppt2->sources_files[index_k1], ppt2->sources_paths[index_k1], "wb", ppt2->error_message);
 
   /* Running indexes */
   int index_type, index_k2, index_k3;
@@ -10952,7 +10952,7 @@ int perturb2_store_sources_to_disk(
                 ppt2->sources[index_type][index_k1][index_k2],
                 sizeof(double),
                 ppt2->tau_size*k3_size,
-                ppt2->sources_run_files[index_k1]
+                ppt2->sources_files[index_k1]
                 );
 
     } // end of for (index_k2)
@@ -10960,7 +10960,7 @@ int perturb2_store_sources_to_disk(
   } // end of for (index_type)
   
   /* Close file */
-  fclose(ppt2->sources_run_files[index_k1]);
+  fclose(ppt2->sources_files[index_k1]);
 
   // if (ppt2->perturbations2_verbose > 1)
   //   printf(" Done.\n");

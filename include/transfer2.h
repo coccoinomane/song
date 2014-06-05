@@ -150,9 +150,9 @@ struct transfers2 {
   
 
   /* Files where the transfer functions will be stored (one file for each transfer type) */
-  char transfers_run_directory[_FILENAMESIZE_];
-  FILE ** transfers_run_files;
-  char ** transfers_run_paths;
+  char transfers_dir[_FILENAMESIZE_];
+  FILE ** transfers_files;
+  char ** transfers_paths;
 
   /* ASCII file that will keep track how how many transfer files have been succesfully written */
   FILE * transfers_status_file;

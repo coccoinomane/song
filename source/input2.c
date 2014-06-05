@@ -967,20 +967,20 @@ int input2_init (
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
     ppr2->store_sources_to_disk = _TRUE_;
 
-  sprintf(ppt2->sources_run_directory, "%s/sources", ppr->run_directory);
+  sprintf(ppt2->sources_dir, "%s/sources", ppr->data_dir);
 
   /* If we are not loading from disk, just create the source directory */
   if ((ppr2->store_sources_to_disk == _TRUE_) && (ppr->load_run == _FALSE_)) {
     
-    class_test (mkdir (ppt2->sources_run_directory, 0777) != 0,
+    class_test (mkdir (ppt2->sources_dir, 0777) != 0,
       errmsg,
-      "could not create directory '%s', maybe it already exists?", ppt2->sources_run_directory);
+      "could not create directory '%s', maybe it already exists?", ppt2->sources_dir);
   }
   /* If we are in a run directory, checks if it already contains the source functions */
   else if (ppr->load_run == _TRUE_) {
 
     struct stat st;
-    short sources_dir_exists = (stat(ppt2->sources_run_directory, &st)==0);
+    short sources_dir_exists = (stat(ppt2->sources_dir, &st)==0);
 
     /* If the sources directory exists, then we shall load the 2nd-order source functions from it */
     if (sources_dir_exists) {
@@ -995,9 +995,9 @@ int input2_init (
       if (ppt2->perturbations2_verbose > 1)
         printf (" -> source functions folder not found in run directory, will create it.\n");
 
-      class_test (mkdir (ppt2->sources_run_directory, 0777)!=0,
+      class_test (mkdir (ppt2->sources_dir, 0777)!=0,
         errmsg,
-        "could not create directory '%s', maybe it already exists?", ppt2->sources_run_directory);
+        "could not create directory '%s', maybe it already exists?", ppt2->sources_dir);
         
       ppr2->load_sources_from_disk = _FALSE_;
     }
@@ -1006,7 +1006,7 @@ int input2_init (
   /* Create/open the status file. The 'a+' mode means that if the file does not exist it will be created,
   but if it exist it won't be erased (append mode) */
   if (ppr2->store_sources_to_disk == _TRUE_) {
-    // sprintf(ppt2->sources_status_path, "%s/sources_status_file.txt", ppr->run_directory);
+    // sprintf(ppt2->sources_status_path, "%s/sources_status_file.txt", ppr->data_dir);
     // class_open(ppt2->sources_status_file, ppt2->sources_status_path, "a+", errmsg);
   }
 
@@ -1027,20 +1027,20 @@ int input2_init (
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
     ppr2->store_transfers_to_disk = _TRUE_;
 
-  sprintf(ptr2->transfers_run_directory, "%s/transfers", ppr->run_directory);
+  sprintf(ptr2->transfers_dir, "%s/transfers", ppr->data_dir);
 
   /* If we are not loading from disk, just create the transfer directory */
   if ((ppr2->store_transfers_to_disk == _TRUE_) && (ppr->load_run == _FALSE_)) {
     
-    class_test (mkdir (ptr2->transfers_run_directory, 0777) != 0,
+    class_test (mkdir (ptr2->transfers_dir, 0777) != 0,
       errmsg,
-      "could not create directory '%s', maybe it already exists?", ptr2->transfers_run_directory);
+      "could not create directory '%s', maybe it already exists?", ptr2->transfers_dir);
   }
   /* If we are in a run directory, checks if it already contains the transfer functions */
   else if (ppr->load_run == _TRUE_) {
 
     struct stat st;
-    short transfers_dir_exists = (stat(ptr2->transfers_run_directory, &st)==0);
+    short transfers_dir_exists = (stat(ptr2->transfers_dir, &st)==0);
 
     /* If the transfers directory exists, then we shall load the 2nd-order transfer functions from it */
     if (transfers_dir_exists) {
@@ -1055,9 +1055,9 @@ int input2_init (
       if (ptr2->transfer2_verbose > 1)
         printf (" -> transfer functions folder not found in run directory, will create it.\n");
 
-      class_test (mkdir (ptr2->transfers_run_directory, 0777)!=0,
+      class_test (mkdir (ptr2->transfers_dir, 0777)!=0,
         errmsg,
-        "could not create directory '%s', maybe it already exists?", ptr2->transfers_run_directory);
+        "could not create directory '%s', maybe it already exists?", ptr2->transfers_dir);
         
       ppr2->load_transfers_from_disk = _FALSE_;
     }
@@ -1066,7 +1066,7 @@ int input2_init (
   /* Create/open the status file. The 'a+' mode means that if the file does not exist it will be created,
   but if it exist it won't be erased (append mode) */
   if (ppr2->store_transfers_to_disk == _TRUE_) {
-    // sprintf(ptr2->transfers_status_path, "%s/transfers_status_file.txt", ppr->run_directory);
+    // sprintf(ptr2->transfers_status_path, "%s/transfers_status_file.txt", ppr->data_dir);
     // class_open(ptr2->transfers_status_file, ptr2->transfers_status_path, "a+", errmsg);
   }
 

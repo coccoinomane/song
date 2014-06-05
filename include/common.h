@@ -885,7 +885,13 @@ struct precision
   short store_run;
   short load_run;
   short append_date_to_run;
-  char run_directory[_FILENAMESIZE_];
+  char run_dir[_FILENAMESIZE_]; /* Directory where parameters, data and results will be stored to and
+                                read from */ 
+  char data_dir[_FILENAMESIZE_]; /* Directory containing the data to be read by the current run. This directory
+    must contain three subfolders 'sources', 'transfers' and 'bispectra', which were previously computed by SONG.
+    By default 'ppr->data_dir' is equal to 'ppr->run_dir'. A typical use of this variable is in a hierarchical
+    structure of folders, were ppr->data_dir points to the top directory which contains the data (sources, transfers,
+    bispectra) and 'ppr->run_dir' is used to create custom sub-folders with variations in the parameters. */
   
   /* Paths of the parameter & precision input files */
   char ini_filename[_FILENAMESIZE_];

@@ -806,14 +806,14 @@ int bispectra_indices (
   if ((ppr->store_bispectra_to_disk == _TRUE_) || (ppr->load_bispectra_from_disk == _TRUE_)) {
 
     /* We are going to store the bispectra in n=bt_size files, one for each requested type of bispectrum */
-    class_alloc (pbi->bispectra_run_files, pbi->bt_size*sizeof(FILE *), pbi->error_message);
-    class_alloc (pbi->bispectra_run_paths, pbi->bt_size*sizeof(char *), pbi->error_message);
+    class_alloc (pbi->bispectra_files, pbi->bt_size*sizeof(FILE *), pbi->error_message);
+    class_alloc (pbi->bispectra_paths, pbi->bt_size*sizeof(char *), pbi->error_message);
   
     for(int index_bt=0; index_bt<pbi->bt_size; ++index_bt) {
       
       /* Include the name of the bispectrum in its file */
-      class_alloc (pbi->bispectra_run_paths[index_bt], _FILENAMESIZE_*sizeof(char), pbi->error_message);
-      sprintf (pbi->bispectra_run_paths[index_bt], "%s/bispectra_%s.dat", pbi->bispectra_run_directory, pbi->bt_labels[index_bt]);
+      class_alloc (pbi->bispectra_paths[index_bt], _FILENAMESIZE_*sizeof(char), pbi->error_message);
+      sprintf (pbi->bispectra_paths[index_bt], "%s/bispectra_%s.dat", pbi->bispectra_dir, pbi->bt_labels[index_bt]);
       
     } // end of for(index_bt)
 
@@ -3784,12 +3784,12 @@ int bispectra_save_to_disk (
 {
 
   /* Open file for writing */
-  class_open (pbi->bispectra_run_files[index_bt], pbi->bispectra_run_paths[index_bt], "a+b", pbi->error_message);
+  class_open (pbi->bispectra_files[index_bt], pbi->bispectra_paths[index_bt], "a+b", pbi->error_message);
 
   /* Print some debug */
   if (pbi->bispectra_verbose > 2)
     printf("     * writing bispectra to disk for index_bt=%d on '%s'\n",
-      index_bt, pbi->bispectra_run_paths[index_bt]);
+      index_bt, pbi->bispectra_paths[index_bt]);
 
   /* Write all the independent (l1,l2,l3) triplets for this bispectrum */
   for (int X = 0; X < pbi->bf_size; ++X)
@@ -3799,11 +3799,11 @@ int bispectra_save_to_disk (
               pbi->bispectra[index_bt][X][Y][Z],
               sizeof(double),
               pbi->n_independent_configurations,
-              pbi->bispectra_run_files[index_bt]
+              pbi->bispectra_files[index_bt]
               );
 
   /* Close file */
-  fclose(pbi->bispectra_run_files[index_bt]);
+  fclose(pbi->bispectra_files[index_bt]);
   
   return _SUCCESS_;
   
@@ -3825,11 +3825,11 @@ int bispectra_load_from_disk(
 {
 
   /* Open file for reading */
-  class_open (pbi->bispectra_run_files[index_bt], pbi->bispectra_run_paths[index_bt], "rb", pbi->error_message);
+  class_open (pbi->bispectra_files[index_bt], pbi->bispectra_paths[index_bt], "rb", pbi->error_message);
 
   /* Print some debug */
-  if (pbi->bispectra_verbose > 2)
-    printf("     * reading bispectra from disk for index_bt=%d on'%s'\n", index_bt, pbi->bispectra_run_paths[index_bt]);
+  if (pbi->bispectra_verbose > 0)
+    printf("     * reading bispectra from disk for index_bt=%d on'%s'\n", index_bt, pbi->bispectra_paths[index_bt]);
 
   for (int X = 0; X < pbi->bf_size; ++X) {
     for (int Y = 0; Y < pbi->bf_size; ++Y) {
@@ -3842,18 +3842,18 @@ int bispectra_load_from_disk(
                 pbi->bispectra[index_bt][X][Y][Z],
                 sizeof(double),
                 n_to_read,
-                pbi->bispectra_run_files[index_bt]);
+                pbi->bispectra_files[index_bt]);
 
         class_test(n_read != n_to_read,
           pbi->error_message,
           "Could not read in '%s' file, read %d entries but expected %d",
-            pbi->bispectra_run_paths[index_bt], n_read, n_to_read);        
+            pbi->bispectra_paths[index_bt], n_read, n_to_read);        
       }
     }
   }
   
   /* Close file */
-  fclose(pbi->bispectra_run_files[index_bt]); 
+  fclose(pbi->bispectra_files[index_bt]); 
 
   return _SUCCESS_;
   

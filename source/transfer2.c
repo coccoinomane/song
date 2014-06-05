@@ -550,7 +550,7 @@ int transfer2_init(
   /* We are finished filling the transfer function files, so close them */
   if (ppr2->store_transfers_to_disk == _TRUE_)
     for (int index_tt = 0; index_tt < ptr2->tt2_size; index_tt++)
-      fclose (ptr2->transfers_run_files[index_tt]);
+      fclose (ptr2->transfers_files[index_tt]);
 
   if (ptr2->transfer2_verbose > 1)
     printf (" -> filled ptr2->transfer with %ld values (%g MB)\n",
@@ -819,16 +819,16 @@ int transfer2_indices_of_transfers(
   if ((ppr2->store_transfers_to_disk == _TRUE_) || (ppr2->load_transfers_from_disk == _TRUE_)) {
 
     /* We are going to store the transfers in n=k_size files, one for each requested k1 */
-    class_alloc (ptr2->transfers_run_files, ptr2->tt2_size*sizeof(FILE *), ptr2->error_message);
-    class_alloc (ptr2->transfers_run_paths, ptr2->tt2_size*sizeof(char *), ptr2->error_message);
+    class_alloc (ptr2->transfers_files, ptr2->tt2_size*sizeof(FILE *), ptr2->error_message);
+    class_alloc (ptr2->transfers_paths, ptr2->tt2_size*sizeof(char *), ptr2->error_message);
 
     for(int index_tt=0; index_tt<ptr2->tt2_size; ++index_tt) {
       
       /* The name of each transfers file will have the tt index in it */
-      class_alloc (ptr2->transfers_run_paths[index_tt], _FILENAMESIZE_*sizeof(char), ptr2->error_message);
-      sprintf (ptr2->transfers_run_paths[index_tt], "%s/transfers_%03d.dat", ptr2->transfers_run_directory, index_tt);
+      class_alloc (ptr2->transfers_paths[index_tt], _FILENAMESIZE_*sizeof(char), ptr2->error_message);
+      sprintf (ptr2->transfers_paths[index_tt], "%s/transfers_%03d.dat", ptr2->transfers_dir, index_tt);
       if (ppr2->store_transfers_to_disk == _TRUE_)
-        class_open (ptr2->transfers_run_files[index_tt], ptr2->transfers_run_paths[index_tt], "wb", ptr2->error_message);
+        class_open (ptr2->transfers_files[index_tt], ptr2->transfers_paths[index_tt], "wb", ptr2->error_message);
       
     } // end of loop on index_tt
 
@@ -2567,7 +2567,7 @@ int transfer2_interpolate_sources_in_time (
 
 /**
   * Load the transfer functions from disk for a given transfer type. The transfer functions will be read from the file
-  * given in ptr2->transfers_run_paths[index_tt].
+  * given in ptr2->transfers_paths[index_tt].
   *
   * This function is used in the spectra2.c module.
   *
@@ -2588,10 +2588,10 @@ int transfer2_load_transfers_from_disk(
 
   /* Print some debug */
   if (ptr2->transfer2_verbose > 2)
-    printf("     * transfer2_load_transfers_from_disk: reading results for index_tt=%d from '%s' ...", index_tt, ptr2->transfers_run_paths[index_tt]);
+    printf("     * transfer2_load_transfers_from_disk: reading results for index_tt=%d from '%s' ...", index_tt, ptr2->transfers_paths[index_tt]);
   
   /* Open file for reading */
-  class_open (ptr2->transfers_run_files[index_tt], ptr2->transfers_run_paths[index_tt], "rb", ptr2->error_message);
+  class_open (ptr2->transfers_files[index_tt], ptr2->transfers_paths[index_tt], "rb", ptr2->error_message);
   
   /* Two loops follow to read the file */
   for (index_k1 = 0; index_k1 < ppt2->k_size; ++index_k1) {
@@ -2608,12 +2608,12 @@ int transfer2_load_transfers_from_disk(
               ptr2->transfer[index_tt][index_k1][index_k2],
               sizeof(double),
               n_to_read,
-              ptr2->transfers_run_files[index_tt]);
+              ptr2->transfers_files[index_tt]);
   
       class_test(n_read != n_to_read,
         ptr2->error_message,
         "Could not read in '%s' file, read %d entries but expected %d (index_tt=%d,index_k1=%d,index_k2=%d)",
-          ptr2->transfers_run_paths[index_tt], n_read, n_to_read, index_tt, index_k1, index_k2);
+          ptr2->transfers_paths[index_tt], n_read, n_to_read, index_tt, index_k1, index_k2);
   
       /* Update the counter for the values stored in ptr2->transfers */
       #pragma omp atomic
@@ -2624,7 +2624,7 @@ int transfer2_load_transfers_from_disk(
   } // end of for(index_k1)
   
   /* Close file */
-  fclose(ptr2->transfers_run_files[index_tt]);
+  fclose(ptr2->transfers_files[index_tt]);
 
   if (ptr2->transfer2_verbose > 2)
     printf ("Done.\n");
@@ -2639,7 +2639,7 @@ int transfer2_load_transfers_from_disk(
 
 /**
   * Save the transfer functions to disk for a given transfer type. The file were the transfer functions will be saved
-  * is given by ptr2->transfers_run_paths[index_tt].
+  * is given by ptr2->transfers_paths[index_tt].
   */
 int transfer2_store_transfers_to_disk(
         struct perturbs2 * ppt2,
@@ -2658,12 +2658,12 @@ int transfer2_store_transfers_to_disk(
   for (index_tt = 0; index_tt < ptr2->tt2_size; index_tt++) {
     
     /* Open file for writing */
-    // class_open (ptr2->transfers_run_files[index_tt], ptr2->transfers_run_paths[index_tt], "a+b", ptr2->error_message);
+    // class_open (ptr2->transfers_files[index_tt], ptr2->transfers_paths[index_tt], "a+b", ptr2->error_message);
 
     /* Print some info */
     if (ptr2->transfer2_verbose > 3)
       printf("     * writing transfer function for (index_tt,index_k1)=(%d,%d) on '%s' ...\n",
-        index_tt, index_k1, ptr2->transfers_run_paths[index_tt]);
+        index_tt, index_k1, ptr2->transfers_paths[index_tt]);
 
     for (index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
   
@@ -2672,7 +2672,7 @@ int transfer2_store_transfers_to_disk(
             ptr2->transfer[index_tt][index_k1][index_k2],
             sizeof(double),
             ptr2->k_size_k1k2[index_k1][index_k2],
-            ptr2->transfers_run_files[index_tt]
+            ptr2->transfers_files[index_tt]
             );
 
     } // end of for(index_k2)
@@ -2681,7 +2681,7 @@ int transfer2_store_transfers_to_disk(
     //   printf(" Done.\n");
 
     /* Close file */
-    // fclose(ptr2->transfers_run_files[index_tt]);
+    // fclose(ptr2->transfers_files[index_tt]);
       
   } // end of for(index_tt)
 

@@ -462,14 +462,14 @@ struct perturbs2
   // =                        Storage of intermediate results                        =
   // =================================================================================
 
+  /* Files where the sources will be stored (one file for each k1) */
+  char sources_dir[_FILENAMESIZE_];
+  FILE ** sources_files;
+  char ** sources_paths;
+
   /* File that will keep track how how many sources files have been succesfully written */
   FILE * sources_status_file;
   char sources_status_path[_FILENAMESIZE_];
-
-  /* Files where the sources will be stored (one file for each k1) */
-  char sources_run_directory[_FILENAMESIZE_];
-  FILE ** sources_run_files;
-  char ** sources_run_paths;
 
 
 

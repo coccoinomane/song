@@ -322,9 +322,9 @@ struct bispectra {
   // ==========================================================================================
 
   /* Files where the bispectra will be stored (one file for each bispectra type) */
-  char bispectra_run_directory[_FILENAMESIZE_];
-  FILE ** bispectra_run_files;
-  char ** bispectra_run_paths;
+  char bispectra_dir[_FILENAMESIZE_];
+  FILE ** bispectra_files;
+  char ** bispectra_paths;
 
   /* File that will keep track how how many bispectra have been succesfully written */
   FILE * bispectra_status_file;
