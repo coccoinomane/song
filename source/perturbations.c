@@ -2437,18 +2437,28 @@ int perturb_solve(
   the one for the quadratic sources in ppt2->tau_sampling_quadsources), pass them to a single call of the
   evolver, and modifying the perturb_source_terms function in such a way that it distinguishes when a given
   time belongs to one or the other time-samplings, and hence call either perturb_source_terms_1st_order or
-  perturb_source_terms_2nd_order.  */
+  perturb_source_terms_2nd_order. */
 
 
   if (ppt->has_perturbations2 == _TRUE_) {
 
     for (index_interval=0; index_interval<interval_number; index_interval++) {
 
-
       /** (a) fix the approximation scheme */
 
       for (index_ap=0; index_ap<ppw->ap_size; index_ap++)
         ppw->approx[index_ap] = interval_approx[index_interval][index_ap];
+
+      /* Maximum time we are interested in, that is, the last time where we need
+      to compute the quadratic sources for the second-order system */
+      double tau_max = ppt->tau_sampling_quadsources[ppt->tau_size_quadsources-1];
+
+      /* Skip integration intervals that are not needed */
+      if (interval_limit[index_interval] > tau_max)
+        continue;
+
+      /* Stop integrating the system when we have reached tau_max */
+      interval_limit[index_interval+1] = MIN (interval_limit[index_interval+1], tau_max);
 
       /** (b) get the previous approximation scheme. If the current
     interval starts from the initial time tau_ini, the previous
@@ -2486,7 +2496,6 @@ int perturb_solve(
            ppt->error_message,
            ppt->error_message);
   
-      
       class_call(generic_evolver(perturb_derivs,
                   interval_limit[index_interval],
                   interval_limit[index_interval+1],

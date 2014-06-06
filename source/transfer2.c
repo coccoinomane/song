@@ -502,10 +502,10 @@ int transfer2_init(
 
     } // end of for(index_k2)
 
-     /* Free the memory associated with the line-of-sight sources for the considered k1.
-      We won't need them anymore because the different k1 modes are independent. Note that
-      this memory was either allocate at the beginning of the k1 loop, in this module, or
-      at the beginning of the k1 loop in perturb2_init. */
+    /* Free the memory associated with the line-of-sight sources for the considered k1.
+    We won't need them anymore because the different k1 modes are independent. Note that
+    this memory was either allocate at the beginning of the k1 loop, in this module, or
+    at the beginning of the k1 loop in perturb2_init. */
     class_call (perturb2_free_k1_level (ppt2, index_k1), ppt2->error_message, ppt2->error_message);
 
 
@@ -523,6 +523,8 @@ int transfer2_init(
 
   } // end of for(index_k1)
 
+  free (sources_k_spline);
+  free (interpolated_sources_in_k);
   
   #pragma omp parallel shared(ppw) private(thread)
   {
@@ -544,7 +546,7 @@ int transfer2_init(
     free(ppw[thread]->interpolated_sources_in_time);
     free(ppw[thread]);
   }
-  
+    
   free(ppw);
   
   /* We are finished filling the transfer function files, so close them */
@@ -593,8 +595,6 @@ int transfer2_free(
       )
 {
 
-  int index_tt, index_k1, index_k2;
-  
   if (ptr2->has_cls == _TRUE_) {
   
     int k1_size = ppt2->k_size;
@@ -603,13 +603,15 @@ int transfer2_free(
     The memory management in those two cases is handled separately via the transfer_store and transfer_load
     functions  */
     if ((ppr2->store_transfers_to_disk==_FALSE_) && (ppr2->load_transfers_from_disk==_FALSE_))
-      for (index_k1 = 0; index_k1 < k1_size; ++index_k1)
+      for (int index_k1 = 0; index_k1 < k1_size; ++index_k1)
         if (ptr2->has_allocated_transfers[index_k1] == _TRUE_)
           class_call(transfer2_free_k1_level(ppt2, ptr2, index_k1), ptr2->error_message, ptr2->error_message);
 
+    for (int index_tt = 0; index_tt < ptr2->tt2_size; ++index_tt)
+      free (ptr2->transfer[index_tt]);
     free(ptr2->transfer);
 
-    for(index_k1=0; index_k1<ppt2->k_size; ++index_k1) {
+    for(int index_k1=0; index_k1<ppt2->k_size; ++index_k1) {
       free (ptr2->k_size_k1k2[index_k1]);
       free (ptr2->k_physical_start_k1k2[index_k1]);
       free (ptr2->k_physical_size_k1k2[index_k1]);
@@ -623,12 +625,19 @@ int transfer2_free(
     free (ptr2->k_max_k1k2);
       
     /* Free labels */
-    for (index_tt = 0; index_tt < ptr2->tt2_size; index_tt++)
+    for (int index_tt = 0; index_tt < ptr2->tt2_size; index_tt++)
       free(ptr2->tt2_labels[index_tt]);
 
-    free(ptr2->l);
-    free(ptr2->tt2_labels);
-          
+    free (ptr2->l);
+    free (ptr2->m);
+    free (ptr2->tt2_labels);
+
+    free (ptr2->corresponding_index_l);
+    free (ptr2->corresponding_index_m);
+    free (ptr2->index_tt2_monopole);
+    free (ptr2->index_pt2_monopole);
+
+
   } // end of if(has_cls)
 
   return _SUCCESS_;

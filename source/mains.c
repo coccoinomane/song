@@ -68,6 +68,9 @@ int compute_cls(
   class_call (parser_overwrite_entry (pfc, "store_bispectra", "no", &found, error_message),
     error_message,
     error_message);
+  class_call (parser_remove_entry (pfc, "data_directory", &found, error_message),
+    error_message,
+    error_message);
 
   /* Re-read the parameters, this time from the modified 'file_content' structure. */
   class_call (input_init (pfc,&pr,pba,pth,&pt,&bs,&tr,&pm,psp,&bi,&fi,pnl,ple,&op,error_message),

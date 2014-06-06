@@ -2007,10 +2007,10 @@ int thermodynamics_reionization(
 
     }
 
-    free(preio->reionization_parameters);
-
     /* Pass to the thermodynamics structure the redshift where reionization starts */
     pth->z_reio_start = preio->reionization_parameters[preio->index_reio_start];
+
+    free(preio->reionization_parameters);
 
     return _SUCCESS_;
 

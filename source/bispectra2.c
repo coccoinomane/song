@@ -2366,8 +2366,9 @@ int bispectra2_intrinsic_geometrical_factors (
   }
 
   // ========================================================================
-  // =                             Cycle on l3                            =
+  // =                              Cycle on l3                             =
   // ========================================================================
+
   #pragma omp parallel for private (thread)  
   for (int index_l3=0; index_l3 < pbi->l_size; ++index_l3) {
 

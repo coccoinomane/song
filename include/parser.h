@@ -112,6 +112,7 @@ int parser_cat(
 	       );
 
 // *** MY MODIFICATIONS ***
+
 int parser_overwrite_entry (
 		    struct file_content * pfc,
 		    char * name,
@@ -119,6 +120,14 @@ int parser_overwrite_entry (
         int * found,
 		    ErrorMsg errmsg
 		    );
+
+int parser_remove_entry (
+        struct file_content * pfc,
+        char * name,
+        int * found,
+        ErrorMsg errmsg
+        );
+        
 // *** END OF MY MODIFICATIONS ***
 
 #ifdef __cplusplus

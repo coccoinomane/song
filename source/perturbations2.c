@@ -3498,9 +3498,13 @@ int perturb2_workspace_free (
   free(ppw2->pvec_quadcollision);
 
   /* Free quadratic sources table */
-  for (int index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
-    free(ppw2->quadsources_table[index_qs2]);
-  free(ppw2->quadsources_table);
+  for (int index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2) {
+    free (ppw2->quadsources_table[index_qs2]);
+    free (ppw2->dd_quadsources_table[index_qs2]);
+  }
+  free (ppw2->quadsources_table);
+  free (ppw2->dd_quadsources_table);  
+  
 
   /* Free coupling coefficient products */
   free(ppw2->c_minus_product_12);
@@ -3555,6 +3559,8 @@ int perturb2_workspace_free (
   /* Free arrays for the rotated multipoles */
   free(ppw2->rotation_1);
   free(ppw2->rotation_2);
+
+  free (ppw2->approx);
 
   free(ppw2);
 
@@ -5172,12 +5178,12 @@ int perturb2_solve (
   class_alloc (interval_limit,(interval_number+1)*sizeof(double),ppt2->error_message);
   
   /* We shall use the 'interval_approx' array to determine what is the active approximation 
-    for each interval */
+  for each interval */
   class_alloc (interval_approx,interval_number*sizeof(int*),ppt2->error_message);
   
   for (index_interval=0; index_interval < interval_number; index_interval++)
     class_alloc (interval_approx[index_interval], ppw2->ap2_size*sizeof(int), ppt2->error_message);
-  
+
   class_call (perturb2_find_approximation_switches(
                 ppr,
                 ppr2,
@@ -5196,8 +5202,6 @@ int perturb2_solve (
     ppt2->error_message,
     ppt2->error_message);
   
-  free(interval_number_of);
-
 
 
 
@@ -5347,7 +5351,12 @@ int perturb2_solve (
   class_call (perturb2_vector_free (ppw2->pv),
      ppt2->error_message,
      ppt2->error_message);
-
+     
+   for (index_interval=0; index_interval < interval_number; index_interval++)
+    free (interval_approx[index_interval]);
+  free (interval_approx);
+  free (interval_limit); 
+  free(interval_number_of);
 
   /* Add to the sources the effects that depend on the time derivative of perturbations */
   class_call (perturb2_sources (
@@ -5965,6 +5974,8 @@ int perturb2_free(
           class_call(perturb2_free_k1_level(ppt2, index_k1), ppt2->error_message, ppt2->error_message); 
       }
     }
+
+    free (ppt2->has_allocated_sources);
 
     for (int index_type = 0; index_type < ppt2->tp2_size; index_type++) {
         

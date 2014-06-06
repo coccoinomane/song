@@ -4,6 +4,7 @@ k_scalar_min_tau0=0.05
 k_scalar_max_tau0_over_l_max=2.8
 k_scalar_step_sub=0.1
 k_scalar_step_super=0.0015 
+k_scalar_logstep_super=1.15
 k_scalar_step_transition=0.2 
 sources2_k_sampling = smart
 sources2_k3_sampling = smart

@@ -2870,8 +2870,8 @@ int fisher_lensing_variance (
   #endif
 
   /* Temporary arrays */
-  double *** inverse_f_bar, *** f;
-  class_alloc (inverse_f_bar, number_of_threads*sizeof(double**), pfi->error_message);
+  double *** inverse_f, *** f;
+  class_alloc (inverse_f, number_of_threads*sizeof(double**), pfi->error_message);
   class_alloc (f, number_of_threads*sizeof(double**), pfi->error_message);
 
   #pragma omp parallel shared (abort) private (thread)
@@ -2880,22 +2880,26 @@ int fisher_lensing_variance (
     thread = omp_get_thread_num();
     #endif
 
-    class_alloc_parallel (inverse_f_bar[thread], N*sizeof(double *), pfi->error_message);
+    class_alloc_parallel (inverse_f[thread], N*sizeof(double *), pfi->error_message);
     class_alloc_parallel (f[thread], N*sizeof(double *), pfi->error_message);
-    for (int X=0; X < N; ++X) {
-      class_calloc_parallel (inverse_f_bar[thread][X], N, sizeof(double), pfi->error_message);
-      class_calloc_parallel (f[thread][X], N, sizeof(double), pfi->error_message);
-    }    
+    for (int i=0; i < N; ++i) {
+      class_calloc_parallel (inverse_f[thread][i], N, sizeof(double), pfi->error_message);
+      class_calloc_parallel (f[thread][i], N, sizeof(double), pfi->error_message);
+    }
 
     /* Start sum over the smallest multipole: l1<=l2<=l3 */
     #pragma omp for schedule (dynamic)
     for (int index_l1=0; index_l1 < pfi->l1_size; ++index_l1) {
 
+      /* Shortcuts to F_bar(l1,C,Z) and F_bar^-1(l1,C,Z) */
+      double ** f_bar = f[thread];
+      double ** inverse_f_bar = inverse_f[thread];
+
       /* By default, assume there is no lensing variance. This instruction is needed
       in order for the 'goto' statements to work */
       for (int i=0; i < N; ++i)
         for (int j=0; j < N; ++j)
-          f[thread][i][j] = pfi->fisher_matrix_CZ_smallest[index_l1][i][j];
+          f_bar[i][j] = pfi->fisher_matrix_CZ_smallest[index_l1][i][j];
     
       /* Determine current l1 value */
       int l1 = pfi->l1[index_l1];
@@ -2911,21 +2915,21 @@ int fisher_lensing_variance (
       /* Limit the computation of the lensing variance only to those l's where we can trust
       the linear C_l^{\phi\phi}. Not doing so results in ~1% differences in the Fisher
       matrix elements of the local and intrinsic bispectra. */
-      int l_max = 0;
+      int l1_max = 0;
     
       if (pfi->has_fisher_t == _TRUE_)
-        l_max = MAX (l_max, pbi->lmax_lensing_corrT);
+        l1_max = MAX (l1_max, pbi->lmax_lensing_corrT);
       if (pfi->has_fisher_e == _TRUE_)
-        l_max = MAX (l_max, pbi->lmax_lensing_corrE);
+        l1_max = MAX (l1_max, pbi->lmax_lensing_corrE);
     
-      if (l1>l_max)
+      if (l1>l1_max)
         goto lensing_variance_final_step;
 
       /* Skip l1 contributions where the Fisher matrix vanishes. This might happen, for example,
       when l1 is very close to the maximum l, since l1 is the smallest multipole in the sum. */
       int skip = _TRUE_;
       for (int i=0; i < N; ++i)
-        if (fabs(pfi->fisher_matrix_CZ_smallest[index_l1][i][i]) > _MINUSCULE_)
+        if (fabs(f_bar[i][i]) > _MINUSCULE_)
           skip = _FALSE_;
 
       if (skip == _TRUE_) {
@@ -2941,13 +2945,13 @@ int fisher_lensing_variance (
       2) a bispectrum has been artificially set to zero for this value of (l1,C,Z) (row of zeros)
       3) two of the bispectra included in the Fisher matrix analysis are too similar, e.g.,
       because you have asked for lensing=yes and for cmb-lensing at the same time (two equal rows) */
-      double det = Determinant(pfi->fisher_matrix_CZ_smallest[index_l1], N);
+      double det = Determinant(f_bar, N);
       if (fabs(det) < _MINUSCULE_) {
 
         if (pfi->fisher_verbose > 2) {
           printf ("     * skipping the contribution from l1=%d to the lensing variance (det=%g too small)\n", l1, det);
           printf ("     * F_bar matrix:\n");
-          PrintMatrix (pfi->fisher_matrix_CZ_smallest[index_l1], N);
+          PrintMatrix (f_bar, N);
         }
 
         goto lensing_variance_final_step;
@@ -2966,14 +2970,14 @@ int fisher_lensing_variance (
       double l1_contribution = 0;
   
       /* Invert the Fisher matrix with indices Z and C (i and p in Eq. 5.25 of 1101.2234) */
-      InverseMatrix (pfi->fisher_matrix_CZ_smallest[index_l1], N, inverse_f_bar[thread]);
+      InverseMatrix (f_bar, N, inverse_f_bar);
     
       /* Debug - print the matrix and its inverse */
       // if ((l1==1000) || (l1==986)) {
       //   printf ("F_bar(l1) for l1=%d, determinant = %g\n", l1, det);
       //   PrintMatrix (pfi->fisher_matrix_CZ_smallest[index_l1], N);
       //   printf ("F_bar^{-1}(l1) for l1=%d:\n", l1);
-      //   PrintMatrix (inverse_f_bar[thread], N);
+      //   PrintMatrix (inverse_f_bar, N);
       // }
   
       /* Find the lensing-induced noise contribution to the Fisher matrix coming from the considered
@@ -3001,7 +3005,7 @@ int fisher_lensing_variance (
           /* Contribution to the inverse Fisher matrix from this (l1,Z,C) */
           int index_C = pfi->index_ft_cmb_lensing_kernel*pfi->ff_size+C;
           int index_Z = pfi->index_ft_cmb_lensing_kernel*pfi->ff_size+Z;
-          inverse_f_bar[thread][index_C][index_Z] += noise_correction;
+          inverse_f_bar[index_C][index_Z] += noise_correction;
 
           /* Debug - print out the correction to F_bar(l1,C,Z)^-1. To plot the file in gnuplot, do:
           set term wxt 1; set log; plot [2:100] "noise_correction.dat" u 1:(abs($5)) every\
@@ -3013,15 +3017,15 @@ int fisher_lensing_variance (
           //     noise_correction,
           //     C_ZP*C_CP/(2*l1+1),
           //     C_tot_CZ*C_PP/(2*l1+1),
-          //     inverse_f_bar[thread][index_C][index_Z],
+          //     inverse_f_bar[index_C][index_Z],
           //     (pbi->has_intrinsic==_TRUE_)?
-          //     C_ZP*C_CP*inverse_f_bar[thread][pfi->index_ft_intrinsic*pfi->ff_size+C]
+          //     C_ZP*C_CP*inverse_f_bar[pfi->index_ft_intrinsic*pfi->ff_size+C]
           //     [pfi->index_ft_intrinsic*pfi->ff_size+Z]:0,
           //     (pbi->has_intrinsic_squeezed==_TRUE_)?
-          //     C_ZP*C_CP*inverse_f_bar[thread][pfi->index_ft_intrinsic_squeezed*pfi->ff_size+C]
+          //     C_ZP*C_CP*inverse_f_bar[pfi->index_ft_intrinsic_squeezed*pfi->ff_size+C]
           //     [pfi->index_ft_intrinsic_squeezed*pfi->ff_size+Z]:0,
           //     (pbi->has_local_model==_TRUE_)?
-          //     C_ZP*C_CP*inverse_f_bar[thread][pfi->index_ft_local*pfi->ff_size+C]
+          //     C_ZP*C_CP*inverse_f_bar[pfi->index_ft_local*pfi->ff_size+C]
           //     [pfi->index_ft_local*pfi->ff_size+Z]:0
           //   );
 
@@ -3043,31 +3047,31 @@ int fisher_lensing_variance (
       /* Debug - print the inverse matrix after adding the noise correction */
       // if ((l1==1000) || (l1==986)) {
       //   printf ("F^{-1}(l1) for l1=%d:\n", l1);
-      //   PrintMatrix (inverse_f_bar[thread], N);
+      //   PrintMatrix (inverse_f_bar, N);
       // }
     
       /* Check that the matrix is not singular */
-      det = Determinant(inverse_f_bar[thread], N);
+      det = Determinant(inverse_f_bar, N);
       if (fabs(det) < _MINUSCULE_) {
 
         if (pfi->fisher_verbose > 2) {
           printf ("     * skipping the contribution from l1=%d to the lensing variance (det=%g too small)\n", l1, det);
           printf ("     * F_bar^{-1} + noise matrix:\n");
-          PrintMatrix (pfi->fisher_matrix_CZ_smallest[index_l1], N);
+          PrintMatrix (inverse_f_bar, N);
         }
 
         goto lensing_variance_final_step;
       }
 
-      /* Invert the contribution from (l1,Z,C) */
-      InverseMatrix (inverse_f_bar[thread], N, f[thread]);
+      /* Invert the contribution from (l1,Z,C) and overwrite f_bar */
+      InverseMatrix (inverse_f_bar, N, f_bar);
 
       /* Check that the inversion didn't produce nans */
       for (int index_ft_1=0; index_ft_1 < pfi->ft_size; ++index_ft_1)
         for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2)
           for (int C=0; C < pfi->ff_size; ++C)
             for (int Z=0; Z < pfi->ff_size; ++Z)
-              class_test_parallel (isnan (f[thread][index_ft_1*pfi->ff_size+C][index_ft_2*pfi->ff_size+Z]),
+              class_test_parallel (isnan (f_bar[index_ft_1*pfi->ff_size+C][index_ft_2*pfi->ff_size+Z]),
                 pfi->error_message,
                 "stopping to prevent nans");
 
@@ -3098,7 +3102,7 @@ int fisher_lensing_variance (
 
               #pragma omp atomic
               pfi->fisher_matrix_lensvar_smallest[index_l1][index_ft_1][index_ft_2]
-                += correction * f[thread][index_ft_1*pfi->ff_size+C][index_ft_2*pfi->ff_size+Z];
+                += correction * f_bar[index_ft_1*pfi->ff_size+C][index_ft_2*pfi->ff_size+Z];
     
               /* Rescale also the zero-signal matrix */
               #pragma omp atomic
@@ -3113,15 +3117,15 @@ int fisher_lensing_variance (
     
     /* Free memory */
     for (int X=0; X < N; ++X) {
-      free (inverse_f_bar[thread][X]);
+      free (inverse_f[thread][X]);
       free (f[thread][X]);
     }
-    free (inverse_f_bar[thread]);
+    free (inverse_f[thread]);
     free (f[thread]);
     
   } if (abort == _TRUE_) return _FAILURE_; // end of parallel region
 
-  free (inverse_f_bar);
+  free (inverse_f);
   free (f);
 
 

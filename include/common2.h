@@ -95,17 +95,17 @@ struct precision2
   /* Maximum 'm' contained in ppr2->m */
   int m_max_2nd_order;
 
-  /* index_m_max[l] is the maximum allowed m (in ppr2->m) for a given l */
-  int * index_m_max;
-
   /* Logical array of size ppr2->m_max_2nd_order. If m is contained in ppr2->m,
   then ppr2->compute[m] == _TRUE_ */
   int compute_m[_MAX_NUM_AZIMUTHAL_];
 
   /* ppr2->index_m[M] contains the index of 'M' inside ppr2->m. If M is not contained
   in ppr2->m, then ppr2->index_m[M]=-1. */
-  int * index_m;
+  int index_m[_MAX_NUM_AZIMUTHAL_];
     
+  /* index_m_max[l] is the maximum allowed m (in ppr2->m) for a given l */
+  int * index_m_max;
+
 
   // ==============================
   // =       Time samplings       =

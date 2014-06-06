@@ -638,15 +638,19 @@ int parser_cat(
  * Modify one entry of the file_content structure given as argument. It is up
  * to you to check that the new string 'new_value' is shorter than the macro
  * _ARGUMENT_LENGTH_MAX_.
+ *
+ * If 'found' points to an integer, overwrite it with _TRUE_ or _FALSE_
+ * whether the entry corresponding to 'name' was found or not, and just
+ * exit from the function in the latter case. If 'found' is a NULL pointer
+ * instead, return an error if the entry does not exist.
  */
-
 int parser_overwrite_entry (
-		    struct file_content * pfc,
-		    char * name,
-		    char * new_value,
+        struct file_content * pfc,
+        char * name,
+        char * new_value,
         int * found,
-		    ErrorMsg errmsg
-		    )
+        ErrorMsg errmsg
+        )
 {
 
   /* search parameter */
@@ -655,8 +659,6 @@ int parser_overwrite_entry (
   while ((index < pfc->size) && (strcmp(pfc->name[index],name) != 0))
     index++;
 
-  /* if parameter not found, either return an error or overwrite 'found'  */
-  
   if (found == NULL) {
     class_test (index == pfc->size,
       errmsg,
@@ -688,8 +690,62 @@ int parser_overwrite_entry (
 }
 
 
+/**
+ * Remove an entry from the file_content structure.
+ *
+ * If 'found' points to an integer, overwrite it with _TRUE_ or _FALSE_
+ * whether the entry corresponding to 'name' was found or not, and just
+ * exit from the function in the latter case. If 'found' is a NULL pointer
+ * instead, return an error if the entry does not exist.
+ */
+int parser_remove_entry (
+        struct file_content * pfc,
+        char * name,
+        int * found,
+        ErrorMsg errmsg
+        )
+{
+
+  /* search parameter */
+
+  int index=0;
+  while ((index < pfc->size) && (strcmp(pfc->name[index],name) != 0))
+    index++;
+  
+  if (found == NULL) {
+    class_test (index == pfc->size,
+      errmsg,
+      "parameter '%s' not found in input file structure", name);
+  }
+  else {
+    if (index < pfc->size) {
+      *found = _TRUE_;
+    }
+    else {
+      *found = _FALSE_;
+      return _SUCCESS_;
+    }
+  }
+
+  /* removing the entry is equivalent to setting its name to an empty string,
+  so that it will never be found. */
+
+  strcpy (pfc->name[index], "");
+
+  /* if parameter overwritten correctly, set the flag 
+     associated with this parameter in the file_content structure */ 
+
+  pfc->overwritten[index] = _TRUE_;
+
+  /* if everything proceeded normally, return _SUCCESS_ */
+
+  return _SUCCESS_;
+
+}
 
 
+
+// *** END OF MY MODIFICATIONS ***
 
 
 

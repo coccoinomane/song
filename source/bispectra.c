@@ -3828,7 +3828,7 @@ int bispectra_load_from_disk(
   class_open (pbi->bispectra_files[index_bt], pbi->bispectra_paths[index_bt], "rb", pbi->error_message);
 
   /* Print some debug */
-  if (pbi->bispectra_verbose > 0)
+  if (pbi->bispectra_verbose > 2)
     printf("     * reading bispectra from disk for index_bt=%d on'%s'\n", index_bt, pbi->bispectra_paths[index_bt]);
 
   for (int X = 0; X < pbi->bf_size; ++X) {

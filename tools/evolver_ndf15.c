@@ -271,14 +271,28 @@ int evolver_ndf15(
 
   /* Some CLASS-specific stuff:*/
   next=0;
-  /* Al primo ciclo, 'next' è la posizione dove t_vec (i.e. tau_sampling) diventa maggiore di t0 (che sarebbe x_ini, che sarebbe l'inizio
-    dell'intervallo di evoluzione considerato).    Se non c'è overlap tra t_vec e l'intervallo che stiamo considerando,
-    next sarà uguale a zero.  Nota che non c'è rischio di andare oltre alle dimensioni di t_vec con next, in quanto
-    l'ultimo elemento di t_vec (tau oggi) è sempre maggiore di qualsiasi elemento degli intervalli.
-    Ai cicli successivi, t_vec[next] è il valore di t_vec più vicino a tnew (lo stato dell'evolver). Vedi i commenti
-    vicino al ciclo while ((next<tres)&&(tdir * (tnew - t_vec[next]) >= 0.0)). */
+  /* Al primo ciclo, 'next' è la posizione dove t_vec (i.e. tau_sampling) diventa maggiore di t0 (che sarebbe x_ini,
+  che sarebbe l'inizio dell'intervallo di evoluzione considerato). Se non c'è overlap tra t_vec e l'intervallo che
+  stiamo considerando, next sarà uguale a zero.  Nota che non c'è rischio di andare oltre alle dimensioni di t_vec
+  con next, in quanto l'ultimo elemento di t_vec (la fine di ppt->tau_sampling, cioè tau_oggi, per standard CLASS,
+  la fine di ppt->tau_sampling_quadsources, non necessariamente tau_oggi, per SONG quando chiama perturb_init, la
+  fine di ppt2->tau_sampling per second-order SONG) è sempre maggiore di qualsiasi elemento degli intervalli.
+  Ai cicli successivi, t_vec[next] è il valore di t_vec più vicino a tnew (lo stato dell'evolver). Vedi i commenti
+  vicino al ciclo while ((next<tres)&&(tdir * (tnew - t_vec[next]) >= 0.0)). */
+
+
   
-  while (t_vec[next] < t0) next++;
+  // *** MY MODIFICATIONS ***
+  while (t_vec[next] < t0) { 
+    next++;
+    class_test (next >= tres,
+      error_message,
+      "stopping to prevent seg fault; accessing time array out of bounds: t0=%g, t_vec[tres-1]=%g",
+      t0, t_vec[next-1]);
+  }
+  // *** ORIGINAL CLASS
+  // while (t_vec[next] < t0) next++;
+  // *** END OF MY MODIFICATIONS ***
 
   // if (verbose > 1){
   //   numidx=0;

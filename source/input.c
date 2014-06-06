@@ -249,7 +249,8 @@ int input_init(
   int * pointer_to_int;
   char string1[_ARGUMENT_LENGTH_MAX_];
   char string2[_ARGUMENT_LENGTH_MAX_];
-
+  char buffer[1024];
+  
   double Omega_tot;
 
   int i;
@@ -2426,6 +2427,12 @@ less than %d values for 'experiment_beam_fwhm'", _N_FREQUENCY_CHANNELS_MAX_);
          errmsg);  
   
     if ((flag1 == _TRUE_) && (string1 != NULL)) {
+      
+      /* Expand ~,.,.. and other symbols in the path */
+      wordexp_t exp_result;
+      wordexp(string1, &exp_result, 0);
+      strcpy(string1, exp_result.we_wordv[0]);
+
       strcpy(ppr->run_dir, string1);
 
       /* By default, we set the data_dir to be the same as the run_dir, that is, we
@@ -2486,14 +2493,19 @@ less than %d values for 'experiment_beam_fwhm'", _N_FREQUENCY_CHANNELS_MAX_);
     
   } // end of if not load_run
 
-
   /* In any case, store or load run, make the root coincide with the run directory, so that the output
   files (cl.dat, fisher.dat, etc.) will be dumped there */
   if ((ppr->store_run == _TRUE_) || (ppr->load_run == _TRUE_))
     sprintf (pop->root, "%s/", ppr->run_dir);
 
-
+  /* Set an environment variable for the run directory, so that it can be used in the
+  parameter file by the user, for example to set the location of the data directory */
+  setenv ("SONG_RUN", ppr->run_dir, 1);
+  setenv ("SONG_RUN_PATH", ppr->run_dir, 1);
+  setenv ("SONG_RUN_DIR", ppr->run_dir, 1);
+  setenv ("SONG_RUN_FOLDER", ppr->run_dir, 1);
   
+
   // ============================================================================================
   // =                                   Read data directory                                    =
   // ============================================================================================
@@ -2506,6 +2518,10 @@ less than %d values for 'experiment_beam_fwhm'", _N_FREQUENCY_CHANNELS_MAX_);
       errmsg);
 
   if ((flag1 == _TRUE_) && (string1 != NULL)) {
+
+    wordexp_t exp_result;
+    wordexp(string1, &exp_result, 0);
+    strcpy(string1, exp_result.we_wordv[0]);
 
     /* Check that the data directory exists, but only if it is going to be needed */
     struct stat st;

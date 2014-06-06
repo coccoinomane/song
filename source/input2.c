@@ -1271,8 +1271,6 @@ int input2_init (
   }
 
   /* Find out the index in ppr2->m corresponding to a given m. */
-  class_alloc (ppr2->index_m, (ppr2->m_max_2nd_order+1)*sizeof(int), errmsg);
-
 	for(int m=0; m<=ppr2->m_max_2nd_order; ++m) {
 
 		ppr2->index_m[m] = -1;
@@ -1747,9 +1745,6 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
 int precision2_free (struct precision2 * ppr2)
 {
   
-  free(ppr2->m);
-  free(ppr2->compute_m);
-  free(ppr2->index_m);
   free(ppr2->index_m_max);
     
   return _SUCCESS_;
