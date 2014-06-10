@@ -434,16 +434,24 @@ int fisher_indices (
   
   /* Print information on the Fisher matrix to be computed */
   if (pfi->fisher_verbose > 0) {
-    printf (" -> Fisher matrix will consider %d field%s: ",
+    printf (" -> Fisher matrix will include %d field%s (",
       pfi->ff_size, (pfi->ff_size!=1)?"s":"");
     for (int index_ff=0; index_ff < (pfi->ff_size-1); ++index_ff)
-      printf ("%s, ", pfi->ff_labels[index_ff]);
-    printf ("%s", pfi->ff_labels[pfi->ff_size-1]);
+      printf ("%s,", pfi->ff_labels[index_ff]);
+    printf ("%s)", pfi->ff_labels[pfi->ff_size-1]);
     int n_ignored = pbi->bf_size - pfi->ff_size;
     if (n_ignored > 0)
-      printf (" (ignoring %d)\n", n_ignored);
+      printf (" and ignore %d\n", n_ignored);
     else
       printf ("\n");
+    
+    if (pfi->squeezed_ratio > 1)
+      printf (" -> only squeezed triangles with L2/L1 > %g\n",
+        pfi->squeezed_ratio);
+
+    if (pfi->squeezed_ratio < -1)
+      printf (" -> only equilateral triangles with L3/L1 < %g\n",
+        fabs(pfi->squeezed_ratio));
   }
     
   // ====================================================================================
@@ -1248,6 +1256,7 @@ int fisher_compute (
 
     printf (" -> computing Fisher matrix for l_max = %d with %s interpolation\n",
       MIN (pfi->l_max_estimator, pfi->l_max), buffer);
+    
   }
 
 
@@ -2277,8 +2286,10 @@ int fisher_cross_correlate_mesh (
   // =                            Compute Fisher matrix elements                           =
   // =======================================================================================
 
-  /* We shall count the (l1,l2,l3) configurations over which we compute the estimator */
+  /* We shall count the (l1,l2,l3) configurations over which we compute the estimator,
+  and the configurations that we shall skip */
   long int counter = 0;
+  long int counter_skipped = 0;
 
   /* Parallelization variables */
   int number_of_threads = 1;
@@ -2439,12 +2450,15 @@ int fisher_cross_correlate_mesh (
           if ((l3 < pfi->l3_min_global) || (l3 > pfi->l3_max_global))
             continue;
 
-          /* Uncomment to consider only squeezed configurations */
-          // if (!(l2>=10*l1)) {
-          //   #pragma omp atomic
-          //   counter++;
-          //   continue;
-          // }
+          /* Consider only squeezed or equilateral configurations according to pfi->squeezed_ratio */
+          if (((pfi->squeezed_ratio>1)&&(l2<pfi->squeezed_ratio*l1))
+          || ((pfi->squeezed_ratio<-1)&&(l3>fabs(pfi->squeezed_ratio)*l1))) {
+            #pragma omp atomic
+            counter++;
+            #pragma omp atomic
+            counter_skipped++;
+            continue;
+          }
 
           /* Uncomment to consider only squeezed configurations, with l1 superhorizon at recombination.
           This matches the "Maldacena" limit used in Creminelli et al. 2004. */
@@ -2686,6 +2700,16 @@ int fisher_cross_correlate_mesh (
   } if (abort == _TRUE_) return _FAILURE_; // end of parallel region
   
   free (interpolated_bispectra);
+  
+  if ((pfi->fisher_verbose > 1) && (counter_skipped > 0)) {
+    printf (" -> skipped %.3g percent of %ld configurations whereby ",
+      100*(double)counter_skipped/counter, counter);
+    if (pfi->squeezed_ratio > 1)
+      printf ("L2/L1 < %g", pfi->squeezed_ratio);
+    else if (pfi->squeezed_ratio < -1)
+      printf ("L3/L1 > %g", fabs(pfi->squeezed_ratio));
+    printf ("\n");
+  }
   
   /* Include the effect of partial sky coverage and symmetrise the Fisher matrix */
   class_call (fisher_sky_coverage(pfi), pfi->error_message, pfi->error_message);
@@ -3184,7 +3208,7 @@ int fisher_allocate_interpolation_mesh(
     pfi->ft_size*sizeof(struct mesh_interpolation_workspace *****),
     pfi->error_message);
 
-    /* Allocate worspaces and intialize counters */
+  /* Allocate worspaces and intialize counters */
   for (int index_ft=0; index_ft < pfi->ft_size; ++index_ft) {
     
     /* The analytical bispectra are never interpolated */
@@ -3765,7 +3789,6 @@ int fisher_create_2D_interpolation_mesh(
     free (values[index_l2_l3]);
   
   free (values);
-
 
   return _SUCCESS_;
 

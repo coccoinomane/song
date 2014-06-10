@@ -623,8 +623,6 @@ int input2_init (
     }
   }
 
-
-
   /* Doesn't make sense not to have polarisation, if you want to compute polarisation */
   class_test ((ppt2->has_polarization2 == _FALSE_) &&
     ((ppt2->has_cmb_polarization_e == _TRUE_) || ((ppt2->has_cmb_polarization_b == _TRUE_))),
@@ -647,9 +645,6 @@ int input2_init (
 		ppt2->has_recombination_only = _TRUE_;	
 		
 	}
-
-
-
 
 
 

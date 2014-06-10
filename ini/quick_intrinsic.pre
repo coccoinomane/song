@@ -1,7 +1,7 @@
 tol_perturb_integration_2nd_order=1e-4
 tol_perturb_integration=1e-5
 
-l_max_scalars = 100
+l_max_scalars = 200
 l_logstep = 1.35
 l_linstep = 50
 
@@ -11,22 +11,25 @@ sources2_k_sampling = smart
 # =                      First-order k-sampling                    =
 # ==================================================================
 
-# Quick debug
-k_scalar_min_tau0=0.05
-k_scalar_step_sub=3
-k_scalar_step_super=1
-k_scalar_logstep_super=20
-k_scalar_step_transition=0.2
-
-# Ref.pre for the first order k-sampling
+## Quick debug
 # k_scalar_min_tau0=0.05
-# k_scalar_step_sub=0.1
-# k_scalar_step_super=0.025
-# k_scalar_logstep_super=1.2
+# k_scalar_max_tau0_over_l_max=2
+# k_scalar_step_sub=3
+# k_scalar_step_super=1
+# k_scalar_logstep_super=20
 # k_scalar_step_transition=0.2
 
-# Permillish precision on the local template f_nl
+## Ref.pre for the first order k-sampling
+k_scalar_min_tau0=0.05
+k_scalar_max_tau0_over_l_max=2.8
+k_scalar_step_sub=0.1
+k_scalar_logstep_super=1.2
+k_scalar_step_super=0.025
+k_scalar_step_transition=0.2
+
+## Permillish precision on the local template f_nl
 # k_scalar_min_tau0=0.05
+# k_scalar_max_tau0_over_l_max=2.8
 # k_scalar_step_sub=0.1
 # k_scalar_step_super=0.0015
 # k_scalar_logstep_super=1.4
@@ -38,7 +41,7 @@ k_scalar_step_transition=0.2
 # =                     Second-order k-sampling                    =
 # ==================================================================
 
-# Second-order k-sampling REF.PRE
+## Second-order k-sampling REF.PRE
 # k_scalar_min_tau0_2nd_order = 0.01
 # k_scalar_max_tau0_over_l_max_2nd_order = 2
 # k_scalar_step_sub_2nd_order = 0.1
@@ -46,36 +49,36 @@ k_scalar_step_transition=0.2
 # k_scalar_logstep_super_2nd_order = 1.2
 # k_scalar_step_transition_2nd_order = 0.2
 
-# Second-order k-sampling INSTANTANEOUS FOR DEBUG
+## Second-order k-sampling QUICK FOR DEBUG
 # k_scalar_min_tau0_2nd_order = 0.1
-# k_scalar_max_tau0_over_l_max_2nd_order = 2
+# k_scalar_max_tau0_over_l_max_2nd_order = 1
 # k_scalar_step_sub_2nd_order = 1
 # k_scalar_linstep_super_2nd_order = 0.5
-# k_scalar_logstep_super_2nd_order = 10
+# k_scalar_logstep_super_2nd_order = 1.5
 # k_scalar_step_transition_2nd_order = 0.2
 
-# Second-order k-sampling QUICK FOR DEBUG
+## Second-order k-sampling INSTANTANEOUS FOR DEBUG
 k_scalar_min_tau0_2nd_order = 0.1
 k_scalar_max_tau0_over_l_max_2nd_order = 1
 k_scalar_step_sub_2nd_order = 1
 k_scalar_linstep_super_2nd_order = 0.5
-k_scalar_logstep_super_2nd_order = 1.5
+k_scalar_logstep_super_2nd_order = 10
 k_scalar_step_transition_2nd_order = 0.2
 
-# Second-order sampling for k3 (lin, log, smart, angle)
+## Second-order sampling for k3 (lin, log, smart, angle)
 sources2_k3_sampling = smart
 k3_size_min = 5
 
-# Second-order k-sampling for the transfer functions
+## Second-order k-sampling for the transfer functions
 k_step_trans_scalars = 0.004
 k_step_trans_scalars_2nd_order = 0.004
 transfer2_k_sampling = class
 
-# Linear step dx when sampling the j_l1(x) and J_Llm(x) and j_l(x)
+## Linear step dx when sampling the j_l1(x) and J_Llm(x) and j_l(x)
 bessel_x_step_2nd_order = 0.2
 bessel_x_step = 0.2
 	
-# Interpolation parameters
+## Interpolation parameters
 quadsources_time_interpolation = cubic
 sources_time_interpolation = linear
 bessels_interpolation = linear

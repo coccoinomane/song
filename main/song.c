@@ -186,7 +186,7 @@ int main(int argc, char **argv) {
     printf("\n\nError in background_free \n=>%s\n",ba.error_message);
     return _FAILURE_;
   }
-
+  
   if (precision2_free(&pr2) == _FAILURE_) {
     printf("\n\nError in precision2_free \n=>%s\n",pr2.error_message);
     return _FAILURE_;

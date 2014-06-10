@@ -2662,11 +2662,14 @@ double Determinant(double **a,int n)
 
    if (n < 1) { /* Error */
 
-   } else if (n == 1) { /* Shouldn't get used */
+   }
+   else if (n == 1) { /* Shouldn't get used */
       det = a[0][0];
-   } else if (n == 2) {
+   }
+   else if (n == 2) {
       det = a[0][0] * a[1][1] - a[1][0] * a[0][1];
-   } else {
+   }
+   else {
       det = 0;
       for (j1=0;j1<n;j1++) {
          m = malloc((n-1)*sizeof(double *));

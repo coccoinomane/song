@@ -1234,8 +1234,8 @@ int perturb2_get_lm_lists (
   /* Free memory */
   free (three_j_000);
   free (three_j_mmm);
-  for (int l1=0; l1 <= ppt2->l1_max; ++l1)
-    free (temp[l1]);
+  for (int l2=0; l2 < l_size_max; ++l2)
+    free (temp[l2]);
   free (temp);
   
   return _SUCCESS_;
@@ -3559,6 +3559,8 @@ int perturb2_workspace_free (
   /* Free arrays for the rotated multipoles */
   free(ppw2->rotation_1);
   free(ppw2->rotation_2);
+  free(ppw2->rotation_1_minus);
+  free(ppw2->rotation_2_minus);
 
   free (ppw2->approx);
 
@@ -5959,7 +5961,11 @@ int perturb2_free(
      )
 {
 
-  if ((ppt2->has_perturbations2 == _TRUE_) && (ppt2->has_early_transfers1_only == _FALSE_)) {
+  /* Do not free memory if SONG was run only partially for debug purposes */
+  if (ppt2->has_early_transfers1_only == _FALSE_)
+    return _SUCCESS_;
+
+  if (ppt2->has_perturbations2 == _TRUE_) {
     
     int k1_size = ppt2->k_size;
 
@@ -6057,13 +6063,28 @@ int perturb2_free(
       free(ppt2->nlm_array[n]);
     }
     free(ppt2->nlm_array);
-    
-    
 
-    /* Close sources files and associated arrays */
-    if ((ppr2->store_sources_to_disk == _TRUE_) && (ppr2->load_sources_from_disk == _TRUE_)) {
+    /* Free coupling coefficients */
+    int n_multipoles = size_l_indexm (ppt2->largest_l, ppt2->m, ppt2->m_size);
+
+    for (int i=0; i < n_multipoles; ++i) {
+      free (ppt2->c_minus[i]);
+      free (ppt2->c_plus[i]);
+      free (ppt2->d_minus[i]);
+      free (ppt2->d_plus[i]);
+      free (ppt2->d_zero[i]);
+    }
+
+    free (ppt2->c_minus);
+    free (ppt2->c_plus);
+    free (ppt2->d_minus);
+    free (ppt2->d_plus);
+    free (ppt2->d_zero);
+
+    /* Free file arrays */
+    if ((ppr2->store_sources_to_disk == _TRUE_) || (ppr2->load_sources_from_disk == _TRUE_)) {
     
-      fclose(ppt2->sources_status_file);
+      // fclose(ppt2->sources_status_file);
     
       for (int index_k1=0; index_k1<ppt2->k_size; ++index_k1)
         free (ppt2->sources_paths[index_k1]);
@@ -6072,7 +6093,6 @@ int perturb2_free(
       free (ppt2->sources_paths);
     
     }
-
 
     /* Close the debug files */
     if(ppt2->has_debug_files) {
@@ -8872,10 +8892,11 @@ int perturb2_source_terms (
           /* Quadratic metric contribution from the Liouville operator. The monopole
           contribution exists only if using the standard linear potentials (cfr 4.97 and 4.100
           of my thesis) */
-          if ((ppt2->has_quad_metric_in_los == _TRUE_) && (ppt2->use_exponential_potentials == _FALSE_))
+          if ((ppt2->has_quad_metric_in_los == _TRUE_)
+          && (ppt2->use_exponential_potentials == _FALSE_))
             source += 8 * (phi_1*phi_prime_2 + phi_2*phi_prime_1);
 
-        }
+        } // end of monopole sources
 
         // *** Dipole source
   
@@ -8889,19 +8910,22 @@ int perturb2_source_terms (
           other half of the ISW effect. We add it only if we integrate by parts. */
           if (ppt2->has_metric_in_los == _TRUE_) {
             if (m == 0) source += 4 * k * psi;
-            if ((m == 1) && (ppt2->has_isw == _TRUE_)) source += - 4 * omega_m1_prime;
+            if (m == 1) source += - 4 * omega_m1_prime;
           }
+          else if (ppt2->has_isw == _TRUE_)
+            if (m == 1) source += - 4 * omega_m1_prime;
 
           /* Quadratic metric contribution from the Liouville operator  */
-          if (ppt2->has_quad_metric_in_los == _TRUE_)
-            
+          if (ppt2->has_quad_metric_in_los == _TRUE_) {
             /* Using the exponential potentials induces a sign difference in the dipole term
             (cfr 4.97 and 4.100 of my thesis) */
             if (ppt2->use_exponential_potentials == _FALSE_)
               source += - 4 * (k1_m[m+1]*psi_1*(psi_2-phi_2) + k2_m[m+1]*psi_2*(psi_1-phi_1));
             else
               source += - 4 * (k1_m[m+1]*psi_1*(-psi_2-phi_2) + k2_m[m+1]*psi_2*(-psi_1-phi_1));
-        }
+          }
+
+        } // end of dipole sources
 
 
         // *** Quadrupole source
@@ -8914,9 +8938,11 @@ int perturb2_source_terms (
 
           /* Tensor metric contribution */
           if (ppt2->has_metric_in_los == _TRUE_)
-            if ((m==2) && (ppt2->has_isw == _TRUE_)) source += 4 * gamma_m2_prime;
-        
-        }
+            if (m == 2) source += 4 * gamma_m2_prime;
+          else if (ppt2->has_isw == _TRUE_)
+            if (m == 2) source += 4 * gamma_m2_prime;
+
+        } // end of quadrupole sources
 
   
         // *** Contributions valid for all multipoles

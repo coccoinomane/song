@@ -23,7 +23,6 @@ it seems that setting _MIN_K3_DISTANCE_=1e-10 is ok. */
 
 /* The following macros are used to index many arrays in the code.  The idea is that
 the (L,M) multipole is found at y[monopole_g + lm(L,M)].
-
 We define a similar function to index the massive hierarchy, with l_max set to 2
 since we retain only the n=0,1,2 beta-moments for baryons and cold dark matter. */
 
@@ -40,7 +39,6 @@ since we retain only the n=0,1,2 beta-moments for baryons and cold dark matter. 
 
 /* Used to index ptr2->transfer */
 #define lm_cls(index_l,index_m) ptr2->lm_array[index_l][index_m]
-
 
 /* Maximum number of azimuthal numbers that can be computed. We set it so that the
 factorial of 'm' never overflows, assuming a limit of 10^30. The factorial of m is

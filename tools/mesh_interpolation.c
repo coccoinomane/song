@@ -743,11 +743,10 @@ int mesh_2D_free (
   if ((pw->n_boxes > 0) && (pw->n_points > 0)) {
 
     /* Free mesh */
-    for(int i = 0; i<pw->n_boxes;i++) {
+    for(int i = 0; i<pw->n_boxes; i++) {
       for(int j = 0; j<pw->n_boxes; j++) {
         for(int m = 0; m<pw->grid_2D[i][j]; m++)
           free (pw->mesh_2D[i][j][m]);
-
         free (pw->mesh_2D[i][j]);
       }
       free (pw->mesh_2D[i]);

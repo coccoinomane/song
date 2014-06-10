@@ -304,6 +304,14 @@ struct fisher {
   where i,j,k are the field indices (eg. TET). */
   struct mesh_interpolation_workspace ****** mesh_workspaces;
 
+  /* When larger than one, forces SONG to only consider squeezed triangles when computing the
+  Fisher matrix for all bispectra. The squeezed triangles are chosen so that
+  L2/L1 > squeezed_ratio. Since L1<=L2<=L3, this forces also L3/L1 to be larger than 'squeezed_ratio'.
+  When smaller than minus 1, SONG will only consider equilateral triangles with
+  L3/L1 < abs(squeezed_ratio). Therefore, the larger and more positive 'squeezed_ratio' is,
+  the more squeezed the considered triangles are. When 'squeezed_ratio' is negative, the triangles
+  will be more and more equilateral as 'squeezed_ratio' approaches -1. */
+  double squeezed_ratio;
 
   // ===========================================================================================
   // =                                    Technical parameter                                  =

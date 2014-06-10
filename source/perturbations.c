@@ -409,82 +409,82 @@ int perturb_init(
 int perturb_free(
      struct precision * ppr,
      struct perturbs * ppt
-     ) {
+     )
+{
 
-  int index_mode,index_ic,index_type;
+  // *** MY MODIFICATIONS ***
+  
+  /* Free second-order related arrays. This should be done before freeing the standard
+  ppt arrays because it relies on them. */
+  
+  if (ppt->has_perturbations2 == _TRUE_) {  
+
+    for (int index_mode = 0; index_mode < ppt->md_size; index_mode++) {
+    
+      for (int index_ic = 0; index_ic < ppt->ic_size[index_mode]; index_ic++) {
+
+        for (int index_qs = 0; index_qs < ppt->qs_size[index_mode]; index_qs++) {
+
+          free(ppt->quadsources[index_mode][index_ic*ppt->qs_size[index_mode]+index_qs]);
+
+          if (ppr->quadsources_time_interpolation == cubic_interpolation)
+            free(ppt->dd_quadsources[index_mode][index_ic*ppt->qs_size[index_mode]+index_qs]);
+
+        } // end of for (index_qs)
+
+      } // end of for (index_ic)
+
+      for (int index_type = 0; index_type < ppt->qs_size[index_mode]; index_type++)
+        free(ppt->qs_labels[index_mode][index_type]);
+
+      free(ppt->quadsources[index_mode]);
+
+      if (ppr->quadsources_time_interpolation == cubic_interpolation)
+        free(ppt->dd_quadsources[index_mode]);
+        
+      free(ppt->qs_labels[index_mode]);  
+
+    } // end of for (index_mode)
+
+    free(ppt->quadsources);
+    if (ppr->quadsources_time_interpolation == cubic_interpolation)
+      free(ppt->dd_quadsources);
+    free(ppt->qs_labels);    
+    free(ppt->qs_size);
+    free(ppt->tau_sampling_quadsources);
+    
+  }
+
+  // *** END OF MY MODIFICATIONS ***
+
+
 
   if (ppt->has_perturbations == _TRUE_) {
 
-    for (index_mode = 0; index_mode < ppt->md_size; index_mode++) {
+    for (int index_mode = 0; index_mode < ppt->md_size; index_mode++) {
     
-      for (index_ic = 0; index_ic < ppt->ic_size[index_mode]; index_ic++) {
+      for (int index_ic = 0; index_ic < ppt->ic_size[index_mode]; index_ic++) {
 
-        for (index_type = 0; index_type < ppt->tp_size[index_mode]; index_type++)
+        for (int index_type = 0; index_type < ppt->tp_size[index_mode]; index_type++)
           free(ppt->sources[index_mode][index_ic*ppt->tp_size[index_mode]+index_type]);
-
-        // *** MY MODIFICATIONS ***
-        if (ppt->has_perturbations2 == _TRUE_) {
-          for (index_type = 0; index_type < ppt->qs_size[index_mode]; index_type++) {
-
-            free(ppt->quadsources[index_mode][index_ic*ppt->qs_size[index_mode]+index_type]);
-
-            if (ppr->quadsources_time_interpolation == cubic_interpolation)
-              free(ppt->dd_quadsources[index_mode][index_ic*ppt->qs_size[index_mode]+index_type]);
-
-          } // end of for(index_qs)
-          
-        } // end of if(has_perturbations2)
-
-        // *** END OF MY MODIFICATIONS ***
   
-      } // end of for index_ic
-
-      /* This loop has to stay here because ppt->qs_labels doesn't depend on the initial conditions. */
-      if (ppt->has_perturbations2 == _TRUE_)
-        for (index_type = 0; index_type < ppt->qs_size[index_mode]; index_type++)
-          free(ppt->qs_labels[index_mode][index_type]);
-
+      } // end of for (index_ic)
       
-
-      // *** MY MODIFICATIONS ***
-      /* If 2nd order perturbations were requested, the ppt->k array was never allocated, but
-      was just assigned to be equal to ppt2->k1 */
-      if (ppt->has_perturbations2 == _FALSE_)
-        free(ppt->k[index_mode]);
+      free(ppt->k[index_mode]);
 
       free(ppt->sources[index_mode]);
 
-      if (ppt->has_perturbations2 == _TRUE_) {
-
-        free(ppt->quadsources[index_mode]);
-
-        if (ppr->quadsources_time_interpolation == cubic_interpolation)
-          free(ppt->dd_quadsources[index_mode]);
-          
-        free(ppt->qs_labels[index_mode]);  
-      }
-      // *** END OF MY MODIFICATIONS ***
-
-    } // end of for(index_mode)
+    } // end of for (index_mode)
     
     free(ppt->tau_sampling);
    
     free(ppt->tp_size);
     
-    if (ppt->has_perturbations2 == _TRUE_)
-      free(ppt->qs_size);
-
     free(ppt->ic_size);
 
-    // *** MY MODIFICATIONS ***
-    /* If 2nd order perturbations were requested, the ppt->k array was never allocated, since
-      was just assigned to be equal to ppt2->k1 */
-    if (ppt->has_perturbations2 == _FALSE_) {
-      free(ppt->k_size);
-      free(ppt->k_size_cl);
-      free(ppt->k);
-    }
-    // *** END OF MY MODIFICATIONS ***
+    free(ppt->k_size);
+    free(ppt->k_size_cl);
+    free(ppt->k);
     
     free(ppt->sources);
 
@@ -494,21 +494,8 @@ int perturb_free(
       free(ppt->selection_tau_max);
       free(ppt->selection_tau);
       free(ppt->selection_function);
-
     }    
     
-    // *** MY MODIFICATIONS ***
-    if (ppt->has_perturbations2 == _TRUE_) {
-
-      free(ppt->quadsources);
-
-      if (ppr->quadsources_time_interpolation == cubic_interpolation)
-        free(ppt->dd_quadsources);
-        
-      free(ppt->qs_labels);
-    }
-    // *** END OF MY MODIFICATIONS ***
-
   } // end of if(ppt->has_perturbations)
 
   return _SUCCESS_;

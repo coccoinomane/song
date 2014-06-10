@@ -249,6 +249,7 @@ int input_init(
   int * pointer_to_int;
   char string1[_ARGUMENT_LENGTH_MAX_];
   char string2[_ARGUMENT_LENGTH_MAX_];
+  char string[_ARGUMENT_LENGTH_MAX_];
   char buffer[1024];
   
   double Omega_tot;
@@ -2224,11 +2225,21 @@ or 'linear_extrapolation'.", "");
 
   if (pfi->include_lensing_effects == _TRUE_) {
     
-    class_call(parser_read_string(pfc,"compute_lensing_variance_lmax",&(string1),&(flag1),errmsg),
+    class_call(parser_read_string(pfc,"fisher_lensvar_lmax",&(string1),&(flag1),errmsg),
+        errmsg,
+        errmsg);
+    class_call(parser_read_string(pfc,"compute_lensing_variance_lmax",&(string2),&(flag2),errmsg), /* obsolete */
         errmsg,
         errmsg);
 
-    if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+    /* string1 wins over string2 */
+    if (flag1 == _TRUE_)
+      strcpy (string, string1);
+    else if (flag2 == _TRUE_)
+      strcpy (string, string2);
+
+    if (((flag1 == _TRUE_)||(flag2 == _TRUE_))
+    &&((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
       pfi->compute_lensing_variance_lmax = _TRUE_;
     
   }
@@ -2377,25 +2388,36 @@ less than %d values for 'experiment_beam_fwhm'", _N_FREQUENCY_CHANNELS_MAX_);
   } // end of T noise
   
   
-  class_call(parser_read_string(pfc,"ignored_fields_in_fisher",&(string1),&(flag1),errmsg),
+  class_call(parser_read_string(pfc,"fisher_ignore",&(string1),&(flag1),errmsg),
+      errmsg,
+      errmsg);  
+  class_call(parser_read_string(pfc,"ignored_fields_in_fisher",&(string2),&(flag2),errmsg), /* osbolete */
       errmsg,
       errmsg);
+
+  /* string1 wins over string2 */
+  if (flag1 == _TRUE_)
+    strcpy (string, string1);
+  else if (flag2 == _TRUE_)
+    strcpy (string, string2);
+
+  if ((flag1 == _TRUE_) || (flag2 == _TRUE_)) {
   
-  if (flag1 == _TRUE_) {
-  
-    if ((strstr(string1,"t") != NULL) || (strstr(string1,"T") != NULL))
+    if ((strstr(string,"t") != NULL) || (strstr(string,"T") != NULL))
       pfi->ignore_t = _TRUE_;
 
-    if ((strstr(string1,"e") != NULL) || (strstr(string1,"E") != NULL))
+    if ((strstr(string,"e") != NULL) || (strstr(string,"E") != NULL))
       pfi->ignore_e = _TRUE_;
 
-    if ((strstr(string1,"b") != NULL) || (strstr(string1,"B") != NULL))
+    if ((strstr(string,"b") != NULL) || (strstr(string,"B") != NULL))
       pfi->ignore_b = _TRUE_;
 
-    if ((strstr(string1,"r") != NULL) || (strstr(string1,"R") != NULL))
+    if ((strstr(string,"r") != NULL) || (strstr(string,"R") != NULL))
       pfi->ignore_r = _TRUE_;
 
   }
+
+  class_read_double("fisher_squeezed_ratio",pfi->squeezed_ratio);
 
   // ==========================================================================================
   // =                                 Create run directory                                   =
@@ -2428,10 +2450,11 @@ less than %d values for 'experiment_beam_fwhm'", _N_FREQUENCY_CHANNELS_MAX_);
   
     if ((flag1 == _TRUE_) && (string1 != NULL)) {
       
-      /* Expand ~,.,.. and other symbols in the path */
+      /* Expand shell symbols (such as ~ and ..) and environment variables in the path */
       wordexp_t exp_result;
-      wordexp(string1, &exp_result, 0);
+      class_test (wordexp(string1, &exp_result, 0)!=0, errmsg, "error in word expansion");
       strcpy(string1, exp_result.we_wordv[0]);
+      wordfree(&exp_result);
 
       strcpy(ppr->run_dir, string1);
 
@@ -2519,9 +2542,11 @@ less than %d values for 'experiment_beam_fwhm'", _N_FREQUENCY_CHANNELS_MAX_);
 
   if ((flag1 == _TRUE_) && (string1 != NULL)) {
 
+    /* Expand shell symbols (such as ~ and ..) and environment variables in the path */
     wordexp_t exp_result;
-    wordexp(string1, &exp_result, 0);
+    class_test (wordexp(string1, &exp_result, 0)!=0, errmsg, "error in word expansion");
     strcpy(string1, exp_result.we_wordv[0]);
+    wordfree(&exp_result);
 
     /* Check that the data directory exists, but only if it is going to be needed */
     struct stat st;
@@ -2972,6 +2997,7 @@ int input_default_params(
   pfi->ignore_b = _FALSE_;
   pfi->ignore_r = _FALSE_;
   pfi->include_lensing_effects = _FALSE_;
+  pfi->squeezed_ratio = 0;
   
 
   // ==========================================================

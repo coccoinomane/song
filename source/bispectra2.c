@@ -1039,6 +1039,7 @@ int bispectra2_intrinsic_workspace_free(
   free(pwb->integral_splines);
   free(pwb->interpolated_integral);
   free(pwb->f);
+  free(pwb->k_window_inverse);
  
   /* Free pwb->unsymmetrised bispectrum */
   for (int X=0; X < pbi->bf_size; ++X) {
@@ -1057,6 +1058,8 @@ int bispectra2_intrinsic_workspace_free(
    free (pwb->unsymmetrised_bispectrum[X]);
   } // end of for(i)
   free (pwb->unsymmetrised_bispectrum);
+ 
+  free (pwb);
  
   return _SUCCESS_; 
   

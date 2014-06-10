@@ -602,14 +602,17 @@ int transfer2_free(
     /* Free the k1 level of ptr2->transfer only if we are neither loading nor storing the transfers to disk.
     The memory management in those two cases is handled separately via the transfer_store and transfer_load
     functions  */
-    if ((ppr2->store_transfers_to_disk==_FALSE_) && (ppr2->load_transfers_from_disk==_FALSE_))
+    if ((ppr2->store_transfers_to_disk==_FALSE_) && (ppr2->load_transfers_from_disk==_FALSE_)) {
       for (int index_k1 = 0; index_k1 < k1_size; ++index_k1)
         if (ptr2->has_allocated_transfers[index_k1] == _TRUE_)
           class_call(transfer2_free_k1_level(ppt2, ptr2, index_k1), ptr2->error_message, ptr2->error_message);
+      for (int index_tt = 0; index_tt < ptr2->tt2_size; ++index_tt)
+        free (ptr2->transfer[index_tt]);
+    }
 
-    for (int index_tt = 0; index_tt < ptr2->tt2_size; ++index_tt)
-      free (ptr2->transfer[index_tt]);
-    free(ptr2->transfer);
+    free (ptr2->transfer);
+
+    free (ptr2->has_allocated_transfers);
 
     for(int index_k1=0; index_k1<ppt2->k_size; ++index_k1) {
       free (ptr2->k_size_k1k2[index_k1]);
@@ -636,7 +639,22 @@ int transfer2_free(
     free (ptr2->corresponding_index_m);
     free (ptr2->index_tt2_monopole);
     free (ptr2->index_pt2_monopole);
+  
+    for (int index_l=0; index_l<ptr2->l_size; ++index_l)
+      free (ptr2->lm_array[index_l]);
+    free (ptr2->lm_array);
 
+    /* Free file arrays */
+    if ((ppr2->store_transfers_to_disk == _TRUE_) || (ppr2->load_transfers_from_disk == _TRUE_)) {
+
+      // fclose(ptr2->transfers_status_file);
+
+      for(int index_tt=0; index_tt<ptr2->tt2_size; ++index_tt)
+        free (ptr2->transfers_paths[index_tt]);
+
+      free (ptr2->transfers_files);
+      free (ptr2->transfers_paths);
+    }
 
   } // end of if(has_cls)
 
@@ -730,7 +748,7 @@ int transfer2_indices_of_transfers(
 
 
   if (ptr2->transfer2_verbose > 1) {
-    printf ("     * will compute tt2_size=%d transfer functions ( ", ptr2->tt2_size);
+    printf (" -> will compute tt2_size=%d transfer functions ( ", ptr2->tt2_size);
     if (ppt2->has_cmb_temperature == _TRUE_) printf ("T=%d ", ptr2->n_transfers);
     if (ppt2->has_cmb_polarization_e == _TRUE_) printf ("E=%d ", ptr2->n_transfers);
     if (ppt2->has_cmb_polarization_b == _TRUE_) printf ("B=%d ", ptr2->n_transfers);
@@ -1560,26 +1578,26 @@ int transfer2_get_k3_sizes (
                     ),
         ptr2->error_message,
         ptr2->error_message);
-  
 
     } // end of for(index_k2)
   } // end of for(index_k1)
   
-  
-  /* We shall allocate the arrays that depend on k3 with the largest possible number of k3-values. This is given
-    by the number of k-values for the best sampled k1-k2 wavemode plus the number of extra points we use to
-    best sample the Bessel functions. Note that we have to cycle through all the k's because extrapolation 
-    can drastically change the k3-sampling of the large-scale modes. */
+  /* We shall allocate the arrays that depend on k3 with the largest possible number of k3-values */
   ptr2->k3_size_max = 0;
+  long int k_size_sum = 0;
+  long int k1_k2_pairs = 0;
 
-  for (index_k1 = 0; index_k1 < ppt2->k_size; ++index_k1)
-    for (index_k2 = 0; index_k2 <= index_k1; ++index_k2)
+  for (index_k1 = 0; index_k1 < ppt2->k_size; ++index_k1) {
+    for (index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
       ptr2->k3_size_max = MAX (ptr2->k3_size_max, ptr2->k_size_k1k2[index_k1][index_k2]);
-
-  if (ptr2->transfer2_verbose > 1)
-    printf (" -> maximum size of k3-grid = %d\n", ptr2->k3_size_max);
-
+      k_size_sum += ptr2->k_size_k1k2[index_k1][index_k2];
+      k1_k2_pairs++;
+   }
+  }
   
+  if (ptr2->transfer2_verbose > 1)
+    printf (" -> maximum size of k3-grid = %d, average size = %g\n",
+      ptr2->k3_size_max, (double)k_size_sum/k1_k2_pairs);
 
   return _SUCCESS_;    
 
@@ -2597,7 +2615,8 @@ int transfer2_load_transfers_from_disk(
 
   /* Print some debug */
   if (ptr2->transfer2_verbose > 2)
-    printf("     * transfer2_load_transfers_from_disk: reading results for index_tt=%d from '%s' ...", index_tt, ptr2->transfers_paths[index_tt]);
+    printf("     * transfer2_load_transfers_from_disk: reading results for index_tt=%d from '%s' ...",
+      index_tt, ptr2->transfers_paths[index_tt]);
   
   /* Open file for reading */
   class_open (ptr2->transfers_files[index_tt], ptr2->transfers_paths[index_tt], "rb", ptr2->error_message);

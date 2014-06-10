@@ -221,6 +221,18 @@ int bispectra_free(
       free (pbi->lensed_cls);
     }
       
+    /* Free file arrays */
+    if ((ppr->store_bispectra_to_disk == _TRUE_) || (ppr->load_bispectra_from_disk == _TRUE_)) {
+    
+      // fclose(pbi->bispectra_status_file);
+    
+      for(int index_bt=0; index_bt<pbi->bt_size; ++index_bt)
+        free (pbi->bispectra_paths[index_bt]);
+    
+      free (pbi->bispectra_files);
+      free (pbi->bispectra_paths);
+    
+    }
     
   } // end of if(has_bispectra)
 
