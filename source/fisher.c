@@ -1629,7 +1629,7 @@ int fisher_compute (
       sprintf (pfi->info, "%s(", pfi->info);
       
       for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2)
-        sprintf (pfi->info, "%s %11.4g ", pfi->info, pfi->fisher_matrix_lmin[0][index_ft_1][index_ft_2]);
+        sprintf (pfi->info, "%s %13.6g ", pfi->info, pfi->fisher_matrix_lmin[0][index_ft_1][index_ft_2]);
 
       sprintf (pfi->info, "%s)\n", pfi->info);
     }
@@ -1646,7 +1646,7 @@ int fisher_compute (
         sprintf (pfi->info_lensvar, "%s(", pfi->info_lensvar);
       
         for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2)
-          sprintf (pfi->info_lensvar, "%s %11.4g ", pfi->info_lensvar, pfi->fisher_matrix_lensvar_lmin[0][index_ft_1][index_ft_2]);
+          sprintf (pfi->info_lensvar, "%s %13.6g ", pfi->info_lensvar, pfi->fisher_matrix_lensvar_lmin[0][index_ft_1][index_ft_2]);
 
         sprintf (pfi->info_lensvar, "%s)\n", pfi->info_lensvar);
       }
@@ -1666,7 +1666,7 @@ int fisher_compute (
       sprintf (pfi->info, "%s(", pfi->info);
       
       for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2)
-        sprintf (pfi->info, "%s %11.4g ", pfi->info,
+        sprintf (pfi->info, "%s %13.6g ", pfi->info,
         pfi->fisher_matrix_lmin[0][index_ft_1][index_ft_2]
         /sqrt(pfi->fisher_matrix_lmin[0][index_ft_1][index_ft_1]
         *pfi->fisher_matrix_lmin[0][index_ft_2][index_ft_2]));
@@ -1686,7 +1686,7 @@ int fisher_compute (
         sprintf (pfi->info_lensvar, "%s(", pfi->info_lensvar);
       
         for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2)
-          sprintf (pfi->info_lensvar, "%s %11.4g ", pfi->info_lensvar,
+          sprintf (pfi->info_lensvar, "%s %13.6g ", pfi->info_lensvar,
           pfi->fisher_matrix_lensvar_lmin[0][index_ft_1][index_ft_2]
           /sqrt(pfi->fisher_matrix_lensvar_lmin[0][index_ft_1][index_ft_1]
           *pfi->fisher_matrix_lensvar_lmin[0][index_ft_2][index_ft_2]));
@@ -1708,7 +1708,7 @@ int fisher_compute (
       sprintf (pfi->info, "%s(", pfi->info);
       
       for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2)
-        sprintf (pfi->info, "%s %11.4g ", pfi->info, 1/pfi->inverse_fisher_matrix_lmin[0][index_ft_1][index_ft_2]);
+        sprintf (pfi->info, "%s %13.6g ", pfi->info, 1/pfi->inverse_fisher_matrix_lmin[0][index_ft_1][index_ft_2]);
   
       sprintf (pfi->info, "%s)\n", pfi->info);
     }
@@ -1724,7 +1724,7 @@ int fisher_compute (
         sprintf (pfi->info_lensvar, "%s(", pfi->info_lensvar);
       
         for (int index_ft_2=0; index_ft_2 < pfi->ft_size; ++index_ft_2)
-          sprintf (pfi->info_lensvar, "%s %11.4g ", pfi->info_lensvar, 1/pfi->inverse_fisher_matrix_lensvar_lmin[0][index_ft_1][index_ft_2]);
+          sprintf (pfi->info_lensvar, "%s %13.6g ", pfi->info_lensvar, 1/pfi->inverse_fisher_matrix_lensvar_lmin[0][index_ft_1][index_ft_2]);
   
         sprintf (pfi->info_lensvar, "%s)\n", pfi->info_lensvar);
       }
@@ -1746,10 +1746,10 @@ int fisher_compute (
   
         /* Diagonal elements = 1/sqrt(F_ii) */ 
         if (index_ft_1==index_ft_2)
-          sprintf (pfi->info, "%s %11.4g ", pfi->info, 1/sqrt(pfi->fisher_matrix_lmin[0][index_ft_1][index_ft_1]));
+          sprintf (pfi->info, "%s %13.6g ", pfi->info, 1/sqrt(pfi->fisher_matrix_lmin[0][index_ft_1][index_ft_1]));
         /* Upper triangle = F_12/F_11, lower triangle = F_12/F_22. */
         else
-          sprintf (pfi->info, "%s %11.4g ", pfi->info, pfi->fisher_matrix_lmin[0][index_ft_1][index_ft_2]
+          sprintf (pfi->info, "%s %13.6g ", pfi->info, pfi->fisher_matrix_lmin[0][index_ft_1][index_ft_2]
             /pfi->fisher_matrix_lmin[0][index_ft_1][index_ft_1]);
       }
       sprintf (pfi->info, "%s)\n", pfi->info);
@@ -1769,10 +1769,10 @@ int fisher_compute (
   
           /* Diagonal elements = 1/sqrt(F_ii) */ 
           if (index_ft_1==index_ft_2)
-            sprintf (pfi->info_lensvar, "%s %11.4g ", pfi->info_lensvar, 1/sqrt(pfi->fisher_matrix_lensvar_lmin[0][index_ft_1][index_ft_1]));
+            sprintf (pfi->info_lensvar, "%s %13.6g ", pfi->info_lensvar, 1/sqrt(pfi->fisher_matrix_lensvar_lmin[0][index_ft_1][index_ft_1]));
           /* Upper triangle = F_12/F_11, lower triangle = F_12/F_22. */
           else
-            sprintf (pfi->info_lensvar, "%s %11.4g ", pfi->info_lensvar, pfi->fisher_matrix_lensvar_lmin[0][index_ft_1][index_ft_2]
+            sprintf (pfi->info_lensvar, "%s %13.6g ", pfi->info_lensvar, pfi->fisher_matrix_lensvar_lmin[0][index_ft_1][index_ft_2]
               /pfi->fisher_matrix_lensvar_lmin[0][index_ft_1][index_ft_1]);
         }
         sprintf (pfi->info_lensvar, "%s)\n", pfi->info_lensvar);
@@ -2364,11 +2364,10 @@ int fisher_cross_correlate_mesh (
       } // end of if need interpolation 
 
       /* Arrays that will contain the 3j symbols for a given (l1,l2) */
-      double threej_000[2*pbi->l_max+1], threej_m220[2*pbi->l_max+1],
-             threej_0m22[2*pbi->l_max+1], threej_20m2[2*pbi->l_max+1];
+      double threej_000[2*pbi->l_max+1];
 
       /* First l-multipole stored in the above arrays */
-      int l3_min_000=0, l3_min_0m22=0, l3_min_20m2=0, l3_min_m220=0;
+      int l3_min_000=0;
     
       if (pfi->fisher_verbose > 2)
         printf ("     * computing Fisher matrix for l1=%d\n", l1);
@@ -2387,7 +2386,6 @@ int fisher_cross_correlate_mesh (
         // -----------------------------------------------------------------------------------
       
         /* Compute the 3j-symbol that enters the estimator, (l1 l2 l3)(0 0 0) */
-        
         double min_D, max_D;
   
         class_call_parallel (drc3jj (
@@ -2398,47 +2396,9 @@ int fisher_cross_correlate_mesh (
                                pfi->error_message),
           pfi->error_message,
           pfi->error_message);          
+
         l3_min_000 = (int)(min_D + _EPS_);
 
-        /* Compute more 3j-symbols, needed for specific bispectra. For more information
-        on why these are needed, refer to the function 'bispectra_analytical_init' in the
-        bispectrum module. Note that with respect to the bispectrum module, here we switch
-        the m's below in the l1 and l3 columns, as now the smallest multipole is l1 and
-        not l3. */
-
-        if (pbi->need_3j_symbols == _TRUE_) {
-
-          class_call_parallel (drc3jj (
-                                 l1, l2, 2, -2,
-                                 &min_D, &max_D,
-                                 threej_0m22,
-                                 (2*pbi->l_max+1),
-                                 pfi->error_message),
-            pfi->error_message,
-            pfi->error_message);
-          l3_min_0m22 = (int)(min_D + _EPS_);
-    
-          class_call_parallel (drc3jj (
-                                 l1, l2, -2, 0,
-                                 &min_D, &max_D,
-                                 threej_20m2,
-                                 (2*pbi->l_max+1),
-                                 pfi->error_message),
-            pfi->error_message,
-            pfi->error_message);
-          l3_min_20m2 = (int)(min_D + _EPS_);
-        
-          class_call_parallel (drc3jj (
-                                 l1, l2, 0, 2,
-                                 &min_D, &max_D,
-                                 threej_m220,
-                                 (2*pbi->l_max+1),
-                                 pfi->error_message),
-            pfi->error_message,
-            pfi->error_message);
-          l3_min_m220 = (int)(min_D + _EPS_);
-    
-        } // end of 3j computation
 
         // ------------------------------------------------
         // -                  Sum over l3                 -
@@ -2473,6 +2433,25 @@ int fisher_cross_correlate_mesh (
           // -                              Obtain bispectra                           -
           // ---------------------------------------------------------------------------
 
+          /* Compute 3J ratios, needed only for polarised bispectra such as CMB-lensing
+          and the quadratic correction. Note that with respect to the bispectrum module,
+          here we switch the m's below in the l1 and l3 columns, as now the smallest multipole
+          is l1 and not l3. */
+          double threej_ratio_20m2, threej_ratio_m220, threej_ratio_0m22;
+
+          if (pbi->need_3j_symbols == _TRUE_) {          
+
+            class_call_parallel (threej_ratio (l2, l3, l1, 2, &threej_ratio_20m2, pbi->error_message),
+              pbi->error_message, pbi->error_message);
+
+            class_call_parallel (threej_ratio (l1, l3, l2, 2, &threej_ratio_m220, pbi->error_message),
+              pbi->error_message, pbi->error_message);
+
+            class_call_parallel (threej_ratio (l3, l2, l1, 2, &threej_ratio_0m22, pbi->error_message),
+              pbi->error_message, pbi->error_message);
+
+          } // end of 3j computation
+
           /* Factor that relates the reduced bispectrum to the angle-averaged one */
           double I_l1_l2_l3 = sqrt((2.*l1+1.)*(2.*l2+1.)*(2.*l3+1.)/(4.*_PI_)) * threej_000[l3-l3_min_000];
 
@@ -2487,13 +2466,23 @@ int fisher_cross_correlate_mesh (
               for (int Y = 0; Y < pfi->ff_size; ++Y) {
                 for (int Z = 0; Z < pfi->ff_size; ++Z) {
 
-                  /* Uncomment to ignore configurations where the temperature is evaluated at a resolution
-                  larger than 3000, which is the limit after which foregrounds are likely to dominate */
-                  // int l_max_T = 3000;
+                  /* Uncomment to ignore high-l configurations for temperature */
+                  // int l_max_T = 0;
                   // if (pbi->has_bispectra_t) {
                   //   if (((X==pbi->index_bf_t) && (l3>l_max_T))
                   //   || ((Y==pbi->index_bf_t) && (l2>l_max_T))
                   //   || ((Z==pbi->index_bf_t) && (l1>l_max_T))) {
+                  //     interpolated_bispectra[thread][index_ft][X][Y][Z] = 0;
+                  //     continue;
+                  //   }
+                  // }
+
+                  /* Uncomment to ignore high-l configurations for polarisation */
+                  // int l_max_E = 0;
+                  // if (pbi->has_bispectra_e) {
+                  //   if (((X==pbi->index_bf_e) && (l3>l_max_E))
+                  //   || ((Y==pbi->index_bf_e) && (l2>l_max_E))
+                  //   || ((Z==pbi->index_bf_e) && (l1>l_max_E))) {
                   //     interpolated_bispectra[thread][index_ft][X][Y][Z] = 0;
                   //     continue;
                   //   }
@@ -2506,7 +2495,7 @@ int fisher_cross_correlate_mesh (
 
                   /* Compute analytical bispectra */
                   if (pbi->bispectrum_type[index_bt] == analytical_bispectrum) {
-                
+
                     /* Check that the current bispectrum has a function associated to it */
                     class_test_parallel (pbi->bispectrum_function[index_bt]==NULL,
                       pbi->error_message,
@@ -2517,10 +2506,9 @@ int fisher_cross_correlate_mesh (
                                              ppr, psp, ple, pbi,
                                              l3, l2, l1, /* smallest one goes in third position  */
                                              X_, Y_, Z_, /* need underscore because they are bispectra field indices */
-                                             threej_000[l3-l3_min_000],
-                                             threej_20m2[l3-l3_min_20m2],
-                                             threej_m220[l3-l3_min_m220],
-                                             threej_0m22[l3-l3_min_0m22],
+                                             threej_ratio_20m2,
+                                             threej_ratio_m220,
+                                             threej_ratio_0m22,
                                              &interpolated_bispectra[thread][index_ft][X][Y][Z]),
                       pbi->error_message,
                       pfi->error_message);
@@ -2570,10 +2558,9 @@ int fisher_cross_correlate_mesh (
                                               ppr, psp, ple, pbi,
                                               l3, l2, l1, /* smallest one goes in third position  */
                                               X_, Y_, Z_,
-                                              threej_000[l3-l3_min_000],
-                                              threej_20m2[l3-l3_min_20m2],
-                                              threej_m220[l3-l3_min_m220],
-                                              threej_0m22[l3-l3_min_0m22],
+                                              threej_ratio_20m2,
+                                              threej_ratio_m220,
+                                              threej_ratio_0m22,
                                               &inverse_window),
                         pbi->error_message,
                         pfi->error_message);
@@ -3411,7 +3398,6 @@ int fisher_create_3D_interpolation_mesh(
                                 dump,
                                 dump,
                                 dump,
-                                dump,
                                 &inverse_window),
                     pbi->error_message,
                     pfi->error_message);
@@ -3676,7 +3662,6 @@ int fisher_create_2D_interpolation_mesh(
                               ppr, psp, ple, pbi,
                               l3, l2, l1, /* smallest one goes in third position  */
                               X_, Y_, Z_,
-                              dump,
                               dump,
                               dump,
                               dump,

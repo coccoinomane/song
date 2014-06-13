@@ -120,10 +120,9 @@ struct bispectra {
     struct bispectra * pbi,
     int l1, int l2, int l3,
     int X, int Y, int Z,
-    double threej_000,
-    double threej_20m2,
-    double threej_m220,
-    double threej_0m22,
+    double threej_ratio_20m2,
+    double threej_ratio_m220,
+    double threej_ratio_0m22,
     double *result
   );
 
@@ -138,10 +137,9 @@ struct bispectra {
     struct bispectra * pbi,
     int l1, int l2, int l3,
     int X, int Y, int Z,
-    double threej_000,
-    double threej_20m2,
-    double threej_m220,
-    double threej_0m22,
+    double threej_ratio_20m2,
+    double threej_ratio_m220,
+    double threej_ratio_0m22,
     double *result
   );
 
@@ -868,10 +866,9 @@ extern "C" {
        struct bispectra * pbi,
        int l1, int l2, int l3,
        int X1, int X2, int X3,
-       double threej_l1_l2_l3_0_0_0,
-       double threej_l1_l2_l3_2_0_m2,
-       double threej_l1_l2_l3_m2_2_0,
-       double threej_l1_l2_l3_0_m2_2,
+       double threej_ratio_20m2,
+       double threej_ratio_m220,
+       double threej_ratio_0m22,
        double * result
        );
 
@@ -882,10 +879,9 @@ extern "C" {
        struct bispectra * pbi,
        int l1, int l2, int l3,
        int X1, int X2, int X3,
-       double threej_l1_l2_l3_0_0_0,
-       double threej_l1_l2_l3_2_0_m2,
-       double threej_l1_l2_l3_m2_2_0,
-       double threej_l1_l2_l3_0_m2_2,
+       double threej_ratio_20m2,
+       double threej_ratio_m220,
+       double threej_ratio_0m22,
        double * result
        );
 
@@ -896,10 +892,9 @@ extern "C" {
        struct bispectra * pbi,
        int l1, int l2, int l3,
        int X1, int X2, int X3,
-       double threej_l1_l2_l3_0_0_0,
-       double threej_l1_l2_l3_2_0_m2,
-       double threej_l1_l2_l3_m2_2_0,
-       double threej_l1_l2_l3_0_m2_2,
+       double threej_ratio_20m2,
+       double threej_ratio_m220,
+       double threej_ratio_0m22,
        double * result
        );
 
@@ -911,10 +906,9 @@ extern "C" {
        struct bispectra * pbi,
        int l1, int l2, int l3,
        int X1, int X2, int X3,
-       double threej_l1_l2_l3_0_0_0,
-       double threej_l1_l2_l3_2_0_m2,
-       double threej_l1_l2_l3_m2_2_0,
-       double threej_l1_l2_l3_0_m2_2,
+       double threej_ratio_20m2,
+       double threej_ratio_m220,
+       double threej_ratio_0m22,
        double * result
        );
      
@@ -926,10 +920,9 @@ extern "C" {
        struct bispectra * pbi,
        int l1, int l2, int l3,
        int X1, int X2, int X3,
-       double threej_l1_l2_l3_0_0_0,
-       double threej_l1_l2_l3_2_0_m2,
-       double threej_l1_l2_l3_m2_2_0,
-       double threej_l1_l2_l3_0_m2_2,
+       double threej_ratio_20m2,
+       double threej_ratio_m220,
+       double threej_ratio_0m22,
        double * result
        );
 
@@ -941,10 +934,9 @@ extern "C" {
        struct bispectra * pbi,
        int l1, int l2, int l3,
        int X1, int X2, int X3,
-       double threej_l1_l2_l3_0_0_0,
-       double threej_l1_l2_l3_2_0_m2,
-       double threej_l1_l2_l3_m2_2_0,
-       double threej_l1_l2_l3_0_m2_2,
+       double threej_ratio_20m2,
+       double threej_ratio_m220,
+       double threej_ratio_0m22,
        double * result
        );
 
@@ -956,10 +948,9 @@ extern "C" {
        struct bispectra * pbi,
        int l1, int l2, int l3,
        int X1, int X2, int X3,
-       double threej_l1_l2_l3_0_0_0,
-       double threej_l1_l2_l3_2_0_m2,
-       double threej_l1_l2_l3_m2_2_0,
-       double threej_l1_l2_l3_0_m2_2,
+       double threej_ratio_20m2,
+       double threej_ratio_m220,
+       double threej_ratio_0m22,
        double * result
        ); 
 
@@ -971,10 +962,9 @@ extern "C" {
        struct bispectra * pbi,
        int l1, int l2, int l3,
        int X1, int X2, int X3,
-       double threej_l1_l2_l3_0_0_0,
-       double threej_l1_l2_l3_2_0_m2,
-       double threej_l1_l2_l3_m2_2_0,
-       double threej_l1_l2_l3_0_m2_2,
+       double threej_ratio_20m2,
+       double threej_ratio_m220,
+       double threej_ratio_0m22,
        double * result
        );
 
@@ -986,10 +976,9 @@ extern "C" {
        struct bispectra * pbi,
        int l1, int l2, int l3,
        int X1, int X2, int X3,
-       double threej_l1_l2_l3_0_0_0,
-       double threej_l1_l2_l3_2_0_m2,
-       double threej_l1_l2_l3_m2_2_0,
-       double threej_l1_l2_l3_0_m2_2,
+       double threej_ratio_20m2,
+       double threej_ratio_m220,
+       double threej_ratio_0m22,
        double * result
        );
 
@@ -1001,10 +990,9 @@ extern "C" {
        struct bispectra * pbi,
        int l1, int l2, int l3,
        int X, int Y, int Z,
-       double threej_l1_l2_l3_0_0_0,
-       double threej_l1_l2_l3_2_0_m2,
-       double threej_l1_l2_l3_m2_2_0,
-       double threej_l1_l2_l3_0_m2_2,
+       double threej_ratio_20m2,
+       double threej_ratio_m220,
+       double threej_ratio_0m22,
        double * result
        );
        
@@ -1016,10 +1004,9 @@ extern "C" {
        struct bispectra * pbi,
        int l1, int l2, int l3,
        int X1, int X2, int X3,
-       double threej_l1_l2_l3_0_0_0,
-       double threej_l1_l2_l3_2_0_m2,
-       double threej_l1_l2_l3_m2_2_0,
-       double threej_l1_l2_l3_0_m2_2,
+       double threej_ratio_20m2,
+       double threej_ratio_m220,
+       double threej_ratio_0m22,
        double * result
        );
 

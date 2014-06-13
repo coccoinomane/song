@@ -498,8 +498,6 @@ int bispectra_indices (
     pbi->bispectrum_type[index_bt] = analytical_bispectrum;
     pbi->n[analytical_bispectrum]++;
     pbi->has_reduced_bispectrum[index_bt] = _TRUE_;
-    if ((pbi->has_bispectra_e==_TRUE_) || (pbi->has_bispectra_b==_TRUE_))
-      pbi->has_reduced_bispectrum[index_bt] = _FALSE_; /* see comment for 'has_reduced_bispectrum' in bispectra.h */
     index_bt++;
   }
   
@@ -509,8 +507,6 @@ int bispectra_indices (
     pbi->bispectrum_type[index_bt] = analytical_bispectrum;
     pbi->n[analytical_bispectrum]++;
     pbi->has_reduced_bispectrum[index_bt] = _TRUE_;
-    if ((pbi->has_bispectra_e==_TRUE_) || (pbi->has_bispectra_b==_TRUE_))
-      pbi->has_reduced_bispectrum[index_bt] = _FALSE_; /* see comment for 'has_reduced_bispectrum' in bispectra.h */
     index_bt++;
   }
   
@@ -525,8 +521,6 @@ int bispectra_indices (
     pbi->bispectrum_type[index_bt] = analytical_bispectrum;
     pbi->n[analytical_bispectrum]++;
     pbi->has_reduced_bispectrum[index_bt] = _TRUE_;
-    if ((pbi->has_bispectra_e==_TRUE_) || (pbi->has_bispectra_b==_TRUE_))
-      pbi->has_reduced_bispectrum[index_bt] = _FALSE_; /* see comment for 'has_reduced_bispectrum' in bispectra.h */
     index_bt++;
   }
   
@@ -536,8 +530,6 @@ int bispectra_indices (
     pbi->bispectrum_type[index_bt] = analytical_bispectrum;
     pbi->n[analytical_bispectrum]++;
     pbi->has_reduced_bispectrum[index_bt] = _TRUE_;
-    if ((pbi->has_bispectra_e==_TRUE_) || (pbi->has_bispectra_b==_TRUE_))
-      pbi->has_reduced_bispectrum[index_bt] = _FALSE_; /* see comment for 'has_reduced_bispectrum' in bispectra.h */
     index_bt++;
   }
 
@@ -719,7 +711,7 @@ int bispectra_indices (
       continue;
     }
     else {
-
+  
       if ((pbi->has_local_model == _TRUE_) && (index_bt == pbi->index_bt_local))
         pbi->window_function[index_bt] = bispectra_local_window_function;
           
@@ -729,7 +721,7 @@ int bispectra_indices (
       else if ((pbi->has_intrinsic_squeezed == _TRUE_) && (index_bt == pbi->index_bt_intrinsic_squeezed))
         pbi->window_function[index_bt] = bispectra_local_window_function;
     }
-
+  
     /* For the non-squeezed bispectra, we always use the window function. */
     if ((pbi->has_equilateral_model == _TRUE_) && (index_bt == pbi->index_bt_equilateral))
       pbi->window_function[index_bt] = bispectra_local_window_function;
@@ -742,7 +734,7 @@ int bispectra_indices (
     
     else if ((pbi->has_galileon_model==_TRUE_) && (index_bt == pbi->index_bt_galileon_time))
       pbi->window_function[index_bt] = bispectra_local_window_function;
-
+  
   }
   
   
@@ -2298,13 +2290,6 @@ int bispectra_analytical_init (
 
     int l1 = pbi->l[index_l1];
 
-    /* Arrays that will contain the 3j symbols for a given (l1,l2) */
-    double threej_000[2*pbi->l_max+1], threej_m220[2*pbi->l_max+1],
-           threej_0m22[2*pbi->l_max+1], threej_20m2[2*pbi->l_max+1];
-
-    /* First l-multipole stored in the above arrays */
-    int l3_min_000=0, l3_min_0m22=0, l3_min_20m2=0, l3_min_m220=0;
-
     for (int index_l2 = 0; index_l2 <= index_l1; ++index_l2) {
 
       int l2 = pbi->l[index_l2];
@@ -2317,124 +2302,111 @@ int bispectra_analytical_init (
       int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
       int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
 
-      // -----------------------------------------------------------------------------------
-      // -                             Compute three-j symbols                             -
-      // -----------------------------------------------------------------------------------
-      
-      /* Compute the three-j symbols. These are needed only if polarisation is requested, but
-      only for specific bispectra types, such as the CMB-lensing and the quadratic correction. */
-
-      if (pbi->need_3j_symbols == _TRUE_) {
-            
-        double min_D, max_D;
-    
-        //                   ( l1, l2, l3 )
-        //                   (  0,  0,  0 )
-        class_call_parallel (drc3jj (
-                               l1, l2, 0, 0,
-                               &min_D, &max_D,
-                               threej_000,
-                               (2*pbi->l_max+1),
-                               pbi->error_message),
-          pbi->error_message,
-          pbi->error_message);          
-        l3_min_000 = (int)(min_D + _EPS_);
-    
-    
-        //                   ( l1, l2, l3 )
-        //                   (  0, -2,  2 )
-        class_call_parallel (drc3jj (
-                               l1, l2, 0, -2,
-                               &min_D, &max_D,
-                               threej_0m22,
-                               (2*pbi->l_max+1),
-                               pbi->error_message),
-          pbi->error_message,
-          pbi->error_message);
-        l3_min_0m22 = (int)(min_D + _EPS_);
-    
-        //                   ( l1, l2, l3 )
-        //                   (  2,  0, -2 )
-        class_call_parallel (drc3jj (
-                               l1, l2, 2, 0,
-                               &min_D, &max_D,
-                               threej_20m2,
-                               (2*pbi->l_max+1),
-                               pbi->error_message),
-          pbi->error_message,
-          pbi->error_message);
-        l3_min_20m2 = (int)(min_D + _EPS_);
-        
-        //                   ( l1, l2, l3 )
-        //                   ( -2,  2,  0 )
-        class_call_parallel (drc3jj (
-                               l1, l2, -2, 2,
-                               &min_D, &max_D,
-                               threej_m220,
-                               (2*pbi->l_max+1),
-                               pbi->error_message),
-          pbi->error_message,
-          pbi->error_message);
-        l3_min_m220 = (int)(min_D + _EPS_);
-    
-      } // end of 3j computation
+      /* Uncomment test the accuracy of threej_ratio_recursive */        
+      // int M=4;
+      // double threej_num[2*pbi->l_max+1], threej_den[2*pbi->l_max+1];
+      // int l3_min_num, l3_min_den;
+      // double min_D, max_D;
+      // class_call_parallel (drc3jj (
+      //                        MAX(l1,M), MAX(l2,M), 0, -M,
+      //                        &min_D, &max_D,
+      //                        &(threej_num[0]),
+      //                        (2*pbi->l_max+1),
+      //                        pbi->error_message),
+      //   pbi->error_message,
+      //   pbi->error_message);
+      // l3_min_num = (int)(min_D + _EPS_);          
+      // class_call_parallel (drc3jj (
+      //                        MAX(l1,M), MAX(l2,M), 0, 0,
+      //                        &min_D, &max_D,
+      //                        &(threej_den[0]),
+      //                        (2*pbi->l_max+1),
+      //                        pbi->error_message),
+      //   pbi->error_message,
+      //   pbi->error_message);
+      // l3_min_den = (int)(min_D + _EPS_);          
+      // 
+      // for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {
+      //   int l3 = pbi->l[index_l3];
+      //   if ((l1+l2+l3)%2==0) {
+      //     if ((l1<M) || (l2<M) || (l3<M)) continue;
+      //     double * ratio = malloc(sizeof(double)*(M+1));
+      //     class_call_parallel (threej_ratio_recursive(l1, l2, l3, M, ratio, pbi->error_message),
+      //       pbi->error_message, pbi->error_message);
+      //     double res_1 = threej_num[l3-l3_min_num]/threej_den[l3-l3_min_den];
+      //     double res_2 = ratio[M];
+      //     double frac = 1-res_1/res_2;
+      //     class_test_parallel (fabs(frac) > _SMALL_,
+      //       pbi->error_message,
+      //       "(%3d,%3d,%3d,M=%d), res_1=%14.6g, res_2=%14.6g, diff=%14.6g\n",
+      //       l1, l2, l3, M, res_1, res_2, frac);
+      //   }
+      // }
           
 
       // -----------------------------------------------------------------------------------
       // -                               Compute bispectra                                 -
       // -----------------------------------------------------------------------------------
 
-      for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt) {
+      for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {  
 
-        if (pbi->bispectrum_type[index_bt] != analytical_bispectrum)
-          continue;
+        /* Index of the current (l1,l2,l3) configuration */
+        int l3 = pbi->l[index_l3];
+        long int index_l1_l2_l3 = pbi->index_l1_l2_l3[index_l1][index_l1-index_l2][index_l3_max-index_l3];
         
-        /* Check that the current bispectrum has a function associated to it */
-        class_test_parallel (pbi->bispectrum_function[index_bt]==NULL,
-          pbi->error_message,
-          "no function associated for the bispectrum '%s'. Maybe it's not analytical?",
-          pbi->bt_labels[index_bt]);
+        /* Compute 3J ratios, needed only for polarised bispectra such as CMB-lensing
+        and the quadratic correction. */
+        double threej_ratio_20m2, threej_ratio_m220, threej_ratio_0m22;
 
-        for (int X = 0; X < pbi->bf_size; ++X) {
-          for (int Y = 0; Y < pbi->bf_size; ++Y) {
-            for (int Z = 0; Z < pbi->bf_size; ++Z) {
-    
-              for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {  
-    
-                int l3 = pbi->l[index_l3];
+        if (pbi->need_3j_symbols == _TRUE_) {          
 
-                /* Index of the current (l1,l2,l3) configuration */
-                long int index_l1_l2_l3 = pbi->index_l1_l2_l3[index_l1][index_l1-index_l2][index_l3_max-index_l3];
+          class_call_parallel (threej_ratio (l2, l1, l3, 2, &threej_ratio_20m2, pbi->error_message),
+            pbi->error_message, pbi->error_message);
 
-                /* Skip odd configurations if the parity factor (l1,l2,l3)(0,0,0) cannot be extracted
-                analytically to form the reduced bispectrum b_l1l2l3. Not doing so will result in nans
-                as below we numerically divide B_l1l2l3 by (l1,l2,l3)(0,0,0) */
-                if (pbi->has_reduced_bispectrum[index_bt] == _FALSE_)
-                  if ((l1+l2+l3)%2!=0)
-                    goto increase_counter;
-    
-                /* Compute the bispectrum using the function associated to index_bt */
-                class_call_parallel ((*pbi->bispectrum_function[index_bt]) (
-                              ppr, psp, ple, pbi,
-                              l1, l2, l3,
-                              X, Y, Z,
-                              threej_000[l3-l3_min_000],
-                              threej_20m2[l3-l3_min_20m2],
-                              threej_m220[l3-l3_min_m220],
-                              threej_0m22[l3-l3_min_0m22],
-                              &(pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3])),
-                  pbi->error_message,
-                  pbi->error_message);
-        
-                /* Update the counter */
-                increase_counter:;
-                #pragma omp atomic
-                pbi->count_memorised_for_bispectra++;
+          class_call_parallel (threej_ratio (l3, l1, l2, 2, &threej_ratio_m220, pbi->error_message),
+            pbi->error_message, pbi->error_message);
 
-              } // end of for(index_l3)
-            } // end of for(Z)
-          } // end of for(Y)
-        } // end of for(X)
+          class_call_parallel (threej_ratio (l1, l2, l3, 2, &threej_ratio_0m22, pbi->error_message),
+            pbi->error_message, pbi->error_message);
+
+        } // end of 3j computation
+
+        for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt) {
+
+          if (pbi->bispectrum_type[index_bt] != analytical_bispectrum)
+            continue;
+      
+          /* Check that the current bispectrum has a function associated to it */
+          class_test_parallel (pbi->bispectrum_function[index_bt]==NULL,
+            pbi->error_message,
+            "no function associated for the bispectrum '%s'. Maybe it's not analytical?",
+            pbi->bt_labels[index_bt]);
+
+          for (int X = 0; X < pbi->bf_size; ++X) {
+            for (int Y = 0; Y < pbi->bf_size; ++Y) {
+              for (int Z = 0; Z < pbi->bf_size; ++Z) {
+
+                  /* Compute the bispectrum using the function associated to index_bt */
+                  class_call_parallel ((*pbi->bispectrum_function[index_bt]) (
+                                ppr, psp, ple, pbi,
+                                l1, l2, l3,
+                                X, Y, Z,
+                                threej_ratio_20m2,
+                                threej_ratio_m220,
+                                threej_ratio_0m22,
+                                &(pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3])),
+                    pbi->error_message,
+                    pbi->error_message);
+      
+                  /* Update the counter */
+                  increase_counter:;
+                  #pragma omp atomic
+                  pbi->count_memorised_for_bispectra++;
+
+              } // end of for(Z)
+            } // end of for(Y)
+          } // end of for(X)
+        } // end of for(index_l3)
       } // end of for(index_l2)
     } // end of for(index_bt)
     #pragma omp flush(abort)
@@ -4083,10 +4055,9 @@ int bispectra_cmb_lensing_bispectrum (
      struct bispectra * pbi,
      int l1, int l2, int l3,
      int X1, int X2, int X3,
-     double threej_l1_l2_l3_0_0_0,
-     double threej_l1_l2_l3_2_0_m2,
-     double threej_l1_l2_l3_m2_2_0,
-     double threej_l1_l2_l3_0_m2_2,
+     double threej_ratio_20m2,
+     double threej_ratio_m220,
+     double threej_ratio_0m22,
      double * result
      )
 {
@@ -4212,31 +4183,47 @@ int bispectra_cmb_lensing_bispectrum (
   // ----------------------------------------------------------------------------------
   // -                               Get the right 3j's                               -
   // ----------------------------------------------------------------------------------
-  
+    
   /* Spin of the fields */
   int F_X1 = pbi->field_spin[X1];
   int F_X2 = pbi->field_spin[X2];
   int F_X3 = pbi->field_spin[X3];
   
-  /* Obtain the needed 3j's by swapping columns and changing sign of those already computed.
-  Also divide them by the 000 3j so that we obtain the reduced bispectrum (TODO: change for
-  B-modes as they have odd parity and 3j_000 vanish) */
+  /* Obtain the needed 3j ratios (TODO: what about B-modes? */
   double threej_l1_l2_l3_FX1_0_mFX1 = 1, threej_l1_l3_l2_FX1_0_mFX1 = 1;
   if (F_X1==2) {
-    threej_l1_l2_l3_FX1_0_mFX1 = threej_l1_l2_l3_2_0_m2/threej_l1_l2_l3_0_0_0;
-    threej_l1_l3_l2_FX1_0_mFX1 = threej_l1_l2_l3_m2_2_0/threej_l1_l2_l3_0_0_0;
+    // class_call (threej_ratio_recursive (l2, l1, l3, M, ratio, pbi->error_message),
+    //   pbi->error_message, pbi->error_message);
+    // threej_l1_l2_l3_FX1_0_mFX1 = ratio[M];
+    // class_call (threej_ratio_recursive (l3, l1, l2, M, ratio, pbi->error_message),
+    //   pbi->error_message, pbi->error_message);
+    // threej_l1_l3_l2_FX1_0_mFX1 = ratio[M];
+    threej_l1_l2_l3_FX1_0_mFX1 = threej_ratio_20m2;
+    threej_l1_l3_l2_FX1_0_mFX1 = threej_ratio_m220;
   }
 
   double threej_l2_l3_l1_FX2_0_mFX2 = 1, threej_l2_l1_l3_FX2_0_mFX2 = 1;
   if (F_X2==2) {
-    threej_l2_l3_l1_FX2_0_mFX2 = threej_l1_l2_l3_m2_2_0/threej_l1_l2_l3_0_0_0;
-    threej_l2_l1_l3_FX2_0_mFX2 = threej_l1_l2_l3_0_m2_2/threej_l1_l2_l3_0_0_0;
+    // class_call (threej_ratio_recursive (l3, l2, l1, M, ratio, pbi->error_message),
+    //   pbi->error_message, pbi->error_message);
+    // threej_l2_l3_l1_FX2_0_mFX2 = ratio[M];
+    // class_call (threej_ratio_recursive (l1, l2, l3, M, ratio, pbi->error_message),
+    //   pbi->error_message, pbi->error_message);
+    // threej_l2_l1_l3_FX2_0_mFX2 = ratio[M];
+    threej_l2_l3_l1_FX2_0_mFX2 = threej_ratio_m220;
+    threej_l2_l1_l3_FX2_0_mFX2 = threej_ratio_0m22;
   }
-  
+    
   double threej_l3_l1_l2_FX3_0_mFX3 = 1, threej_l3_l2_l1_FX3_0_mFX3 = 1;
   if (F_X3==2) {
-    threej_l3_l1_l2_FX3_0_mFX3 = threej_l1_l2_l3_0_m2_2/threej_l1_l2_l3_0_0_0;
-    threej_l3_l2_l1_FX3_0_mFX3 = threej_l1_l2_l3_2_0_m2/threej_l1_l2_l3_0_0_0;
+    // class_call (threej_ratio_recursive (l1, l3, l2, M, ratio, pbi->error_message),
+    //   pbi->error_message, pbi->error_message);
+    // threej_l3_l1_l2_FX3_0_mFX3 = ratio[M];
+    // class_call (threej_ratio_recursive (l2, l3, l1, M, ratio, pbi->error_message),
+    //   pbi->error_message, pbi->error_message);
+    // threej_l3_l2_l1_FX3_0_mFX3 = ratio[M];
+    threej_l3_l1_l2_FX3_0_mFX3 = threej_ratio_0m22;
+    threej_l3_l2_l1_FX3_0_mFX3 = threej_ratio_20m2;
   }
 
   /* Obtain the geometric factor F^+s_l1l2l3 */
@@ -4312,10 +4299,9 @@ int bispectra_cmb_lensing_squeezed_kernel (
      struct bispectra * pbi,
      int l1, int l2, int l3,
      int X1, int X2, int X3,
-     double threej_l1_l2_l3_0_0_0,
-     double threej_l1_l2_l3_2_0_m2,
-     double threej_l1_l2_l3_m2_2_0,
-     double threej_l1_l2_l3_0_m2_2,
+     double threej_ratio_20m2,
+     double threej_ratio_m220,
+     double threej_ratio_0m22,
      double * result
      )
 {
@@ -4419,26 +4405,24 @@ int bispectra_cmb_lensing_squeezed_kernel (
   /* Spin of the fields */
   int F_X1 = pbi->field_spin[X1];
   int F_X2 = pbi->field_spin[X2];
-  
-  /* Obtain the needed 3j's by swapping columns and changing sign of those already computed.
-  Also divide them by the 000 3j so that we obtain the reduced bispectrum (TODO: change for
-  B-modes as they have odd parity and 3j_000 vanish) */
+
+  /* Obtain the needed 3j ratios (TODO: what about B-modes? */
   double threej_l1_l2_l3_FX1_0_mFX1 = 1, threej_l1_l3_l2_FX1_0_mFX1 = 1;
   if (F_X1==2) {
-    threej_l1_l2_l3_FX1_0_mFX1 = threej_l1_l2_l3_2_0_m2/threej_l1_l2_l3_0_0_0;
-    threej_l1_l3_l2_FX1_0_mFX1 = threej_l1_l2_l3_m2_2_0/threej_l1_l2_l3_0_0_0;
+    threej_l1_l2_l3_FX1_0_mFX1 = threej_ratio_20m2;
+    threej_l1_l3_l2_FX1_0_mFX1 = threej_ratio_m220;
   }
 
   double threej_l2_l3_l1_FX2_0_mFX2 = 1, threej_l2_l1_l3_FX2_0_mFX2 = 1;
   if (F_X2==2) {
-    threej_l2_l3_l1_FX2_0_mFX2 = threej_l1_l2_l3_m2_2_0/threej_l1_l2_l3_0_0_0;
-    threej_l2_l1_l3_FX2_0_mFX2 = threej_l1_l2_l3_0_m2_2/threej_l1_l2_l3_0_0_0;
+    threej_l2_l3_l1_FX2_0_mFX2 = threej_ratio_m220;
+    threej_l2_l1_l3_FX2_0_mFX2 = threej_ratio_0m22;
   }
-  
+
   /* Obtain the geometric factor F^+s_l1l2l3 */
   double F_l1_l3_l2_X1 = 0.25 * ( l3*(l3+1) + l2*(l2+1) - l1*(l1+1) ) * S_X1 * threej_l1_l3_l2_FX1_0_mFX1; /* 1-3-2 */
   double F_l2_l3_l1_X2 = 0.25 * ( l3*(l3+1) + l1*(l1+1) - l2*(l2+1) ) * S_X2 * threej_l2_l3_l1_FX2_0_mFX2; /* 2-3-1 */
-  
+      
   // ---------------------------------------------------------------------------------------
   // -                                  Bispectrum formula                                 -
   // ---------------------------------------------------------------------------------------
@@ -4488,10 +4472,9 @@ int bispectra_cmb_lensing_squeezed_bispectrum (
      struct bispectra * pbi,
      int l1, int l2, int l3,
      int X1, int X2, int X3,
-     double threej_l1_l2_l3_0_0_0,
-     double threej_l1_l2_l3_2_0_m2,
-     double threej_l1_l2_l3_m2_2_0,
-     double threej_l1_l2_l3_0_m2_2,
+     double threej_ratio_20m2,
+     double threej_ratio_m220,
+     double threej_ratio_0m22,
      double * result
      )
 {
@@ -4501,10 +4484,9 @@ int bispectra_cmb_lensing_squeezed_bispectrum (
                 ppr, psp, ple, pbi,
                 l1, l2, l3,
                 X1, X2, X3,
-                threej_l1_l2_l3_0_0_0,
-                threej_l1_l2_l3_2_0_m2,
-                threej_l1_l2_l3_m2_2_0,
-                threej_l1_l2_l3_0_m2_2,
+                threej_ratio_20m2,
+                threej_ratio_m220,
+                threej_ratio_0m22,
                 result),
     pbi->error_message,
     pbi->error_message);
@@ -4518,8 +4500,8 @@ int bispectra_cmb_lensing_squeezed_bispectrum (
 
 
 /** 
- * Squeezed approximation for the local bispectrum (Gangui et al. 1994, Komatsu & Spergel 2001). 
- * For the time being, it only supports temperature.
+ * Squeezed approximation for the local bispectrum. This is the generalisation to polarisation
+ * of the temperature approximation first described in Gangui et al. 1994, Komatsu & Spergel 2001.
  *
  */
 int bispectra_local_squeezed_bispectrum (
@@ -4529,10 +4511,9 @@ int bispectra_local_squeezed_bispectrum (
      struct bispectra * pbi,
      int l1, int l2, int l3,
      int X, int Y, int Z,
-     double threej_l1_l2_l3_0_0_0,
-     double threej_l1_l2_l3_2_0_m2,
-     double threej_l1_l2_l3_m2_2_0,
-     double threej_l1_l2_l3_0_m2_2,
+     double threej_ratio_20m2,
+     double threej_ratio_m220,
+     double threej_ratio_0m22,
      double * result
      )
 {
@@ -4555,17 +4536,17 @@ int bispectra_local_squeezed_bispectrum (
   }
 
   /* Obvious generalisation of the TTT result in Eq. 2.16 of http://arxiv.org/abs/1201.1010 */
-  *result = 6 * cl3_Zz * (cl1_XY + cl2_XY);
+  *result = 6/5. * cl3_Zz * (cl1_XY + cl2_XY);
 
   /* TTT result */
-  // *result = 6 * (
+  // *result = 6/5. * (
   //     pbi->cls[psp->index_ct_tt][l1-2] * pbi->cls[psp->index_ct_tt][l2-2]
   //   + pbi->cls[psp->index_ct_tt][l2-2] * pbi->cls[psp->index_ct_tt][l3-2]
   //   + pbi->cls[psp->index_ct_tt][l3-2] * pbi->cls[psp->index_ct_tt][l1-2]
   // );      
 
   /* EEE result */
-  // *result = 6 * (
+  // *result = 6/5. * (
   //     pbi->cls[psp->index_ct_ee][l1-2] * pbi->cls[psp->index_ct_ee][l2-2]
   //   + pbi->cls[psp->index_ct_ee][l2-2] * pbi->cls[psp->index_ct_ee][l3-2]
   //   + pbi->cls[psp->index_ct_ee][l3-2] * pbi->cls[psp->index_ct_ee][l1-2]
@@ -4612,10 +4593,9 @@ int bispectra_intrinsic_squeezed_bispectrum (
      struct bispectra * pbi,
      int l1, int l2, int l3,
      int X, int Y, int Z,
-     double threej_l1_l2_l3_0_0_0,
-     double threej_l1_l2_l3_2_0_m2,
-     double threej_l1_l2_l3_m2_2_0,
-     double threej_l1_l2_l3_0_m2_2,
+     double threej_ratio_20m2,
+     double threej_ratio_m220,
+     double threej_ratio_0m22,
      double * result
      )
 {
@@ -4696,10 +4676,9 @@ int bispectra_intrinsic_squeezed_unlensed_bispectrum (
      struct bispectra * pbi,
      int l1, int l2, int l3,
      int X, int Y, int Z,
-     double threej_l1_l2_l3_0_0_0,
-     double threej_l1_l2_l3_2_0_m2,
-     double threej_l1_l2_l3_m2_2_0,
-     double threej_l1_l2_l3_0_m2_2,
+     double threej_ratio_20m2,
+     double threej_ratio_m220,
+     double threej_ratio_0m22,
      double * result
      )
 {
@@ -4793,10 +4772,9 @@ int bispectra_quadratic_bispectrum (
      struct bispectra * pbi,
      int l1, int l2, int l3,
      int X1, int X2, int X3,
-     double threej_l1_l2_l3_0_0_0,
-     double threej_l1_l2_l3_2_0_m2,
-     double threej_l1_l2_l3_m2_2_0,
-     double threej_l1_l2_l3_0_m2_2,
+     double threej_ratio_20m2,
+     double threej_ratio_m220,
+     double threej_ratio_0m22,
      double * result
      )
 {
@@ -4903,25 +4881,23 @@ int bispectra_quadratic_bispectrum (
   int F_X2 = pbi->field_spin[X2];
   int F_X3 = pbi->field_spin[X3];
   
-  /* Obtain the needed 3j's by swapping columns and changing sign of those already computed.
-  Also divide them by the 000 3j so that we obtain the reduced bispectrum (TODO: change for
-  B-modes as they have odd parity and 3j_000 vanish) */
+  /* Obtain the needed 3j ratios (TODO: what about B-modes? */
   double threej_l2_l3_l1_0_FX1_mFX1 = 1, threej_l2_l3_l1_FX1_0_mFX1 = 1;
   if (F_X1==2) {
-    threej_l2_l3_l1_0_FX1_mFX1 = alternating_sign(L) * threej_l1_l2_l3_2_0_m2/threej_l1_l2_l3_0_0_0;
-    threej_l2_l3_l1_FX1_0_mFX1 = threej_l1_l2_l3_m2_2_0/threej_l1_l2_l3_0_0_0;
+    threej_l2_l3_l1_0_FX1_mFX1 = threej_ratio_20m2;
+    threej_l2_l3_l1_FX1_0_mFX1 = threej_ratio_m220;
   }
 
   double threej_l3_l1_l2_0_FX2_mFX2 = 1, threej_l3_l1_l2_FX2_0_mFX2 = 1;
   if (F_X2==2) {
-    threej_l3_l1_l2_0_FX2_mFX2 = alternating_sign(L) * threej_l1_l2_l3_m2_2_0/threej_l1_l2_l3_0_0_0;
-    threej_l3_l1_l2_FX2_0_mFX2 = threej_l1_l2_l3_0_m2_2/threej_l1_l2_l3_0_0_0;
+    threej_l3_l1_l2_0_FX2_mFX2 = threej_ratio_m220;
+    threej_l3_l1_l2_FX2_0_mFX2 = threej_ratio_0m22;
   }
   
   double threej_l1_l2_l3_0_FX3_mFX3 = 1, threej_l1_l2_l3_FX3_0_mFX3 = 1;
   if (F_X3==2) {
-    threej_l1_l2_l3_0_FX3_mFX3 = alternating_sign(L) * threej_l1_l2_l3_0_m2_2/threej_l1_l2_l3_0_0_0;
-    threej_l1_l2_l3_FX3_0_mFX3 = threej_l1_l2_l3_2_0_m2/threej_l1_l2_l3_0_0_0;
+    threej_l1_l2_l3_0_FX3_mFX3 = threej_ratio_0m22;
+    threej_l1_l2_l3_FX3_0_mFX3 = threej_ratio_20m2;
   }
 
   // ---------------------------------------------------------------------------------------
@@ -4968,10 +4944,9 @@ int bispectra_cosine_bispectrum (
      struct bispectra * pbi,
      int l1, int l2, int l3,
      int X1, int X2, int X3,
-     double threej_l1_l2_l3_0_0_0,
-     double threej_l1_l2_l3_2_0_m2,
-     double threej_l1_l2_l3_m2_2_0,
-     double threej_l1_l2_l3_0_m2_2,
+     double threej_ratio_20m2,
+     double threej_ratio_m220,
+     double threej_ratio_0m22,
      double * result
      )
 {                   
@@ -4981,10 +4956,9 @@ int bispectra_cosine_bispectrum (
                 ppr, psp, ple, pbi,
                 l1, l2, l3,
                 X1, X2, X3,
-                threej_l1_l2_l3_0_0_0,
-                threej_l1_l2_l3_2_0_m2,
-                threej_l1_l2_l3_m2_2_0,
-                threej_l1_l2_l3_0_m2_2,
+                threej_ratio_20m2,
+                threej_ratio_m220,
+                threej_ratio_0m22,
                 result),
     pbi->error_message,
     pbi->error_message);
@@ -5014,10 +4988,9 @@ int bispectra_local_window_function (
      struct bispectra * pbi,
      int l1, int l2, int l3,
      int X, int Y, int Z,
-     double threej_l1_l2_l3_0_0_0,
-     double threej_l1_l2_l3_2_0_m2,
-     double threej_l1_l2_l3_m2_2_0,
-     double threej_l1_l2_l3_0_m2_2,
+     double threej_ratio_20m2,
+     double threej_ratio_m220,
+     double threej_ratio_0m22,
      double * result
      )
 {
@@ -5067,10 +5040,9 @@ int bispectra_intrinsic_window_function (
      struct bispectra * pbi,
      int l1, int l2, int l3,
      int X, int Y, int Z,
-     double threej_l1_l2_l3_0_0_0,
-     double threej_l1_l2_l3_2_0_m2,
-     double threej_l1_l2_l3_m2_2_0,
-     double threej_l1_l2_l3_0_m2_2,
+     double threej_ratio_20m2,
+     double threej_ratio_m220,
+     double threej_ratio_0m22,
      double * result
      )
 {
@@ -5094,65 +5066,6 @@ int bispectra_intrinsic_window_function (
   return _SUCCESS_;
 
 }
-
-
-
-
-/** 
- * Play around with the window function for the local (l1,l2,l3) bispectrum.
- *
- */
-int bispectra_local_window_function_test (
-     struct precision * ppr,
-     struct spectra * psp,
-     struct lensing * ple,
-     struct bispectra * pbi,
-     int l1, int l2, int l3,
-     int X, int Y, int Z,
-     double threej_l1_l2_l3_0_0_0,
-     double threej_l1_l2_l3_2_0_m2,
-     double threej_l1_l2_l3_m2_2_0,
-     double threej_l1_l2_l3_0_m2_2,
-     double * result
-     )
-{
-
-  double cl1_Zz = pbi->cls[pbi->index_ct_of_zeta_bf[ Z ]][l1-2];
-  double cl2_Zz = pbi->cls[pbi->index_ct_of_zeta_bf[ Z ]][l2-2];
-  double cl3_Zz = pbi->cls[pbi->index_ct_of_zeta_bf[ Z ]][l3-2];
-
-  double cl1_XY = pbi->cls[pbi->index_ct_of_bf_bf[X][Y]][l1-2];
-  double cl2_XY = pbi->cls[pbi->index_ct_of_bf_bf[X][Y]][l2-2];
-  double cl3_XY = pbi->cls[pbi->index_ct_of_bf_bf[X][Y]][l3-2];
-  
-  /* Squeezed limit of the local bispectrum */
-  // *result = cl3_Zz * (cl1_XY + cl2_XY);
-
-  /* Symmetrised version of the squeezed limit of the local bispectrum */
-  // *result = 2 * (
-  //   cl3_Zz * (cl1_XY + cl2_XY) +
-  //   cl1_Zz * (cl2_XY + cl3_XY) +
-  //   cl2_Zz * (cl3_XY + cl1_XY)
-  // );
-
-  /* This is always positive */
-  *result =
-      pbi->cls[pbi->index_ct_of_bf_bf[X][X]][l1-2] * pbi->cls[pbi->index_ct_of_bf_bf[Y][Y]][l2-2]
-    + pbi->cls[pbi->index_ct_of_bf_bf[X][X]][l2-2] * pbi->cls[pbi->index_ct_of_bf_bf[Y][Y]][l3-2]
-    + pbi->cls[pbi->index_ct_of_bf_bf[X][X]][l3-2] * pbi->cls[pbi->index_ct_of_bf_bf[Y][Y]][l1-2]
-    + pbi->cls[pbi->index_ct_of_bf_bf[Y][Y]][l1-2] * pbi->cls[pbi->index_ct_of_bf_bf[X][X]][l2-2]
-    + pbi->cls[pbi->index_ct_of_bf_bf[Y][Y]][l2-2] * pbi->cls[pbi->index_ct_of_bf_bf[X][X]][l3-2]
-    + pbi->cls[pbi->index_ct_of_bf_bf[Y][Y]][l3-2] * pbi->cls[pbi->index_ct_of_bf_bf[X][X]][l1-2];
-
-  return _SUCCESS_;
-
-}
-
-
-
-
-
-
 
 
 

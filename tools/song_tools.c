@@ -9,6 +9,7 @@
 #include "slatec_3j_C.h"
 #include "math.h"
 
+
 // ==============================================================================
 // =                                3J and 6J symbols                           =
 // ==============================================================================
@@ -73,14 +74,17 @@ int threej_single(
 
 
 
+
 /** 
- * Compute the 3j symbol
- * (    l1     l2     l3   )
- * ( -m2-m3    m2     m3   )
- * for all allowed values of 'L1'.
- * 
- * The result shall be stored into the 'result' array, that needs to be preallocated
- * to contain at least l2+l3 - abs(l2-l3) + 1 elements.
+ *  Compute the 3j symbol
+ *  (    l1     l2     l3   )
+ *  ( -m2-m3    m2     m3   )
+ *  for all allowed values of 'L1'.
+ *  
+ *  The result shall be stored into the 'result' array, that needs to be preallocated
+ *  to contain at least l2+l3 - abs(l2-l3) + 1 elements.
+ *  
+ *  This function has double precision.
  *
  */
 int threej_l1(
@@ -283,8 +287,122 @@ int sixj_l1(
 
 
 
+/** 
+ *  Compute the ratio between the 3j symbols
+ *  (    l1     l2     l3   )
+ *  (     0      M     -M   )
+ * and
+ *  (    l1     l2     l3   )
+ *  (     0      0      0   )  
+ * for all values of M larger than zero, using the recursive relation in  Schulten & Gordon, 1961
+ * http://scitation.aip.org/content/aip/journal/jmp/16/10/10.1063/1.522426?ver=pdfcov.
+ *
+ * The relation is valid only for even values of l1+l2+l3, but the function will return
+ * also when this is not true.
+ *  
+ */
+int threej_ratio_recursive (
+      int l1, int l2, int l3, int M,     // In
+      double *result,                    // Out, should be allocated with M+1 elements
+      ErrorMsg errmsg
+      )
+{
+
+  class_test ((M>l2) || (M>l3) || (l1>l2+l3) || (l1<abs(l2-l3)),
+    errmsg,
+    "the arguments violate one or more 3J conditions");
+
+  /* First element in the recursion is 3J[0,0,0]/3J[0,0,0]=1 */
+  result[0] = 1;
+
+  if (M > 0) {
+  
+    /* Second element in the recurision is 3J[0,1,-1]/3J[0,0,0] */
+    double C_0 = sqrt(l2*l3*(l2+1.)*(l3+1.));
+    double D_0 = l2*(l2+1.) + l3*(l3+1.) - l1*(l1+1.);
+    double C_1 = C_0;
+    result[1] = -D_0/(C_0+C_1);
+
+    /* Recursive relation for the element M */
+    for (int m=2; m <= M; ++m)
+      result[m] = - (
+                        result[m-2]*threej_ratio_C(l1,l2,l3,m-1,-m+1)
+                      + result[m-1]*threej_ratio_D(l1,l2,l3,m-1,-m+1)
+                    ) / threej_ratio_C(l1,l2,l3,m,-m);
+    
+  } // end of if(m)
+
+  /* Debug - show results */
+  // for (int m=0; m < M+1; ++m) {
+  //   printf ("result[%d] = %g\n", m, result[m]);
+  // }
+
+  return _SUCCESS_;
+
+}
+
+/** 
+ *  Compute the ratio between the 3j symbols
+ *  (    l1     l2     l3   )
+ *  (     0      M     -M   )
+ * and
+ *  (    l1     l2     l3   )
+ *  (     0      0      0   ) .
+ *
+ * This function calls 'threej_ratio' and only outputs the last element of the result array.
+ *
+ * The relation is valid only for even values of l1+l2+l3, but the function will return
+ * also when this is not true.
+ *  
+ */
+int threej_ratio (
+      int l1, int l2, int l3, int M,     // In
+      double *result,                    // Out
+      ErrorMsg errmsg
+      )
+{
+
+  double ratio[M+1];
+  
+  class_call (threej_ratio_recursive (l1,l2,l3,M,&(ratio[0]),errmsg),
+    errmsg, errmsg);
+    
+  *result = ratio[M];
+
+  return _SUCCESS_;
+
+}
 
 
+/** 
+ * Support function for 'threej_ratio'
+ */
+double threej_ratio_C (
+      int l1, int l2, int l3,
+      int m2, int m3
+      )
+{
+   
+  return sqrt((l2-m2+1.)*(l2+m2)*(l3+m3+1.)*(l3-m3));
+  
+  return _SUCCESS_;
+
+}
+
+/** 
+ * Support function for 'threej_ratio'
+ */
+double threej_ratio_D (
+      int l1, int l2, int l3,
+      int m2, int m3
+      )
+{
+   
+  return l2*(l2+1.) + l3*(l3+1.) - l1*(l1+1.) + 2.*m2*m3;
+  
+  return _SUCCESS_;
+
+}
 
 
 // ======================================================================
@@ -299,9 +417,12 @@ int sixj_l1(
  *
  *  for values of l going from l to l+N-1.
  *
- * This function has single precision.  In order to use double
- * precision, change float -> double and us dbesj_ instead of
- * besj_.
+ *  The result shall be stored into the 'result' array, that needs to be preallocated
+ *  to contain at least N elements.
+ *
+ *  This function has single precision.  In order to use double
+ *  precision, change float -> double and us dbesj_ instead of
+ *  besj_.
  *
  */
 int besselj_l1(
@@ -382,12 +503,8 @@ int besselJ_l1(
  *
  * Inspired from Numerical Recipies. This is the same as the function
  * bessel_j in the Bessel structure, but without requiring pbs as an
- * argument.
+ * argument, so that it can be called from anywhere.
  */
-
-#define _GAMMA1_ 2.6789385347077476336556
-#define _GAMMA2_ 1.3541179394264004169452
-
 double spherical_bessel_j(
        int l,
        double x
@@ -567,9 +684,12 @@ double spherical_bessel_j(
 // =                                Coupling factors                                  =
 // ====================================================================================
 
-/* These appear in the collision term.  They are basically a 3j symbol
- that naturally arise when peforming the multipole expansion of Boltzmann equation.
- We take their definition from Beneke & Fidler 2011, eq. A.11 */
+/**
+ * 'C' and 'D' coupling coefficients that appear in the in the Boltzmann hierarchy for the photon
+ * temperature (see eqs. A.11 and 2.18 of Beneke & Fidler 2011). They are basically
+ * compact forms of 3j symbols that naturally arise when peforming the multipole expansion
+ * of Boltzmann equation.
+ */
 double coupling_c_minus (int l, int m1, int m) {
 
   if ((abs(m1-m)>1) && (abs(m)>l))
@@ -688,7 +808,6 @@ double coupling_d_plus (int l, int m1, int m) {
  * l1_min and m2_min are outputs of this function.
  *
  */
-
 int coupling_general (
   int l2, int l3, int m1, int F,
   double * three_j_000, /* should be preallocated with at least l2_max doubles */
@@ -784,12 +903,13 @@ int coupling_general (
 }
 
 
-// ==================================================================================================
-// =                                   Legendre polynomials                                         =
-// ==================================================================================================
+// ============================================================================================
+// =                                 Legendre polynomials                                     =
+// ============================================================================================
 
 
-/** Associate Legendre Polynomials from Numerical Recipes, Third edition, pag.294, Press et al. 2002.
+/**
+ * Associate Legendre Polynomials from Numerical Recipes, Third edition, pag.294, Press et al. 2002.
  * The function returns the associated Legendre polynomial using a recurrence relation algorithm.
  * The returned polynomials include the same normalisation constant found in the definition
  * of the spherical harmonics, that is sqrt( (2l+1)/(4pi) * (l-m)!/(l+m)! )
@@ -1738,17 +1858,17 @@ int size_n_l_indexm (int n_max, int l_max, int * m_vec, int m_size) {
   
   
   
-// =========================================================================================
-// =                            Interpolation related functions                            =
-// =========================================================================================
+// =====================================================================================
+// =                                     Interpolation                                 =
+// =====================================================================================
   
   
   
 /**
- * 
- *
+ * Function to calculate second derivatives of ppt->sources at the nodes.
+ * This function reflects the very specific indexing pattern of ppt->sources, and therefore
+ * is not easily recycleable outside CLASS.
  */
-
 int spline_sources_derivs_two_levels(
 			     double * x, /* vector of size tau_size */
 			     int tau_size,
@@ -2329,14 +2449,15 @@ int spline_sources_derivs(
 }
  
  
-/** Find the interpolated value of all the sources at a certain time.  The array with the second derivatives at the nodes
-  * (double *** dd_array) must have been already computed by using the function "spline_sources_derivs".
-  * This function is a readaptation of CLASS1 "array_interpolate_spline" that takes into account the 
-  * unusual indexing used for the ppt->sources array, that is:
-  *   sources[index_mode]
-  *     [index_ic * ppt->tp_size[index_mode] + index_type]
-  *     [index_tau * ppt->k_size[index_mode] + index_k]
-  */
+/**
+ * Find the interpolated value of all the sources at a certain time.  The array with the second derivatives
+ * at the nodes (double *** dd_array) must have been already computed by using the function
+ * "spline_sources_derivs". This function is a readaptation of CLASS1 "array_interpolate_spline" that takes
+ * into account the unusual indexing used for the ppt->sources array, that is:
+ *   sources[index_mode]
+ *     [index_ic * ppt->tp_size[index_mode] + index_type]
+ *     [index_tau * ppt->k_size[index_mode] + index_k]
+ */
 int spline_sources_interpolate(
 			     double * x_array,
 			     int tau_size,
@@ -2649,11 +2770,13 @@ int lin_space (double * x, double x_min, double x_max, int n_points) {
 // =                                Matrix operations                                =
 // ===================================================================================
 
+/* Credits to Christopher M. Brown (http://www.cs.rochester.edu/~brown/Crypto/assts/projects/adj.html) */
 
-/*
-   Recursive definition of determinate using expansion by minors.
-   Credits to Christopher M. Brown (http://www.cs.rochester.edu/~brown/Crypto/assts/projects/adj.html)
-*/
+
+/**
+ * Recursive definition of determinate using expansion by minors.
+ * Credits to Christopher M. Brown (http://www.cs.rochester.edu/~brown/Crypto/assts/projects/adj.html)
+ */
 double Determinant(double **a,int n)
 {
    int i,j,j1,j2;
@@ -2859,9 +2982,8 @@ int is_triangular_double (double l1, double l2, double l3) {
 
 /** 
  * Identity function.
- * 
  */  
-double id_d (double x) {
+double identity_double (double x) {
   return x;
 }
 

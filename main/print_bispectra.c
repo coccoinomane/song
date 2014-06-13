@@ -1001,7 +1001,7 @@ int main(int argc, char **argv) {
           else if ((l3>=l2) && (l2>=l1))
             normalisation = bi.bispectra[bi.index_bt_local_squeezed][Z][Y][X][index_l1_l2_l3];
           }
-          /* If Y!=Z, avoid the YZ cross-correlation which would result in spikes */
+          /* If Y!=Z, avoid the YZ cross-correlation which crosses the zero and would result in spikes */
           else {
             normalisation = 6 * bi.cls[bi.index_ct_of_zeta_bf[X]][l_long-2]
               * (bi.cls[bi.index_ct_of_bf_bf[Y][Y]][l_short-2] + bi.cls[bi.index_ct_of_bf_bf[Z][Z]][l_short-2]);

@@ -893,13 +893,14 @@ int input_init(
     || (strstr(string1,"i_u_squeezed") != NULL) || (strstr(string1,"i-u-squeezed") != NULL)) {
       pbi->has_intrinsic_squeezed_unlensed = _TRUE_;
       ppt->has_cl_cmb_zeta = _TRUE_;
-      psp->compute_cl_derivative = _TRUE_;
     }
 
     /* Compute the approximation of the local bispectrum in the squeezed limit */
     if ((strstr(string1,"local_squeezed") != NULL)
     || (strstr(string1,"l_squeezed") != NULL) || (strstr(string1,"l-squeezed") != NULL)) {
       pbi->has_local_squeezed = _TRUE_;
+      ppt->has_cl_cmb_zeta = _TRUE_;
+      psp->compute_cl_derivative = _TRUE_;
     }
 
     /* Compute a test oscillating bispectrum */
@@ -2649,26 +2650,26 @@ less than %d values for 'experiment_beam_fwhm'", _N_FREQUENCY_CHANNELS_MAX_);
   might have most zero entries if the 1D l-grid is chosen such that l1+l2+l3 is
   mostly odd). Therefore, you might consider setting 'ppr->compute_only_even_ls = _TRUE_' by
   hand in the functions that rely on pbi->bispectra, such as 'print_bispectra' */
-  if ((ppr->l_linstep!=1)
-  && (pfi->bispectra_interpolation != mesh_interpolation_2D)
-  && (pfi->bispectra_interpolation != mesh_interpolation_3D)
-  && (ppt->has_bi_cmb_polarization==_TRUE_) 
-  && ((pbi->has_quadratic_correction==_TRUE_)
-  || (pbi->has_cmb_lensing ==_TRUE_)
-  || (pbi->has_cmb_lensing_squeezed ==_TRUE_)
-  || (pbi->has_cmb_lensing_kernel ==_TRUE_))) {
-     
-    printf ("\n");
-    printf ("   *@^#?!?! FORCING THE COMPUTATION OF A GRID OF EVEN L'S\n");
-    printf ("\n");      
-    ppr->compute_only_even_ls = _TRUE_;
-
-    // printf ("\n");
-    // printf ("   *@^#?!?! FORCING THE COMPUTATION OF A GRID OF ODD L'S\n");
-    // printf ("\n");
-    // ppr->compute_only_odd_ls = _TRUE_;
-
-  }
+  // if ((ppr->l_linstep!=1)
+  // && (pfi->bispectra_interpolation != mesh_interpolation_2D)
+  // && (pfi->bispectra_interpolation != mesh_interpolation_3D)
+  // && (ppt->has_bi_cmb_polarization==_TRUE_) 
+  // && ((pbi->has_quadratic_correction==_TRUE_)
+  // || (pbi->has_cmb_lensing ==_TRUE_)
+  // || (pbi->has_cmb_lensing_squeezed ==_TRUE_)
+  // || (pbi->has_cmb_lensing_kernel ==_TRUE_))) {
+  //    
+  //   printf ("\n");
+  //   printf ("   *@^#?!?! FORCING THE COMPUTATION OF A GRID OF EVEN L'S\n");
+  //   printf ("\n");      
+  //   ppr->compute_only_even_ls = _TRUE_;
+  // 
+  //   // printf ("\n");
+  //   // printf ("   *@^#?!?! FORCING THE COMPUTATION OF A GRID OF ODD L'S\n");
+  //   // printf ("\n");
+  //   // ppr->compute_only_odd_ls = _TRUE_;
+  // 
+  // }
 
 
   // *** END OF MY MODIFICATIONS ***
