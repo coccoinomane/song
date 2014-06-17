@@ -446,8 +446,9 @@ int main(int argc, char **argv) {
   //       double bispectrum = bi.bispectra[index_bt][X][Y][Z][index_l1_l2_l3];
   // 
   //       /* Print a squeezed configuration */
+  //       // if ((l1==1170) && (l2==870))
   //       if ((l3==6) && (l1==l2))
-  //         fprintf (stderr, "%5d %17.7g\n", l2, bispectrum);
+  //         fprintf (stderr, "%5d %17.7g\n", l1, bispectrum);
   //       
   //       /* Print an equilateral configuration */
   //       // if ((l3==l2) && (l1==l2))

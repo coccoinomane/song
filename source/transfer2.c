@@ -950,18 +950,20 @@ int transfer2_get_lm_lists (
   function array: ptr2->transfer[index_type + lm_array[index_l][index_m].
   Note that this array is used only by the preprocessor macros lm_cls(index_l,index_m),
   defined in common2.h. */
-  class_calloc(ptr2->lm_array, ptr2->l_size, sizeof(int*), ptr2->error_message);    
+  class_alloc(ptr2->lm_array, ptr2->l_size*sizeof(int*), ptr2->error_message);    
   
   for (int index_l=0; index_l<ptr2->l_size; ++index_l) {
   
+    int l = ptr2->l[index_l];
+  
     class_calloc (ptr2->lm_array[index_l],
-                  ppr2->index_m_max[ptr2->l[index_l]]+1,
+                  ppr2->index_m_max[l]+1,
                   sizeof(int),
                   ptr2->error_message);
 
     /* We enter the loop only if index_m_max >= 0. This is false if l<ptr2->m[0],
     for example for l=2 and m_min=3 */
-    for (int index_m=0; index_m <= ppr2->index_m_max[ptr2->l[index_l]]; ++index_m) {
+    for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
 
       ptr2->lm_array[index_l][index_m] = multipole2offset_indexl_indexm (
                                            ptr2->l[index_l],
@@ -1003,12 +1005,12 @@ int transfer2_get_lm_lists (
   for (int index_tt = 0; index_tt < ptr2->tt2_size; index_tt++) {
     
     /* Initialise the vectors to -1 */
-    ptr2->corresponding_index_l[index_tt] = -1;
-    ptr2->corresponding_index_m[index_tt] = -1;
+    int index_l = -1;
+    int index_m = -1;
 
     // *** Photon temperature ***
     if ((ppt2->has_source_T==_TRUE_)
-       && (index_tt >= ptr2->index_tt2_T) && (index_tt < ptr2->index_tt2_T+ptr2->n_transfers)) {
+    && (index_tt >= ptr2->index_tt2_T) && (index_tt < ptr2->index_tt2_T+ptr2->n_transfers)) {
 
       /* Find the position of the monopole of the same type as index_tp */
       ptr2->index_tt2_monopole[index_tt] = ptr2->index_tt2_T;
@@ -1017,24 +1019,22 @@ int transfer2_get_lm_lists (
       /* Find (l,m) associated with index_tt */
       int lm_offset = index_tt - ptr2->index_tt2_monopole[index_tt];
       offset2multipole_indexl_indexm (lm_offset, ptr2->l, ptr2->l_size, ptr2->m, ptr2->m_size,
-        &(ptr2->corresponding_index_l[index_tt]), &(ptr2->corresponding_index_m[index_tt]));
+        &index_l, &index_m);
 
       /* Set the labels of the transfer types */
-      sprintf(ptr2->tt2_labels[index_tt], "T_%d_%d",
-        ptr2->l[ptr2->corresponding_index_l[index_tt]],
-        ptr2->m[ptr2->corresponding_index_m[index_tt]]);
+      sprintf(ptr2->tt2_labels[index_tt], "T_%d_%d",ptr2->l[index_l],ptr2->m[index_m]);
 
       /* Some debug */
-      // printf("T, index_tt=%d: offset=%d -> (%d,%d), label=%s, monopole_tr=%d, monopole_pt=%d\n",
-      //   index_tt, lm_offset,
-      //   ptr2->l[ptr2->corresponding_index_l[index_tt]], ptr2->m[ptr2->corresponding_index_m[index_tt]],
-      //   ptr2->tt2_labels[index_tt],
-      //   ptr2->index_tt2_monopole[index_tt], ptr2->index_pt2_monopole[index_tt]);
+      printf("T, index_tt=%d: lm_offset=%d -> (%d,%d), label=%s, monopole_tr=%d, monopole_pt=%d\n",
+        index_tt, lm_offset, ptr2->l[index_l], ptr2->m[index_m],
+        ptr2->tt2_labels[index_tt],
+        ptr2->index_tt2_monopole[index_tt], ptr2->index_pt2_monopole[index_tt]);
+
     }
 
     // *** Photon E-mode polarization ***
     else if ((ppt2->has_source_E==_TRUE_)
-       && (index_tt >= ptr2->index_tt2_E) && (index_tt < ptr2->index_tt2_E+ptr2->n_transfers)) {
+    && (index_tt >= ptr2->index_tt2_E) && (index_tt < ptr2->index_tt2_E+ptr2->n_transfers)) {
 
       /* Find the position of the monopole of the same type as index_tp */
       ptr2->index_tt2_monopole[index_tt] = ptr2->index_tt2_E;
@@ -1060,7 +1060,7 @@ int transfer2_get_lm_lists (
 
     // *** Photon B-mode polarization ***
     else if ((ppt2->has_source_B==_TRUE_)
-       && (index_tt >= ptr2->index_tt2_B) && (index_tt < ptr2->index_tt2_B+ptr2->n_transfers)) {
+    && (index_tt >= ptr2->index_tt2_B) && (index_tt < ptr2->index_tt2_B+ptr2->n_transfers)) {
 
       /* Find the position of the monopole of the same type as index_tp */
       ptr2->index_tt2_monopole[index_tt] = ptr2->index_tt2_B;
@@ -1084,12 +1084,17 @@ int transfer2_get_lm_lists (
       //   ptr2->index_tt2_monopole[index_tt], ptr2->index_pt2_monopole[index_tt]);
     }
 
+    /* Check the result */
+    class_test ((index_l>=ptr2->l_size) || (index_m>=ptr2->m_size) || (index_l<0) || (index_m<0),
+      ptr2->error_message,
+      "index_tt=%d: result (index_l,index_m)=(%d,%d) is out of bounds index_l=[%d,%d], index_m=[%d,%d]\n",
+      index_tt, index_l, index_m, 0, ptr2->l_size-1, 0, ptr2->m_size-1);
+
+    /* Write the result */
+    ptr2->corresponding_index_l[index_tt] = index_l;
+    ptr2->corresponding_index_m[index_tt] = index_m;
     
   } // end of for(index_tt)
-
-
-
-
 
 
   return _SUCCESS_;

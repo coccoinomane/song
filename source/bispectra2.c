@@ -206,7 +206,7 @@ int bispectra2_harmonic (
     pbi->error_message);
 
   /* Check that we correctly filled the bispectra array */
-  class_test_permissive (pbi->count_allocated_for_bispectra != pbi->count_memorised_for_bispectra,
+  class_test (pbi->count_allocated_for_bispectra != pbi->count_memorised_for_bispectra,
     pbi->error_message,
     "there is a mismatch between allocated (%ld) and used (%ld) space!",
     pbi->count_allocated_for_bispectra, pbi->count_memorised_for_bispectra);
@@ -1122,8 +1122,9 @@ int bispectra2_intrinsic_integrate_over_k3 (
         int k2_size = index_k1 + 1;
         class_calloc (pwb->integral_over_k3[index_l3][index_r][index_k1], k2_size, sizeof(double), pbi->error_message);
         
-        /* Increase memory counter */
-        pwb->count_allocated_for_integral_over_k3 += k2_size;
+        /* Increase memory counter, excluding non-physical configurations where |M3|>l3 */
+        if (pwb->abs_M3 <= pbi->l[index_l3])
+          pwb->count_allocated_for_integral_over_k3 += k2_size;
   
       } // end of for(index_k1)
     } // end of for(index_r)
@@ -1149,13 +1150,18 @@ int bispectra2_intrinsic_integrate_over_k3 (
 
     int l3 = pbi->l[index_l3];
     int L3 = abs(l3-pwb->abs_M3) + offset_L3;
-    
+
+    /* The configurations with |M3|>l3 do not contribute to the bispectrum because
+    they would violate the 3j-symbol properties */
+    if (pwb->abs_M3 > pbi->l[index_l3])
+      continue;
+
     /* Skip the (L3,l3,M3) configurations forbidden by the triangular condition */
     if (L3 > (l3+pwb->abs_M3)) {
       pwb->count_memorised_for_integral_over_k3 += 0.5*pwb->k_smooth_size*(pwb->k_smooth_size+1)*pwb->r_size;
       continue;
-    }  
-
+    }
+    
     /* Find L3 inside pbs2->l1, the list of l's where we computed the Bessel functions */
     int index_L3 = pbs2->index_l1[L3];
 
@@ -1250,6 +1256,7 @@ int bispectra2_intrinsic_integrate_over_k3 (
                               [index_k1]
                               [index_k2];
           
+          
           // ===================================================
           // =                     Integrate                   =
           // ===================================================
@@ -1306,6 +1313,10 @@ int bispectra2_intrinsic_integrate_over_k3 (
             ++pwb->count_memorised_for_integral_over_k3;
               
             #pragma omp flush(abort)
+
+            /* Debug - print the second-order transfer function as a function of k3 */
+            // for (int index_k3=0; index_k3<k3_size; ++index_k3)
+            //   printf ("%14.7g %22.16g\n", pwb->k3_grid[thread][index_k3], transfer[index_k3]);
 
             /* Print the integral as a function of r */
             // if ((pwb->abs_M3==1) && (offset_L3==0))
@@ -1569,7 +1580,8 @@ int bispectra2_intrinsic_integrate_over_k2 (
           int k1_size = pwb->k_smooth_size;
           class_calloc (pwb->integral_over_k2[index_l3][index_l2][index_r], k1_size, sizeof(double), pbi->error_message);
   
-          /* Increase memory counter */
+        /* Increase memory counter, excluding non-physical configurations where |M3|>l3 */
+        if (pwb->abs_M3 <= pbi->l[index_l3])
           pwb->count_allocated_for_integral_over_k2 += k1_size;
   
         } // end of for(index_r)
@@ -1607,7 +1619,12 @@ int bispectra2_intrinsic_integrate_over_k2 (
         printf("     * computing the k2 integral for r=%g, index_r=%d\n", pwb->r[index_r], index_r);
   
       for (int index_l3 = 0; index_l3 < pbi->l_size; ++index_l3) {
-          
+        
+        /* The configurations with |M3|>l3 do not contribute to the bispectrum because
+        they would violate the 3j-symbol properties */
+        if (pwb->abs_M3 > pbi->l[index_l3])
+          continue;
+        
         for (int index_k1 = 0; index_k1 < pwb->k_smooth_size; ++index_k1) {
     
           /* Interpolate the integral I_l3(k1,k2,r) that we computed above in the integration grid of k2.
@@ -1934,7 +1951,8 @@ int bispectra2_intrinsic_integrate_over_k1 (
                         sizeof(double),
                         pbi->error_message);
         
-          /* Increase memory counter */
+        /* Increase memory counter, excluding non-physical configurations where |M3|>l3 */
+        if (pwb->abs_M3 <= pbi->l[index_l3])
           pwb->count_allocated_for_integral_over_k1 += pwb->r_size;
       
         } // end of for(index_l1)
@@ -1976,7 +1994,12 @@ int bispectra2_intrinsic_integrate_over_k1 (
       for (int index_l3 = 0; index_l3 < pbi->l_size; ++index_l3) {
 
         int l3 = pbi->l[index_l3];
-  
+
+        /* The configurations with |M3|>l3 do not contribute to the bispectrum because
+        they would violate the 3j-symbol properties */
+        if (pwb->abs_M3 > pbi->l[index_l3])
+          continue;
+
         if (pbi->bispectra_verbose > 3)
           printf("      \\ computing the k1 integral for l3=%d, index_l3=%d, L1=%d, offset_L1=%d\n",
             pbi->l[index_l3], index_l3, pbs2->l1[offset_L1], offset_L1);
@@ -2021,8 +2044,9 @@ int bispectra2_intrinsic_integrate_over_k1 (
               pbi->error_message);
               
           }
-          else
+          else {
             continue;
+          }
 
 
           /* l1 is the index of the first transfer function that we are going to integrate,
@@ -2098,6 +2122,9 @@ int bispectra2_intrinsic_integrate_over_k1 (
   // for (index_r = 0; index_r < pwb->r_size; ++index_r) {
   //   for (index_l2=0; index_l2<pbi->l_size; ++index_l2) {
   //     for (index_l3=0; index_l3<pbi->l_size; ++index_l3) {
+  //
+  //       if (pwb->abs_M3 > pbi->l[index_l3])
+  //        continue;
   // 
   //       int index_l1_min = pbi->index_l_triangular_min[index_l3][index_l2];
   //       int index_l1_max = pbi->index_l_triangular_max[index_l3][index_l2];
@@ -2186,14 +2213,22 @@ int bispectra2_intrinsic_integrate_over_r(
   
     /* Allocate l3-level */
     class_alloc (pwb->integral_over_r, pbi->l_size*sizeof(double **), pbi->error_message);
+
     for (int index_l3=0; index_l3<pbi->l_size; ++index_l3) {
+
       /* Allocate l2-level */
       class_alloc (pwb->integral_over_r[index_l3], pbi->l_size*sizeof(double *), pbi->error_message);
+
       for (int index_l2=0; index_l2<pbi->l_size; ++index_l2) {
+
         /* Allocate l1-level */
         int l1_size = pbi->l_triangular_size[index_l3][index_l2];
         class_alloc (pwb->integral_over_r[index_l3][index_l2], l1_size*sizeof(double), pbi->error_message);
-        pwb->count_allocated_for_integral_over_r += l1_size;
+
+        /* Increase memory counter, excluding non-physical configurations where |M3|>l3 */
+        if (pwb->abs_M3 <= pbi->l[index_l3])
+          pwb->count_allocated_for_integral_over_r += l1_size;
+
       } // end of for(index_l2)
     } // end of for(index_l3)
 
@@ -2218,6 +2253,11 @@ int bispectra2_intrinsic_integrate_over_r(
   
     #pragma omp for schedule (dynamic)
     for (int index_l3 = 0; index_l3 < pbi->l_size; ++index_l3) {
+  
+      /* The configurations with |M3|>l3 do not contribute to the bispectrum because
+      they would violate the 3j-symbol properties */
+      if (pwb->abs_M3 > pbi->l[index_l3])
+        continue;
   
       if (pbi->bispectra_verbose > 2)
         printf("     * computing the r-integral for l3=%d, index_l3=%d\n", pbi->l[index_l3], index_l3);
@@ -2385,6 +2425,11 @@ int bispectra2_intrinsic_geometrical_factors (
     /* Skip the (L3,l3,M3) configurations forbidden by the triangular condition */
     if (L3 > (l3+abs_M3))
       continue;
+
+    /* The configurations with |M3|>l3 do not contribute to the bispectrum because
+    they would violate the 3j-symbol properties */
+    if (pwb->abs_M3 > pbi->l[index_l3])
+      continue;
   
     /* Temporary variables to hold the limits of the 3j's in double precision format */
     double min_D, max_D;
@@ -2512,19 +2557,19 @@ int bispectra2_intrinsic_geometrical_factors (
 
         double FACTOR_l1_l2_l3 = value[thread][l1_l2_l3][l1 - min[thread][l1_l2_l3]];
 
+        /* Debug l1_l2_l3 */
+        // printf ("L1=%d,L2=%d,M3=%d: I(l1,l2,l3)(%d,0,%d) = (%d,%d,%d)(%d,0,%d) = %g\n",
+        //   L1, L3, M3, F, -F, l1, l2, l3, F, -F, FACTOR_l1_l2_l3);
+
         /* The reduced bispectrum is given by the angle averaged bispectrum divided by FACTOR_l1_l2_l3.
         Here we make sure that FACTOR_l1_l2_l3 is not zero. We do not worry if it is zero for even 
         bispectra and odd l1+l2+l3, because in that case it must vanish and we cannot define a
         reduced bispectrum. */
         if (!((pwb->bispectrum_parity == _EVEN_) && (is_even_configuration==_FALSE_)))
-          class_test_permissive (fabs(FACTOR_l1_l2_l3) < _MINUSCULE_,
+          class_test_parallel (fabs(FACTOR_l1_l2_l3) < _MINUSCULE_,
             pbi->error_message,
             "possibility of having nans, caution! (l1,l2,l3)=(%d,%d,%d), F=%d, 3J=%g",
             l1, l2, l3, F, FACTOR_l1_l2_l3);
-
-        /* Debug l1_l2_l3 */
-        // printf ("I(l1,l2,l3)(%d,0,%d) = (%d,%d,%d)(%d,0,%d) = %g\n",
-        //   F, -F, l1, l2, l3, F, -F, FACTOR_l1_l2_l3);
 
         /* Value of L1_l2_L3 in L1 */
         class_test_parallel ((L1 - min[thread][L1_l2_L3]) >= size[thread][L1_l2_L3],
@@ -2601,6 +2646,13 @@ int bispectra2_intrinsic_geometrical_factors (
 
         /* Four-dimensional integral */
         double integral = pwb->integral_over_r[index_l3][index_l2][index_l1-index_l1_min];
+
+        /* There might be something wrong when the result is zero */
+        // if (pwb->abs_M3 <= pbi->l[index_l3]) {
+        //   class_test_lazy (integral < _MINUSCULE_,
+        //     pbi->error_message,
+        //     "integral(l1=%d,l2=%d,l3=%d,L1=%d,L3=%d,M3=%d)=%.16g", l1, l2, l3, L1, L3, M3, integral);
+        // }
 
         /* Prefactor for the reduced bispectrum. This already has a factor
         sqrt((2l1+1.)*(2l2+1.)*(2l3+1.)/(4*_PI_)) taken out, and it
@@ -2738,10 +2790,12 @@ int bispectra2_intrinsic_geometrical_factors (
         // 
         //   }
         // }
-        /* Some debug */
+
+        /* Debug - print subparts of the final result */
         // printf ("(M3,L3,L1,l1,l2,l3,offset_L3,offset_L1)=(%d,%d,%d,%d,%d,%d,%d,%d):",
         //   ppr2->m[index_M3],L3,L1,l1,l2,l3,offset_L3,offset_L1);
-        // printf ("\tprefactor=%g, integral=%g, geometry=%g, product=%g\n",
+        // printf ("\tresult=%g,prefactor=%g, integral=%g, geometry=%g, product=%g\n",
+        //   result[index_l3][index_l2][index_l1-index_l1_min],
         //   alternating_sign(exponent/2)*prefactor, integral, geometry,
         //   alternating_sign(exponent/2)*alternating_sign(exponent)*integral*geometry);
         
@@ -2758,17 +2812,53 @@ int bispectra2_intrinsic_geometrical_factors (
         //   }
         // }
 
-        /* Print coefficient */
-        // printf ("coeff_%d_%d_%d(M3=%d,L3=%d,L1=%d) = %g\n", l1, l2, l3,
-        //   prefactor/((2*l1+1)*(2*l2+1)*(2*l3+1)));
-
+        /* Uncomment test the accuracy of threej_ratio_L_recursive */        
+        // int M=4;
+        // double threej_num[2*pbi->l_max+1], threej_den[2*pbi->l_max+1];
+        // int l3_min_num, l3_min_den;
+        // double min_D, max_D;
+        // class_call_parallel (drc3jj (
+        //                        MAX(l1,M), MAX(l2,M), 0, -M,
+        //                        &min_D, &max_D,
+        //                        &(threej_num[0]),
+        //                        (2*pbi->l_max+1),
+        //                        pbi->error_message),
+        //   pbi->error_message,
+        //   pbi->error_message);
+        // l3_min_num = (int)(min_D + _EPS_);          
+        // class_call_parallel (drc3jj (
+        //                        MAX(l1,M), MAX(l2,M), 0, 0,
+        //                        &min_D, &max_D,
+        //                        &(threej_den[0]),
+        //                        (2*pbi->l_max+1),
+        //                        pbi->error_message),
+        //   pbi->error_message,
+        //   pbi->error_message);
+        // l3_min_den = (int)(min_D + _EPS_);          
+        // 
+        // for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {
+        //   int l3 = pbi->l[index_l3];
+        //   if ((l1+l2+l3)%2==0) {
+        //     if ((l1<M) || (l2<M) || (l3<M)) continue;
+        //     double * ratio = malloc(sizeof(double)*(M+1));
+        //     class_call_parallel (threej_ratio_M_recursive(l1, l2, l3, M, ratio, pbi->error_message),
+        //       pbi->error_message, pbi->error_message);
+        //     double res_1 = threej_num[l3-l3_min_num]/threej_den[l3-l3_min_den];
+        //     double res_2 = ratio[M];
+        //     double frac = 1-res_1/res_2;
+        //     class_test_parallel (fabs(frac) > _SMALL_,
+        //       pbi->error_message,
+        //       "(%3d,%3d,%3d,M=%d), res_1=%14.6g, res_2=%14.6g, diff=%14.6g\n",
+        //       l1, l2, l3, M, res_1, res_2, frac);
+        //   }
+        // }
+        
         #pragma omp flush(abort)
   
       } // end of for(index_l1)
     } // end of for(index_l2)
   } // end of for(index_l3) and of parallel region
   if (abort == _TRUE_) return _FAILURE_;
-
 
   /* We can free the memory that was allocated for the integral over r, as it is no longer needed */
   if ((offset_L1 == (2*pwb->abs_M3)) && (pwb->Y == (pbi->bf_size-1)) && (pwb->Z == (pbi->bf_size-1))) {
@@ -2825,7 +2915,7 @@ int bispectra2_add_quadratic_corrections (
    user is trying to run SONG as a first-order one, and hence we turn off the quadratic corrections. */
   if ((pbi->add_quadratic_correction == _FALSE_) || (ppt2->has_quadratic_sources == _FALSE_))
     return _SUCCESS_;
-  
+
   if (pbi->bispectra_verbose > 0)
     printf (" -> adding temperature & redshift corrections to the intrinsic bispectrum\n");
   

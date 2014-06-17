@@ -2441,13 +2441,13 @@ int fisher_cross_correlate_mesh (
 
           if (pbi->need_3j_symbols == _TRUE_) {          
 
-            class_call_parallel (threej_ratio (l2, l3, l1, 2, &threej_ratio_20m2, pbi->error_message),
+            class_call_parallel (threej_ratio_M (l2, l3, l1, 2, &threej_ratio_20m2, pbi->error_message),
               pbi->error_message, pbi->error_message);
 
-            class_call_parallel (threej_ratio (l1, l3, l2, 2, &threej_ratio_m220, pbi->error_message),
+            class_call_parallel (threej_ratio_M (l1, l3, l2, 2, &threej_ratio_m220, pbi->error_message),
               pbi->error_message, pbi->error_message);
 
-            class_call_parallel (threej_ratio (l3, l2, l1, 2, &threej_ratio_0m22, pbi->error_message),
+            class_call_parallel (threej_ratio_M (l3, l2, l1, 2, &threej_ratio_0m22, pbi->error_message),
               pbi->error_message, pbi->error_message);
 
           } // end of 3j computation

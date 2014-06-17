@@ -395,7 +395,6 @@ int perturb2_indices_of_perturbs(
     ppt2->error_message,
     "in order to compute polarisation (l_min=2), you need to specify l_max_los_p>1 and l_max_los_p>1");
     
-    
   /* Check that the m-list is within bounds */
   class_test (
     (ppr2->m_max_2nd_order > ppr2->l_max_los) ||
@@ -403,7 +402,6 @@ int perturb2_indices_of_perturbs(
     (ppr2->m_max_2nd_order > ppr2->l_max_pol_g_2nd_order) ||
     (ppr2->m_max_2nd_order > ppr2->l_max_ur_2nd_order),
     ppt2->error_message, "all entries in modes_2nd_order should be between 0 and l_max.");
-
 
   /* Make sure that we compute enough first-order multipoles to solve the second-order system
   (must be below the initialisation of ppt2->lm_extra). */
@@ -854,46 +852,47 @@ int perturb2_get_lm_lists (
   class_alloc (ppt2->corresponding_index_m, ppt2->tp2_size*sizeof(int), ppt2->error_message);
 
   /* For a given source type index index_tp, this array contains the index corresponding
-  to the monopole of index_tp (eg index_tp2_T for temperature, index_tp2_e for E-modes...) */
+  to the monopole of index_tp (eg index_tp2_T for temperature, index_tp2_p for polarisation) */
   class_alloc (ppt2->index_monopole, ppt2->tp2_size*sizeof(int), ppt2->error_message);
 
   /* Fill the above arrays */
   for (int index_tp = 0; index_tp < ppt2->tp2_size; index_tp++) {
 
-    /* Initialise the vectors to -1 */
-    ppt2->corresponding_l[index_tp] = -1;
-    ppt2->corresponding_index_m[index_tp] = -1;
+    /* Initialise the result to -1 */
+    int l = -1;
+    int index_m = -1;
+    int l_max = -1;
 
     // *** Photon temperature ***
     if ((ppt2->has_source_T==_TRUE_)
-       && (index_tp >= ppt2->index_tp2_T) && (index_tp < ppt2->index_tp2_T+ppt2->n_sources_T)) {
+    && (index_tp >= ppt2->index_tp2_T) && (index_tp < ppt2->index_tp2_T+ppt2->n_sources_T)) {
 
       /* Find the position of the monopole of the same type as index_tp */
       ppt2->index_monopole[index_tp] = ppt2->index_tp2_T;
 
       /* Find (l,index_m) associated with index_tp */
+      l_max = ppr2->l_max_los_t;
       int lm_offset = index_tp - ppt2->index_monopole[index_tp];
-      offset2multipole_l_indexm (lm_offset, ppt2->largest_l, ppt2->m, ppt2->m_size,
-                                 &(ppt2->corresponding_l[index_tp]), &(ppt2->corresponding_index_m[index_tp]));
-
+      offset2multipole_l_indexm (lm_offset, l_max, ppt2->m, ppt2->m_size,
+                                 &l, &index_m);
+                                 
       /* Set the labels of the transfer types */
-      sprintf(ppt2->tp2_labels[index_tp], "T_%d_%d",
-        ppt2->corresponding_l[index_tp],
-        ppt2->m[ppt2->corresponding_index_m[index_tp]]);
+      sprintf(ppt2->tp2_labels[index_tp], "T_%d_%d",l,ppt2->m[index_m]);
 
       /* Some debug */
-      // printf("T, index_tp=%d: offset=%d -> (%d,%d), label=%s, monopole = %d\n",
-      //   index_tp, lm_offset, ppt2->corresponding_l[index_tp],
-      //   ppt2->m[ppt2->corresponding_index_m[index_tp]],
-      //   ppt2->tp2_labels[index_tp], ppt2->index_monopole[index_tp]);
+      printf("T, index_tp=%d: lm_offset=%d -> (%d,%d), label=%s, monopole = %d\n",
+        index_tp, lm_offset, l, ppt2->m[index_m],
+        ppt2->tp2_labels[index_tp], ppt2->index_monopole[index_tp]);
+
     }
     // *** Photon E-mode polarization ***
     else if ((ppt2->has_source_E==_TRUE_)
-            && (index_tp >= ppt2->index_tp2_E) && (index_tp < ppt2->index_tp2_E+ppt2->n_sources_E)) {
+    && (index_tp >= ppt2->index_tp2_E) && (index_tp < ppt2->index_tp2_E+ppt2->n_sources_E)) {
 
       ppt2->index_monopole[index_tp] = ppt2->index_tp2_E;
+      l_max = ppr2->l_max_los_p;
       int lm_offset = index_tp - ppt2->index_monopole[index_tp];
-      offset2multipole_l_indexm (lm_offset, ppt2->largest_l, ppt2->m, ppt2->m_size,
+      offset2multipole_l_indexm (lm_offset, ppr2->l_max_los_p, ppt2->m, ppt2->m_size,
                                  &(ppt2->corresponding_l[index_tp]), &(ppt2->corresponding_index_m[index_tp]));
 
       /* Set the labels of the transfer types */
@@ -909,11 +908,12 @@ int perturb2_get_lm_lists (
     }
     // *** Photon B-mode polarization ***
     else if ((ppt2->has_source_B==_TRUE_)
-            && (index_tp >= ppt2->index_tp2_B) && (index_tp < ppt2->index_tp2_B+ppt2->n_sources_B)) {
+    && (index_tp >= ppt2->index_tp2_B) && (index_tp < ppt2->index_tp2_B+ppt2->n_sources_B)) {
 
       ppt2->index_monopole[index_tp] = ppt2->index_tp2_B;
+      l_max = ppr2->l_max_los_p;
       int lm_offset = index_tp - ppt2->index_monopole[index_tp];
-      offset2multipole_l_indexm (lm_offset, ppt2->largest_l, ppt2->m, ppt2->m_size,
+      offset2multipole_l_indexm (lm_offset, ppr2->l_max_los_p, ppt2->m, ppt2->m_size,
                                  &(ppt2->corresponding_l[index_tp]), &(ppt2->corresponding_index_m[index_tp]));
 
       /* Set the labels of the transfer types */
@@ -927,6 +927,17 @@ int perturb2_get_lm_lists (
       //   ppt2->m[ppt2->corresponding_index_m[index_tp]],
       //   ppt2->tp2_labels[index_tp], ppt2->index_monopole[index_tp]);
     }
+    
+    /* Check the result */
+    class_test ((l>l_max) || (index_m>=ppt2->m_size) || (l<0) || (index_m<0),
+      ppt2->error_message,
+      "index_tp=%d: result (l,index_m)=(%d,%d) is out of bounds l=[%d,%d], index_m=[%d,%d]\n",
+      index_tp, l, index_m, 0, l_max, 0, ppt2->m_size-1);    
+    
+    /* Write the result */
+    ppt2->corresponding_l[index_tp] = l;
+    ppt2->corresponding_index_m[index_tp] = index_m;
+    
   } // end of for (index_tp)    
 
 
@@ -7189,6 +7200,10 @@ int perturb2_compute_psi_prime(
        struct perturb2_workspace * ppw2)
 {
 
+  class_test (ppr2->compute_m[0] == _FALSE_,
+    ppt2->error_message,
+    "stopping to prevent segfault - there is no psi without scalar modes.");
+
   /* Shortcuts */
   double k = ppw2->k;
   double k2 = k*k;
@@ -9811,7 +9826,7 @@ int perturb2_save_early_transfers (
   /* Compute psi_prime */
   double psi_prime = 0;
 
-  if ((ppt->gauge == newtonian) && (ppt2->has_isw == _TRUE_)) {
+  if ((ppt->gauge == newtonian) && (ppt2->has_isw == _TRUE_) && (ppr2->compute_m[0])) {
 
     class_call(perturb2_compute_psi_prime (
                  ppr,

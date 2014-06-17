@@ -1301,8 +1301,7 @@ int input2_init (
 
   /* Determine for each l (starting from 0) the position of its maximum m in ppr2->m. The resulting
   array ppr2->index_m_max will be used throughout the code to cycle through the m's allowed for a given l. */
-  int l;
-  for (l=0; l<=l_max; ++l) {
+  for (int l=0; l<=l_max; ++l) {
    
     /* Ignore the l's that are smaller than the smallest m. It is important that the value here is -1
     because (i) a cycle starting from 0 won't start and (ii) a size is computed as index_max+1, hence

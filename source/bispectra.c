@@ -2302,7 +2302,7 @@ int bispectra_analytical_init (
       int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
       int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
 
-      /* Uncomment test the accuracy of threej_ratio_recursive */        
+      /* Uncomment test the accuracy of threej_ratio_M_recursive */        
       // int M=4;
       // double threej_num[2*pbi->l_max+1], threej_den[2*pbi->l_max+1];
       // int l3_min_num, l3_min_den;
@@ -2331,7 +2331,7 @@ int bispectra_analytical_init (
       //   if ((l1+l2+l3)%2==0) {
       //     if ((l1<M) || (l2<M) || (l3<M)) continue;
       //     double * ratio = malloc(sizeof(double)*(M+1));
-      //     class_call_parallel (threej_ratio_recursive(l1, l2, l3, M, ratio, pbi->error_message),
+      //     class_call_parallel (threej_ratio_M_recursive(l1, l2, l3, M, ratio, pbi->error_message),
       //       pbi->error_message, pbi->error_message);
       //     double res_1 = threej_num[l3-l3_min_num]/threej_den[l3-l3_min_den];
       //     double res_2 = ratio[M];
@@ -2360,13 +2360,13 @@ int bispectra_analytical_init (
 
         if (pbi->need_3j_symbols == _TRUE_) {          
 
-          class_call_parallel (threej_ratio (l2, l1, l3, 2, &threej_ratio_20m2, pbi->error_message),
+          class_call_parallel (threej_ratio_M (l2, l1, l3, 2, &threej_ratio_20m2, pbi->error_message),
             pbi->error_message, pbi->error_message);
 
-          class_call_parallel (threej_ratio (l3, l1, l2, 2, &threej_ratio_m220, pbi->error_message),
+          class_call_parallel (threej_ratio_M (l3, l1, l2, 2, &threej_ratio_m220, pbi->error_message),
             pbi->error_message, pbi->error_message);
 
-          class_call_parallel (threej_ratio (l1, l2, l3, 2, &threej_ratio_0m22, pbi->error_message),
+          class_call_parallel (threej_ratio_M (l1, l2, l3, 2, &threej_ratio_0m22, pbi->error_message),
             pbi->error_message, pbi->error_message);
 
         } // end of 3j computation

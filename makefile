@@ -16,6 +16,7 @@ FC       = gfortran
 OPTFLAG    = -O
 
 # Openmp flag (comment for compiling without openmp)
+CCFLAG     = -std=c99
 CCFLAG     = -fopenmp -std=c99
 
 

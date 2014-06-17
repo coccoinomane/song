@@ -580,6 +580,12 @@ int drc3jj (double L2, double L3, double M2, double M3, /* IN, parameters */
   TWO = 2.0;
   THREE = 3.0;
   
+  /* Debug - print arguments */
+  // printf ("~~~ L2 = %g\n", L2);
+  // printf ("~~~ L3 = %g\n", L3);
+  // printf ("~~~ M2 = %g\n", M2);
+  // printf ("~~~ M3 = %g\n", M3);
+  
   /* HUGE is the square root of one twentieth of the largest floating point number,
   approximately. DBL_MAX is defined in float.h. */
   HUGE_ = sqrt(DBL_MAX/20.0);
@@ -594,13 +600,13 @@ int drc3jj (double L2, double L3, double M2, double M3, /* IN, parameters */
     // *IER=1;
     class_stop (
       errmsg,
-      "L2-ABS(M2) or L3-fabs(M3) less than zero");
+      "L2-ABS(M2) or L3-ABS(M3) less than zero");
   }
   else if ((fmod(L2+fabs(M2)+EPS,ONE) >= EPS+EPS) || (fmod(L3+fabs(M3)+EPS,ONE) >= EPS+EPS)) {
     // *IER=2;
     class_stop (
       errmsg,
-      "L2+ABS(M2) or L3+fabs(M3) not integer");
+      "L2+ABS(M2) or L3+ABS(M3) not integer");
   }
 
 

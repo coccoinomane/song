@@ -59,7 +59,7 @@ int bessel2_init(
   || ((ppr2->load_transfers_from_disk == _TRUE_) && (ppr->load_bispectra_from_disk == _TRUE_))) {
 
     if (pbs2->bessels2_verbose > 0)
-      printf("No second-order projection functions needed. Second-order Bessel module skipped.\n");
+      printf("Second-order Bessel module skipped.\n");
 
     return _SUCCESS_;
   }
@@ -121,7 +121,7 @@ int bessel2_init(
 
   pbs2->J_size = index_J;
 
-  if (pbs2->bessels2_verbose > 0)
+  if ((pbs2->bessels2_verbose > 0) && (ppr2->load_transfers_from_disk == _FALSE_))
     printf(" -> will compute size_J=%d projection functions\n", pbs2->J_size);
 
 
@@ -214,7 +214,15 @@ int bessel2_init(
   class_alloc (pbs2->L, pbs2->L_size*sizeof(int), pbs2->error_message);
   for (int index_L=0; index_L<pbs2->L_size; ++index_L)
     pbs2->L[index_L] = index_L;
-    
+
+  /* The projection functions are needed only to compute the transfer functions. If the
+  latter are loaded from disk, there is no need for the former */
+  if (ppr2->load_transfers_from_disk == _TRUE_) {
+    if (pbs2->bessels2_verbose > 0)
+      printf (" -> No second-order projection functions needed.\n");
+
+    return _SUCCESS_;
+  }
 
   // ---------------------------------------------------------------------
   // -                     Allocate all levels but x                     -
@@ -480,78 +488,77 @@ int bessel2_free(
     )
 {
 
-  int index_l, index_J, index_L, index_m, index_l1;
-
-  for (index_J = 0; index_J < pbs2->J_size; ++index_J) {
-  
-    for (index_L = 0; index_L < pbs2->L_size; index_L++) {
-  
-      for (index_l = 0; index_l < pbs->l_size; index_l++) {
-  
-        int index_m_max = MIN (ppr2->index_m_max[pbs2->L[index_L]], ppr2->index_m_max[pbs->l[index_l]]);
-  
-        for (index_m = 0; index_m <= index_m_max; ++index_m) {
-        
-          free(pbs2->J_Llm_x[index_J][index_L][index_l][index_m]);
-          if (ppr->bessels_interpolation == cubic_interpolation)
-            free(pbs2->ddJ_Llm_x[index_J][index_L][index_l][index_m]);
-        
-        }  // end of for(index_m)
-      
-        free(pbs2->index_xmin_J[index_J][index_L][index_l]);
-        free(pbs2->x_size_J[index_J][index_L][index_l]);
-        free(pbs2->x_min_J[index_J][index_L][index_l]);
-        free(pbs2->J_Llm_x[index_J][index_L][index_l]);
-        if (ppr->bessels_interpolation == cubic_interpolation)
-          free(pbs2->ddJ_Llm_x[index_J][index_L][index_l]);
-      
-      }  // end of for(index_l)
-    
-      free(pbs2->index_xmin_J[index_J][index_L]);
-      free(pbs2->x_size_J[index_J][index_L]);
-      free(pbs2->x_min_J[index_J][index_L]);
-      free(pbs2->J_Llm_x[index_J][index_L]);
-      if (ppr->bessels_interpolation == cubic_interpolation)
-        free(pbs2->ddJ_Llm_x[index_J][index_L]);
-    
-    }  // end of for(index_L)
-  
-    free(pbs2->index_xmin_J[index_J]);
-    free(pbs2->x_size_J[index_J]);
-    free(pbs2->x_min_J[index_J]);
-    free(pbs2->J_Llm_x[index_J]);
-    if (ppr->bessels_interpolation == cubic_interpolation)
-      free(pbs2->ddJ_Llm_x[index_J]);
-  
-  } // end of for(index_J)
-  
-  free(pbs2->index_xmin_J);
-  free(pbs2->x_size_J);
-  free(pbs2->x_min_J);
-  free(pbs2->J_Llm_x);
-  if (ppr->bessels_interpolation == cubic_interpolation)
-    free(pbs2->ddJ_Llm_x);
-  
-  
   free(pbs2->l1);
-  
   free(pbs2->xx);
   
   free(pbs2->x_size_l1);
   free(pbs2->x_min_l1);
-  for(index_l1=0; index_l1<pbs2->l1_size; ++index_l1)
+  for (int index_l1=0; index_l1<pbs2->l1_size; ++index_l1)
     free(pbs2->j_l1[index_l1]);
   free(pbs2->j_l1);
   if (ppr->bessels_interpolation == cubic_interpolation) {
-    for(index_l1=0; index_l1<pbs2->l1_size; ++index_l1)
+    for (int index_l1=0; index_l1<pbs2->l1_size; ++index_l1)
       free(pbs2->ddj_l1[index_l1]);
     free(pbs2->ddj_l1);
   }
   
-  
   free(pbs2->L);
   free(pbs2->m);
 
+  if (ppr2->load_transfers_from_disk == _FALSE_) {
+
+    for (int index_J = 0; index_J < pbs2->J_size; ++index_J) {
+  
+      for (int index_L = 0; index_L < pbs2->L_size; index_L++) {
+  
+        for (int index_l = 0; index_l < pbs->l_size; index_l++) {
+  
+          int index_m_max = MIN (ppr2->index_m_max[pbs2->L[index_L]], ppr2->index_m_max[pbs->l[index_l]]);
+  
+          for (int index_m = 0; index_m <= index_m_max; ++index_m) {
+        
+            free(pbs2->J_Llm_x[index_J][index_L][index_l][index_m]);
+            if (ppr->bessels_interpolation == cubic_interpolation)
+              free(pbs2->ddJ_Llm_x[index_J][index_L][index_l][index_m]);
+        
+          }  // end of for(index_m)
+      
+          free(pbs2->index_xmin_J[index_J][index_L][index_l]);
+          free(pbs2->x_size_J[index_J][index_L][index_l]);
+          free(pbs2->x_min_J[index_J][index_L][index_l]);
+          free(pbs2->J_Llm_x[index_J][index_L][index_l]);
+          if (ppr->bessels_interpolation == cubic_interpolation)
+            free(pbs2->ddJ_Llm_x[index_J][index_L][index_l]);
+      
+        }  // end of for(index_l)
+    
+        free(pbs2->index_xmin_J[index_J][index_L]);
+        free(pbs2->x_size_J[index_J][index_L]);
+        free(pbs2->x_min_J[index_J][index_L]);
+        free(pbs2->J_Llm_x[index_J][index_L]);
+        if (ppr->bessels_interpolation == cubic_interpolation)
+          free(pbs2->ddJ_Llm_x[index_J][index_L]);
+    
+      }  // end of for(index_L)
+  
+      free(pbs2->index_xmin_J[index_J]);
+      free(pbs2->x_size_J[index_J]);
+      free(pbs2->x_min_J[index_J]);
+      free(pbs2->J_Llm_x[index_J]);
+      if (ppr->bessels_interpolation == cubic_interpolation)
+        free(pbs2->ddJ_Llm_x[index_J]);
+  
+    } // end of for(index_J)
+  
+    free(pbs2->index_xmin_J);
+    free(pbs2->x_size_J);
+    free(pbs2->x_min_J);
+    free(pbs2->J_Llm_x);
+    if (ppr->bessels_interpolation == cubic_interpolation)
+      free(pbs2->ddJ_Llm_x);
+
+  }
+  
   return _SUCCESS_; 
 }
 

@@ -57,24 +57,46 @@ extern "C" {
          ErrorMsg errmsg       
          );
 
-  int threej_ratio_recursive (
+  int threej_ratio_L_recursive (
+        int l1, int l2, int l3, int N,     // In
+        double *result,                    // Out, should be allocated with M+1 elements
+        ErrorMsg errmsg
+        );
+        
+  int threej_ratio_L (
+        int l1, int l2, int l3, int N,     // In
+        double *result,                    // Out
+        ErrorMsg errmsg
+        );
+
+  int threej_ratio_M_recursive (
         int l1, int l2, int l3, int M,     // In
         double *result,                    // Out, should be allocated with M+1 elements
         ErrorMsg errmsg
         );
         
-  int threej_ratio (
+  int threej_ratio_M (
         int l1, int l2, int l3, int M,     // In
         double *result,                    // Out
         ErrorMsg errmsg
         );
         
-  double threej_ratio_C (
+  double threej_A (
+        int l1, int l2, int l3,
+        int m1
+        );
+
+  double threej_B (
+        int l1, int l2, int l3,
+        int m1, int m2, int m3
+        );
+
+  double threej_C (
         int l1, int l2, int l3,
         int m2, int m3
         );
 
-  double threej_ratio_D (
+  double threej_D (
         int l1, int l2, int l3,
         int m2, int m3
         );

@@ -287,28 +287,112 @@ int sixj_l1(
 
 
 
+
 /** 
  *  Compute the ratio between the 3j symbols
- *  (    l1     l2     l3   )
- *  (     0      M     -M   )
+ *  (    l1+2*n     l2     l3   )
+ *  (     0          0      0   )
  * and
  *  (    l1     l2     l3   )
  *  (     0      0      0   )  
- * for all values of M larger than zero, using the recursive relation in  Schulten & Gordon, 1961
+ * for all values of 'n' in [0,N], using the recursive relation in  Schulten & Gordon, 1961
+ * http://scitation.aip.org/content/aip/journal/jmp/16/10/10.1063/1.522426?ver=pdfcov.
+ *
+ * The function can be easily generalised to arbitrary azimuthal numbers m1,m2,m3
+ * by making use of the threej_B function (ibidem).
+ * 
+ * The relation is valid only for even values of l1+l2+l3, but the function will return
+ * also when this is not true.
+ *  
+ */
+int threej_ratio_L_recursive (
+      int l1, int l2, int l3, int N,     // In
+      double *result,                    // Out, should be allocated with M+1 elements
+      ErrorMsg errmsg
+      )
+{
+
+  class_test ((l1>(l2+l3)) || (l1<abs(l2-l3)),
+    errmsg,
+    "the arguments violate the triangular condition");
+
+  /* First element in the recursion is 3J[0,0,0]/3J[0,0,0]=1 */
+  result[0] = 1.;
+
+  if (N > 0) {
+  
+    /* Recursive relation for the element 'n' */
+    for (int n=1; n <= N; ++n)
+      result[n] = - result[n-1] * ((l1+2.)*threej_A(l1+1,l2,l3,0))
+                                / ((l1+1.)*threej_A(l1+2,l2,l3,0));
+    
+  } // end of if(N>0)
+
+  /* Debug - show results */
+  // for (int n=0; n < N+1; ++n) {
+  //   printf ("result[%d] = %g\n", n, result[n]);
+  // }
+
+  return _SUCCESS_;
+
+}
+
+/** 
+ *  Compute the ratio between the 3j symbols
+ *  (    l1+2*N     l2     l3   )
+ *  (     0          0      0   )
+ * and
+ *  (    l1     l2     l3   )
+ *  (     0      0      0   )  .
+ *
+ * This function calls 'threej_ratio_L_recursive' and only outputs the last element of the
+ * result array.
+ *
+ * The relation is valid only for even values of l1+l2+l3, but the function will return
+ * also when this is not true.
+ *  
+ */
+int threej_ratio_L (
+      int l1, int l2, int l3, int N,     // In
+      double *result,                    // Out
+      ErrorMsg errmsg
+      )
+{
+
+  double ratio[N+1];
+  
+  class_call (threej_ratio_L_recursive (l1,l2,l3,N,&(ratio[0]),errmsg),
+    errmsg, errmsg);
+    
+  *result = ratio[N];
+
+  return _SUCCESS_;
+
+}
+
+
+/** 
+ *  Compute the ratio between the 3j symbols
+ *  (    l1     l2     l3   )
+ *  (     0      m     -m   )
+ * and
+ *  (    l1     l2     l3   )
+ *  (     0      0      0   )  
+ * for the values of 'm' in [0,M], using the recursive relation in  Schulten & Gordon, 1961
  * http://scitation.aip.org/content/aip/journal/jmp/16/10/10.1063/1.522426?ver=pdfcov.
  *
  * The relation is valid only for even values of l1+l2+l3, but the function will return
  * also when this is not true.
  *  
  */
-int threej_ratio_recursive (
+int threej_ratio_M_recursive (
       int l1, int l2, int l3, int M,     // In
       double *result,                    // Out, should be allocated with M+1 elements
       ErrorMsg errmsg
       )
 {
 
-  class_test ((M>l2) || (M>l3) || (l1>l2+l3) || (l1<abs(l2-l3)),
+  class_test ((M>l2) || (M>l3) || (l1>(l2+l3)) || (l1<abs(l2-l3)),
     errmsg,
     "the arguments violate one or more 3J conditions");
 
@@ -323,14 +407,14 @@ int threej_ratio_recursive (
     double C_1 = C_0;
     result[1] = -D_0/(C_0+C_1);
 
-    /* Recursive relation for the element M */
+    /* Recursive relation for the element 'm' */
     for (int m=2; m <= M; ++m)
       result[m] = - (
-                        result[m-2]*threej_ratio_C(l1,l2,l3,m-1,-m+1)
-                      + result[m-1]*threej_ratio_D(l1,l2,l3,m-1,-m+1)
-                    ) / threej_ratio_C(l1,l2,l3,m,-m);
+                        result[m-2]*threej_C(l1,l2,l3,m-1,-m+1)
+                      + result[m-1]*threej_D(l1,l2,l3,m-1,-m+1)
+                    ) / threej_C(l1,l2,l3,m,-m);
     
-  } // end of if(m)
+  } // end of if(M>0)
 
   /* Debug - show results */
   // for (int m=0; m < M+1; ++m) {
@@ -349,13 +433,14 @@ int threej_ratio_recursive (
  *  (    l1     l2     l3   )
  *  (     0      0      0   ) .
  *
- * This function calls 'threej_ratio' and only outputs the last element of the result array.
+ * This function calls 'threej_ratio_M_recursive' and only outputs the last element of
+ * the result array.
  *
  * The relation is valid only for even values of l1+l2+l3, but the function will return
  * also when this is not true.
  *  
  */
-int threej_ratio (
+int threej_ratio_M (
       int l1, int l2, int l3, int M,     // In
       double *result,                    // Out
       ErrorMsg errmsg
@@ -364,7 +449,7 @@ int threej_ratio (
 
   double ratio[M+1];
   
-  class_call (threej_ratio_recursive (l1,l2,l3,M,&(ratio[0]),errmsg),
+  class_call (threej_ratio_M_recursive (l1,l2,l3,M,&(ratio[0]),errmsg),
     errmsg, errmsg);
     
   *result = ratio[M];
@@ -374,25 +459,56 @@ int threej_ratio (
 }
 
 
+
 /** 
- * Support function for 'threej_ratio'
+ * Support function for 'threej_ratio_L'
  */
-double threej_ratio_C (
+double threej_A (
+      int l1, int l2, int l3,
+      int m1
+      )
+{
+
+  double l1_squared = l1*l1;
+  double l2_minus_l3 = l2-l3;
+  double l2_plus_l3_plus_1 = l2+l3+1;
+  
+  return sqrt((l1_squared-l2_minus_l3*l2_minus_l3)
+             *(l2_plus_l3_plus_1*l2_plus_l3_plus_1-l1_squared)
+             *(l1_squared-m1*m1));
+
+}
+
+/** 
+ * Support function for 'threej_ratio_L'
+ */
+double threej_B (
+      int l1, int l2, int l3,
+      int m1, int m2, int m3
+      )
+{
+   
+  return -(2*l1+1.)*(l2*(l2+1.)*m1 - l3*(l3+1.)*m1 - l1*(l1+1.)*(m3-m2));
+
+}
+
+/** 
+ * Support function for 'threej_ratio_M'
+ */
+double threej_C (
       int l1, int l2, int l3,
       int m2, int m3
       )
 {
    
   return sqrt((l2-m2+1.)*(l2+m2)*(l3+m3+1.)*(l3-m3));
-  
-  return _SUCCESS_;
 
 }
 
 /** 
- * Support function for 'threej_ratio'
+ * Support function for 'threej_ratio_M'
  */
-double threej_ratio_D (
+double threej_D (
       int l1, int l2, int l3,
       int m2, int m3
       )
@@ -400,8 +516,6 @@ double threej_ratio_D (
    
   return l2*(l2+1.) + l3*(l3+1.) - l1*(l1+1.) + 2.*m2*m3;
   
-  return _SUCCESS_;
-
 }
 
 
@@ -1315,11 +1429,11 @@ int offset2multipole_l_indexm (int offset, int l_max, int * m_vec, int m_size,
   }
 
   // *** Find (l,m) by calling multipole2offset_l_indexm
-  int l, index_m, current_offset;
+  int current_offset = -1;
 
-  for(l=0; l<=l_max; ++l) {
+  for (int l=0; l<=l_max; ++l) {
     
-    for(index_m=0; index_m<m_size; ++index_m) {
+    for (int index_m=0; index_m<m_size; ++index_m) {
       
       int m = m_vec[index_m];
 
@@ -1344,6 +1458,15 @@ int offset2multipole_l_indexm (int offset, int l_max, int * m_vec, int m_size,
     }
     
   } // end of for(index_m)
+
+  /* Test that the output makes sense */
+  if ((*L > l_max) || (*L<0) || (*index_M >= m_size) || (index_M<0)) {
+
+    printf("ERROR in %s: result (L,index_M)=(%d,%d) is out of bounds L=[%d,%d], index_M=[%d,%d]\n",
+      __func__, *L, *index_M, 0, l_max, 0, m_size-1);
+
+    return _FAILURE_;
+  }
 
   return _SUCCESS_;  
   
@@ -1544,15 +1667,16 @@ int offset2multipole_indexl_indexm(int offset, int * l_vec, int l_size, int * m_
     *index_L = *index_M = -1;
     return _FAILURE_;
   }
+  
 
   // *** Find (l,m) by calling multipole2offset
-  int index_l, index_m, current_offset;
+  int current_offset = -1;
 
-  for(index_l=0; index_l<l_size; ++index_l) {
+  for (int index_l=0; index_l<l_size; ++index_l) {
 
     int l = l_vec[index_l];
     
-    for(index_m=0; index_m<m_size; ++index_m) {
+    for (int index_m=0; index_m<m_size; ++index_m) {
       
       int m = m_vec[index_m];
 
@@ -1577,6 +1701,15 @@ int offset2multipole_indexl_indexm(int offset, int * l_vec, int l_size, int * m_
     }
     
   } // end of for(index_m)
+
+  /* Test that the output makes sense */
+  if ((*index_L >= l_size) || (*index_L<0) || (*index_M >= m_size) || (index_M<0)) {
+
+    printf("ERROR in %s: result (index_L,index_M)=(%d,%d) is out of bounds index_L=[%d,%d], index_M=[%d,%d]\n",
+      __func__, *index_L, *index_M, 0, l_size-1, 0, m_size-1);
+
+    return _FAILURE_;
+  }
 
   return _SUCCESS_;  
   

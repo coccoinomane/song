@@ -49,6 +49,14 @@ k_scalar_step_transition=0.2
 # k_scalar_logstep_super_2nd_order = 1.2
 # k_scalar_step_transition_2nd_order = 0.2
 
+## Second-order k-sampling REF.PRE (less large scale modes)
+k_scalar_min_tau0_2nd_order = 0.1
+k_scalar_max_tau0_over_l_max_2nd_order = 2
+k_scalar_step_sub_2nd_order = 0.1
+k_scalar_linstep_super_2nd_order = 0.025
+k_scalar_logstep_super_2nd_order = 1.8
+k_scalar_step_transition_2nd_order = 0.2
+
 ## Second-order k-sampling QUICK FOR DEBUG
 # k_scalar_min_tau0_2nd_order = 0.1
 # k_scalar_max_tau0_over_l_max_2nd_order = 1
@@ -58,12 +66,12 @@ k_scalar_step_transition=0.2
 # k_scalar_step_transition_2nd_order = 0.2
 
 ## Second-order k-sampling INSTANTANEOUS FOR DEBUG
-k_scalar_min_tau0_2nd_order = 0.1
-k_scalar_max_tau0_over_l_max_2nd_order = 1
-k_scalar_step_sub_2nd_order = 1
-k_scalar_linstep_super_2nd_order = 0.5
-k_scalar_logstep_super_2nd_order = 10
-k_scalar_step_transition_2nd_order = 0.2
+# k_scalar_min_tau0_2nd_order = 0.1
+# k_scalar_max_tau0_over_l_max_2nd_order = 1
+# k_scalar_step_sub_2nd_order = 1
+# k_scalar_linstep_super_2nd_order = 0.5
+# k_scalar_logstep_super_2nd_order = 10
+# k_scalar_step_transition_2nd_order = 0.2
 
 ## Second-order sampling for k3 (lin, log, smart, angle)
 sources2_k3_sampling = smart
