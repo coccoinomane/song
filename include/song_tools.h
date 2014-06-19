@@ -64,6 +64,13 @@ extern "C" {
         );
         
   int threej_ratio_L (
+        int l1, int l2, int l3,            // In
+        int N1, int N2, int N3,            // In
+        double *result,                    // Out
+        ErrorMsg errmsg
+        );
+
+  int threej_ratio_L1 (
         int l1, int l2, int l3, int N,     // In
         double *result,                    // Out
         ErrorMsg errmsg
@@ -81,24 +88,39 @@ extern "C" {
         ErrorMsg errmsg
         );
         
-  double threej_A (
+  int threej_A (
         int l1, int l2, int l3,
-        int m1
+        int m1,
+        double *result,
+        ErrorMsg errmsg
         );
 
-  double threej_B (
+  int threej_B (
         int l1, int l2, int l3,
-        int m1, int m2, int m3
+        int m1, int m2, int m3,
+        double *result,
+        ErrorMsg errmsg
         );
 
-  double threej_C (
+  int threej_C (
         int l1, int l2, int l3,
-        int m2, int m3
+        int m2, int m3,
+        double *result,
+        ErrorMsg errmsg
         );
 
-  double threej_D (
+  int threej_D (
         int l1, int l2, int l3,
-        int m2, int m3
+        int m2, int m3,
+        double *result,
+        ErrorMsg errmsg
+        );
+
+  int threej_A_factor (
+        int l1, int l2, int l3,
+        int n,
+        double *result,
+        ErrorMsg errmsg
         );
 
     
@@ -353,6 +375,20 @@ extern "C" {
   // ========================================================================
 
   double identity_double (double x);
+
+  int sign_int (int x);
+
+  int ordering_int (
+        int * n,            /* In */
+        int * ordering,     /* Out */
+        ErrorMsg errmsg
+        );
+
+  int reorder_int (
+        int * n,             /* In/Out */
+        int * ordering,      /* In */
+        ErrorMsg errmsg
+        );
 
 
 #ifdef __cplusplus

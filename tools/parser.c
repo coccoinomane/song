@@ -635,14 +635,14 @@ int parser_cat(
 // *** MY MODIFICATIONS ***
 
 /**
- * Modify one entry of the file_content structure given as argument. It is up
- * to you to check that the new string 'new_value' is shorter than the macro
- * _ARGUMENT_LENGTH_MAX_.
+ * Modify one entry of the input file_content structure.
  *
- * If 'found' points to an integer, overwrite it with _TRUE_ or _FALSE_
- * whether the entry corresponding to 'name' was found or not, and just
- * exit from the function in the latter case. If 'found' is a NULL pointer
- * instead, return an error if the entry does not exist.
+ * If 'found' is a NULL pointer and the entry corresponding to 'name' does not exist,
+ * print an error message. Otherwise, overwrite 'found' with either _TRUE_ or _FALSE_
+ * whether the entry was found or not, with no error messages.
+ *
+ * To avoid memory issues, make sure that the new string 'new_value' is
+ * shorter than the macro _ARGUMENT_LENGTH_MAX_.
  */
 int parser_overwrite_entry (
         struct file_content * pfc,
@@ -693,10 +693,10 @@ int parser_overwrite_entry (
 /**
  * Remove an entry from the file_content structure.
  *
- * If 'found' points to an integer, overwrite it with _TRUE_ or _FALSE_
- * whether the entry corresponding to 'name' was found or not, and just
- * exit from the function in the latter case. If 'found' is a NULL pointer
- * instead, return an error if the entry does not exist.
+ * If 'found' is a NULL pointer and the entry corresponding to 'name' does not exist,
+ * print an error message. Otherwise, overwrite 'found' with either _TRUE_ or _FALSE_
+ * whether the entry was found or not, with no error messages.
+ *
  */
 int parser_remove_entry (
         struct file_content * pfc,
@@ -742,6 +742,7 @@ int parser_remove_entry (
   return _SUCCESS_;
 
 }
+
 
 
 

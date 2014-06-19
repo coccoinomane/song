@@ -55,7 +55,7 @@ typedef char FileName[_FILENAMESIZE_];
 
 
 // ** MY MODIFICATIONS ***
-#define sign(a) (((a)>0) ? 1. : -1. )
+#define sign(a) (((a)>0) ? 1 : -1 )
 #define alternating_sign(m) ((m)%2 == 0 ? 1 : -1)
 
 #define _MINUSCULE_ 1.e-75

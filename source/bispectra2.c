@@ -1236,6 +1236,10 @@ int bispectra2_intrinsic_integrate_over_k3 (
           also include values that do not satisfty the triangular condition k1 + k2 = k3. */
           int k3_size = ptr2->k_size_k1k2[index_k1][index_k2];
           
+          class_test_parallel (k3_size < 2,
+            pbi->error_message,
+            "integration grid has less than two elements, cannot use trapezoidal integration");
+          
           /* Determine the measure for the trapezoidal rule for k3 */  
           pwb->delta_k3[thread][0] = pwb->k3_grid[thread][1] - pwb->k3_grid[thread][0];
             
@@ -1315,8 +1319,9 @@ int bispectra2_intrinsic_integrate_over_k3 (
             #pragma omp flush(abort)
 
             /* Debug - print the second-order transfer function as a function of k3 */
-            // for (int index_k3=0; index_k3<k3_size; ++index_k3)
-            //   printf ("%14.7g %22.16g\n", pwb->k3_grid[thread][index_k3], transfer[index_k3]);
+            // if ((l3==170) && (pwb->abs_M3 == 2))
+            //   for (int index_k3=0; index_k3<k3_size; ++index_k3)
+            //     printf ("%14.7g %22.16g\n", pwb->k3_grid[thread][index_k3], transfer[index_k3]);
 
             /* Print the integral as a function of r */
             // if ((pwb->abs_M3==1) && (offset_L3==0))
@@ -2489,7 +2494,7 @@ int bispectra2_intrinsic_geometrical_factors (
       /* Compute the three-j symbol (l1,l2,l3)(0,0,0) for all allowed values of l1.
       If we are dealing with an odd bispectrum, compute (l1,l2,l3)(2,0,-2) instead */      
       int F = ((pwb->bispectrum_parity == _EVEN_) ? 0:2);
-
+      
       class_call_parallel (drc3jj (
                              l2, l3, F, -F,
                              &min_D, &max_D,
@@ -2499,7 +2504,7 @@ int bispectra2_intrinsic_geometrical_factors (
                              ),
         pbi->error_message,
         pbi->error_message);
-
+      
       min[thread][l1_l2_l3] = (int)(min_D + _EPS_);
       max[thread][l1_l2_l3] = (int)(max_D + _EPS_);
       size[thread][l1_l2_l3] = max[thread][l1_l2_l3] - min[thread][l1_l2_l3] + 1;
@@ -2554,13 +2559,13 @@ int bispectra2_intrinsic_geometrical_factors (
         class_test_parallel ((l1 - min[thread][l1_l2_l3]) >= size[thread][l1_l2_l3],
           pbi->error_message,
           "error in the computation of the three-j symbol l1_l2_l3");
-
+        
         double FACTOR_l1_l2_l3 = value[thread][l1_l2_l3][l1 - min[thread][l1_l2_l3]];
-
+        
         /* Debug l1_l2_l3 */
         // printf ("L1=%d,L2=%d,M3=%d: I(l1,l2,l3)(%d,0,%d) = (%d,%d,%d)(%d,0,%d) = %g\n",
         //   L1, L3, M3, F, -F, l1, l2, l3, F, -F, FACTOR_l1_l2_l3);
-
+        
         /* The reduced bispectrum is given by the angle averaged bispectrum divided by FACTOR_l1_l2_l3.
         Here we make sure that FACTOR_l1_l2_l3 is not zero. We do not worry if it is zero for even 
         bispectra and odd l1+l2+l3, because in that case it must vanish and we cannot define a
@@ -2576,13 +2581,26 @@ int bispectra2_intrinsic_geometrical_factors (
           pbi->error_message,
           "error in the computation of the three-j symbol L1_l2_L3 (L1=%d, min=%d, size=%d)",
           L1, min[thread][L1_l2_L3], size[thread][L1_l2_L3]);
-
+        
         double FACTOR_L1_l2_L3 = value[thread][L1_l2_L3][L1 - min[thread][L1_l2_L3]];
         
         /* Debug (L1,l2,L3)(0,0,0) */
         // if (offset_L1 == 4)
         //   printf ("I(L1,l2,L3)(0,0,0) = (%d,%d,%d)(0,0,0) = %g\n",
         //       L1, l2, L3, FACTOR_L1_l2_L3);
+
+        /* EXPERIMENTAL: Uncomment to use analytic formula for the threej ratio instead */
+        // class_test_parallel ((L1-l1)%2!=0, pbi->error_message, "offset not even!");
+        //
+        // class_call_parallel (threej_ratio_L (
+        //               l1, l2, l3,
+        //               (L1-l1)/2, 0, (L3-l3)/2,
+        //               &FACTOR_L1_l2_L3,
+        //               pbi->error_message),
+        //   pbi->error_message,
+        //   pbi->error_message);
+        //
+        // FACTOR_l1_l2_l3 = 1;        
 
         /* Compute the three-j symbol (l1,L1,M3)(0,0,0) for all allowed values of L1 */
         class_call_parallel (drc3jj (
@@ -2812,7 +2830,7 @@ int bispectra2_intrinsic_geometrical_factors (
         //   }
         // }
 
-        /* Uncomment test the accuracy of threej_ratio_L_recursive */        
+        /* Uncomment test the accuracy of 'threej_ratio_L_recursive' and 'threej_ratio_L_recursive' */
         // int M=4;
         // double threej_num[2*pbi->l_max+1], threej_den[2*pbi->l_max+1];
         // int l3_min_num, l3_min_den;

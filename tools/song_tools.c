@@ -290,48 +290,124 @@ int sixj_l1(
 
 /** 
  *  Compute the ratio between the 3j symbols
- *  (    l1+2*n     l2     l3   )
- *  (     0          0      0   )
+ *  (    l1+2*N1     l2+2*N2     l3+2*N3   )
+ *  (          0           0           0   )
  * and
  *  (    l1     l2     l3   )
  *  (     0      0      0   )  
- * for all values of 'n' in [0,N], using the recursive relation in  Schulten & Gordon, 1961
+ * using the recursive relation in Schulten & Gordon, 1961,
  * http://scitation.aip.org/content/aip/journal/jmp/16/10/10.1063/1.522426?ver=pdfcov.
  *
  * The function can be easily generalised to arbitrary azimuthal numbers m1,m2,m3
- * by making use of the threej_B function (ibidem).
+ * by making use of the threej_B function from the same paper and coded below.
  * 
  * The relation is valid only for even values of l1+l2+l3, but the function will return
  * also when this is not true.
- *  
+ * 
+ * TO DO:
+ *
+ * 1) Allow odd increments. I want to be able to compute stuff like 3J(l1+3 l2 l2+3)/3J(l1 l2 l2).
+ * 
+ * 2) Allow for l1+l2+l3 to be odd.
+ *
  */
-int threej_ratio_L_recursive (
-      int l1, int l2, int l3, int N,     // In
+int threej_ratio_L (
+      int L1, int L2, int L3,            // In
+      int N1, int N2, int N3,            // In
       double *result,                    // Out, should be allocated with M+1 elements
       ErrorMsg errmsg
       )
 {
-
-  class_test ((l1>(l2+l3)) || (l1<abs(l2-l3)),
-    errmsg,
-    "the arguments violate the triangular condition");
-
-  /* First element in the recursion is 3J[0,0,0]/3J[0,0,0]=1 */
-  result[0] = 1.;
-
-  if (N > 0) {
   
-    /* Recursive relation for the element 'n' */
-    for (int n=1; n <= N; ++n)
-      result[n] = - result[n-1] * ((l1+2.)*threej_A(l1+1,l2,l3,0))
-                                / ((l1+1.)*threej_A(l1+2,l2,l3,0));
-    
-  } // end of if(N>0)
+  /* Debug - print arguments */
+  // printf ("{L1, L2, L3, N1, N2, N3} = {%d,%d,%d,%d,%d,%d};\n",
+  //   L1, L2, L3, N1, N2, N3);
 
-  /* Debug - show results */
-  // for (int n=0; n < N+1; ++n) {
-  //   printf ("result[%d] = %g\n", n, result[n]);
-  // }
+  class_test (!is_triangular_int (L1,L2,L3),
+    errmsg,
+    "arguments violate triangular condition, (L1,L2,L3)=(%d,%d,%d)\n",
+    L1, L2, L3);
+    
+  class_test (((L1+2*N1)<0) || ((L2+2*N2)<0) || ((L3+2*N3)<0),
+    errmsg,
+    "arguments give rise to negative multipoles");
+
+  double A_factor;
+    
+  /* First element in the recursion is 3J[0,0,0]/3J[0,0,0]=1 */
+  *result = 1;
+
+  /* Initialise arrays of N and L values */
+  int L[] = {0, L1, L2, L3};
+  int n[] = {0, N1, N2, N3};
+  int l[] = {0, L1+2*N1, L2+2*N2, L3+2*N3};
+    
+  /* We obtain 3J[L1+2*n1,L2+2*n2,L3+2*n3] by using the recurrence relation in Schulten & Gordon, 1961.
+  The starting point is 3J[L1,L2,L3], which is multiplied by products of the A function to obtain 
+  3J[L1+2*n1,L2+2*n2,L3+2*n3]. The number of products is equal to to n1+n2+n3. The order of the
+  recurrences is not unique; for example, 3J[L1+2,L2+2,L3] can be obtained either as
+  A(L1,L2+2,L3)*A(L2,L3,L1)*3J[L1,L2,L3] or A(L1,L2,L3)*A(L2,L3,L1+2)*3J[L1,L2,L3]. We pick the
+  ordering such that the triangular condition on the arguments of A is always satisfied. */
+
+  /* Cycle until all counters reach the zero, corresponding to 3J[L1,L2,L3] */
+  while ((n[1]!=0) || (n[2]!=0) || (n[3]!=0)) {
+ 
+    /* Debug - print the current N1,N2,N3 */
+    // printf ("{n1,n2,n3}={%d,%d,%d}\n", n[1], n[2], n[3]);
+    
+    /* Initialise temporary vectors */
+    int n_nonzero = 0;
+    int non_zero_positions[] = {0, 0, 0, 0};
+    int l_next[] = {0, l[1], l[2], l[3]};
+
+    /* Find which columns have to be incremented/decremented. We must find at
+    least one (n_nonzero>=1) because of the 'while' condition. */
+    for (int i=1; i <= 3; ++i) {
+      if (n[i] != 0) {
+        n_nonzero++;
+        non_zero_positions[n_nonzero] = i;
+      }
+    }
+    
+    /* By default, we try to increment/decrement the first non-zero column first */
+    int i = 1;
+    int pos = non_zero_positions[i];
+    l_next[pos] -= 2*sign(n[pos]);
+
+    /* If incrementing/decrementing the chosen column would violate the triangular
+    condition, try with the next non-zero column. */
+    while (!is_triangular_int (l_next[1], l_next[2], l_next[3])) {
+      l_next[pos] += 2*sign(n[pos]); /* Undo previous attempt */
+      pos = non_zero_positions[++i]; /* Increment position */
+      class_test (i>n_nonzero, errmsg, "could not find valid configurations, bug?");
+      l_next[pos] -= 2*sign(n[pos]); /* Try with the next non-zero column */
+    }
+
+    /* Compute the two positions complementary to 'pos' using the modulo function */
+    int pos2 = (pos+1)%3;
+    if (pos2==0) pos2=3;
+    int pos3 = (pos+2)%3;
+    if (pos3==0) pos3=3;
+
+    /* Compute the ratio between 3J[l] and 3J[l_next] */
+    class_call (threej_A_factor (L[pos], l[pos2], l[pos3], n[pos], &A_factor, errmsg), errmsg, errmsg);
+    *result *= A_factor;
+    n[pos] = sign(n[pos])*(abs(n[pos])-1);
+    l[pos] = l_next[pos];
+    
+  }; // end of while
+  
+  class_test (isnan (*result), 
+    errmsg,
+    "encountered nan for {L1, L2, L3, N1, N2, N3} = {%d,%d,%d,%d,%d,%d};\n",
+    L1, L2, L3, N1, N2, N3);
+
+  /* Debug - print result */
+  // printf ("*result = %g\n", *result);
+    
+  /* Debug - Mathematica batch output */
+  // fprintf (stderr, "Abs[1-directRatioL[%d.,%d.,%d.,%d.,%d.,%d.]/((%d)*10^(%f))],\n",
+  //   L1, L2, L3, N1, N2, N3, sign(*result), log10(fabs(*result)));
 
   return _SUCCESS_;
 
@@ -343,28 +419,81 @@ int threej_ratio_L_recursive (
  *  (     0          0      0   )
  * and
  *  (    l1     l2     l3   )
+ *  (     0      0      0   )  
+ * for all values of 'n' in [0,abs(N)], using the recursive relation in  Schulten & Gordon, 1961
+ * http://scitation.aip.org/content/aip/journal/jmp/16/10/10.1063/1.522426?ver=pdfcov.
+ *
+ * The function can be easily generalised to arbitrary azimuthal numbers m1,m2,m3
+ * by making use of the threej_B function (ibidem).
+ * 
+ * The ratio only exists for even values of l1+l2+l3, but the function will return
+ * also when this is not true. The returned value can be thought as continuously
+ * interpolating the ratio for odd values of l1+l2+l3.
+ *
+ * Caution: this function was never tested!
+ *  
+ */
+int threej_ratio_L_recursive (
+      int l1, int l2, int l3, int N,     // In
+      double *result,                    // Out, should be allocated with M+1 elements
+      ErrorMsg errmsg
+      )
+{
+
+  class_test (!is_triangular_int (l1,l2,l3),
+    errmsg,
+    "arguments violate triangular condition, (l1,l2,l3)=(%d,%d,%d)\n",
+    l1, l2, l3);
+
+    
+  class_test ((l1+2*N)<0,
+    errmsg,
+    "arguments give rise to negative multipoles");
+
+  /* First element in the recursion is 3J[0,0,0]/3J[0,0,0]=1 */
+  result[0] = 1.;
+
+  /* Recursive relation for the element 'n' */
+  for (int n=1; n <= abs(N); ++n) {
+    double A_factor;
+    class_call (threej_A_factor (l1, l2, l3, sign(N)*n, &A_factor, errmsg), errmsg, errmsg);
+    result[n] = result[n-1] * A_factor;
+  }
+
+  /* Debug - show results */
+  // for (int n=0; n < N+1; ++n) {
+  //   printf ("result[%d] = %g\n", n, result[n]);
+  // }
+
+  return _SUCCESS_;
+
+}
+
+/**
+ *  Compute the ratio between the 3j symbols
+ *  (    l1+2*N1     l2     l3   )
+ *  (     0           0      0   )
+ * and
+ *  (    l1     l2     l3   )
  *  (     0      0      0   )  .
  *
  * This function calls 'threej_ratio_L_recursive' and only outputs the last element of the
- * result array.
+ * result array. See comments in 'threej_ratio_L_recursive' for more detail.
  *
- * The relation is valid only for even values of l1+l2+l3, but the function will return
- * also when this is not true.
- *  
  */
-int threej_ratio_L (
-      int l1, int l2, int l3, int N,     // In
+int threej_ratio_L1 (
+      int l1, int l2, int l3, int N1,     // In
       double *result,                    // Out
       ErrorMsg errmsg
       )
 {
 
-  double ratio[N+1];
-  
-  class_call (threej_ratio_L_recursive (l1,l2,l3,N,&(ratio[0]),errmsg),
+  double ratio[N1+1];
+
+  class_call (threej_ratio_L_recursive (l1,l2,l3,N1,&(ratio[0]),errmsg),
     errmsg, errmsg);
-    
-  *result = ratio[N];
+
+  *result = ratio[N1];
 
   return _SUCCESS_;
 
@@ -381,8 +510,9 @@ int threej_ratio_L (
  * for the values of 'm' in [0,M], using the recursive relation in  Schulten & Gordon, 1961
  * http://scitation.aip.org/content/aip/journal/jmp/16/10/10.1063/1.522426?ver=pdfcov.
  *
- * The relation is valid only for even values of l1+l2+l3, but the function will return
- * also when this is not true.
+ * The ratio only exists for even values of l1+l2+l3, but the function will return
+ * also when this is not true. The returned value can be thought as continuously
+ * interpolating the ratio for odd values of l1+l2+l3.
  *  
  */
 int threej_ratio_M_recursive (
@@ -408,11 +538,16 @@ int threej_ratio_M_recursive (
     result[1] = -D_0/(C_0+C_1);
 
     /* Recursive relation for the element 'm' */
-    for (int m=2; m <= M; ++m)
-      result[m] = - (
-                        result[m-2]*threej_C(l1,l2,l3,m-1,-m+1)
-                      + result[m-1]*threej_D(l1,l2,l3,m-1,-m+1)
-                    ) / threej_C(l1,l2,l3,m,-m);
+    for (int m=2; m <= M; ++m) {
+      
+      double C, C_minus1, D_minus1;
+      
+      class_call (threej_C(l1,l2,l3,m,-m,&C,errmsg),errmsg,errmsg);
+      class_call (threej_C(l1,l2,l3,m-1,-m+1,&C_minus1,errmsg),errmsg,errmsg);
+      class_call (threej_D(l1,l2,l3,m-1,-m+1,&D_minus1,errmsg),errmsg,errmsg);
+      
+      result[m] = - (result[m-2]*C_minus1 + result[m-1]*D_minus1) / C;
+    }
     
   } // end of if(M>0)
 
@@ -434,11 +569,8 @@ int threej_ratio_M_recursive (
  *  (     0      0      0   ) .
  *
  * This function calls 'threej_ratio_M_recursive' and only outputs the last element of
- * the result array.
+ * the result array. See comments in 'threej_ratio_M_recursive' for more detail.
  *
- * The relation is valid only for even values of l1+l2+l3, but the function will return
- * also when this is not true.
- *  
  */
 int threej_ratio_M (
       int l1, int l2, int l3, int M,     // In
@@ -461,60 +593,161 @@ int threej_ratio_M (
 
 
 /** 
- * Support function for 'threej_ratio_L'
+ * Support function for 'threej_ratio_L_recursive'. The first argument
+ * (l1) is the multipole with a zero in the lower row.
  */
-double threej_A (
+int threej_A (
       int l1, int l2, int l3,
-      int m1
+      int m1,
+      double *result,
+      ErrorMsg errmsg
       )
 {
+
+  class_test (!is_triangular_int (l1,l2,l3),
+    errmsg,
+    "arguments violate triangular condition, (l1,l2,l3)=(%d,%d,%d)\n",
+    l1, l2, l3);
+    
+  class_test (m1>l1,
+    errmsg,
+    "m1>l1 is not a valid 3J combination, (l1,m1,l2,l3)=(%d,%d,%d,%d)\n",
+    l1, m1, l2, l3);
 
   double l1_squared = l1*l1;
   double l2_minus_l3 = l2-l3;
   double l2_plus_l3_plus_1 = l2+l3+1;
   
-  return sqrt((l1_squared-l2_minus_l3*l2_minus_l3)
-             *(l2_plus_l3_plus_1*l2_plus_l3_plus_1-l1_squared)
-             *(l1_squared-m1*m1));
+  *result = sqrt((l1_squared-l2_minus_l3*l2_minus_l3)
+                *(l2_plus_l3_plus_1*l2_plus_l3_plus_1-l1_squared)
+                *(l1_squared-m1*m1));
+  
+  return _SUCCESS_;
 
 }
 
 /** 
- * Support function for 'threej_ratio_L'
+ * Support function for 'threej_ratio_L_recursive'. The first argument
+ * (l1) is the multipole with a zero in the lower row.
  */
-double threej_B (
+int threej_B (
       int l1, int l2, int l3,
-      int m1, int m2, int m3
+      int m1, int m2, int m3,
+      double *result,
+      ErrorMsg errmsg
       )
 {
+
+  class_test ((m1>l1) || (m2>l2) || (m3>l3) || (l1>(l2+l3)) || (l1<abs(l2-l3)),
+    errmsg,
+    "the arguments violate one or more 3J conditions");
    
-  return -(2*l1+1.)*(l2*(l2+1.)*m1 - l3*(l3+1.)*m1 - l1*(l1+1.)*(m3-m2));
+  *result = -(2*l1+1.)*(l2*(l2+1.)*m1 - l3*(l3+1.)*m1 - l1*(l1+1.)*(m3-m2));
+  
+  return _SUCCESS_;
 
 }
 
 /** 
- * Support function for 'threej_ratio_M'
+ * Support function for 'threej_ratio_M_recursive'. The first argument
+ * (l1) is the one for which we are computing the recursion.
  */
-double threej_C (
+int threej_C (
       int l1, int l2, int l3,
-      int m2, int m3
+      int m2, int m3,
+      double *result,
+      ErrorMsg errmsg
       )
 {
    
-  return sqrt((l2-m2+1.)*(l2+m2)*(l3+m3+1.)*(l3-m3));
+  *result = sqrt((l2-m2+1.)*(l2+m2)*(l3+m3+1.)*(l3-m3));
+
+  return _SUCCESS_;
 
 }
 
 /** 
- * Support function for 'threej_ratio_M'
+ * Support function for 'threej_ratio_M_recursive'. The first argument
+ * (l1) is the one for which we are computing the recursion.
  */
-double threej_D (
+int threej_D (
       int l1, int l2, int l3,
-      int m2, int m3
+      int m2, int m3,
+      double *result,
+      ErrorMsg errmsg
       )
 {
    
-  return l2*(l2+1.) + l3*(l3+1.) - l1*(l1+1.) + 2.*m2*m3;
+  *result = l2*(l2+1.) + l3*(l3+1.) - l1*(l1+1.) + 2.*m2*m3;
+
+  return _SUCCESS_;
+  
+}
+
+/** 
+ * Support function for 'threej_ratio_L_recursive'. The first argument
+ * (l1) is the one for which we are computing the recursion.
+ * The values of l1,l2,l3 do not need to satisfy a triangular condition.
+ */
+int threej_A_factor (
+      int l1, int l2, int l3,
+      int n1,
+      double *result,
+      ErrorMsg errmsg
+      )
+{
+
+  // printf ("%s: {l1,l2,l3,n1}={%d,%d,%d,%d}\n",
+  //   __func__, l1, l2, l3, n1);
+
+  double A;
+
+  /* Forward recursion */
+  if (n1 > 0) {
+
+    int l1_plus_2n = l1 + 2*n1;
+    int l1_plus_2n_minus_1 = l1 + 2*n1 - 1;
+
+    class_call (threej_A (l1_plus_2n_minus_1, l2, l3, 0, &A, errmsg), errmsg, errmsg);
+    double num = -l1_plus_2n * A;
+    
+    class_call (threej_A (l1_plus_2n, l2, l3, 0, &A, errmsg), errmsg, errmsg);
+    double den = l1_plus_2n_minus_1 * A;
+
+    class_test (fabs(den) < _MINUSCULE_,
+      errmsg,
+      "num=%g, den=%g, num/den=%g, risk of nans for (l1,l2,l3)=(%d,%d,%d)\n",
+      num, den, num/den, l1, l2, l3);
+    
+    *result = num/den;
+   
+  }
+  /* Backward recursion */
+  else if (n1 < 0) {
+    
+    int l1_plus_2n_plus_1 = l1 + 2*n1 + 1;
+    int l1_plus_2n_plus_2 = l1 + 2*n1 + 2;
+
+    class_call (threej_A (l1_plus_2n_plus_2, l2, l3, 0, &A, errmsg), errmsg, errmsg);
+    double num = -l1_plus_2n_plus_1 * A;
+    
+    class_call (threej_A (l1_plus_2n_plus_1, l2, l3, 0, &A, errmsg), errmsg, errmsg);
+    double den = l1_plus_2n_plus_2 * A;
+
+    class_test (fabs(den) < _MINUSCULE_,
+      errmsg,
+      "num=%g, den=%g, num/den=%g, risk of nans for (l1,l2,l3)=(%d,%d,%d)\n",
+      num, den, num/den, l1, l2, l3);
+    
+    *result = num/den;
+    
+  }
+  /* Enforce 3J[0,0,0]=3J[0,0,0] */
+  else {
+    *result = 1;
+  }
+  
+  return _SUCCESS_;
   
 }
 
@@ -3120,12 +3353,124 @@ double identity_double (double x) {
   return x;
 }
 
+/**
+ * Return +1 if positive, -1 if negative, 0 if zero.
+ */
+int sign_int (int x) {
+
+  if (x>0) {
+    return +1;
+  }
+  else if (x<0) {
+    return -1;
+  }
+  else {
+    return 0;
+  }
+}
+
+/**
+ * Given three numbers, return their list that orders them in
+ * ascending order. For example, 
+ * ordering(3,1,2) = (2,3,1).
+ * The input array (n) and the output array (ordering) must
+ * be pre-allocated with 4 values, as we start counting from 1.
+ */
+int ordering_int (
+      int * n,            /* In */
+      int * ordering,     /* Out */
+      ErrorMsg errmsg
+      )
+{
+  
+  if (n[1] >= n[2]) {
+    if (n[2] >= n[3]) {
+      ordering[1] = 3;
+      ordering[2] = 2;
+      ordering[3] = 1;
+    }
+    else /* if n[3] > n[2] */ {
+      if (n[1] >= n[3]) {
+        ordering[1] = 2;
+        ordering[2] = 3;
+        ordering[3] = 1;
+      }
+      else /* if n[3] > n[1] */ {
+        ordering[1] = 2;
+        ordering[2] = 1;
+        ordering[3] = 3;
+      }
+    }
+  }
+  else /* if n[2] > n[1] */ {
+    if (n[1] >= n[3]) {
+      ordering[1] = 3;
+      ordering[2] = 1;
+      ordering[3] = 2;
+    }
+    else /* if n[3] > n[1] */ {
+      if (n[2] >= n[3]) {
+        ordering[1] = 1;
+        ordering[2] = 3;
+        ordering[3] = 2;
+      }
+      else /* if n[3] > n[2] */ {
+        ordering[1] = 1;
+        ordering[2] = 2;
+        ordering[3] = 3;
+      }
+    }
+  }
+  
+  return _SUCCESS_;
+  
+}
 
 
-
-
-
-
-
+/**
+ * Reorder a vector of three elements according to an ordering vector.
+ * The latter can be the output of 'ordering_int'.
+ * For example, 
+ * reorder( (4,7,3), (2, 1, 3) ) = (2,3,1).
+ * The modification is made in-place. Both arrays must be pre-allocated
+ * with 4 values, as we start counting from 1.
+ */
+int reorder_int (
+      int * n,             /* In/Out */
+      int * ordering,      /* In */
+      ErrorMsg errmsg
+      )
+{
+  
+  /* Check that the ordering vector is valid */
+  class_test ((ordering[1]*ordering[2]*ordering[3]!=6)
+  || (ordering[1]+ordering[2]+ordering[3]!=6)
+  || (MAX(ordering[1],MAX(ordering[2],ordering[3]))!=3)
+  || (MIN(ordering[1],MIN(ordering[2],ordering[3]))!=1),
+   errmsg, 
+   "ordering vector not valid")
+  
+  /* Temporary array to store the values of n */
+  double n_[] = {0, n[1], n[2], n[3]};
+   
+  /* Reorder 'n' */
+  n[1] = n_[ordering[1]];
+  n[2] = n_[ordering[2]];
+  n[3] = n_[ordering[3]];
+  
+  return _SUCCESS_;
+  
+}
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 
 
