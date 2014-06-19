@@ -880,9 +880,9 @@ int perturb2_get_lm_lists (
       sprintf(ppt2->tp2_labels[index_tp], "T_%d_%d",l,ppt2->m[index_m]);
 
       /* Some debug */
-      printf("T, index_tp=%d: lm_offset=%d -> (%d,%d), label=%s, monopole = %d\n",
-        index_tp, lm_offset, l, ppt2->m[index_m],
-        ppt2->tp2_labels[index_tp], ppt2->index_monopole[index_tp]);
+      // printf("T, index_tp=%d: lm_offset=%d -> (%d,%d), label=%s, monopole = %d\n",
+      //   index_tp, lm_offset, l, ppt2->m[index_m],
+      //   ppt2->tp2_labels[index_tp], ppt2->index_monopole[index_tp]);
 
     }
     // *** Photon E-mode polarization ***
@@ -892,19 +892,17 @@ int perturb2_get_lm_lists (
       ppt2->index_monopole[index_tp] = ppt2->index_tp2_E;
       l_max = ppr2->l_max_los_p;
       int lm_offset = index_tp - ppt2->index_monopole[index_tp];
-      offset2multipole_l_indexm (lm_offset, ppr2->l_max_los_p, ppt2->m, ppt2->m_size,
-                                 &(ppt2->corresponding_l[index_tp]), &(ppt2->corresponding_index_m[index_tp]));
-
+      offset2multipole_l_indexm (lm_offset, l_max, ppt2->m, ppt2->m_size,
+                                 &l, &index_m);
+                                 
       /* Set the labels of the transfer types */
-      sprintf(ppt2->tp2_labels[index_tp], "E_%d_%d",
-        ppt2->corresponding_l[index_tp],
-        ppt2->m[ppt2->corresponding_index_m[index_tp]]);
+      sprintf(ppt2->tp2_labels[index_tp], "E_%d_%d",l,ppt2->m[index_m]);
 
       /* Some debug */
-      // printf("E, index_tp=%d: offset=%d -> (%d,%d), label=%s, monopole = %d\n",
-      //   index_tp, lm_offset, ppt2->corresponding_l[index_tp],
-      //   ppt2->m[ppt2->corresponding_index_m[index_tp]],
+      // printf("E, index_tp=%d: lm_offset=%d -> (%d,%d), label=%s, monopole = %d\n",
+      //   index_tp, lm_offset, l, ppt2->m[index_m],
       //   ppt2->tp2_labels[index_tp], ppt2->index_monopole[index_tp]);
+
     }
     // *** Photon B-mode polarization ***
     else if ((ppt2->has_source_B==_TRUE_)
@@ -913,19 +911,17 @@ int perturb2_get_lm_lists (
       ppt2->index_monopole[index_tp] = ppt2->index_tp2_B;
       l_max = ppr2->l_max_los_p;
       int lm_offset = index_tp - ppt2->index_monopole[index_tp];
-      offset2multipole_l_indexm (lm_offset, ppr2->l_max_los_p, ppt2->m, ppt2->m_size,
-                                 &(ppt2->corresponding_l[index_tp]), &(ppt2->corresponding_index_m[index_tp]));
-
+      offset2multipole_l_indexm (lm_offset, l_max, ppt2->m, ppt2->m_size,
+                                 &l, &index_m);
+                                 
       /* Set the labels of the transfer types */
-      sprintf(ppt2->tp2_labels[index_tp], "B_%d_%d",
-        ppt2->corresponding_l[index_tp],
-        ppt2->m[ppt2->corresponding_index_m[index_tp]]);
+      sprintf(ppt2->tp2_labels[index_tp], "B_%d_%d",l,ppt2->m[index_m]);
 
       /* Some debug */
-      // printf("B, index_tp=%d: offset=%d -> (%d,%d), label=%s, monopole = %d\n",
-      //   index_tp, lm_offset, ppt2->corresponding_l[index_tp],
-      //   ppt2->m[ppt2->corresponding_index_m[index_tp]],
+      // printf("B, index_tp=%d: lm_offset=%d -> (%d,%d), label=%s, monopole = %d\n",
+      //   index_tp, lm_offset, l, ppt2->m[index_m],
       //   ppt2->tp2_labels[index_tp], ppt2->index_monopole[index_tp]);
+
     }
     
     /* Check the result */
@@ -1683,7 +1679,6 @@ int perturb2_get_k_lists (
       
         /* Number of points in the ppt2->k grid between 'k3_min' and 'k3_max' */
         int n_triangular = index_k3_max - index_k3_min + 1;
-
 
         /* Some debug */
         // if ((index_k1==22) && (index_k2==0)) {
@@ -8878,7 +8873,7 @@ int perturb2_source_terms (
   
         /* We shall increment the source term for this (l,m)-multipole with several contributions */
         double source = 0;        
-  
+
         // *** Monopole source
         
         if (l==0) {
@@ -9105,6 +9100,9 @@ int perturb2_source_terms (
 
         #pragma omp atomic
         ++ppt2->count_memorised_sources;
+  
+        /* Debug - print the computed source */
+        // printf ("(l=%d,m=%d): source=%24.17g\n", l, m, source);
   
       }  // end for (m)
     } // end for (l)

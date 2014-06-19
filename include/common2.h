@@ -16,7 +16,7 @@
 to the boundaries, numerical instabilities might arise such as nan's or larger than one
 sines and cosines. In order to avoid that, we define here a safety distance between
 k3 and the bounds. This safety distance is going to correspond to the largest scale
-probed by SONG. Using k_scalar_min_tau0_2nd_order=1e-3, that correspond to k_min=1e-8,
+probed by SONG. Using k_scalar_min_tau0_2nd_order=1e-3, that corresponds to k_min=1e-8,
 it seems that setting _MIN_K3_DISTANCE_=1e-10 is ok. */
 #define _MIN_K3_DISTANCE_ 1e-10
 #define _MIN_K3_RATIO_ 100

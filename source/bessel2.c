@@ -488,23 +488,6 @@ int bessel2_free(
     )
 {
 
-  free(pbs2->l1);
-  free(pbs2->xx);
-  
-  free(pbs2->x_size_l1);
-  free(pbs2->x_min_l1);
-  for (int index_l1=0; index_l1<pbs2->l1_size; ++index_l1)
-    free(pbs2->j_l1[index_l1]);
-  free(pbs2->j_l1);
-  if (ppr->bessels_interpolation == cubic_interpolation) {
-    for (int index_l1=0; index_l1<pbs2->l1_size; ++index_l1)
-      free(pbs2->ddj_l1[index_l1]);
-    free(pbs2->ddj_l1);
-  }
-  
-  free(pbs2->L);
-  free(pbs2->m);
-
   if (ppr2->load_transfers_from_disk == _FALSE_) {
 
     for (int index_J = 0; index_J < pbs2->J_size; ++index_J) {
@@ -558,6 +541,23 @@ int bessel2_free(
       free(pbs2->ddJ_Llm_x);
 
   }
+  
+  free(pbs2->l1);
+  free(pbs2->xx);
+  
+  free(pbs2->x_size_l1);
+  free(pbs2->x_min_l1);
+  for (int index_l1=0; index_l1<pbs2->l1_size; ++index_l1)
+    free(pbs2->j_l1[index_l1]);
+  free(pbs2->j_l1);
+  if (ppr->bessels_interpolation == cubic_interpolation) {
+    for (int index_l1=0; index_l1<pbs2->l1_size; ++index_l1)
+      free(pbs2->ddj_l1[index_l1]);
+    free(pbs2->ddj_l1);
+  }
+  
+  free(pbs2->L);
+  free(pbs2->m);
   
   return _SUCCESS_; 
 }

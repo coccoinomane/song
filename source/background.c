@@ -577,12 +577,9 @@ int background_init(
   class_call(background_solve(ppr,pba),
 	     pba->error_message,
 	     pba->error_message);
-
-  
-  
   
   // *** MY MODIFICATIONS ***
-  // Store the value of the scale factor at matter-radiation equality
+  /* Compute and store the value of the scale factor at matter-radiation equality */
   class_call (background_epoch_of_equality(
                pba,
                ppr->tol_tau_approx),
@@ -1781,7 +1778,12 @@ int background_derivs(
 // *** MY MODIFICATIONS ***
 
 /**
- * Using bisection, compute the scale factor at equality and store it into the background structure.
+ * Compute the epoch of matter-radiation equality using bisection and store it
+ * in pba->a_eq. Also store the Fourier scale at equality as 1/tau_eq and store
+ * it in pba->k_eq.
+ *
+ * @param pba Input/Output: background structure
+ * @param tol_tau_approx            Input : precision for the bisection
  */
 int background_epoch_of_equality (
                struct background * pba,

@@ -1025,10 +1025,10 @@ int transfer2_get_lm_lists (
       sprintf(ptr2->tt2_labels[index_tt], "T_%d_%d",ptr2->l[index_l],ptr2->m[index_m]);
 
       /* Some debug */
-      printf("T, index_tt=%d: lm_offset=%d -> (%d,%d), label=%s, monopole_tr=%d, monopole_pt=%d\n",
-        index_tt, lm_offset, ptr2->l[index_l], ptr2->m[index_m],
-        ptr2->tt2_labels[index_tt],
-        ptr2->index_tt2_monopole[index_tt], ptr2->index_pt2_monopole[index_tt]);
+      // printf("T, index_tt=%d: lm_offset=%d -> (%d,%d), label=%s, monopole_tr=%d, monopole_pt=%d\n",
+      //   index_tt, lm_offset, ptr2->l[index_l], ptr2->m[index_m],
+      //   ptr2->tt2_labels[index_tt],
+      //   ptr2->index_tt2_monopole[index_tt], ptr2->index_pt2_monopole[index_tt]);
 
     }
 
@@ -1043,19 +1043,17 @@ int transfer2_get_lm_lists (
       /* Find (l,m) associated with index_tt */
       int lm_offset = index_tt - ptr2->index_tt2_monopole[index_tt];
       offset2multipole_indexl_indexm (lm_offset, ptr2->l, ptr2->l_size, ptr2->m, ptr2->m_size,
-        &(ptr2->corresponding_index_l[index_tt]), &(ptr2->corresponding_index_m[index_tt]));
+        &index_l, &index_m);
 
       /* Set the labels of the transfer types */
-      sprintf(ptr2->tt2_labels[index_tt], "E_%d_%d",
-        ptr2->l[ptr2->corresponding_index_l[index_tt]],
-        ptr2->m[ptr2->corresponding_index_m[index_tt]]);
+      sprintf(ptr2->tt2_labels[index_tt], "E_%d_%d",ptr2->l[index_l],ptr2->m[index_m]);
 
       /* Some debug */
-      // printf("E, index_tt=%d: offset=%d -> (%d,%d), label=%s, monopole_tr=%d, monopole_pt=%d\n",
-      //   index_tt, lm_offset,
-      //   ptr2->l[ptr2->corresponding_index_l[index_tt]], ptr2->m[ptr2->corresponding_index_m[index_tt]],
+      // printf("E, index_tt=%d: lm_offset=%d -> (%d,%d), label=%s, monopole_tr=%d, monopole_pt=%d\n",
+      //   index_tt, lm_offset, ptr2->l[index_l], ptr2->m[index_m],
       //   ptr2->tt2_labels[index_tt],
       //   ptr2->index_tt2_monopole[index_tt], ptr2->index_pt2_monopole[index_tt]);
+
     }
 
     // *** Photon B-mode polarization ***
@@ -1069,19 +1067,17 @@ int transfer2_get_lm_lists (
       /* Find (l,m) associated with index_tt */
       int lm_offset = index_tt - ptr2->index_tt2_monopole[index_tt];
       offset2multipole_indexl_indexm (lm_offset, ptr2->l, ptr2->l_size, ptr2->m, ptr2->m_size,
-        &(ptr2->corresponding_index_l[index_tt]), &(ptr2->corresponding_index_m[index_tt]));
+        &index_l, &index_m);
 
       /* Set the labels of the transfer types */
-      sprintf(ptr2->tt2_labels[index_tt], "B_%d_%d",
-        ptr2->l[ptr2->corresponding_index_l[index_tt]],
-        ptr2->m[ptr2->corresponding_index_m[index_tt]]);
+      sprintf(ptr2->tt2_labels[index_tt], "B_%d_%d",ptr2->l[index_l],ptr2->m[index_m]);
 
       /* Some debug */
-      // printf("B, index_tt=%d: offset=%d -> (%d,%d), label=%s, monopole_tr=%d, monopole_pt=%d\n",
-      //   index_tt, lm_offset,
-      //   ptr2->l[ptr2->corresponding_index_l[index_tt]], ptr2->m[ptr2->corresponding_index_m[index_tt]],
+      // printf("B, index_tt=%d: lm_offset=%d -> (%d,%d), label=%s, monopole_tr=%d, monopole_pt=%d\n",
+      //   index_tt, lm_offset, ptr2->l[index_l], ptr2->m[index_m],
       //   ptr2->tt2_labels[index_tt],
       //   ptr2->index_tt2_monopole[index_tt], ptr2->index_pt2_monopole[index_tt]);
+
     }
 
     /* Check the result */
