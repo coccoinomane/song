@@ -415,7 +415,7 @@ int threej_ratio_L (
 
 /** 
  *  Compute the ratio between the 3j symbols
- *  (    l1+2*N     l2     l3   )
+ *  (    l1+2*N1    l2     l3   )
  *  (     0          0      0   )
  * and
  *  (    l1     l2     l3   )
@@ -434,8 +434,8 @@ int threej_ratio_L (
  *  
  */
 int threej_ratio_L_recursive (
-      int l1, int l2, int l3, int N,     // In
-      double *result,                    // Out, should be allocated with M+1 elements
+      int l1, int l2, int l3, int N1,     // In
+      double *result,                     // Out, should be allocated with M+1 elements
       ErrorMsg errmsg
       )
 {
@@ -446,7 +446,7 @@ int threej_ratio_L_recursive (
     l1, l2, l3);
 
     
-  class_test ((l1+2*N)<0,
+  class_test ((l1+2*N1)<0,
     errmsg,
     "arguments give rise to negative multipoles");
 
@@ -454,14 +454,14 @@ int threej_ratio_L_recursive (
   result[0] = 1.;
 
   /* Recursive relation for the element 'n' */
-  for (int n=1; n <= abs(N); ++n) {
+  for (int n=1; n <= abs(N1); ++n) {
     double A_factor;
-    class_call (threej_A_factor (l1, l2, l3, sign(N)*n, &A_factor, errmsg), errmsg, errmsg);
+    class_call (threej_A_factor (l1, l2, l3, sign(N1)*n, &A_factor, errmsg), errmsg, errmsg);
     result[n] = result[n-1] * A_factor;
   }
 
   /* Debug - show results */
-  // for (int n=0; n < N+1; ++n) {
+  // for (int n=0; n < N1+1; ++n) {
   //   printf ("result[%d] = %g\n", n, result[n]);
   // }
 

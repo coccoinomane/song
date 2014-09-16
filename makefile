@@ -6,8 +6,10 @@
 # =========================================================================
 
 # Your C compiler and library tool
+# CC			 = /opt/local/bin/gcc-mp-4.8 -g
 CC			 = gcc -g
 AR       = ar rv
+
 
 # Your Fortran compiler
 FC       = gfortran
@@ -18,6 +20,11 @@ OPTFLAG    = -O
 # Openmp flag (comment for compiling without openmp)
 CCFLAG     = -std=c99
 CCFLAG     = -fopenmp -std=c99
+
+# Header files and libraries.
+# Remember to include gfortran or ifort libraries in order to use Slatec.
+INCLUDES 					  = -I../include
+LIBRARIES           = -fopenmp -lgfortran -lm
 
 
 
@@ -40,13 +47,6 @@ WRKDIR = $(MDIR)/build
 .base:
 	if ! [ -a $(WRKDIR) ]; then mkdir $(WRKDIR) ; mkdir $(WRKDIR)/lib; fi;
 	touch build/.base
-
-# Header files and libraries.
-# Remember to include gfortran or ifort libraries in order to use Slatec.
-INCLUDES 					  = -I../include
-FORTRAN_LIB_DIR 		=  
-LIBRARIES           = -L/opt/local/lib/gcc48 -lgfortran -fopenmp -lm
-
 
 
 
