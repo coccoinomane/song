@@ -700,6 +700,7 @@ struct perturb2_workspace
   int index_qs2_monopole_b;
   int index_qs2_monopole_cdm;
   int index_qs2_monopole_ur;
+  int index_qs2_chris;
 
   /* Other useful quadratic sources. */
   int index_qs2_dd_b;    /* Quadratic density of baryons */
@@ -863,6 +864,9 @@ struct perturb2_vector
   int index_pt2_monopole_g;                   /* Photon temperature hierarchy starts here */
   int index_pt2_monopole_E;                   /* Photon E-mode polarization hierarchy starts here */  
   int index_pt2_monopole_B;                   /* Photon B-mode polarization hierarchy starts here */    
+
+  // *** Chris test particle
+  int index_pt2_chris;
 
   // *** Baryons hierarchy
   int index_pt2_monopole_b;

@@ -26,6 +26,10 @@ or off. */
 #define B(l,m) ( ((ppt2->has_polarization2 == _FALSE_)||(abs(m)>l)||(l<0)||((l)>ppw2->pv->l_max_pol_g)) ? 0 : y[ppw2->pv->index_pt2_monopole_B + lm(l,m)] )
 #define dB(l,m) dy[ppw2->pv->index_pt2_monopole_B + lm(l,m)]
 
+/* Define Christian test particle moments*/
+#define CHR y[ppw2->pv->index_pt2_chris] 
+#define dCHR dy[ppw2->pv->index_pt2_chris]
+
 /* Define the neutrinos multipoles */
 #define N(l,m) ( ((abs(m) > l) || ((l)>ppw2->pv->l_max_ur)) ? 0 : y[ppw2->pv->index_pt2_monopole_ur + lm(l,m)] )
 #define dN(l,m) dy[ppw2->pv->index_pt2_monopole_ur + lm(l,m)]
@@ -55,6 +59,7 @@ interpolated by perturb2_quadratic_sources_at_tau. */
 #define db_qs2(n,l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_b + nlm(n,l,m)]
 #define dcdm_qs2(n,l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_cdm + nlm(n,l,m)]
 #define dN_qs2(l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_ur + lm(l,m)]
+#define dCHR_qs2 ppw2->pvec_quadsources[ppw2->index_qs2_chris]
 
 /* Same as above, but only for the collision term. These sources are never interpolated, and
 the split is useful to include the quadratic part of the collision term in the line of

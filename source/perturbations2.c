@@ -3333,6 +3333,17 @@ int perturb2_workspace_init_quadratic_sources (
     index_qs2 += ppw2->n_hierarchy_ur;
   
   }
+  
+  // -------------------------------------------------------
+  // -              Christian Test Particle				   -
+  // -------------------------------------------------------
+ 
+
+  
+  ppw2->index_qs2_chris = index_qs2;
+  index_qs2 += 1;
+  
+  
 
   // ---------------------------------------
   // -                Baryons              -
@@ -5583,6 +5594,13 @@ int perturb2_vector_init (
 
   } // end of if(has_ur)
 
+  // =======================================================
+  // =              Christians Test Particle           =
+  // =======================================================
+ 
+
+  ppv->index_pt2_chris = index_pt;
+  index_pt += 1;
 
 
   // =======================================
@@ -6572,6 +6590,12 @@ int perturb2_derivs (
   
   }  // end of if(has_ur)
 
+
+  // ---------------------------------------
+  // -         Christian Test Particle 	   -
+  // ---------------------------------------
+
+ dCHR = -k*CHR;
 
   // ---------------------------------------
   // -                Baryons              -
@@ -7889,6 +7913,11 @@ int perturb2_quadratic_sources (
         } // end of for (l)
       } // end of if(has_polarization2)
  
+      // ---------------------------------------
+      // -      Christian Test particle        -
+      // ---------------------------------------
+  
+      dCHR_qs2 = 1;
  
       // ---------------------------------------
       // -                Baryons              -
@@ -10411,6 +10440,11 @@ int perturb2_save_early_transfers (
   }  
   
   
+  // *** Christian test particle
+
+  
+ if (index_tau==0)  fprintf(file_tr, format_label, "chris", index_print_tr++);
+ else fprintf(file_tr, format_value, CHR);
   
   
   

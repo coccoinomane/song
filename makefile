@@ -6,20 +6,20 @@
 # =========================================================================
 
 # Your C compiler and library tool
-# CC			 = /opt/local/bin/gcc-mp-4.8 -g
-CC			 = gcc -g
+CC			 = /opt/local/bin/gcc-mp-4.8 -g
+# CC			 = gcc -g
 AR       = ar rv
 
 
 # Your Fortran compiler
-FC       = gfortran
+FC        = gfortran
 
 # Optimization flags.
 OPTFLAG    = -O
 
 # Openmp flag (comment for compiling without openmp)
 CCFLAG     = -std=c99
-CCFLAG     = -fopenmp -std=c99
+#CCFLAG     = -fopenmp -std=c99
 
 # Header files and libraries.
 # Remember to include gfortran or ifort libraries in order to use Slatec.
