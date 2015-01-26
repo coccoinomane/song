@@ -6595,7 +6595,7 @@ int perturb2_derivs (
   // -         Christian Test Particle 	   -
   // ---------------------------------------
 
- dCHR = -k*CHR;
+ dCHR = -CHR;
 
   // ---------------------------------------
   // -                Baryons              -
@@ -7917,7 +7917,7 @@ int perturb2_quadratic_sources (
       // -      Christian Test particle        -
       // ---------------------------------------
   
-      dCHR_qs2 = 1;
+      dCHR_qs2 = 1.;
  
       // ---------------------------------------
       // -                Baryons              -
