@@ -2831,8 +2831,15 @@ int perturb2_initial_conditions (
     
 
     // -----------------------------------------------------------
+    // -                    Christian Test Particle              -
+    // -----------------------------------------------------------
+    
+     y[ppw2->pv->index_pt2_chris] = 10;
+
+    // -----------------------------------------------------------
     // -                      Scalar modes                       -
     // -----------------------------------------------------------
+
 
     if (ppr2->compute_m[0] == _TRUE_) {
 
@@ -5826,6 +5833,10 @@ int perturb2_vector_init (
         }
       }
     }
+    
+    //* Christian Test Particle *//
+    
+    ppv->y[ppv->index_pt2_chris] = ppw2->pv->y[ppw2->pv->index_pt2_chris];
 
 
     if (pba->has_cdm == _TRUE_) {
@@ -6595,7 +6606,11 @@ int perturb2_derivs (
   // -         Christian Test Particle 	   -
   // ---------------------------------------
 
- dCHR = -CHR;
+  dCHR = -k*10.*CHR;
+  
+  if (ppt2->has_quadratic_sources == _TRUE_) {
+    dCHR += k*10.*dCHR_qs2;
+  }
 
   // ---------------------------------------
   // -                Baryons              -
