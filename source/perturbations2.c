@@ -2718,10 +2718,13 @@ int perturb2_initial_conditions (
       printf("     * assuming vanishing initial conditions for the 2nd-order system\n");
 
   }
+	
+  // -----------------------------------------------------------
+  // -  Initial Conditions for the Displacement fields         -
+  // -----------------------------------------------------------
 
-
-
-
+  /* The displacement fileds always should start with vanishing initial conditions
+    which are automatically set. */
 
 
   // ========================================================
@@ -2830,12 +2833,7 @@ int perturb2_initial_conditions (
       printf("     * Using adiabatic initial conditions.\n");
     
 
-    // -----------------------------------------------------------
-    // -                    Christian Test Particle              -
-    // -----------------------------------------------------------
-    
-     y[ppw2->pv->index_pt2_chris] = 10;
-
+ 
     // -----------------------------------------------------------
     // -                      Scalar modes                       -
     // -----------------------------------------------------------
@@ -3342,13 +3340,18 @@ int perturb2_workspace_init_quadratic_sources (
   }
   
   // -------------------------------------------------------
-  // -              Christian Test Particle				   -
+  // -              Displacement Fields				   					 -
   // -------------------------------------------------------
  
 
+  if (ppt2->has_cdm_displacement == _TRUE_) {
   
-  ppw2->index_qs2_chris = index_qs2;
-  index_qs2 += 1;
+		/* We only need the dipoles for the displacement field */
+  		
+  	ppw2->index_qs2_disp_cdm = index_qs2;
+  	index_qs2 += size_l_indexm (1, ppt2->m, ppt2->m_size);
+  	
+  }
   
   
 
@@ -5602,13 +5605,15 @@ int perturb2_vector_init (
   } // end of if(has_ur)
 
   // =======================================================
-  // =              Christians Test Particle           =
+  // =              Displacement Fields					           =
   // =======================================================
  
-
-  ppv->index_pt2_chris = index_pt;
-  index_pt += 1;
-
+ 	if (ppt2->has_cdm_displacement == _TRUE_) {
+   
+		ppv->index_pt2_disp_cdm = index_pt;
+  	index_pt += size_l_indexm (1, ppt2->m, ppt2->m_size);
+	
+	}
 
   // =======================================
   // =                Baryons              =
@@ -5834,10 +5839,16 @@ int perturb2_vector_init (
       }
     }
     
-    //* Christian Test Particle *//
-    
-    ppv->y[ppv->index_pt2_chris] = ppw2->pv->y[ppw2->pv->index_pt2_chris];
-
+    //* Displacement Fields *//
+    if (ppt2->has_cdm_displacement == _TRUE_) {
+    	for (int l=0; l<=1;++l){
+    		for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+          int m = ppr2->m[index_m];
+    			ppv->y[ppv->index_pt2_disp_cdm + lm(l,m)] 
+    				= ppw2->pv->y[ppw2->pv->index_pt2_disp_cdm + lm(l,m)];
+				}	
+    	}
+    }
 
     if (pba->has_cdm == _TRUE_) {
 
@@ -6603,15 +6614,23 @@ int perturb2_derivs (
 
 
   // ---------------------------------------
-  // -         Christian Test Particle 	   -
+  // -         Displacement Fields		 	   -
   // ---------------------------------------
 
-  dCHR = -k*10.*CHR;
+	if (ppt2->has_cdm_displacement == _TRUE_) {
   
-  if (ppt2->has_quadratic_sources == _TRUE_) {
-    dCHR += k*10.*dCHR_qs2;
-  }
-
+  	if (ppr2->compute_m[0] == _TRUE_)
+      dcdmDis(0,0) = 0.;
+  
+		for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+    	int m = ppt2->m[index_m];
+    	dcdmDis(1,m) = cdm(1,1,m)/3.; /*non-quadratic part of second-order velocity*/
+    	   
+ 			if (ppt2->has_quadratic_sources == _TRUE_) {
+  	 	 dcdmDis(1,m) += dcdmDis_qs2(1,m);
+  		}
+    }
+	}
   // ---------------------------------------
   // -                Baryons              -
   // ---------------------------------------
@@ -7565,14 +7584,23 @@ int perturb2_quadratic_sources (
   double v_b_2 = pvec_sources2[ppt->index_qs_v_b];
   
   /* CDM variables */
-  double delta_cdm_1, delta_cdm_2, v_cdm_1, v_cdm_2;
+  double delta_cdm_1, delta_cdm_2, v_cdm_1, v_cdm_2, v_cdm_1_prime, v_cdm_2_prime;
   if (pba->has_cdm == _TRUE_) {
     delta_cdm_1 = pvec_sources1[ppt->index_qs_delta_cdm];
     delta_cdm_2 = pvec_sources2[ppt->index_qs_delta_cdm];
     if (ppt->gauge != synchronous) {
       v_cdm_1 = pvec_sources1[ppt->index_qs_v_cdm];
       v_cdm_2 = pvec_sources2[ppt->index_qs_v_cdm];
+      v_cdm_1_prime = pvec_sources1[ppt->index_qs_v_cdm_prime];
+  		v_cdm_2_prime = pvec_sources2[ppt->index_qs_v_cdm_prime];
     }
+  }
+  
+  //* Displacement Field*//
+  double disp_cdm_1, disp_cdm_2;
+  if(ppt->has_cdm_displacement==_TRUE_){
+  	disp_cdm_1 = pvec_sources1[ppt->index_qs_disp_cdm];
+  	disp_cdm_2 = pvec_sources2[ppt->index_qs_disp_cdm];
   }
     
   /* Debug - Print first-order variables to stderr (save to
@@ -7929,11 +7957,24 @@ int perturb2_quadratic_sources (
       } // end of if(has_polarization2)
  
       // ---------------------------------------
-      // -      Christian Test particle        -
+      // -      Displacement Fields            -
       // ---------------------------------------
-  
-      dCHR_qs2 = 1.;
- 
+			
+			if (ppt2->has_cdm_displacement == _TRUE_){
+			 for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+   				int m = ppt2->m[index_m];
+   				/*quadratic part of second order velocity*/
+   				dcdmDis_qs2(1,m) =  - delta_cdm_1*(-k2_m[m+1]*v_cdm_2) - delta_cdm_2*(-k1_m[m+1]*v_cdm_1);
+   				/*quadratic sources for displacement field 
+   				iv_m(k1) (k1_1 D_-1(k2)+k1_-1 D_1(k2)-k1_0 D_0(k2)) */
+   				dcdmDis_qs2(1,m) +=  - k1_m[m+1]*v_cdm_1*(-k1_m[1+1]*k2_m[-1+1] 
+   						-k1_m[-1+1]*k2_m[1+1] + k1_m[0+1]*k2_m[0+1])*disp_cdm_2
+   					- k2_m[m+1]*v_cdm_2*(-k2_m[1+1]*k1_m[-1+1] 
+   						-k2_m[-1+1]*k1_m[1+1] + k2_m[0+1]*k1_m[0+1])*disp_cdm_1;  
+   				
+				}
+			}  
+      
       // ---------------------------------------
       // -                Baryons              -
       // ---------------------------------------
@@ -10455,12 +10496,19 @@ int perturb2_save_early_transfers (
   }  
   
   
-  // *** Christian test particle
+  // *** Displacement Field
+	if(ppt2->has_cdm_displacement == _TRUE_){ 
+		 for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+    	int m = ppt2->m[index_m];
+    	sprintf(buffer, "disp_cdm_m%d", m);
+ 			if (index_tau==0)  fprintf(file_tr, format_label, buffer, index_print_tr++);
+ 			else fprintf(file_tr, format_value, cdmDis(1,m));
+		}
+		sprintf(buffer, "disp_cdm1st");
+ 		if (index_tau==0)  fprintf(file_tr, format_label, buffer, index_print_tr++);
+ 		else fprintf(file_tr, format_value, pvec_sources1[ppt->index_qs_disp_cdm]);
 
-  
- if (index_tau==0)  fprintf(file_tr, format_label, "chris", index_print_tr++);
- else fprintf(file_tr, format_value, CHR);
-  
+	}
   
   
   // *** Baryon fluid limit variables

@@ -3055,6 +3055,13 @@ int perturb_vector_init(
       }
  
     }
+		/** CHR MOD **/
+		/* Displacement Field index (should be kinked with has_cdm!) */
+		
+		if (ppt->has_cdm_displacement==_TRUE_){
+			ppv->index_pt_disp_cdm = index_pt;
+			index_pt++;
+		}
 
     /* fluid */    
 
@@ -3479,6 +3486,13 @@ int perturb_vector_init(
 	  ppv->y[ppv->index_pt_theta_cdm] =
 	    ppw->pv->y[ppw->pv->index_pt_theta_cdm];
 	}
+      }
+      /** CHR MOD **/
+      /* Displacement Field */
+      
+      if (ppt->has_cdm_displacement ==_TRUE_){
+     		ppv->y[ppv->index_pt_disp_cdm] =
+	  			ppw->pv->y[ppw->pv->index_pt_disp_cdm];
       }
       
       if (pba->has_fld == _TRUE_) {  
@@ -7020,6 +7034,15 @@ int perturb_derivs(double tau,
       }
 
     }
+    /** CHR MOD **/
+    /* displacement field */
+    
+    if (ppt->has_cdm_displacement==_TRUE_) {
+      /*this is irrotational part of the displacement field. 
+      The field is obtained by applying \partial_i*/
+    	dy[ppw->pv->index_pt_disp_cdm] = -y[ppw->pv->index_pt_theta_cdm]/k/k;
+    
+    }
     
     /** -> fluid (fld) */
     
@@ -7802,6 +7825,12 @@ int perturb_indices_of_perturbs_2nd_order_eqs(
           ppt->index_qs_v_cdm_prime = index_type++;
         }
 
+				/** CHR MOD **/
+				/* Displacement Field */
+				if (ppt->has_cdm_displacement==_TRUE_){
+					ppt->index_qs_disp_cdm = index_type++;
+				}
+
         ppt->index_qs_monopole_cdm = index_type++;
 
         if (ppt->gauge != synchronous) {
@@ -8013,6 +8042,7 @@ int perturb_source_terms_2nd_order_eqs(
   double monopole_ur, dipole_ur, quadrupole_ur, octupole_ur;  
   double pol0_g,pol1_g,pol2_g,pol3_g;
   double phi,psi;
+  double disp_cdm;
   int l;
 
 
@@ -8114,7 +8144,15 @@ int perturb_source_terms_2nd_order_eqs(
   dipole_cdm        =    3*y[ppw->pv->index_pt_theta_cdm]/k;
 
 
-
+  /** CHR MOD **/
+  
+  // ------------------------------------------------------------------
+  // -                          Displacement Field                    -
+  // ------------------------------------------------------------------
+	if (ppt->has_cdm_displacement==_TRUE_){
+  	disp_cdm 					= y[ppw->pv->index_pt_disp_cdm];
+	}
+  
   // --------------------------------------------------------------------------------
   // -                                 Neutrinos                                    -
   // --------------------------------------------------------------------------------
@@ -8330,6 +8368,16 @@ int perturb_source_terms_2nd_order_eqs(
       }
     }
 
+		/** CHR MOD **/
+		// ---------------------------------------------------------------
+    // -               Displacement Field                           -
+    // ---------------------------------------------------------------
+		if(ppt->has_cdm_displacement==_TRUE_){
+			quadsources[index_mode][index_ic*qs_size + 		ppt->index_qs_disp_cdm][time_and_wavemode_index] = disp_cdm;
+			strcpy(ppt->qs_labels[ppt->index_md_scalars] [ppt->index_qs_disp_cdm],"disp_cdm");        
+		}
+
+		
     // ---------------------------------------------------------------------
     // -                          Photon temperature                       -
     // ---------------------------------------------------------------------

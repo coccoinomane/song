@@ -459,7 +459,14 @@ int input2_init (
   default is true. */
   if (ppt2->has_polarization2 == _TRUE_)
     ppt->has_polarization2 = _TRUE_;
-  
+ 
+  // *** Set ppt2->has_cdm_displacement
+  class_call(parser_read_string(pfc,"cdm_displacement",&(string1),&(flag1),errmsg),errmsg,errmsg);
+
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL))) {
+    ppt2->has_cdm_displacement = _TRUE_;
+  }
+ 
 
   // *** Set ppt2->has_perfect_baryons
   class_call(parser_read_string(pfc,"perfect_baryons",&(string1),&(flag1),errmsg),errmsg,errmsg);
@@ -1483,6 +1490,7 @@ int input2_default_params (
   ppt2->has_quadratic_liouville = _TRUE_;
   ppt2->has_quadratic_collision = _TRUE_;
   ppt2->has_perfect_baryons = _TRUE_;
+  ppt2->has_cdm_displacement = _FALSE_;
   ppt2->has_perfect_cdm = _TRUE_;
   ptr2->has_transfers2_only = _FALSE_;
   ppt2->rescale_quadsources = _TRUE_;

@@ -128,6 +128,7 @@ struct perturbs2
   short has_quadratic_collision;            /* Shall we include the quadratic sources in the photon-baryon collision term? */      
   short has_perfect_baryons;                /* Shall we treat baryons as a pressureless perfect fluid? */
   short has_perfect_cdm;                    /* Shall we treat cold dark matter as a pressureless perfect fluid? */
+  short has_cdm_displacement;				/* Shall we integrate the cdm displacement fields? */
 
   short has_perturbed_recombination;        /* Shall we use the perturbed fraction of free electrions? */
   int perturbed_recombination_use_approx;   /* Shall we use the approximation in eq. 3.23 of Senatore et al. 2009? */
@@ -700,7 +701,7 @@ struct perturb2_workspace
   int index_qs2_monopole_b;
   int index_qs2_monopole_cdm;
   int index_qs2_monopole_ur;
-  int index_qs2_chris;
+  int index_qs2_disp_cdm;
 
   /* Other useful quadratic sources. */
   int index_qs2_dd_b;    /* Quadratic density of baryons */
@@ -865,8 +866,8 @@ struct perturb2_vector
   int index_pt2_monopole_E;                   /* Photon E-mode polarization hierarchy starts here */  
   int index_pt2_monopole_B;                   /* Photon B-mode polarization hierarchy starts here */    
 
-  // *** Chris test particle
-  int index_pt2_chris;
+  // *** Displacement Fields
+  int index_pt2_disp_cdm;
 
   // *** Baryons hierarchy
   int index_pt2_monopole_b;

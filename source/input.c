@@ -707,6 +707,19 @@ int input_init(
   }
 
 
+   
+ // *** Set ppt->has_cdm_displacement
+ // *** CHR MODS
+ 								
+ 	class_call(parser_read_string(pfc,"cdm_displacement",&(string1),&(flag1),errmsg),
+ 				errmsg,
+ 				errmsg);
+
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != 					
+  			NULL))) {
+    ppt->has_cdm_displacement = _TRUE_;
+  }
+
   /** (c) define which perturbations and sources should be computed, and down to which scale */
 
   ppt->has_perturbations = _FALSE_;
@@ -717,7 +730,7 @@ int input_init(
 	     errmsg);
 
   if (flag1 == _TRUE_) {
-    
+ 
     
     // ==================================================================================
     // =                                  Class outputs                                 =
@@ -2785,6 +2798,7 @@ int input_default_params(
   ppt->has_cdi=_FALSE_;
   ppt->has_nid=_FALSE_;
   ppt->has_niv=_FALSE_;
+  ppt->has_cdm_displacement = _FALSE_;
 
   ppt->has_scalars=_TRUE_;  
   ppt->has_vectors=_FALSE_;
