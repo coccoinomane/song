@@ -29,6 +29,8 @@ or off. */
 /* Define Displacement Field multipoles*/
 #define cdmDis(l,m) y[ppw2->pv->index_pt2_disp_cdm + lm(l,m)] 
 #define dcdmDis(l,m) dy[ppw2->pv->index_pt2_disp_cdm + lm(l,m)]
+#define bDis(l,m) y[ppw2->pv->index_pt2_disp_b + lm(l,m)] 
+#define dbDis(l,m) dy[ppw2->pv->index_pt2_disp_b + lm(l,m)]
 
 /* Define the neutrinos multipoles */
 #define N(l,m) ( ((abs(m) > l) || ((l)>ppw2->pv->l_max_ur)) ? 0 : y[ppw2->pv->index_pt2_monopole_ur + lm(l,m)] )
@@ -60,6 +62,7 @@ interpolated by perturb2_quadratic_sources_at_tau. */
 #define dcdm_qs2(n,l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_cdm + nlm(n,l,m)]
 #define dN_qs2(l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_ur + lm(l,m)]
 #define dcdmDis_qs2(l,m) ppw2->pvec_quadsources[ppw2->index_qs2_disp_cdm + lm(l,m)]
+#define dbDis_qs2(l,m) ppw2->pvec_quadsources[ppw2->index_qs2_disp_b + lm(l,m)]
 
 /* Same as above, but only for the collision term. These sources are never interpolated, and
 the split is useful to include the quadratic part of the collision term in the line of

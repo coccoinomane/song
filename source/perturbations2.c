@@ -446,8 +446,10 @@ int perturb2_indices_of_perturbs(
       "you chose to compute more line-of-sight quadratic sources than evolved multipoles at first order. Make sure that l_max_los_quadratic_p is smaller or equal than l_max_pol_g.");
 
 
-
-
+ 	class_test ((ppt2->has_cdm_displacement == _TRUE_ && pba->has_cdm == _FALSE_),
+    ppt->error_message,
+    "cdm displacement cannot be computed without cdm");
+ 
   // ======================================================================================
   // =                              What sources to compute?                              =
   // ======================================================================================
@@ -3352,7 +3354,14 @@ int perturb2_workspace_init_quadratic_sources (
   	index_qs2 += size_l_indexm (1, ppt2->m, ppt2->m_size);
   	
   }
+  if (ppt2->has_baryon_displacement == _TRUE_) {
   
+		/* We only need the dipoles for the displacement field */
+  		
+  	ppw2->index_qs2_disp_b = index_qs2;
+  	index_qs2 += size_l_indexm (1, ppt2->m, ppt2->m_size);
+  	
+  }
   
 
   // ---------------------------------------
@@ -5614,6 +5623,12 @@ int perturb2_vector_init (
   	index_pt += size_l_indexm (1, ppt2->m, ppt2->m_size);
 	
 	}
+	if (ppt2->has_baryon_displacement == _TRUE_) {
+   
+		ppv->index_pt2_disp_b = index_pt;
+  	index_pt += size_l_indexm (1, ppt2->m, ppt2->m_size);
+	
+	}
 
   // =======================================
   // =                Baryons              =
@@ -5849,6 +5864,16 @@ int perturb2_vector_init (
 				}	
     	}
     }
+    if (ppt2->has_baryon_displacement == _TRUE_) {
+    	for (int l=0; l<=1;++l){
+    		for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+          int m = ppr2->m[index_m];
+    			ppv->y[ppv->index_pt2_disp_b + lm(l,m)] 
+    				= ppw2->pv->y[ppw2->pv->index_pt2_disp_b + lm(l,m)];
+				}	
+    	}
+    }
+
 
     if (pba->has_cdm == _TRUE_) {
 
@@ -6628,6 +6653,21 @@ int perturb2_derivs (
     	   
  			if (ppt2->has_quadratic_sources == _TRUE_) {
   	 	 dcdmDis(1,m) += dcdmDis_qs2(1,m);
+  		}
+    }
+	}
+	
+	if (ppt2->has_baryon_displacement == _TRUE_) {
+  
+  	if (ppr2->compute_m[0] == _TRUE_)
+      dbDis(0,0) = 0.;
+  
+		for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+    	int m = ppt2->m[index_m];
+    	dbDis(1,m) = b(1,1,m)/3.; /*non-quadratic part of second-order velocity*/
+    	   
+ 			if (ppt2->has_quadratic_sources == _TRUE_) {
+  	 	 dbDis(1,m) += dbDis_qs2(1,m);
   		}
     }
 	}
@@ -7598,9 +7638,14 @@ int perturb2_quadratic_sources (
   
   //* Displacement Field*//
   double disp_cdm_1, disp_cdm_2;
+  double disp_b_1, disp_b_2;
   if(ppt->has_cdm_displacement==_TRUE_){
   	disp_cdm_1 = pvec_sources1[ppt->index_qs_disp_cdm];
   	disp_cdm_2 = pvec_sources2[ppt->index_qs_disp_cdm];
+  }
+  if(ppt->has_baryon_displacement==_TRUE_){
+  	disp_b_1 = pvec_sources1[ppt->index_qs_disp_b];
+  	disp_b_2 = pvec_sources2[ppt->index_qs_disp_b];
   }
     
   /* Debug - Print first-order variables to stderr (save to
@@ -7967,10 +8012,21 @@ int perturb2_quadratic_sources (
    				dcdmDis_qs2(1,m) =  - delta_cdm_1*(-k2_m[m+1]*v_cdm_2) - delta_cdm_2*(-k1_m[m+1]*v_cdm_1);
    				/*quadratic sources for displacement field 
    				iv_m(k1) (k1_1 D_-1(k2)+k1_-1 D_1(k2)-k1_0 D_0(k2)) */
-   				dcdmDis_qs2(1,m) +=  - k1_m[m+1]*v_cdm_1*(-k1_m[1+1]*k2_m[-1+1] 
-   						-k1_m[-1+1]*k2_m[1+1] + k1_m[0+1]*k2_m[0+1])*disp_cdm_2
-   					- k2_m[m+1]*v_cdm_2*(-k2_m[1+1]*k1_m[-1+1] 
-   						-k2_m[-1+1]*k1_m[1+1] + k2_m[0+1]*k1_m[0+1])*disp_cdm_1;  
+   				dcdmDis_qs2(1,m) +=   k1_m[m+1]*v_cdm_1*(k1_dot_k2)*disp_cdm_2
+   					+ k2_m[m+1]*v_cdm_2*(k1_dot_k2)*disp_cdm_1;  
+   				
+				}
+  
+			}  
+			if (ppt2->has_baryon_displacement == _TRUE_){
+			 for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+   				int m = ppt2->m[index_m];
+   				/*quadratic part of second order velocity*/
+   				dbDis_qs2(1,m) =  - delta_b_1*(-k2_m[m+1]*v_b_2) - delta_b_2*(-k1_m[m+1]*v_b_1);
+   				/*quadratic sources for displacement field 
+   				iv_m(k1) (k1_1 D_-1(k2)+k1_-1 D_1(k2)-k1_0 D_0(k2)) */
+   				dbDis_qs2(1,m) +=  + k1_m[m+1]*v_b_1*(k1_dot_k2)*disp_b_2
+   					+ k2_m[m+1]*v_b_2*(k1_dot_k2)*disp_b_1;  
    				
 				}
 			}  
@@ -10506,7 +10562,19 @@ int perturb2_save_early_transfers (
 		}
 		sprintf(buffer, "disp_cdm1st");
  		if (index_tau==0)  fprintf(file_tr, format_label, buffer, index_print_tr++);
- 		else fprintf(file_tr, format_value, pvec_sources1[ppt->index_qs_disp_cdm]);
+ 		else fprintf(file_tr, format_value, pvec_sources1[ppt->index_qs_disp_cdm]*k);
+
+	}
+	if(ppt2->has_baryon_displacement == _TRUE_){ 
+		 for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+    	int m = ppt2->m[index_m];
+    	sprintf(buffer, "disp_b_m%d", m);
+ 			if (index_tau==0)  fprintf(file_tr, format_label, buffer, index_print_tr++);
+ 			else fprintf(file_tr, format_value, bDis(1,m));
+		}
+		sprintf(buffer, "disp_b1st");
+ 		if (index_tau==0)  fprintf(file_tr, format_label, buffer, index_print_tr++);
+ 		else fprintf(file_tr, format_value, pvec_sources1[ppt->index_qs_disp_b]*k);
 
 	}
   

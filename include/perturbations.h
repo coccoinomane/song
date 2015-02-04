@@ -114,6 +114,7 @@ struct perturbs
   short has_vectors; /**< do we need vectors? */
   short has_tensors; /**< do we need tensors? */
   short has_cdm_displacement; /**<do we need displacement fields? */
+  short has_baryon_displacement; /**<do we need displacement fields? */
 
   short has_ad;              /**< do we need adiabatic mode? */
   short has_ad_maberty;      /**< do we need adiabatic mode, with Ma & Bertschinger initial conditions? */  
@@ -415,6 +416,7 @@ struct perturbs
   int index_qs_monopole_b;
   int index_qs_dipole_b;
   int index_qs_disp_cdm;
+  int index_qs_disp_b;
 
   int index_qs_delta_cdm;       
   int index_qs_theta_cdm;
@@ -530,6 +532,7 @@ struct perturb_vector
   int* l_max_ncdm;
   int* q_size_ncdm;
   int index_pt_disp_cdm;
+  int index_pt_disp_b;
 
   int index_pt_eta;       /**< synchronous gauge metric perturbation eta*/
   int index_pt_phi;

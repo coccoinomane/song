@@ -129,6 +129,7 @@ struct perturbs2
   short has_perfect_baryons;                /* Shall we treat baryons as a pressureless perfect fluid? */
   short has_perfect_cdm;                    /* Shall we treat cold dark matter as a pressureless perfect fluid? */
   short has_cdm_displacement;				/* Shall we integrate the cdm displacement fields? */
+  short has_baryon_displacement;				/* Shall we integrate the cdm displacement fields? */
 
   short has_perturbed_recombination;        /* Shall we use the perturbed fraction of free electrions? */
   int perturbed_recombination_use_approx;   /* Shall we use the approximation in eq. 3.23 of Senatore et al. 2009? */
@@ -702,6 +703,7 @@ struct perturb2_workspace
   int index_qs2_monopole_cdm;
   int index_qs2_monopole_ur;
   int index_qs2_disp_cdm;
+  int index_qs2_disp_b;
 
   /* Other useful quadratic sources. */
   int index_qs2_dd_b;    /* Quadratic density of baryons */
@@ -868,6 +870,7 @@ struct perturb2_vector
 
   // *** Displacement Fields
   int index_pt2_disp_cdm;
+  int index_pt2_disp_b;
 
   // *** Baryons hierarchy
   int index_pt2_monopole_b;

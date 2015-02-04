@@ -216,6 +216,20 @@ int perturb_init(
   }
 
 
+//** CHR MOD **//
+ class_test ((ppt->has_cdm_displacement == _TRUE_ && pba->has_cdm == _FALSE_),
+    ppt->error_message,
+    "cdm displacement cannot be computed without cdm");
+  class_test ((ppt->has_cdm_displacement == _TRUE_ && ppt->gauge != newtonian),
+    ppt->error_message,
+    "cdm displacement only implemented in newtonian gauge");
+
+  class_test ((ppt->has_baryon_displacement == _TRUE_ && ppt->gauge != newtonian),
+    ppt->error_message,
+    "baryon displacement only implemented in newtonian gauge");
+  
+  
+
   /** - initialize all indices and lists in perturbs structure using perturb_indices_of_perturbs() */
   class_call(perturb_indices_of_perturbs(ppr,
            pba,
@@ -3056,12 +3070,17 @@ int perturb_vector_init(
  
     }
 		/** CHR MOD **/
-		/* Displacement Field index (should be kinked with has_cdm!) */
+		/* Displacement Field index */
 		
 		if (ppt->has_cdm_displacement==_TRUE_){
 			ppv->index_pt_disp_cdm = index_pt;
 			index_pt++;
 		}
+		if (ppt->has_baryon_displacement==_TRUE_){
+			ppv->index_pt_disp_b = index_pt;
+			index_pt++;
+		}
+
 
     /* fluid */    
 
@@ -3493,6 +3512,10 @@ int perturb_vector_init(
       if (ppt->has_cdm_displacement ==_TRUE_){
      		ppv->y[ppv->index_pt_disp_cdm] =
 	  			ppw->pv->y[ppw->pv->index_pt_disp_cdm];
+      }
+      if (ppt->has_baryon_displacement ==_TRUE_){
+     		ppv->y[ppv->index_pt_disp_b] =
+	  			ppw->pv->y[ppw->pv->index_pt_disp_b];
       }
       
       if (pba->has_fld == _TRUE_) {  
@@ -7043,6 +7066,12 @@ int perturb_derivs(double tau,
     	dy[ppw->pv->index_pt_disp_cdm] = -y[ppw->pv->index_pt_theta_cdm]/k/k;
     
     }
+    if (ppt->has_baryon_displacement==_TRUE_) {
+      /*this is irrotational part of the displacement field. 
+      The field is obtained by applying \partial_i*/
+    	dy[ppw->pv->index_pt_disp_b] = -y[ppw->pv->index_pt_theta_b]/k/k;
+    
+    }
     
     /** -> fluid (fld) */
     
@@ -7830,6 +7859,9 @@ int perturb_indices_of_perturbs_2nd_order_eqs(
 				if (ppt->has_cdm_displacement==_TRUE_){
 					ppt->index_qs_disp_cdm = index_type++;
 				}
+				if (ppt->has_baryon_displacement==_TRUE_){
+					ppt->index_qs_disp_b = index_type++;
+				}
 
         ppt->index_qs_monopole_cdm = index_type++;
 
@@ -8043,6 +8075,7 @@ int perturb_source_terms_2nd_order_eqs(
   double pol0_g,pol1_g,pol2_g,pol3_g;
   double phi,psi;
   double disp_cdm;
+  double disp_b;
   int l;
 
 
@@ -8151,6 +8184,9 @@ int perturb_source_terms_2nd_order_eqs(
   // ------------------------------------------------------------------
 	if (ppt->has_cdm_displacement==_TRUE_){
   	disp_cdm 					= y[ppw->pv->index_pt_disp_cdm];
+	}
+	if (ppt->has_baryon_displacement==_TRUE_){
+  	disp_b 						= y[ppw->pv->index_pt_disp_b];
 	}
   
   // --------------------------------------------------------------------------------
@@ -8376,7 +8412,10 @@ int perturb_source_terms_2nd_order_eqs(
 			quadsources[index_mode][index_ic*qs_size + 		ppt->index_qs_disp_cdm][time_and_wavemode_index] = disp_cdm;
 			strcpy(ppt->qs_labels[ppt->index_md_scalars] [ppt->index_qs_disp_cdm],"disp_cdm");        
 		}
-
+		if(ppt->has_baryon_displacement==_TRUE_){
+			quadsources[index_mode][index_ic*qs_size + 		ppt->index_qs_disp_b][time_and_wavemode_index] = disp_b;
+			strcpy(ppt->qs_labels[ppt->index_md_scalars] [ppt->index_qs_disp_cdm],"disp_b");        
+		}
 		
     // ---------------------------------------------------------------------
     // -                          Photon temperature                       -

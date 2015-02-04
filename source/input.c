@@ -719,6 +719,14 @@ int input_init(
   			NULL))) {
     ppt->has_cdm_displacement = _TRUE_;
   }
+  class_call(parser_read_string(pfc,"baryon_displacement",&(string1),&(flag1),errmsg),
+ 				errmsg,
+ 				errmsg);
+
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != 					
+  			NULL))) {
+    ppt->has_baryon_displacement = _TRUE_;
+  }
 
   /** (c) define which perturbations and sources should be computed, and down to which scale */
 
@@ -2799,6 +2807,7 @@ int input_default_params(
   ppt->has_nid=_FALSE_;
   ppt->has_niv=_FALSE_;
   ppt->has_cdm_displacement = _FALSE_;
+  ppt->has_baryon_displacement = _FALSE_;
 
   ppt->has_scalars=_TRUE_;  
   ppt->has_vectors=_FALSE_;
