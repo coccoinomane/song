@@ -10563,6 +10563,9 @@ int perturb2_save_early_transfers (
 		sprintf(buffer, "disp_cdm1st");
  		if (index_tau==0)  fprintf(file_tr, format_label, buffer, index_print_tr++);
  		else fprintf(file_tr, format_value, pvec_sources1[ppt->index_qs_disp_cdm]*k);
+		sprintf(buffer, "disp_cdm1st_zd");
+ 		if (index_tau==0)  fprintf(file_tr, format_label, buffer, index_print_tr++);
+ 		else fprintf(file_tr, format_value, pvec_sources1[ppt->index_qs_disp_cdm_zd]*k);
 
 	}
 	if(ppt2->has_baryon_displacement == _TRUE_){ 

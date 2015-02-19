@@ -224,6 +224,8 @@ struct perturbs
   short has_source_delta_fld;  /**< do we need source for delta of dark energy? */
   short has_source_delta_ur; /**< do we need source for delta of ultra-relativistic neutrinos/relics? */
   short has_source_delta_ncdm; /**< do we need source for delta of all non-cold dark matter species (e.g. massive neutrinos)? */
+  short has_source_cdm_displacement;
+  short has_source_baryon_displacement;
   // *** MY MODIFICATIONS ***
   short has_source_zeta; /**< do we need source for the primordial curvature perturbation zeta? */
   // *** END OF MY MODIFICATIONS ***
@@ -242,6 +244,8 @@ struct perturbs
   int index_tp_delta_fld;  /**< index value for delta of dark energy */
   int index_tp_delta_ur; /**< index value for delta of ultra-relativistic neutrinos/relics */
   int index_tp_delta_ncdm1; /**< index value for delta of first non-cold dark matter species (e.g. massive neutrinos) */
+  int index_tp_disp_cdm;
+  int index_tp_disp_b;
   // *** MY MODIFICATIONS ***
   int index_tp_zeta; /**< index value for the primordial curvature perturbation zeta */
   // *** END OF MY MODIFICATIONS ***
@@ -416,6 +420,7 @@ struct perturbs
   int index_qs_monopole_b;
   int index_qs_dipole_b;
   int index_qs_disp_cdm;
+  int index_qs_disp_cdm_zd;
   int index_qs_disp_b;
 
   int index_qs_delta_cdm;       

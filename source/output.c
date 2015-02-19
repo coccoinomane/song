@@ -1647,7 +1647,7 @@ int output_tk(
 
     if (pop->output_format == camb_format)
       class_alloc(tk_cmbfast,
-		  6*sizeof(double),
+		  8*sizeof(double),
 		  pop->error_message);
 
     for (index_k=0; index_k<psp->ln_k_size; index_k++) {
@@ -1677,6 +1677,8 @@ int output_tk(
 	    tk_cmbfast[3]=-tk[(index_k*psp->ic_size[index_mode]+index_ic)*psp->tr_size+psp->index_tr_ur]/exp(2.*psp->ln_k[index_k]);
 	  else
 	    tk_cmbfast[3]=0.;
+	    
+	    
 	  if (pba->has_ncdm == _TRUE_) {
 	    tk_cmbfast[4]=0.;
 	    for (n_ncdm=0; n_ncdm < pba->N_ncdm; n_ncdm++) {
@@ -1685,12 +1687,24 @@ int output_tk(
 	  }
 	  else
 	    tk_cmbfast[4]=0.;
-	  tk_cmbfast[5]=-tk[(index_k*psp->ic_size[index_mode]+index_ic)*psp->tr_size+psp->index_tr_tot]/exp(2.*psp->ln_k[index_k]);
+	  	  tk_cmbfast[5]=-tk[(index_k*psp->ic_size[index_mode]+index_ic)*psp->tr_size+psp->index_tr_tot]/exp(2.*psp->ln_k[index_k]);
+
+/** CHR */
+
+
+
+if (ppt->has_source_cdm_displacement == _TRUE_)
+tk_cmbfast[6] = -tk[(index_k*psp->ic_size[index_mode]+index_ic)*psp->tr_size+psp->index_tr_disp_cdm]/exp(2.*psp->ln_k[index_k]);
+else tk_cmbfast[6] = 0.;
+
+if (ppt->has_source_baryon_displacement == _TRUE_)
+	tk_cmbfast[7] = -tk[(index_k*psp->ic_size[index_mode]+index_ic)*psp->tr_size+psp->index_tr_disp_b]/exp(2.*psp->ln_k[index_k]);
+else tk_cmbfast[7] = 0.;
 
 	  class_call(output_one_line_of_tk(out_ic[index_ic],
 					   exp(psp->ln_k[index_k])/pba->h,
 					   tk_cmbfast,
-					   6),
+					   8),
 		     pop->error_message,
 		     pop->error_message);
 
@@ -2116,6 +2130,8 @@ int output_open_tk_file(
       fprintf(*tkfile,"-T_ur/k2          ");
       fprintf(*tkfile,"-T_ncdm_tot/k2    ");
       fprintf(*tkfile,"-T_tot/k2         ");
+      fprintf(*tkfile,"-T_disp_cdm/k2    ");
+      fprintf(*tkfile,"-T_disp_b/k2      ");
       fprintf(*tkfile,"\n");
 	
     }

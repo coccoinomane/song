@@ -1129,7 +1129,7 @@ int spectra_init(
   class_call(spectra_indices(pba,ppt,ptr,ppm,psp),
 	     psp->error_message,
 	     psp->error_message);
-
+ 
   /** - deal with C_l's, if any */
 
   if (ppt->has_cls == _TRUE_) {
@@ -1170,8 +1170,8 @@ int spectra_init(
     }
 
     if (ppt->has_matter_transfers == _TRUE_) {
-
-      class_call(spectra_matter_transfers(pba,ppt,psp),
+		
+		class_call(spectra_matter_transfers(pba,ppt,psp),
 		 psp->error_message,
 		 psp->error_message);
     }
@@ -1483,6 +1483,16 @@ int spectra_indices(
     if (pba->has_ncdm == _TRUE_) {
       psp->index_tr_ncdm1 = index_tr;
       index_tr+=pba->N_ncdm;
+    }
+    /** CHR **/
+    if (ppt->has_cdm_displacement == _TRUE_) {
+      
+      psp->index_tr_disp_cdm = index_tr;
+      index_tr++;
+    }
+    if (ppt->has_baryon_displacement == _TRUE_) {
+      psp->index_tr_disp_b = index_tr;
+      index_tr++;
     }
     psp->index_tr_tot = index_tr;
     index_tr++;
@@ -2511,7 +2521,7 @@ int spectra_matter_transfers(
     for (index_k=0; index_k<psp->ln_k_size; index_k++) {
 
       for (index_ic = 0; index_ic < psp->ic_size[index_mode]; index_ic++) {
-
+	
 	delta_rho_tot=0.;
 	rho_tot=0.;
 
@@ -2528,6 +2538,7 @@ int spectra_matter_transfers(
 	delta_rho_tot += rho_i * delta_i;
 
 	rho_tot += rho_i;
+	
 
 	/* T_b(k,tau) */
 
@@ -2546,11 +2557,9 @@ int spectra_matter_transfers(
 	/* T_cdm(k,tau) */
 	
 	if (pba->has_cdm == _TRUE_) {
-	  
 	  delta_i = ppt->sources[index_mode]
 	    [index_ic * ppt->tp_size[index_mode] + ppt->index_tp_delta_cdm]
 	    [(index_tau-psp->ln_tau_size+ppt->tau_size) * ppt->k_size[index_mode] + index_k];
-	  
 	  rho_i = pvecback_sp_long[pba->index_bg_rho_cdm];
 
 	psp->matter_transfer[((index_tau*psp->ln_k_size + index_k) * psp->ic_size[index_mode] + index_ic) * psp->tr_size + psp->index_tr_cdm] = delta_i;
@@ -2560,7 +2569,7 @@ int spectra_matter_transfers(
 	  rho_tot += rho_i;
 	  
 	}
-	
+
 	/* T_fld(k,tau) */
 
 	if (pba->has_fld == _TRUE_) {
@@ -2594,6 +2603,28 @@ int spectra_matter_transfers(
 	  delta_rho_tot += rho_i * delta_i;
 	  
 	  rho_tot += rho_i;
+
+	}
+	
+	/* Displacement power spectra CHR */
+	
+	if (ppt->has_cdm_displacement == _TRUE_) {
+	  delta_i = ppt->sources[index_mode]
+	    [index_ic * ppt->tp_size[index_mode] + ppt->index_tp_disp_cdm]
+	    [(index_tau-psp->ln_tau_size+ppt->tau_size) * ppt->k_size[index_mode] + index_k];
+	  
+	  psp->matter_transfer[((index_tau*psp->ln_k_size + index_k) * psp->ic_size[index_mode] + index_ic) * psp->tr_size + psp->index_tr_disp_cdm] = delta_i;
+	  
+	}
+
+	if (ppt-> has_baryon_displacement == _TRUE_) {
+	
+	  delta_i = ppt->sources[index_mode]
+	    [index_ic * ppt->tp_size[index_mode] + ppt->index_tp_disp_b]
+	    [(index_tau-psp->ln_tau_size+ppt->tau_size) * ppt->k_size[index_mode] + index_k];
+	  
+	  psp->matter_transfer[((index_tau*psp->ln_k_size + index_k) * psp->ic_size[index_mode] + index_ic) * psp->tr_size + psp->index_tr_disp_b] = delta_i;
+	  
 
 	}
 

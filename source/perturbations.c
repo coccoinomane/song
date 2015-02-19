@@ -691,7 +691,7 @@ int perturb_indices_of_perturbs_1st_order(
   index_type++;
   if (pba->has_cdm == _TRUE_) {
     ppt->has_source_delta_cdm = _TRUE_;
-    ppt->index_qs_monopole_cdm = index_type;
+    ppt->index_tp_delta_cdm = index_type;
     index_type++;
   }
   else ppt->has_source_delta_cdm = _FALSE_;
@@ -713,6 +713,19 @@ int perturb_indices_of_perturbs_1st_order(
     index_type+=pba->N_ncdm;
   }
   else ppt->has_source_delta_ncdm = _FALSE_;
+  /** CHR */
+  if (ppt->has_cdm_displacement = _TRUE_){
+  	ppt->has_source_cdm_displacement = _TRUE_;
+  	ppt->index_tp_disp_cdm = index_type;
+  	index_type++;
+  }
+  else ppt->has_source_cdm_displacement = _FALSE_;
+  if (ppt->has_baryon_displacement = _TRUE_){
+  	ppt->has_source_baryon_displacement = _TRUE_;
+  	ppt->index_tp_disp_b = index_type;
+  	index_type++;
+  }
+  else ppt->has_source_baryon_displacement = _FALSE_;
       }
       else {
   ppt->has_source_delta_g = _FALSE_;
@@ -721,6 +734,8 @@ int perturb_indices_of_perturbs_1st_order(
   ppt->has_source_delta_fld = _FALSE_;
   ppt->has_source_delta_ur = _FALSE_;
   ppt->has_source_delta_ncdm = _FALSE_;
+  ppt->has_source_baryon_displacement = _FALSE_;
+  ppt->has_source_cdm_displacement = _FALSE_;
       }
 
       ppt->tp_size[index_mode] = index_type;
@@ -5913,7 +5928,15 @@ int perturb_source_terms_1st_order(
       	source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S0] = 
       	  y[ppw->pv->index_pt_delta_cdm]; 
       }
-
+			/** CHR displacement fields*/
+			if ((ppt->has_source_cdm_displacement == _TRUE_) && (index_type == ppt->index_tp_disp_cdm)) {
+      	source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S0] = 
+      	  y[ppw->pv->index_pt_disp_cdm]; 
+      }
+			if ((ppt->has_source_baryon_displacement == _TRUE_) && (index_type == ppt->index_tp_disp_b)) {
+      	source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S0] = 
+      	  y[ppw->pv->index_pt_disp_b]; 
+      }
       /* delta_fld */
       if ((ppt->has_source_delta_fld == _TRUE_) && (index_type == ppt->index_tp_delta_fld)) {
       	source_term_table[index_type][index_tau * ppw->st_size + ppw->index_st_S0] = 
@@ -7839,6 +7862,10 @@ int perturb_indices_of_perturbs_2nd_order_eqs(
       /* Perturbations to the fraction of free electrons */ 
       if (ppt->has_perturbed_recombination)
         ppt->index_qs_delta_Xe = index_type++;
+      /** CHR */
+      if (ppt->has_baryon_displacement==_TRUE_){
+					ppt->index_qs_disp_b = index_type++;
+				}
       
       // ****** Cold dark matter *******
       if (pba->has_cdm == _TRUE_) {
@@ -7858,10 +7885,9 @@ int perturb_indices_of_perturbs_2nd_order_eqs(
 				/* Displacement Field */
 				if (ppt->has_cdm_displacement==_TRUE_){
 					ppt->index_qs_disp_cdm = index_type++;
+					ppt->index_qs_disp_cdm_zd = index_type++;
 				}
-				if (ppt->has_baryon_displacement==_TRUE_){
-					ppt->index_qs_disp_b = index_type++;
-				}
+				
 
         ppt->index_qs_monopole_cdm = index_type++;
 
@@ -8074,7 +8100,7 @@ int perturb_source_terms_2nd_order_eqs(
   double monopole_ur, dipole_ur, quadrupole_ur, octupole_ur;  
   double pol0_g,pol1_g,pol2_g,pol3_g;
   double phi,psi;
-  double disp_cdm;
+  double disp_cdm,disp_cdm_zd;
   double disp_b;
   int l;
 
@@ -8184,6 +8210,9 @@ int perturb_source_terms_2nd_order_eqs(
   // ------------------------------------------------------------------
 	if (ppt->has_cdm_displacement==_TRUE_){
   	disp_cdm 					= y[ppw->pv->index_pt_disp_cdm];
+  	disp_cdm_zd				= y[ppw->pv->index_pt_delta_cdm]/k/k;
+  	/*disp_cdm_zd				= y[ppw->pv->index_pt_phi]/pvecback[pba->index_bg_a]/pvecback[pba->index_bg_a]/
+  	(ppw->pvecback[pba->index_bg_rho_cdm]+ppw->pvecback[pba->index_bg_rho_b])*2./3.; here we should add more to get match with other method.*/
 	}
 	if (ppt->has_baryon_displacement==_TRUE_){
   	disp_b 						= y[ppw->pv->index_pt_disp_b];
@@ -8410,7 +8439,9 @@ int perturb_source_terms_2nd_order_eqs(
     // ---------------------------------------------------------------
 		if(ppt->has_cdm_displacement==_TRUE_){
 			quadsources[index_mode][index_ic*qs_size + 		ppt->index_qs_disp_cdm][time_and_wavemode_index] = disp_cdm;
-			strcpy(ppt->qs_labels[ppt->index_md_scalars] [ppt->index_qs_disp_cdm],"disp_cdm");        
+			strcpy(ppt->qs_labels[ppt->index_md_scalars] [ppt->index_qs_disp_cdm],"disp_cdm");   
+			quadsources[index_mode][index_ic*qs_size + 		ppt->index_qs_disp_cdm_zd][time_and_wavemode_index] = disp_cdm_zd;
+			strcpy(ppt->qs_labels[ppt->index_md_scalars] [ppt->index_qs_disp_cdm],"disp_cdm_zd");        
 		}
 		if(ppt->has_baryon_displacement==_TRUE_){
 			quadsources[index_mode][index_ic*qs_size + 		ppt->index_qs_disp_b][time_and_wavemode_index] = disp_b;

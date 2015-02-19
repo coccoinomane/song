@@ -165,6 +165,8 @@ struct spectra {
   int index_tr_ur; /**< index of ultra-relativistic neutrinos/relics transfer function */
   int index_tr_ncdm1; /**< index of first species of non-cold dark matter (massive neutrinos, ...) */
   int index_tr_tot; /**< index of total matter transfer function */
+  int index_tr_disp_b; /**indices of displacement transfer functions*/
+  int index_tr_disp_cdm;
   int tr_size;      /**< total number of species in transfer functions */
 
   double * matter_transfer;   /**< Matter transfer functions.  
