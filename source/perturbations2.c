@@ -1355,7 +1355,7 @@ int perturb2_get_k_lists (
     while (k < k_max) {
       
       /* Note that since k_rec*ppr2->k_scalar_step_transition ~ 0.03*0.2 = 0.06, we have that the tanh
-        function is basically a step function of k-k_rec */
+      function is basically a step function of k-k_rec */
       double step = ppr2->k_scalar_linstep_super_2nd_order
                   + 0.5 * (tanh((k-k_rec)/k_rec/ppr2->k_scalar_step_transition_2nd_order)+1.)
                         * (ppr2->k_scalar_step_sub_2nd_order-ppr2->k_scalar_linstep_super_2nd_order);

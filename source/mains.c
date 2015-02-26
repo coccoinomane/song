@@ -90,34 +90,34 @@ int compute_cls(
     
   // pt.perturbations_verbose = 0;
   class_call (perturb_init(&pr,pba,pth,&pt),
-    error_message,
+    pt.error_message,
     error_message);
 
   bs.bessels_verbose = 0;
   class_call (bessel_init(&pr,&bs),
-    error_message,
+    bs.error_message,
     error_message);
 
   tr.transfer_verbose = 0;
   class_call (transfer_init(&pr,pba,pth,&pt,&bs,&tr),
-    error_message,
+    tr.error_message,
     error_message);
   
   pm.primordial_verbose = 0;
   class_call (primordial_init(&pr,&pt,&pm),
-    error_message,
+    pm.error_message,
     error_message);
 
   class_call (spectra_init(&pr,pba,&pt,&tr,&pm,psp),
-    error_message,
+    psp->error_message,
     error_message);
   
   class_call (nonlinear_init(&pr,pba,pth,&pm,psp,pnl),
-    error_message,
+    pnl->error_message,
     error_message);
       
   class_call (lensing_init(&pr,&pt,psp,pnl,ple),
-    error_message,
+    ple->error_message,
     error_message);
 
 

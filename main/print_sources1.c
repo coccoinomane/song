@@ -1,19 +1,21 @@
 /** @file print_sources1.c 
  * Created by Guido W. Pettinari on 17.06.2011
- * Last edited by Guido W. Pettinari on 03.07.2012
+ * Last edited by Guido W. Pettinari on 26.02.2015
  *
- * Print to screen the sources array inside the perturbs1 structure,
- * along with conformal time (1st column), scale factor (second column), and
- * the scale factor normalized to equality a/a_eq (third column).
+ * Print to standard error either the first-order LOS sources from
+ * CLASS (contained in pt.sources) or the first-order perturbations
+ * needed for SONG (contained in pt.quadsources), according
+ * to whether the output requested in the .ini file requires a first
+ * or a second-order computation, respectively. 
  *
- * The output of this function is affected by the flag 'second_order_perturbations'
- * in the params.ini file.
+ * First three columns are conformal time, scale factor, and
+ * scale factor normalized to equality a/a_eq.
  *
  * usage:     print_sources1 <ini file> [<pre file>] <index k>"
  *
  */
  
-#include "class.h"
+#include "song.h"
 
 int main(int argc, char **argv) {
 
@@ -52,10 +54,19 @@ int main(int argc, char **argv) {
   int index_k;
 
 
-  if (argc == 2 + n_args)
+  if (argc == 2 + n_args) {
+    struct stat st;
+    stat (argv[1], &st);
+    int is_dir = (S_ISDIR (st.st_mode) != 0);
+    if (!is_dir) {
+      printf ("ERROR: when giving two arguments, the first one ('%s') should be a run directory", argv[1]);
+      return _FAILURE_;
+    }
     index_k = atoi(argv[2]);
-  else if (argc == 3 + n_args)
+  }
+  else if (argc == 3 + n_args) {
     index_k = atoi(argv[3]);
+  }
   else {
     printf ("usage:     %s <ini file> <pre file> <index k>\n", argv[0]);
     printf ("           %s <run_directory> <index k>\n", argv[0]);
@@ -75,14 +86,15 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
-  // if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
-  //   printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
-  //   return _FAILURE_;
-  // }
-
-  /* Compute only the first-order transfer functions, no matter what is specified in the input files */
-  pt2.has_early_transfers1_only = _TRUE_;
-
+  if (pt.has_perturbations2 == _TRUE_) {
+    if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
+      printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg);
+      return _FAILURE_;
+    }
+    
+    /* Compute only the first-order transfer functions, no matter what is specified in the input files */
+    pt2.has_early_transfers1_only = _TRUE_;
+  }
 
   if (background_init(&pr,&ba) == _FAILURE_) {
     printf("\n\nError running background_init \n=>%s\n",ba.error_message);
@@ -93,7 +105,7 @@ int main(int argc, char **argv) {
     printf("\n\nError in thermodynamics_init \n=>%s\n",th.error_message);
     return _FAILURE_;
   }
-
+  
   if (pt.has_perturbations2 == _FALSE_) {
     if (perturb_init(&pr,&ba,&th,&pt) == _FAILURE_) {
       printf("\n\nError in perturb_init \n=>%s\n",pt.error_message);
@@ -107,7 +119,18 @@ int main(int argc, char **argv) {
     }
   }
 
-
+  /* Run some checks */
+  if (pt.has_scalars == _FALSE_) {
+    printf ("ERROR: only scalar modes supported by this function\n");
+    return _FAILURE_;
+  }
+    
+  if ((index_k<0) || (index_k>=pt.k_size[index_mode])) {
+    printf ("ERROR: index_k should be between index_k=%d (k=%g) and index_k=%d (k=%g)\n",
+    0, pt.k[index_mode][0], pt.k_size[index_mode]-1, pt.k[index_mode][pt.k_size[index_mode]-1]);
+    return _FAILURE_;
+  }
+    
 
   // ======================================================
   // =              LOS of quadratic sources?             =

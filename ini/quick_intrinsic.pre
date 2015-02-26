@@ -132,7 +132,7 @@ transfers_k2_interpolation = linear
 # When to start evolving the 2nd-order system
 tau_start_evolution_2nd_order = 1
 
-# Time sampling of quadratic sources
+# Time sampling of quadratic sources (overridden if using custom time sampling for quadsources)
 perturb_sampling_stepsize_for_quadsources = 0.03
 
 # Custom timesampling for the quadratic sources
@@ -147,7 +147,7 @@ start_sources_at_tau_c_over_tau_h = 0.01
 perturb_sampling_stepsize = 0.05
 match_final_time_los = no
 
-# Time sampling of the second-order line-of-sight sources
+# Time sampling of the second-order line-of-sight sources (overridden if using custom time sampling for LOS sources)
 perturb_sampling_stepsize_for_2nd_order = 0.4
 recombination_max_to_end_ratio = 250
 
@@ -156,7 +156,7 @@ custom_time_sampling_for_2nd_order_sources = no
 custom_tau_ini_2nd_order_sources = 0.5            # must be larger than tau_ini_quadsources
 custom_tau_end_2nd_order_sources = 1000              # enter 0 to save sources up to today
 custom_tau_size_2nd_order_sources = 500
-custom_tau_mode_2nd_order_sources = log             # either lin, log or CLASS
+custom_tau_mode_2nd_order_sources = log             # either lin, log or class
 
 # Integration grid in time for 2nd-order transfer functions
 transfer2_tau_sampling = custom

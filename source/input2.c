@@ -1295,7 +1295,7 @@ int input2_init (
   the Bessel functions in order to compute the projection functions (ppr2->l_max_los) and the bispectrum
   integral (ppr2->m_max_2nd_order). 
   Must be after setting ppr2->l_max_los. */
-  class_test (pbs->l_max==0., errmsg, "pbs->l_max=0. Did you forget to set ppt2->has_cls==_TRUE_ in input.c?");
+  class_test (pbs->l_max==0., errmsg, "pbs->l_max=0; this happens when ppt->has_cls is set to _FALSE_ in input.c. If you asked for 'output=early_transfers2', make sure to also include an observable, e.g. use 'output=early_transfers2,tBisp' instead.");
   int l_max = pbs->l_max + MAX (ppr2->l_max_los, ppr2->m_max_2nd_order);
   class_alloc (ppr2->index_m_max, (l_max+1)*sizeof(int), ppr2->error_message);
 
