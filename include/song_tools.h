@@ -33,30 +33,6 @@ extern "C" {
          ErrorMsg errmsg       
          );
 
-  int threej_m2(
-         int l1, int l2, int l3, int m1,    // In
-         int *m2_min, int *m2_max,          // Out, 'm2' limits for which result was computed
-         double **result,                   // Out
-         int *result_size,                  // Out
-         ErrorMsg errmsg         
-         );
-
-  int threej_l1(
-         int l2, int l3, int m2, int m3,    // In
-         int *l1_min, int *l1_max,          // Out, 'm2' limits for which result was computed
-         double **result,                   // Out, has size equal to 'result_size' (should be preallocated)
-         int *result_size,                  // Out
-         ErrorMsg errmsg
-         );
-
-  int sixj_l1(
-         int l2, int l3, int l4, int l5, int l6,    // In
-         int *l1_min, int *l1_max,                  // Out, 'l1' limits for which the result is computed
-         double **result,                           // Out, has size equal to 'result_size' (should be preallocated)
-         int *result_size,                          // Out, equal to l1_max + l1_min + 1.
-         ErrorMsg errmsg       
-         );
-
   int threej_ratio_L_recursive (
         int l1, int l2, int l3, int N,     // In
         double *result,                    // Out, should be allocated with M+1 elements
@@ -129,22 +105,6 @@ extern "C" {
   // =                           Bessel functions                         =
   // ======================================================================
 
-   int besselj_l1(
-          float l,                          // In
-          float x,                          // In
-          int N,                             // In
-          float **result,                   // Out (array of size N)
-          ErrorMsg errmsg
-          );
-
-   int besselJ_l1(
-          float l,                          // In
-          float x,                          // In
-          int N,                            // In
-          float * result,                   // Out (array of size N)
-          ErrorMsg errmsg
-          );
- 
   double spherical_bessel_j(
          int l,
          double x

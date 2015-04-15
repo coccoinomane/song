@@ -10,21 +10,16 @@
 CC			 = gcc -g
 AR       = ar rv
 
-
-# Your Fortran compiler
-FC       = gfortran
-
-# Optimization flags.
+# Optimization flags
 OPTFLAG    = -O
 
 # Openmp flag (comment for compiling without openmp)
 CCFLAG     = -std=c99
 CCFLAG     = -fopenmp -std=c99
 
-# Header files and libraries.
-# Remember to include gfortran or ifort libraries in order to use Slatec.
+# Header files and libraries
 INCLUDES 					  = -I../include
-LIBRARIES           = -fopenmp -lgfortran -lm
+LIBRARIES           = -fopenmp -lm
 
 
 
@@ -57,40 +52,36 @@ WRKDIR = $(MDIR)/build
 %.o:  %.c .base
 	cd $(WRKDIR); $(CC) $(OPTFLAG) $(CCFLAG) $(INCLUDES) -c ../$< -o $*.o
 
-%.o:  %.f90 .base
-	cd $(WRKDIR); $(FC) $(FFLAGS) $(FORTRAN_OPTFLAG) -c ../$< -o $*.o
-
-%.o:  %.f .base
-	cd $(WRKDIR); $(FC) $(FFLAGS) $(FORTRAN_OPTFLAG) -c ../$< -o $*.o
-
 
 
 # ==========================================================================
 # =                             Object files                               =
 # ==========================================================================
 
+# Source files also present in CLASS
 TOOLS = growTable.o dei_rkck.o sparse.o evolver_rkck.o evolver_ndf15.o arrays.o parser.o quadrature.o
-SONG_TOOLS = $(TOOLS) song_tools.o slatec_3j_C.o slatec_3j_f90.o mesh_interpolation.o
 INPUT = input.o
-INPUT2 = input2.o
-PRECISION = precision.o
 BACKGROUND = background.o
 THERMO = thermodynamics.o
 PERTURBATIONS = perturbations.o
-PERTURBATIONS2 = perturbations2.o
-BESSEL = bessel.o
-BESSEL2 = bessel2.o
 TRANSFER = transfer.o
-TRANSFER2 = transfer2.o
 PRIMORDIAL = primordial.o
 SPECTRA = spectra.o
 BISPECTRA = bispectra.o
-BISPECTRA2 = bispectra2.o
-FISHER = fisher.o
 NONLINEAR = trg.o nonlinear.o
 LENSING = lensing.o
-MAINS = mains.o
 OUTPUT = output.o
+
+# Source files exclusive of SONG
+SONG_TOOLS = $(TOOLS) song_tools.o slatec_3j_C.o mesh_interpolation.o
+INPUT2 = input2.o
+PERTURBATIONS2 = perturbations2.o
+BESSEL = bessel.o
+BESSEL2 = bessel2.o
+TRANSFER2 = transfer2.o
+BISPECTRA2 = bispectra2.o
+FISHER = fisher.o
+MAINS = mains.o
 
 
 

@@ -1338,22 +1338,6 @@ int bessel2_J_Llm_at_x_exact(
        )
 {
   
-  
-  /* Spherical Bessel functions in x for all the needed values of l1. We
-  do not include yet the sqrt(pi/(2x)) factor that turns the Bessel functions J_l(x) into
-  the spherical ones j_l(x).  We shall do it at a later time in order to save time on the
-  computation of sqrt(x).  Also note that the function below is a single precision one.
-  This gives ~7 digits of precision, which is enough for any cosmological application.
-  Comment the following line if you want to use CLASS version of the spherical Bessels. */
-  besselJ_l1(
-     (float)bessel_3j_data->l1_min + 0.5,    // j_l ~ J_(l+1/2)
-     (float)x,                          
-     bessel_3j_data->l1_size,
-     bessel_3j_data->bessels,
-     pbs2->error_message          
-     );
-
-  // *********      Sum over l1     ***********
   int l1, index_l1;
   double j_l1_x = 0;         // Bessel function j_l(x)
   double i_coefficient;      // Coefficient i^(l-l1-L)
@@ -1375,25 +1359,17 @@ int bessel2_J_Llm_at_x_exact(
     
     /* Value of the spherical Bessel function j_l(x), comment if you want
     to use SLATEC version. */
-    // class_call (bessel_j(pbs,
-    //            l1,
-    //            x, 
-    //            &j_l1_x),
-    //         pbs2->error_message,
-    //         pbs2->error_message);
+    class_call (bessel_j(pbs,
+               l1,
+               x,
+               &j_l1_x),
+            pbs2->error_message,
+            pbs2->error_message);
 
-    /* Value of the spherical Bessel function j_l(x), comment if you want
-    to use CLASS version. */    
-    j_l1_x = bessel_3j_data->bessels[index_l1];
-    
     /* Increment the result */
     (*J_Llm_x) += i_coefficient * (2*l1+1) * bessel_3j_data->first_3j[index_l1] * bessel_3j_data->second_3j[index_l1] * j_l1_x;
     
   } // end of for(index_l1)
-
-  /*  Include the sqrt(pi/(2x)) factor that converts the J_(l+1/2) into j_l.
-    Comment if you are using CLASS spherical Bessel functions. */
-  (*J_Llm_x) *= sqrt_pi_over_2/sqrt(x);
 
   /* Apply constant factors */
   (*J_Llm_x) *= alternating_sign(m) * (2*l+1);
