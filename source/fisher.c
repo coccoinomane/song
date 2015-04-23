@@ -874,7 +874,7 @@ int fisher_indices (
     for (int index_mesh=0; index_mesh < pfi->n_meshes; ++index_mesh)
       class_test (pfi->link_lengths[index_mesh] <= pfi->group_lengths[index_mesh],
         pfi->error_message,
-        "the linking length must be larger than the grouping length.")
+        "the linking length must be larger than the grouping length.");
   
   
     // ----------------------------------------------------------------------------------

@@ -64,7 +64,8 @@ int input_init_from_arguments(
   precision_file[0]='\0';
 
 
-  // *** MY MODIFICATIONS ***
+  /** - Check wether the first argument is a directory, and if this is the case
+      load its content as if it was a previous run of SONG. */
 
   /* Check that the first argument exists as a file or as a directory */
   struct stat st;
@@ -153,13 +154,6 @@ int input_init_from_arguments(
     strcpy (ppr->pre_filename, precision_file);
 
   }
-  
-    
-  // *** END OF MY MODIFICATIONS ***
-
-  
-
-
 
 
 

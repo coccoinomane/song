@@ -1,0 +1,3 @@
+[submodule "class.git"]
+	path = class.git
+	url = https://github.com/coccoinomane/class_public.git

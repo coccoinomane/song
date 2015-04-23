@@ -6,6 +6,8 @@
 #include "input.h"
 #include "common2.h"
 #include "bessel2.h"
+#include "perturbations2.h"
+#include "transfer2.h"
 
 
 /**************************************************************/

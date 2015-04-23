@@ -9,16 +9,14 @@
 #include "background.h"
 #include "thermodynamics.h"
 #include "perturbations.h"
-#include "perturbations2.h"
 #include "bessel.h"
 #include "transfer.h"
-#include "transfer2.h"
 #include "primordial.h"
 #include "spectra.h"
 #include "lensing.h"
+#include "nonlinear.h"
 #include "bispectra.h"
 #include "fisher.h"
-#include "nonlinear.h"
 #include "output.h"
 
 /* macro for reading parameter values with routines from the parser */

@@ -6,7 +6,6 @@
 # =========================================================================
 
 # Your C compiler and library tool
-# CC			 = /opt/local/bin/gcc-mp-4.8 -g
 CC			 = gcc -g
 AR       = ar rv
 
@@ -14,44 +13,44 @@ AR       = ar rv
 OPTFLAG    = -O
 
 # Openmp flag (comment for compiling without openmp)
-CCFLAG     = -std=c99
-CCFLAG     = -fopenmp -std=c99
+CFLAGS     = -std=c99
+CFLAGS     = -fopenmp -std=c99
 
 # Header files and libraries
 INCLUDES 					  = -I../include
 LIBRARIES           = -fopenmp -lm
 
 
-
 # =========================================================================
 # =                        Directories locations                          =
 # =========================================================================
 
-# Source files
-vpath %.c source:tools:main:test
-vpath %.f90 source:tools:main:test
-vpath %.f source:tools:main:test
-vpath %.o build
-vpath .base build
-
 # Build directory
-# MDIR := $(shell pwd)
 MDIR := .
 WRKDIR = $(MDIR)/build
+
+# CLASS subfolder
+CLASS_DIR = $(MDIR)/class.git
+
+# Source files
+vpath %.c source:tools:main:test:$(CLASS_DIR)/source:$(CLASS_DIR)/tools:$(CLASS_DIR)/main:$(CLASS_DIR)/test
+vpath %.o build:$(CLASS_DIR)/build
+vpath .base build
 
 .base:
 	if ! [ -a $(WRKDIR) ]; then mkdir $(WRKDIR) ; mkdir $(WRKDIR)/lib; fi;
 	touch build/.base
 
-
+# Tell CLASS to include all SONG related stuff
+export WITH_BISPECTRA = 1
+export WITH_SONG_SUPPORT = 1
 
 # =========================================================================
 # =                          Compilation rules                            =
 # =========================================================================
 
 %.o:  %.c .base
-	cd $(WRKDIR); $(CC) $(OPTFLAG) $(CCFLAG) $(INCLUDES) -c ../$< -o $*.o
-
+	cd $(WRKDIR); $(CC) $(OPTFLAG) $(CFLAGS) $(INCLUDES) -c ../$< -o $*.o
 
 
 # ==========================================================================
@@ -86,53 +85,22 @@ MAINS = mains.o
 
 
 # ==========================================================================
-# =                            Executables                                 =
+# =                                Targets                                 =
 # ==========================================================================
+
+clean: .base
+	rm -rf $(WRKDIR);
+	cd $(CLASS_DIR); $(MAKE) clean;
 
 # Rule to be executed when make is called with no parameters
 default: class song print_params print_sources1 print_sources2 print_transfers1 print_transfers2 print_bispectra
 
-# CLASS code
-CLASS = class.o
-TEST_PLEGENDRE = test_plegendre.o
-TEST_LOOPS = test_loops.o
-TEST_TRANSFER = test_transfer.o
-TEST_PERTURBATIONS = test_perturbations.o
-TEST_THERMODYNAMICS = test_thermodynamics.o
-TEST_BACKGROUND = test_background.o
+# CLASS executables
+libclass.a class test_background test_thermodynamics test_perturbations test_transfer classy tar: 
+	cd $(CLASS_DIR); make $@
 
-libclass.a: $(TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(BESSEL) $(TRANSFER) $(PRIMORDIAL)\
-	$(SPECTRA) $(NONLINEAR) $(LENSING) $(MAINS) $(OUTPUT)
-	$(AR)  $@ $(addprefix build/,$(notdir $^))
- 
-class: $(SONG_TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(BESSEL) $(TRANSFER) $(PRIMORDIAL)\
-	$(SPECTRA) $(BISPECTRA) $(FISHER) $(NONLINEAR) $(LENSING) $(OUTPUT) $(MAINS) $(CLASS)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
-
-test_plegendre: $(TOOLS) $(SONG_TOOLS) $(TEST_PLEGENDRE)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
-
-test_loops: $(TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(BESSEL) $(TRANSFER) $(PRIMORDIAL)
-	$(SPECTRA) $(NONLINEAR) $(LENSING) $(OUTPUT) $(TEST_LOOPS)\
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
-
-test_transfer: $(TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(BESSEL) $(TRANSFER) $(TEST_TRANSFER)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
-
-test_perturbations: $(TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(TEST_PERTURBATIONS)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
-
-test_thermodynamics: $(TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(TEST_THERMODYNAMICS)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
-
-test_background: $(TOOLS) $(INPUT) $(BACKGROUND) $(TEST_BACKGROUND)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
-
-clean: .base
-	rm -rf $(WRKDIR);
-
-
-# SONG code
+# SONG executables
+TEST_INPUT = test_input.o
 SONG = song.o
 PRINT_K = print_k.o
 PRINT_K_2ND_ORDER = print_k_2nd_order.o
@@ -151,13 +119,16 @@ PRINT_KERNEL = print_kernel.o
 PRINT_MATRICES = print_matrices.o
 TEST_COUPLINGS = test_couplings.o
 
+song: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2)\
+	$(BESSEL) $(BESSEL2) $(TRANSFER) $(TRANSFER2) $(PRIMORDIAL) $(SPECTRA) $(BISPECTRA) $(BISPECTRA2)\
+	$(FISHER) $(NONLINEAR) $(LENSING) $(OUTPUT) $(MAINS) $(SONG)
+	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+
 test_bispectra: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2)\
 	$(BESSEL) $(BESSEL2) $(TRANSFER) $(TRANSFER2) $(PRIMORDIAL) $(SPECTRA) $(BISPECTRA) test_bispectra.o
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-song: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2)\
-	$(BESSEL) $(BESSEL2) $(TRANSFER) $(TRANSFER2) $(PRIMORDIAL) $(SPECTRA) $(BISPECTRA) $(BISPECTRA2)\
-	$(FISHER) $(NONLINEAR) $(LENSING) $(OUTPUT) $(MAINS) $(SONG)
+test_input: $(INPUT) $(INPUT2) $(TEST_INPUT) $(BACKGROUND) $(SONG_TOOLS)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_params: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PRINT_PARAMS)
@@ -215,3 +186,4 @@ print_matrices: $(SONG_TOOLS) $(INPUT) $(BACKGROUND) $(THREEJ) $(PRINT_MATRICES)
 
 test_couplings: $(SONG_TOOLS) $(INPUT) $(BACKGROUND) $(TEST_COUPLINGS)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+
