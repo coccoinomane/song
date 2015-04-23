@@ -313,7 +313,6 @@ int fisher_free(
     free (pfi->link_lengths);
     free (pfi->group_lengths);
     free (pfi->soft_coeffs);
-    free (pfi->l_turnover);
 
     /* Free cross-power spectrum */
     for (int l=pfi->l_min; l <= pfi->l_max; ++l) {
@@ -841,9 +840,6 @@ int fisher_indices (
     class_alloc (pfi->group_lengths, pfi->n_meshes*sizeof(double), pfi->error_message);
     class_alloc (pfi->soft_coeffs, pfi->n_meshes*sizeof(double), pfi->error_message);
   
-    /* Turnover point between the two meshes */
-    class_alloc (pfi->l_turnover, (pfi->n_meshes-1)*sizeof(int), pfi->error_message);
-  
   
     // ----------------------------------------------------------------------------------
     // -                        Mesh interpolation parameters                          -
@@ -851,9 +847,9 @@ int fisher_indices (
   
     // Fine mesh parameters
         
-    pfi->link_lengths[0] = 2 * (pbi->l[1] - pbi->l[0]);
-    pfi->group_lengths[0] = 0.1 * (pbi->l[1] - pbi->l[0]);
-    pfi->soft_coeffs[0] = 0.5;  
+    pfi->link_lengths[FINE_MESH] = 2 * (pbi->l[1] - pbi->l[0]);
+    pfi->group_lengths[FINE_MESH] = 0.1 * (pbi->l[1] - pbi->l[0]);
+    pfi->soft_coeffs[FINE_MESH] = 0.5;  
 
     // Coarse mesh parameters
 
@@ -867,9 +863,9 @@ int fisher_indices (
     if ((l_linstep==1) && (ppr->compute_only_even_ls==_TRUE_))
       l_linstep = 2;
 
-    pfi->link_lengths[1] = 0.5/sqrt(2) * l_linstep;
-    pfi->group_lengths[1] = 0.1 * l_linstep;
-    pfi->soft_coeffs[1] = 0.5;
+    pfi->link_lengths[COARSE_MESH] = 0.5/sqrt(2) * l_linstep;
+    pfi->group_lengths[COARSE_MESH] = 0.1 * l_linstep;
+    pfi->soft_coeffs[COARSE_MESH] = 0.5;
   
     for (int index_mesh=0; index_mesh < pfi->n_meshes; ++index_mesh)
       class_test (pfi->link_lengths[index_mesh] <= pfi->group_lengths[index_mesh],
@@ -883,27 +879,27 @@ int fisher_indices (
   
     /* Never use the fine grid if the large step is used since the beginning */
     if ((pbi->l[1]-pbi->l[0]) >= l_linstep) {
-      pfi->l_turnover[0] = pbi->l[0];
+      pfi->l_turnover = pbi->l[0];
     }
     /* Never use the coarse grid if the linstep (i.e. the largest possible step) is never used.
     The MAX() is needed because the last point is fixed and does not depend on the grid spacing. */
     else if (MAX(pbi->l[pbi->l_size-1]-pbi->l[pbi->l_size-2], pbi->l[pbi->l_size-2]-pbi->l[pbi->l_size-3]) < l_linstep) {
-      pfi->l_turnover[0] = pbi->l[pbi->l_size-1] + 1;
+      pfi->l_turnover = pbi->l[pbi->l_size-1] + 1;
     }
     else {
       int index_l = 0;
       while ((index_l < pbi->l_size-1) && ((pbi->l[index_l+1] - pbi->l[index_l]) < l_linstep))
         index_l++;
-      pfi->l_turnover[0] = pbi->l[index_l-1];
+      pfi->l_turnover = pbi->l[index_l-1];
     }
 
     if (pfi->fisher_verbose > 1)
       printf ("     * mesh_interpolation: l_turnover=%d, n_boxes=[%d,%d], linking lengths=[%g,%g], grouping lengths=[%g,%g]\n",
-        pfi->l_turnover[0],
-        (int)ceil(pfi->l_turnover[0]/ (pfi->link_lengths[0]*(1.+pfi->soft_coeffs[0]))),
-        (int)ceil(pbi->l[pbi->l_size-1] / (pfi->link_lengths[1]*(1.+pfi->soft_coeffs[1]))),
-        pfi->link_lengths[0], pfi->link_lengths[1],
-        pfi->group_lengths[0], pfi->group_lengths[1]);
+        pfi->l_turnover,
+        (int)ceil(pfi->l_turnover/ (pfi->link_lengths[FINE_MESH]*(1.+pfi->soft_coeffs[FINE_MESH]))),
+        (int)ceil(pbi->l[pbi->l_size-1] / (pfi->link_lengths[COARSE_MESH]*(1.+pfi->soft_coeffs[COARSE_MESH]))),
+        pfi->link_lengths[FINE_MESH], pfi->link_lengths[COARSE_MESH],
+        pfi->group_lengths[FINE_MESH], pfi->group_lengths[COARSE_MESH]);
   
   } // end of if(mesh_interpolation)
 
@@ -3231,9 +3227,9 @@ int fisher_allocate_interpolation_mesh(
                 pfi->error_message);
 
               /* Set the maximum l. The fine grid does not need to go up to l_max */
-              if (index_mesh == 0)
-                (*mesh_workspaces)[index_ft][X][Y][Z][index_mesh]->l_max = (double)pfi->l_turnover[0];
-              else 
+              if (index_mesh == FINE_MESH)
+                (*mesh_workspaces)[index_ft][X][Y][Z][index_mesh]->l_max = (double)pfi->l_turnover;
+              else if (index_mesh == COARSE_MESH)
                 (*mesh_workspaces)[index_ft][X][Y][Z][index_mesh]->l_max = (double)pbi->l[pbi->l_size-1];
               
               /* Initialise the structure with the interpolation parameters */
@@ -3274,8 +3270,8 @@ int fisher_free_interpolation_mesh(
         for (int Z = (pfi->ff_size-1); Z >= 0; --Z) {
           for (int index_mesh=0; index_mesh < pfi->n_meshes; ++index_mesh) {
 
-            if (((index_mesh == 0) && (pfi->l_turnover[0] <= pbi->l[0]))
-            || ((index_mesh == 1) && (pfi->l_turnover[0] > pbi->l[pbi->l_size-1]))) {
+            if (((index_mesh == FINE_MESH) && (pfi->l_turnover <= pbi->l[0]))
+            || ((index_mesh == COARSE_MESH) && (pfi->l_turnover > pbi->l[pbi->l_size-1]))) {
               free ((*mesh_workspaces)[index_ft][X][Y][Z][index_mesh]);
               continue;
             }
@@ -3435,9 +3431,9 @@ int fisher_create_3D_interpolation_mesh(
             /* The number of points in the grid is fixed for the 3D interpolation */
             pfi->mesh_workspaces[index_ft][X][Y][Z][index_mesh]->n_points = pbi->n_independent_configurations;
 
-            /* Since the grid is shared between different bispectra, it needs to be computed only for the first one.
-            The first one is not necessarily index_ft=0 because analytical bispectra don't need to be interpolated
-            at all */
+            /* Since the (l1,l2,l3) grid is shared between different bispectra, it needs to be computed only
+            for the first one. The first one is not necessarily index_ft=0 because analytical bispectra don't
+            need to be interpolated at all */
             if ((index_ft == pfi->first_non_analytical_index_ft) && (X == 0) && (Y == 0) && (Z == 0)) {
               pfi->mesh_workspaces[index_ft][X][Y][Z][index_mesh]->compute_grid = _TRUE_;
             }
@@ -3452,16 +3448,16 @@ int fisher_create_3D_interpolation_mesh(
               pbi->bt_labels[index_bt], pfi->ffff_labels[X][Y][Z], index_mesh);
    
             /* Skip the fine grid if the turnover point is smaller than than the smallest multipole */
-            if ((index_mesh == 0) && (pfi->l_turnover[0] <= pbi->l[0])) {
+            if ((index_mesh == FINE_MESH) && (pfi->l_turnover <= pbi->l[0])) {
               if (pfi->fisher_verbose > 2)
-                printf ("      \\ fine grid not needed because l_turnover <= l_min (%d <= %d)\n", pfi->l_turnover[0], pbi->l[0]);
+                printf ("      \\ fine grid not needed because l_turnover <= l_min (%d <= %d)\n", pfi->l_turnover, pbi->l[0]);
               continue;
             }
 
             /* Skip the coarse grid if the turnover point is larger than than the largest multipole */
-            if ((index_mesh == 1) && (pfi->l_turnover[0] > pbi->l[pbi->l_size-1])) {
+            if ((index_mesh == COARSE_MESH) && (pfi->l_turnover > pbi->l[pbi->l_size-1])) {
               if (pfi->fisher_verbose > 2)
-                printf ("      \\ coarse grid not needed because l_turnover > l_max (%d > %d)\n", pfi->l_turnover[0],
+                printf ("      \\ coarse grid not needed because l_turnover > l_max (%d > %d)\n", pfi->l_turnover,
                 pbi->l[pbi->l_size-1]);
               continue;
             }
@@ -3737,16 +3733,16 @@ int fisher_create_2D_interpolation_mesh(
               pbi->bt_labels[index_bt], pfi->ffff_labels[X][Y][Z], index_mesh);
    
             /* Skip the fine grid if the turnover point is smaller than than the smallest multipole */
-            if ((index_mesh == 0) && (pfi->l_turnover[0] <= pbi->l[0])) {
+            if ((index_mesh == FINE_MESH) && (pfi->l_turnover <= pbi->l[0])) {
               if (pfi->fisher_verbose > 3)
-                printf ("      \\ fine grid not needed because l_turnover <= l_min (%d <= %d)\n", pfi->l_turnover[0], pbi->l[0]);
+                printf ("      \\ fine grid not needed because l_turnover <= l_min (%d <= %d)\n", pfi->l_turnover, pbi->l[0]);
               continue;
             }
 
             /* Skip the coarse grid if the turnover point is larger than than the largest multipole */
-            if ((index_mesh == 1) && (pfi->l_turnover[0] > pbi->l[pbi->l_size-1])) {
+            if ((index_mesh == COARSE_MESH) && (pfi->l_turnover > pbi->l[pbi->l_size-1])) {
               if (pfi->fisher_verbose > 3)
-                printf ("      \\ coarse grid not needed because l_turnover > l_max (%d > %d)\n", pfi->l_turnover[0],
+                printf ("      \\ coarse grid not needed because l_turnover > l_max (%d > %d)\n", pfi->l_turnover,
                 pbi->l[pbi->l_size-1]);
               continue;
             }
@@ -3801,13 +3797,13 @@ int fisher_interpolate_bispectrum_mesh_3D (
 {
   
   /* Use the fine mesh when all of the multipoles are small. */
-  if ((l1<pfi->l_turnover[0]) && (l2<pfi->l_turnover[0]) && (l3<pfi->l_turnover[0])) {
-    class_call (mesh_3D_int (mesh[0], l1, l2, l3, interpolated_value),
+  if ((l1<pfi->l_turnover) && (l2<pfi->l_turnover) && (l3<pfi->l_turnover)) {
+    class_call (mesh_3D_int (mesh[FINE_MESH], l1, l2, l3, interpolated_value),
     pfi->error_message, pfi->error_message);
   }
   /* Use the coarse mesh when any of the multipoles is large. */
   else {
-    class_call (mesh_3D_int (mesh[1], l1, l2, l3, interpolated_value),
+    class_call (mesh_3D_int (mesh[COARSE_MESH], l1, l2, l3, interpolated_value),
     pfi->error_message, pfi->error_message);
   }
   
@@ -3844,13 +3840,13 @@ int fisher_interpolate_bispectrum_mesh_2D (
 {
   
   /* Use the fine mesh when all of the multipoles are small. */
-  if ((l1<pfi->l_turnover[0]) && (l2<pfi->l_turnover[0]) && (l3<pfi->l_turnover[0])) {
-    class_call (mesh_2D_int (mesh[0], l2, l3, interpolated_value),
+  if ((l1<pfi->l_turnover) && (l2<pfi->l_turnover) && (l3<pfi->l_turnover)) {
+    class_call (mesh_2D_int (mesh[FINE_MESH], l2, l3, interpolated_value),
     pfi->error_message, pfi->error_message);
   }
   /* Use the coarse mesh when any of the multipoles is large. */
   else {
-    class_call (mesh_2D_int (mesh[1], l2, l3, interpolated_value),
+    class_call (mesh_2D_int (mesh[COARSE_MESH], l2, l3, interpolated_value),
     pfi->error_message, pfi->error_message);
   }
   

@@ -18,10 +18,14 @@ enum bispectra_interpolation_method {
   sum_over_all_multipoles
 };
 
+/* Meshes in the (l1,l2,l3) domain for the interpolation of the bispectrum */
+enum mesh_type {
+  FINE_MESH,
+  COARSE_MESH
+};
 
 /* Maximum number of frequency bands of the experiment, for the purpose of Fisher matrix computation. */
 #define _N_FREQUENCY_CHANNELS_MAX_ 100
-
 
 
 /**
@@ -296,9 +300,11 @@ struct fisher {
   double * group_lengths;
   double * soft_coeffs;
 
-  /* l-multipole at which we shall switch between one mesh and another. Indexed as pbi->l_turnover[index_mesh],
-    where index_mesh runs from 0 to n_mesh_grids-1 */
-  int * l_turnover;
+  /* The l-multipole at which we shall switch between meshes. For l<l_turnover the interpolation
+  will use a fine mesh, while for l>=l_turnover it will use a coarse one. We use this algorithm
+  because the node points, that is the (l1,l2,l3) points where the bispectrum is actually computed,
+  are denser for small values of l. */
+  int l_turnover;
   
   /* Array of pointers to interpolation workspaces, indexed as mesh_workspaces[index_bt][X][Y][Z][index_mesh],
   where i,j,k are the field indices (eg. TET). */
