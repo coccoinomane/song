@@ -1,7 +1,7 @@
-/** @file mains.h */
+/** @file utility.h Header file for utility.c */
 
-#ifndef __MAINS__
-#define __MAINS__
+#ifndef __UTILITY__
+#define __UTILITY__
 
 /* class modules */
 #include "common.h"
@@ -21,7 +21,7 @@
 #include "output.h"
 
 
-/*************************************************************************************************************/
+/****************************************************************
 
 /*
  * Boilerplate for C++ 

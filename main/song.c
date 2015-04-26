@@ -1,3 +1,9 @@
+/** @file song.c
+ *
+ * Main executable for SONG.
+ *
+ * Last modified by Guido W. Pettinari, 26.04.2015
+ */
 #include "song.h"
 
 
@@ -198,5 +204,3 @@ int main(int argc, char **argv) {
   return _SUCCESS_;
 
 }
-
-

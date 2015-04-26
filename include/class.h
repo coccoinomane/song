@@ -19,7 +19,7 @@
 #include "arrays.h"
 #include "dei_rkck.h"
 #include "parser.h"
-#include "mains.h"
+#include "utility.h"
 
 /* class modules */
 #include "common.h"

@@ -17,7 +17,7 @@ CFLAGS     = -std=c99
 CFLAGS     = -fopenmp -std=c99
 
 # Header files and libraries
-INCLUDES 					  = -I../include
+INCLUDES 					  = -I../include -I../$(CLASS_DIR)/include
 LIBRARIES           = -fopenmp -lm
 
 
@@ -80,8 +80,7 @@ BESSEL2 = bessel2.o
 TRANSFER2 = transfer2.o
 BISPECTRA2 = bispectra2.o
 FISHER = fisher.o
-MAINS = mains.o
-
+UTILITY = utility.o
 
 
 # ==========================================================================
@@ -121,7 +120,7 @@ TEST_COUPLINGS = test_couplings.o
 
 song: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2)\
 	$(BESSEL) $(BESSEL2) $(TRANSFER) $(TRANSFER2) $(PRIMORDIAL) $(SPECTRA) $(BISPECTRA) $(BISPECTRA2)\
-	$(FISHER) $(NONLINEAR) $(LENSING) $(OUTPUT) $(MAINS) $(SONG)
+	$(FISHER) $(NONLINEAR) $(LENSING) $(OUTPUT) $(UTILITY) $(SONG)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 test_bispectra: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2)\
@@ -156,7 +155,7 @@ print_cls: $(SONG_TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(BES
 
 print_bispectra: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2)\
 	$(BESSEL) $(BESSEL2) $(TRANSFER) $(TRANSFER2) $(PRIMORDIAL) $(SPECTRA) $(BISPECTRA) $(BISPECTRA2) $(FISHER)\
-	$(FISHER) $(NONLINEAR) $(LENSING) $(OUTPUT)	$(MAINS) $(PRINT_BISPECTRA)
+	$(FISHER) $(NONLINEAR) $(LENSING) $(OUTPUT)	$(UTILITY) $(PRINT_BISPECTRA)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_background: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PRINT_BACKGROUND)

@@ -1,19 +1,29 @@
-#include "mains.h"
+/** @file utility.c Utility functions.
+ *
+ * Collection of high-level CLASS functions.
+ * 
+ * Guido W. Pettinari, 26.04.2015
+ */
+
+#include "utility.h"
+
+
+/** 
+ * Utility function for CLASS and SONG.
+ * 
+ * Compute the angular power spectrum (C_l) of the CMB up to the
+ * desired multipole l. In the process, fill the the background,
+ * thermodynamics, spectra, nonlinear and lensing structures of
+ * CLASS.
+ */
 
 int compute_cls(
      struct precision * ppr,
      struct background * pba,
      struct thermo * pth,
-     // struct perturbs * ppt,
-     // struct bessels * pbs,
-     // struct transfers * ptr,
-     // struct primordial * ppm,
      struct spectra * psp,
      struct nonlinear * pnl,
      struct lensing * ple,
-     // struct bispectra * pbi,
-     // struct fisher * pfi,
-     // struct output * pop,
      ErrorMsg error_message
      )
 {
@@ -37,13 +47,17 @@ int compute_cls(
   struct file_content * pfc = ppr->input_file_content;
   int found = _FALSE_;
 
+  /* Increment the maximum multipole for which we need to compute the C_l, if needed.
+  The need arises when we want to compute the lensed C_l all the way to l_max. In 
+  standard CLASS this is not possible because the lensed C_l are computed only
+  up to l_max-delta_l_max. */
   if (ppr->extend_lensed_cls == _TRUE_) {
 
     /* Read old value of l_max */
     int old_l_max_scalars;
     class_call (parser_read_int (pfc,"l_max_scalars", &old_l_max_scalars, &found, error_message),
-	       error_message,
-	       error_message);
+	    error_message,
+	    error_message);
     class_test (found == _FALSE_,
       error_message,
       "make sure that the parameter 'l_max_scalar' is set in the input file");
@@ -144,3 +158,4 @@ int compute_cls(
   return _SUCCESS_;
   
 }
+

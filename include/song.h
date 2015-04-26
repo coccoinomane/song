@@ -1,4 +1,4 @@
-// This file is included only by the "mains" that call class functions externally
+/** @file song.h Include this file whenever you need to call a SONG function */
 
 #ifndef __SONG__
 #define __SONG__
