@@ -18,6 +18,7 @@ CFLAGS     = -fopenmp -std=c99
 
 # Header files and libraries
 INCLUDES 					  = -I../include -I../$(CLASS_DIR)/include
+# INCLUDES 					  = -I../include -I../include/no_longer_needed -I../$(CLASS_DIR)/include
 LIBRARIES           = -fopenmp -lm
 
 
@@ -34,6 +35,7 @@ CLASS_DIR = $(MDIR)/class.git
 
 # Source files
 vpath %.c source:tools:main:test:$(CLASS_DIR)/source:$(CLASS_DIR)/tools:$(CLASS_DIR)/main:$(CLASS_DIR)/test
+# vpath %.c source:tools:main:test:source/no_longer_needed:tools/no_longer_needed:main/no_longer_needed :$(CLASS_DIR)/source:$(CLASS_DIR)/tools:$(CLASS_DIR)/main:$(CLASS_DIR)/test
 vpath %.o build:$(CLASS_DIR)/build
 vpath .base build
 
