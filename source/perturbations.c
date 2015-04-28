@@ -4191,6 +4191,7 @@ int perturb_initial_conditions(struct precision * ppr,
         /* cdm velocity velocity vanishes in the synchronous gauge */
       }
   
+
       /* fluid (assumes wa=0, if this is not the case the
       fluid will catch anyway the attractor solution) */
       if (pba->has_fld == _TRUE_) {
@@ -4396,6 +4397,16 @@ int perturb_initial_conditions(struct precision * ppr,
       if (pba->has_cdm == _TRUE_) {
         ppw->pv->y[ppw->pv->index_pt_delta_cdm] -= 3.*a_prime_over_a*alpha;
         ppw->pv->y[ppw->pv->index_pt_theta_cdm] = k*k*alpha;
+      }
+  
+
+  /**CHR initial condtions for dispfield (only in adiabatic and newtonian!)*/  
+		/*make sure these lines are set after delta cdm and delta b are set. */
+  	  if (ppt->has_cdm_displacement ==_TRUE_){
+	  			ppw->pv->y[ppw->pv->index_pt_disp_cdm] = 0.*(ppw->pv->y[ppw->pv->index_pt_delta_cdm]-3.*ppw->pv->y[ppw->pv->index_pt_phi])/k/k;
+      }
+      if (ppt->has_baryon_displacement ==_TRUE_){
+	  			ppw->pv->y[ppw->pv->index_pt_disp_b] = 0.*(ppw->pv->y[ppw->pv->index_pt_delta_b]-3.*ppw->pv->y[ppw->pv->index_pt_phi])/k/k;
       }
   
       /* fluid */
@@ -7086,13 +7097,13 @@ int perturb_derivs(double tau,
     if (ppt->has_cdm_displacement==_TRUE_) {
       /*this is irrotational part of the displacement field. 
       The field is obtained by applying \partial_i*/
-    	dy[ppw->pv->index_pt_disp_cdm] = -y[ppw->pv->index_pt_theta_cdm]/k/k;
+    	dy[ppw->pv->index_pt_disp_cdm] = -(y[ppw->pv->index_pt_theta_cdm]+0.*metric_continuity)/k/k;
     
     }
     if (ppt->has_baryon_displacement==_TRUE_) {
       /*this is irrotational part of the displacement field. 
       The field is obtained by applying \partial_i*/
-    	dy[ppw->pv->index_pt_disp_b] = -y[ppw->pv->index_pt_theta_b]/k/k;
+    	dy[ppw->pv->index_pt_disp_b] = -(y[ppw->pv->index_pt_theta_b]+0.*metric_continuity)/k/k;
     
     }
     
@@ -8210,7 +8221,7 @@ int perturb_source_terms_2nd_order_eqs(
   // ------------------------------------------------------------------
 	if (ppt->has_cdm_displacement==_TRUE_){
   	disp_cdm 					= y[ppw->pv->index_pt_disp_cdm];
-  	disp_cdm_zd				= y[ppw->pv->index_pt_delta_cdm]/k/k;
+  	disp_cdm_zd				= (y[ppw->pv->index_pt_delta_cdm]-3.*y[ppw->pv->index_pt_phi])/k/k;
   	/*disp_cdm_zd				= y[ppw->pv->index_pt_phi]/pvecback[pba->index_bg_a]/pvecback[pba->index_bg_a]/
   	(ppw->pvecback[pba->index_bg_rho_cdm]+ppw->pvecback[pba->index_bg_rho_b])*2./3.; here we should add more to get match with other method.*/
 	}
@@ -8440,12 +8451,14 @@ int perturb_source_terms_2nd_order_eqs(
 		if(ppt->has_cdm_displacement==_TRUE_){
 			quadsources[index_mode][index_ic*qs_size + 		ppt->index_qs_disp_cdm][time_and_wavemode_index] = disp_cdm;
 			strcpy(ppt->qs_labels[ppt->index_md_scalars] [ppt->index_qs_disp_cdm],"disp_cdm");   
+			
 			quadsources[index_mode][index_ic*qs_size + 		ppt->index_qs_disp_cdm_zd][time_and_wavemode_index] = disp_cdm_zd;
-			strcpy(ppt->qs_labels[ppt->index_md_scalars] [ppt->index_qs_disp_cdm],"disp_cdm_zd");        
+			strcpy(ppt->qs_labels[ppt->index_md_scalars] [ppt->index_qs_disp_cdm_zd],"disp_cdm_zd");        
 		}
+		
 		if(ppt->has_baryon_displacement==_TRUE_){
 			quadsources[index_mode][index_ic*qs_size + 		ppt->index_qs_disp_b][time_and_wavemode_index] = disp_b;
-			strcpy(ppt->qs_labels[ppt->index_md_scalars] [ppt->index_qs_disp_cdm],"disp_b");        
+			strcpy(ppt->qs_labels[ppt->index_md_scalars] [ppt->index_qs_disp_b],"disp_b");        
 		}
 		
     // ---------------------------------------------------------------------
