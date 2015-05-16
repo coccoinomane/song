@@ -784,9 +784,9 @@ int bispectra2_intrinsic_workspace_init (
   it always appears in the argument of a Bessel function multiplying a wavemode, just as it was for conformal
   time in the line-of-sight integral.  This is the only place in the module where the background structure
   is accessed. */
-  pwb->r_min = pbi->r_min;
-  pwb->r_max = pbi->r_max;
-  pwb->r_size = pbi->r_size;
+  pwb->r_min = ppr->r_min;
+  pwb->r_max = ppr->r_max;
+  pwb->r_size = ppr->r_size;
   
   /* We decide to sample r linearly */
   class_alloc (pwb->r, pwb->r_size*sizeof(double), pbi->error_message);
@@ -2477,10 +2477,10 @@ int bispectra2_intrinsic_geometrical_factors (
     if (abs_M3 != 0) {
       
       if (pwb->bispectrum_parity == _EVEN_)
-        SUMMED_FACTOR_l3_L3_M3 = FACTOR_l3_L3_M3 + alternating_sign(offset_L3)*FACTOR_l3_L3_M3;
+        SUMMED_FACTOR_l3_L3_M3 = FACTOR_l3_L3_M3 + ALTERNATING_SIGN(offset_L3)*FACTOR_l3_L3_M3;
 
       else
-        SUMMED_FACTOR_l3_L3_M3 = FACTOR_l3_L3_M3 - alternating_sign(offset_L3)*FACTOR_l3_L3_M3;
+        SUMMED_FACTOR_l3_L3_M3 = FACTOR_l3_L3_M3 - ALTERNATING_SIGN(offset_L3)*FACTOR_l3_L3_M3;
 
     } // end of if(M3!=0)
   
@@ -2752,7 +2752,7 @@ int bispectra2_intrinsic_geometrical_factors (
 
             #pragma omp atomic
             result[index_l3][index_l2][index_l1-index_l1_min]
-              += alternating_sign(exponent/2) * prefactor * geometry * integral;
+              += ALTERNATING_SIGN(exponent/2) * prefactor * geometry * integral;
 
           }
           /* We treat m=0 as a special case because in this way we can define the reduced
@@ -2776,7 +2776,7 @@ int bispectra2_intrinsic_geometrical_factors (
             /* Full formula, with the (l1,l2,l3) 3j-symbol factored out numerically */
             double bispectrum = 0;
             if (is_even_configuration)
-              bispectrum = alternating_sign(exponent/2) * prefactor * geometry * integral;          
+              bispectrum = ALTERNATING_SIGN(exponent/2) * prefactor * geometry * integral;          
 
             if (fabs(bispectrum) > _MINUSCULE_)
               class_test_parallel (fabs(1-bispectrum_for_m0/bispectrum) > ppr->smallest_allowed_variation,
@@ -2789,7 +2789,7 @@ int bispectra2_intrinsic_geometrical_factors (
 
           #pragma omp atomic
           result[index_l3][index_l2][index_l1-index_l1_min]
-            += alternating_sign(exponent/2) * prefactor * geometry * integral;
+            += ALTERNATING_SIGN(exponent/2) * prefactor * geometry * integral;
           
         } // end of if odd parity
 
@@ -2803,7 +2803,7 @@ int bispectra2_intrinsic_geometrical_factors (
         //     #pragma omp critical
         //     fprintf (stderr, "(l1,l2,l3 | L1,L3)=(%3d,%3d,%3d | %3d,%3d): geometry=%10g, integral=%10g\n",
         //       l1,l2,l3,L1,L3,
-        //       alternating_sign(exponent/2) * geometry_prefactor * geometry,
+        //       ALTERNATING_SIGN(exponent/2) * geometry_prefactor * geometry,
         //       integral_prefactor*integral);
         // 
         //   }
@@ -2814,11 +2814,11 @@ int bispectra2_intrinsic_geometrical_factors (
         //   ppr2->m[index_M3],L3,L1,l1,l2,l3,offset_L3,offset_L1);
         // printf ("\tresult=%g,prefactor=%g, integral=%g, geometry=%g, product=%g\n",
         //   result[index_l3][index_l2][index_l1-index_l1_min],
-        //   alternating_sign(exponent/2)*prefactor, integral, geometry,
-        //   alternating_sign(exponent/2)*alternating_sign(exponent)*integral*geometry);
+        //   ALTERNATING_SIGN(exponent/2)*prefactor, integral, geometry,
+        //   ALTERNATING_SIGN(exponent/2)*ALTERNATING_SIGN(exponent)*integral*geometry);
         
         /* Mathematica batch debug */
-        // double val = alternating_sign(exponent/2)*geometry;
+        // double val = ALTERNATING_SIGN(exponent/2)*geometry;
         // if ((abs_M3==2) && (offset_L3==4)) {
         //   if (val==0) {
         //     fprintf (stderr, "Abs[g[%d,%d,%d,%d,%d,%d]] == 0,\n",
@@ -2826,7 +2826,7 @@ int bispectra2_intrinsic_geometrical_factors (
         //   }
         //   else {
         //     fprintf (stderr, "Abs[1-g[%d,%d,%d,%d,%d,%d]/((%g)*10^(%f))],\n",
-        //       abs_M3,L3,L1,l1,l2,l3,sign(val),log10(fabs(val)));
+        //       abs_M3,L3,L1,l1,l2,l3,SIGN(val),log10(fabs(val)));
         //   }
         // }
 

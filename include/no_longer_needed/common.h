@@ -5,7 +5,6 @@
 #include "math.h"
 #include "string.h"
 #include "float.h"
-#include "wordexp.h"
 #include "svnversion.h"
 #ifdef _OPENMP
 #include "omp.h"
@@ -15,6 +14,7 @@
 #include "time.h"         /* Needed to append the current date to output files */
 #include "libgen.h"       /* dirname, basename */
 #include "sys/stat.h"     /* stat, mkdir */
+#include "wordexp.h"
 // *** END OF MY MODIFICATIONS ***
 
 #ifndef __COMMON__
@@ -55,8 +55,8 @@ typedef char FileName[_FILENAMESIZE_];
 
 
 // ** MY MODIFICATIONS ***
-#define sign(a) (((a)>0) ? 1 : -1 )
-#define alternating_sign(m) ((m)%2 == 0 ? 1 : -1)
+#define SIGN(a) (((a)>0) ? 1 : -1 )
+#define ALTERNATING_SIGN(m) ((m)%2 == 0 ? 1 : -1)
 
 #define _MINUSCULE_ 1.e-75
 

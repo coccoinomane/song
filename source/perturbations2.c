@@ -1204,9 +1204,9 @@ int perturb2_get_lm_lists (
             /* For even-parity fields, the sign-factor is i^L. For sign-parity ones, it is i^(L-1).
             In both cases, the exponent is even (see above), so that the sign-factor is real-valued */
             if (ppt2->field_parity[index_pf] == _EVEN_)
-              sign = alternating_sign (abs(L)/2);
+              sign = ALTERNATING_SIGN (abs(L)/2);
             else
-              sign = alternating_sign (abs(L-1)/2);
+              sign = ALTERNATING_SIGN (abs(L-1)/2);
 
             for (int index_m3=0; index_m3 <= ppr2->index_m_max[l3]; ++index_m3) {
 
@@ -4364,9 +4364,9 @@ int perturb2_geometrical_corner (
       arising from the identity exp(i*m*pi) = (-1)^m. */
       if (ppt2->rescale_quadsources == _FALSE_) { 
         ppw2->rotation_1[lm_quad(l,m)] = plegendre_lm(l,m,cosk1k);
-        ppw2->rotation_2[lm_quad(l,m)] = alternating_sign(m) * plegendre_lm(l,m,cosk2k);
-        ppw2->rotation_1_minus[lm_quad(l,m)] = alternating_sign(m) * ppw2->rotation_1[lm_quad(l,m)];
-        ppw2->rotation_2_minus[lm_quad(l,m)] = alternating_sign(m) * ppw2->rotation_2[lm_quad(l,m)];
+        ppw2->rotation_2[lm_quad(l,m)] = ALTERNATING_SIGN(m) * plegendre_lm(l,m,cosk2k);
+        ppw2->rotation_1_minus[lm_quad(l,m)] = ALTERNATING_SIGN(m) * ppw2->rotation_1[lm_quad(l,m)];
+        ppw2->rotation_2_minus[lm_quad(l,m)] = ALTERNATING_SIGN(m) * ppw2->rotation_2[lm_quad(l,m)];
       }
       /* Divide the rotation coefficients by a factor sin(theta_k1)^m, if asked. This is the same as 
       rescaling the transfer functions by the same factor. The pow(k1/k2) factors come from the fact
@@ -4378,9 +4378,9 @@ int perturb2_geometrical_corner (
       m>=0. This is not a problem because we need the transfer functions for m>=0 in any case.  */
       else {
         ppw2->rotation_1[lm_quad(l,m)] = plegendre_lm_rescaled(l,m,cosk1k);
-        ppw2->rotation_2[lm_quad(l,m)] = (alternating_sign(m) * plegendre_lm_rescaled(l,m,cosk2k)) * pow(k1/k2,m);
+        ppw2->rotation_2[lm_quad(l,m)] = (ALTERNATING_SIGN(m) * plegendre_lm_rescaled(l,m,cosk2k)) * pow(k1/k2,m);
         ppw2->rotation_1_minus[lm_quad(l,m)] = plegendre_lm_rescaled(l,-m,cosk1k);
-        ppw2->rotation_2_minus[lm_quad(l,m)] = (alternating_sign(m) * plegendre_lm_rescaled(l,-m,cosk2k)) * pow(k1/k2,-m);
+        ppw2->rotation_2_minus[lm_quad(l,m)] = (ALTERNATING_SIGN(m) * plegendre_lm_rescaled(l,-m,cosk2k)) * pow(k1/k2,-m);
       }
       
       /* Check that the rotation coefficients for positive and negative m's coincide for m=0 */
@@ -8103,7 +8103,7 @@ int perturb2_quadratic_sources (
     double delta_e_1 = delta_b_1;
     double delta_e_2 = delta_b_2;
 
-    if (ppt2->has_perturbed_recombination == _TRUE_) {
+    if (ppt2->has_perturbed_recombination_stz == _TRUE_) {
  
       /* If requested, we use the approximated formula in 3.23 of Senatore, Tassev, Zaldarriaga (STZ,
       http://arxiv.org/abs/0812.3652), which is valid for k < 1 in Newtonian gauge and it doesn't require
@@ -8138,7 +8138,7 @@ int perturb2_quadratic_sources (
       //   fprintf (stderr, "%12.7g %12.7g %12.7g %12.7g %12.7g %12.7g\n",
       //     ppt->tau_sampling_quadsources, a, delta_e_1, approx, delta_b_1, g);
 
-    } // end of if(has_perturbed_recombination)
+    } // end of if(has_perturbed_recombination_stz)
  
   
     // ------------------------------------------------
@@ -8773,7 +8773,7 @@ int perturb2_source_terms (
   double delta_e_1 = delta_b_1;
   double delta_e_2 = delta_b_2;
   
-  if (ppt2->has_perturbed_recombination == _TRUE_) {
+  if (ppt2->has_perturbed_recombination_stz == _TRUE_) {
    
     /* If requested, we use the approximated formula in 3.23 of Senatore, Tassev, Zaldarriaga (STZ,
     http://arxiv.org/abs/0812.3652), which is valid for k < 1 in Newtonian gauge and it doesn't require
@@ -8797,7 +8797,7 @@ int perturb2_source_terms (
     // if ((ppw2->index_k1==0) && (ppw2->index_k2==0) && (ppw2->index_k3==0))
     //   fprintf (stderr, "%12.7g %12.7g %12.7g\n", ppt2->tau_sampling[index_tau], delta_e_1, delta_e_2);
   
-  } // end of if(has_perturbed_recombination)
+  } // end of if(has_perturbed_recombination_stz)
    
   
   

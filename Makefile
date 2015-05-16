@@ -6,19 +6,20 @@
 # =========================================================================
 
 # Your C compiler and library tool
-CC			 = gcc -g
+CC			 = gcc
 AR       = ar rv
 
 # Optimization flags
 OPTFLAG    = -O
 
-# Openmp flag (comment for compiling without openmp)
-CFLAGS     = -std=c99
-CFLAGS     = -fopenmp -std=c99
+# Compilation flags
+CFLAGS     += -g
+# CFLAGS     += -w
+CFLAGS     += -std=c99
+CFLAGS     += -fopenmp # comment for compiling without parallel support
 
 # Header files and libraries
 INCLUDES 					  = -I../include -I../$(CLASS_DIR)/include
-# INCLUDES 					  = -I../include -I../include/no_longer_needed -I../$(CLASS_DIR)/include
 LIBRARIES           = -fopenmp -lm
 
 
@@ -43,9 +44,10 @@ vpath .base build
 	if ! [ -a $(WRKDIR) ]; then mkdir $(WRKDIR) ; mkdir $(WRKDIR)/lib; fi;
 	touch build/.base
 
-# Tell CLASS to include all SONG related stuff
-export WITH_BISPECTRA = 1
-export WITH_SONG_SUPPORT = 1
+# Make sure to compile CLASS with support for SONG
+CFLAGS += -DWITH_SONG_SUPPORT
+CFLAGS += -DWITH_BISPECTRA
+
 
 # =========================================================================
 # =                          Compilation rules                            =
@@ -60,7 +62,7 @@ export WITH_SONG_SUPPORT = 1
 # ==========================================================================
 
 # Source files also present in CLASS
-TOOLS = growTable.o dei_rkck.o sparse.o evolver_rkck.o evolver_ndf15.o arrays.o parser.o quadrature.o
+TOOLS = growTable.o dei_rkck.o sparse.o evolver_rkck.o evolver_ndf15.o arrays.o parser.o quadrature.o common.o
 INPUT = input.o
 BACKGROUND = background.o
 THERMO = thermodynamics.o
@@ -98,7 +100,7 @@ default: class song print_params print_sources1 print_sources2 print_transfers1 
 
 # CLASS executables
 libclass.a class test_background test_thermodynamics test_perturbations test_transfer classy tar: 
-	cd $(CLASS_DIR); make $@
+	cd $(CLASS_DIR); export WITH_BISPECTRA=1; export WITH_SONG_SUPPORT=1; make $@
 
 # SONG executables
 TEST_INPUT = test_input.o
@@ -132,8 +134,11 @@ test_bispectra: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTU
 test_input: $(INPUT) $(INPUT2) $(TEST_INPUT) $(BACKGROUND) $(SONG_TOOLS)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-print_params: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PRINT_PARAMS)
+print_params: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PRINT_PARAMS)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+
+# print_params: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PRINT_PARAMS)
+# 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_sources1: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2) \
 	$(TRANSFER) $(TRANSFER2) $(PRINT_SOURCES1)

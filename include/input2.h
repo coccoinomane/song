@@ -28,16 +28,16 @@ extern "C" {
 		 struct thermo *pth,
 		 struct perturbs *ppt,
      struct perturbs2 *ppt2,
+		 struct transfers *ptr,
 		 struct bessels *pbs,
 		 struct bessels2 *pbs2,
-		 struct transfers *ptr,
      struct transfers2 *ptr2,
 		 struct primordial *ppm,
 		 struct spectra *psp,
-		 struct bispectra *pbi,
-     struct fisher *pfi,
 		 struct nonlinear *pnl,
 		 struct lensing *ple,
+		 struct bispectra *pbi,
+     struct fisher *pfi,
 		 struct output *pop,
 		 ErrorMsg errmsg
 		 );
@@ -50,16 +50,16 @@ extern "C" {
 		 struct thermo *pth,
 		 struct perturbs *ppt,
      struct perturbs2 *ppt2,
+		 struct transfers *ptr,
 		 struct bessels * pbs,
 		 struct bessels2 * pbs2,
-		 struct transfers *ptr,
      struct transfers2 *ptr2,
 		 struct primordial *ppm,
 		 struct spectra *psp,
-		 struct bispectra *pbi,
-     struct fisher *pfi,
 		 struct nonlinear *pnl,
 		 struct lensing *ple,
+		 struct bispectra *pbi,
+     struct fisher *pfi,
 		 struct output *pop,
 		 ErrorMsg errmsg
 		 );
@@ -69,16 +69,16 @@ extern "C" {
 			   struct thermo *pth,
 			   struct perturbs *ppt,  
          struct perturbs2 *ppt2,
+			   struct transfers *ptr,
 			   struct bessels * pbs,
 			   struct bessels2 * pbs2,
-			   struct transfers *ptr,
          struct transfers2 *ptr2,
 			   struct primordial *ppm,
 			   struct spectra *psp,
-			   struct bispectra *pbi,
-         struct fisher *pfi,
 			   struct nonlinear *pnl,
 			   struct lensing *ple,
+			   struct bispectra *pbi,
+         struct fisher *pfi,
 			   struct output *pop
 			   );
   
@@ -86,7 +86,7 @@ extern "C" {
 			      struct precision2 * ppr2
 			      );
 
-  int precision2_free(
+  int input2_free(
             struct precision2 * ppr2
             );
 

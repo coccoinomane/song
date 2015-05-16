@@ -1450,9 +1450,9 @@ int bispectra_separable_workspace_init (
   it always appears in the argument of a Bessel function multiplying a wavemode, just as it was for conformal
   time in the line-of-sight integral.  This is the only place in the module where the background structure
   is accessed. */
-  pwb->r_min = pbi->r_min;
-  pwb->r_max = pbi->r_max;
-  pwb->r_size = pbi->r_size;
+  pwb->r_min = ppr->r_min;
+  pwb->r_max = ppr->r_max;
+  pwb->r_size = ppr->r_size;
     
   /* We decide to sample r linearly */
   class_alloc (pwb->r, pwb->r_size*sizeof(double), pbi->error_message);
@@ -2591,9 +2591,9 @@ int bispectra_non_separable_workspace_init (
   it always appears in the argument of a Bessel function multiplying a wavemode, just as it was for conformal
   time in the line-of-sight integral.  This is the only place in the module where the background structure
   is accessed. */
-  pwb->r_min = pbi->r_min;
-  pwb->r_max = pbi->r_max;
-  pwb->r_size = pbi->r_size;
+  pwb->r_min = ppr->r_min;
+  pwb->r_max = ppr->r_max;
+  pwb->r_size = ppr->r_size;
     
 
   /* We decide to sample r linearly */

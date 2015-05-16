@@ -157,15 +157,15 @@ int threej_ratio_L (
     /* By default, we try to increment/decrement the first non-zero column first */
     int i = 1;
     int pos = non_zero_positions[i];
-    l_next[pos] -= 2*sign(n[pos]);
+    l_next[pos] -= 2*SIGN(n[pos]);
 
     /* If incrementing/decrementing the chosen column would violate the triangular
     condition, try with the next non-zero column. */
     while (!is_triangular_int (l_next[1], l_next[2], l_next[3])) {
-      l_next[pos] += 2*sign(n[pos]); /* Undo previous attempt */
+      l_next[pos] += 2*SIGN(n[pos]); /* Undo previous attempt */
       pos = non_zero_positions[++i]; /* Increment position */
       class_test (i>n_nonzero, errmsg, "could not find valid configurations, bug?");
-      l_next[pos] -= 2*sign(n[pos]); /* Try with the next non-zero column */
+      l_next[pos] -= 2*SIGN(n[pos]); /* Try with the next non-zero column */
     }
 
     /* Compute the two positions complementary to 'pos' using the modulo function */
@@ -177,7 +177,7 @@ int threej_ratio_L (
     /* Compute the ratio between 3J[l] and 3J[l_next] */
     class_call (threej_A_factor (L[pos], l[pos2], l[pos3], n[pos], &A_factor, errmsg), errmsg, errmsg);
     *result *= A_factor;
-    n[pos] = sign(n[pos])*(abs(n[pos])-1);
+    n[pos] = SIGN(n[pos])*(abs(n[pos])-1);
     l[pos] = l_next[pos];
     
   }; // end of while
@@ -192,7 +192,7 @@ int threej_ratio_L (
     
   /* Debug - Mathematica batch output */
   // fprintf (stderr, "Abs[1-directRatioL[%d.,%d.,%d.,%d.,%d.,%d.]/((%d)*10^(%f))],\n",
-  //   L1, L2, L3, N1, N2, N3, sign(*result), log10(fabs(*result)));
+  //   L1, L2, L3, N1, N2, N3, SIGN(*result), log10(fabs(*result)));
 
   return _SUCCESS_;
 
@@ -241,7 +241,7 @@ int threej_ratio_L_recursive (
   /* Recursive relation for the element 'n' */
   for (int n=1; n <= abs(N1); ++n) {
     double A_factor;
-    class_call (threej_A_factor (l1, l2, l3, sign(N1)*n, &A_factor, errmsg), errmsg, errmsg);
+    class_call (threej_A_factor (l1, l2, l3, SIGN(N1)*n, &A_factor, errmsg), errmsg, errmsg);
     result[n] = result[n-1] * A_factor;
   }
 
@@ -922,8 +922,8 @@ int coupling_general (
       errmsg,
       errmsg);
 
-    *m2_min = (int)(m2_min_D + sign(m2_min_D)*_EPS_);
-    *m2_max = (int)(m2_max_D + sign(m2_max_D)*_EPS_);
+    *m2_min = (int)(m2_min_D + SIGN(m2_min_D)*_EPS_);
+    *m2_max = (int)(m2_max_D + SIGN(m2_max_D)*_EPS_);
 
     /* LOOP ON M2 */
     for (int m2 = *m2_min; m2 <= *m2_max; ++m2) {
@@ -932,7 +932,7 @@ int coupling_general (
 
       /* Coupling coefficient for this (l1,l2,l3,m1,m2) */
       result[l1-*l1_min][m2-*m2_min] = 
-        alternating_sign(m3) * (2*l3+1.) * three_j_000_correct[l1-*l1_min] * three_j_mmm[m2-*m2_min];
+        ALTERNATING_SIGN(m3) * (2*l3+1.) * three_j_000_correct[l1-*l1_min] * three_j_mmm[m2-*m2_min];
   
       /* Debug - print result */
       // if ((l1==2)&&(l2==2)&&(l3==1)&&(m1==1)&&(m3==0))
@@ -1081,7 +1081,7 @@ double plegendre_lm_rescaled (int l, int m, double x) {
   very fast to zero for x->1. We include that case by hand for optimisation purposes. */
   else if (m < 0) {
     if (fabs(x)!=1)
-      return alternating_sign(m) * plegendre_lm (l, abs(m), x) * pow(1.0-x*x, 0.5*abs(m));
+      return ALTERNATING_SIGN(m) * plegendre_lm (l, abs(m), x) * pow(1.0-x*x, 0.5*abs(m));
     else
       return 0;
   }
@@ -2870,7 +2870,7 @@ double Determinant(double **a,int n)
             }
          }
          // det += pow(-1.0,j1+2.0) * a[0][j1] * Determinant(m,n-1);
-         det += alternating_sign(j1+2) * a[0][j1] * Determinant(m,n-1);
+         det += ALTERNATING_SIGN(j1+2) * a[0][j1] * Determinant(m,n-1);
          for (i=0;i<n-1;i++)
             free(m[i]);
          free(m);
@@ -2917,7 +2917,7 @@ void CoFactor(double **a,int n,double **b)
 
          /* Fill in the elements of the cofactor */
          // b[i][j] = pow(-1.0,i+j+2.0) * det;
-         b[i][j] = alternating_sign(i+j+2) * det;
+         b[i][j] = ALTERNATING_SIGN(i+j+2) * det;
       }
    }
    for (i=0;i<n-1;i++)

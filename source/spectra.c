@@ -2305,7 +2305,7 @@ int spectra_pk(
 	    }
 
 	    psp->ln_pk[(index_tau * psp->ln_k_size + index_k)* psp->ic_ic_size[index_mode] + index_ic1_ic2] = 
-	      primordial_pk[index_ic1_ic2]*sign(source_ic1)*sign(source_ic2);
+	      primordial_pk[index_ic1_ic2]*SIGN(source_ic1)*SIGN(source_ic2);
 	    
 	  }
 	  else {

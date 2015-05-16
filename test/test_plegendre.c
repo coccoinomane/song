@@ -24,7 +24,7 @@ int main (int argc, char const *argv[])
     plm_ratio = plm/pow(1.0-x*x, m/2.0);
   }
   else {
-    plm = alternating_sign(m) * plegendre_lm (l,abs(m),x);
+    plm = ALTERNATING_SIGN(m) * plegendre_lm (l,abs(m),x);
     plm_rescaled_analytically = plm * pow(1.0-x*x, abs(m)/2.0);
     plm_rescaled = plegendre_lm_rescaled (l,m,x);
     plm_ratio = plm * pow(1.0-x*x, abs(m)/2.0);

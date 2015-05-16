@@ -3163,8 +3163,8 @@ int perturb_vector_init(
     } // end of if(has_polarization2)
     
     /* Evolve also the perturbation to the fraction of free electrons, which is needed from the second
-      order module if the has_perturbed_recombination flag is turned on */
-    if (ppt->has_perturbed_recombination == _TRUE_) {
+      order module if the has_perturbed_recombination_stz flag is turned on */
+    if (ppt->has_perturbed_recombination_stz == _TRUE_) {
       ppv->index_pt_delta_Xe = index_pt++;
     }
 
@@ -3458,7 +3458,7 @@ int perturb_vector_init(
           ppv->y[ppv->index_pt_monopole_E + l] = ppw->pv->y[ppw->pv->index_pt_monopole_E + l];
 
       /* Perturbation to the fraction of free electrons */
-      if (ppt->has_perturbed_recombination == _TRUE_) {
+      if (ppt->has_perturbed_recombination_stz == _TRUE_) {
         ppv->y[ppv->index_pt_delta_Xe] = ppw->pv->y[ppw->pv->index_pt_delta_Xe];
       }
         
@@ -7330,7 +7330,7 @@ int perturb_derivs(double tau,
 
     /* Equation for the perturbed recombination (only for H recombination). Here we follow the approach
     used in Senatore et al. 2009, which is also described in Pitrou et al. 2010 (see appendix A) */
-    if (ppt->has_perturbed_recombination == _TRUE_) {
+    if (ppt->has_perturbed_recombination_stz == _TRUE_) {
     
       double H = pvecback[pba->index_bg_H];
       double Hc = a*H;
@@ -7350,7 +7350,7 @@ int perturb_derivs(double tau,
       // if (ppw->index_k == 0)
       //   fprintf (stderr, "%12.5g %12.5g %12.5g\n", tau, dy[ppw->pv->index_pt_delta_Xe], dQ);
       
-    } // end of if(has_perturbed_recombination)
+    } // end of if(has_perturbed_recombination_stz)
 
     // *** END OF MY MODIFICATIONS ***
     
@@ -7785,7 +7785,7 @@ int perturb_indices_of_perturbs_2nd_order_eqs(
       ppt->index_qs_dipole_b = index_type++;      
 
       /* Perturbations to the fraction of free electrons */ 
-      if (ppt->has_perturbed_recombination)
+      if (ppt->has_perturbed_recombination_stz)
         ppt->index_qs_delta_Xe = index_type++;
       
       // ****** Cold dark matter *******
@@ -8290,7 +8290,7 @@ int perturb_source_terms_2nd_order_eqs(
     strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_dipole_b],"l1_b");    
 
     // delta_Xe
-    if (ppt->has_perturbed_recombination == _TRUE_) {
+    if (ppt->has_perturbed_recombination_stz == _TRUE_) {
       quadsources[index_mode][index_ic*qs_size + ppt->index_qs_delta_Xe][time_and_wavemode_index] = y[ppw->pv->index_pt_delta_Xe];
       strcpy(ppt->qs_labels[ppt->index_md_scalars][ppt->index_qs_delta_Xe],"delta_Xe");
     }

@@ -82,7 +82,7 @@ int bessel2_init(
   pbs2->J_Llm_cut = ppr2->bessel_J_cut_2nd_order;
 
   /* Determine the grid in x where J_Llm(x) will be sampled */
-  class_call (bessel2_get_xx_list (ppr, ppr2, pbs, pbs2),
+  class_call (bessel2_get_xx_list (ppr, ppr2, ppt2, pbs, pbs2),
     pbs2->error_message,
     pbs2->error_message);
     
@@ -682,24 +682,21 @@ int bessel2_get_l1_list(
 
 
 /** 
- * Fill the array pbs2->xx.  This is the grid in x where J_Llm(x) will be sampled.
+ * Fill the array pbs2->xx. This is the grid in x where J_Llm(x) will be sampled.
  *
  * For each (L,l,m), the sampling will start at a different index_x because 
  * J_Llm(x) is negligible if x is close enough to zero (unless L=l).
  * 
- * 
- * @param ppr       Input: pointer to precision structure
- * @param pbs       Input/Output: pointer to bessels structure
- * @return the error status
  */
 int bessel2_get_xx_list(
       struct precision * ppr,
       struct precision2 * ppr2,
+      struct perturbs2 * ppt2,
       struct bessels * pbs,
       struct bessels2 * pbs2
       )
 {
-  
+    
   /* We shall use linear sampling starting at zero */
   pbs2->xx_size = pbs2->xx_max/pbs2->xx_step + 1;
 
@@ -1249,13 +1246,13 @@ int bessel2_J_Llm (
 
     if ((projection_function==J_TT)||(projection_function==J_EE))
       if (is_even)
-        i_prefactor = alternating_sign((l-l1-L)/2);
+        i_prefactor = ALTERNATING_SIGN((l-l1-L)/2);
       else
         continue;
 
     else if (projection_function==J_EB)
       if (!is_even)
-        i_prefactor = alternating_sign((l-l1-L-1)/2);
+        i_prefactor = ALTERNATING_SIGN((l-l1-L-1)/2);
       else
         continue;
 
@@ -1285,7 +1282,7 @@ int bessel2_J_Llm (
 
 
   /* Apply constant factors */
-  (*J_Llm_x) *= alternating_sign(m) * (2*l+1);
+  (*J_Llm_x) *= ALTERNATING_SIGN(m) * (2*l+1);
 
   /* Some debug */
   // if ((projection_function==J_EB) && (L==2) && (l==102) && (m==1))
@@ -1307,7 +1304,7 @@ int bessel2_J_Llm (
   //       if (m==1) {
   //         if ((index_x<3) || (index_x%128==0)) {
   //           fprintf (stderr, "Abs[1 - J[%d,%d,%d][%g]/((%g)*10^(%f))] < 10^-2,\n",
-  //             L,l,m,x,sign(val),log10(fabs(val)));
+  //             L,l,m,x,SIGN(val),log10(fabs(val)));
   //         }
   //       }
   //     }
@@ -1355,7 +1352,7 @@ int bessel2_J_Llm_at_x_exact(
     /*  Due to the symmetries of the first 3j-symbol, we need to consider only
       even l-l1-L. Hence, the coefficient i^(l-l1-L) depends on the parity of
       of (l-l1-L)/2.  */
-    i_coefficient = alternating_sign((l-l1-L)/2);
+    i_coefficient = ALTERNATING_SIGN((l-l1-L)/2);
     
     /* Value of the spherical Bessel function j_l(x), comment if you want
     to use SLATEC version. */
@@ -1372,7 +1369,7 @@ int bessel2_J_Llm_at_x_exact(
   } // end of for(index_l1)
 
   /* Apply constant factors */
-  (*J_Llm_x) *= alternating_sign(m) * (2*l+1);
+  (*J_Llm_x) *= ALTERNATING_SIGN(m) * (2*l+1);
 
   // *** Some debug
   // printf("J(%d,%d,%d,%20.15g) = %.15g\n", L, l, m, x, *J_Llm_x);

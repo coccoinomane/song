@@ -2,7 +2,7 @@
 #include "math.h"
 #include "stdlib.h"
 
-#define alternating_sign(m) ((m)%2 == 0 ? 1 : -1)
+#define ALTERNATING_SIGN(m) ((m)%2 == 0 ? 1 : -1)
 
 /*
    Recursive definition of determinate using expansion by minors.
@@ -36,7 +36,7 @@ double Determinant(double **a,int n)
             }
          }
          // det += pow(-1.0,j1+2.0) * a[0][j1] * Determinant(m,n-1);
-         det += alternating_sign(j1+2) * a[0][j1] * Determinant(m,n-1);
+         det += ALTERNATING_SIGN(j1+2) * a[0][j1] * Determinant(m,n-1);
          for (i=0;i<n-1;i++)
             free(m[i]);
          free(m);
@@ -83,7 +83,7 @@ void CoFactor(double **a,int n,double **b)
 
          /* Fill in the elements of the cofactor */
          // b[i][j] = pow(-1.0,i+j+2.0) * det;
-         b[i][j] = alternating_sign(i+j+2) * det;
+         b[i][j] = ALTERNATING_SIGN(i+j+2) * det;
       }
    }
    for (i=0;i<n-1;i++)

@@ -345,13 +345,13 @@ struct perturbs
 
   /* Should we compute the quadratic sources for the 2nd-order equations at the times specified by the user? */
   short  has_custom_timesampling_for_quadsources;          
-  enum   sources_tau_samplings custom_tau_mode_quadsources;     /* lin, log or sampling for ppt->quadsources? */
-  double custom_tau_ini_quadsources;                             /* Initial time for the sampling of 2nd-order eqs source terms */
-  double custom_tau_end_quadsources;                             /* Final time for the sampling of 2nd-order eqs source terms */
-  int    custom_tau_size_quadsources;                            /* Number of points where to sample the source terms */
-  
-  double custom_tau_step_quadsources;                            /* Step in ppt->tau_sampling_quadsources. Defined only if the mode is lin or log */
-  double custom_log_tau_ini_quadsources;                         /* Logarithm of ppt->tau_sampling[0], needed for interpolation purposes only */
+  enum   sources_tau_samplings custom_tau_mode_quadsources;  /**< lin, log or sampling for ppt->quadsources? */
+  double custom_tau_ini_quadsources;                         /**< Initial time for the sampling of 2nd-order eqs source terms */
+  double custom_tau_end_quadsources;                         /**< Final time for the sampling of 2nd-order eqs source terms */
+  int    custom_tau_size_quadsources;                        /**< Number of points where to sample the source terms */
+                                                               
+  double custom_tau_step_quadsources;                        /**< Step in ppt->tau_sampling_quadsources. Defined only if the mode is lin or log */
+  double custom_log_tau_ini_quadsources;                     /**< Logarithm of ppt->tau_sampling[0], needed for interpolation purposes only */
 
 
   
@@ -444,7 +444,7 @@ struct perturbs
   // =================================================================================
 
   /* Shall we compute perturbed ionization fraction as in Senatore, Tassev, Zaldarriaga 2009? */
-  short has_perturbed_recombination;
+  short has_perturbed_recombination_stz;
 
   /* Shall we include the scattering terms in the line-of-sight sources? */
   short has_scattering_in_los;                   
