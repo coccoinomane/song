@@ -31,7 +31,7 @@
  *
  */
  
-#include "class.h"
+#include "song.h"
 
 int main(int argc, char **argv) {
 
@@ -41,16 +41,16 @@ int main(int argc, char **argv) {
   struct thermo th;           /* thermodynamics */
   struct perturbs pt;         /* source functions (1st-order) */
   struct perturbs2 pt2;       /* source functions (2nd-order) */  
+  struct transfers tr;        /* transfer functions (1st-order) */
   struct bessels bs;          /* bessel functions (1st-order) */
   struct bessels2 bs2;        /* bessel functions (2nd-order) */
-  struct transfers tr;        /* transfer functions (1st-order) */
   struct transfers2 tr2;      /* transfer functions (2nd-order) */
   struct primordial pm;       /* primordial spectra */
   struct spectra sp;          /* output spectra (1st-order) */
-  struct bispectra bi;        /* bispectra */
-  struct fisher fi;           /* fisher matrix */
   struct nonlinear nl;        /* non-linear spectra */
   struct lensing le;          /* lensed spectra */
+  struct bispectra bi;        /* bispectra */
+  struct fisher fi;           /* fisher matrix */
   struct output op;           /* output files */
   ErrorMsg errmsg;            /* error messages */
 
@@ -63,12 +63,12 @@ int main(int argc, char **argv) {
   }
 
 
-  if (input_init_from_arguments(argc,argv,&pr,&ba,&th,&pt,&bs,&tr,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
+  if (input_init_from_arguments(argc,argv,&pr,&ba,&th,&pt,&tr,&pm,&sp,&nl,&le,&bs,&bi,&fi,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
     return _FAILURE_;
   }
 
-  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
+  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&tr,&bs,&bs2,&tr2,&pm,&sp,&nl,&le,&bi,&fi,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
     return _FAILURE_;
   }

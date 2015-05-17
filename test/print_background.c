@@ -36,15 +36,7 @@
  *  tau a  H  H_prime  rho_g  rho_b  rho_cdm  rho_lambda  rho_ur  Omega_r  rho_crit  Omega_m  conf_distance  ang_distance  lum_distance  time  rs Hc y
  */
  
- 
- 
- 
-
- 
- 
-
-#include "class.h"
-
+#include "song.h"
 
 int main(int argc, char **argv) {
 
@@ -54,16 +46,16 @@ int main(int argc, char **argv) {
   struct thermo th;           /* thermodynamics */
   struct perturbs pt;         /* source functions (1st-order) */
   struct perturbs2 pt2;       /* source functions (2nd-order) */  
+  struct transfers tr;        /* transfer functions (1st-order) */
   struct bessels bs;          /* bessel functions (1st-order) */
   struct bessels2 bs2;        /* bessel functions (2nd-order) */
-  struct transfers tr;        /* transfer functions (1st-order) */
   struct transfers2 tr2;      /* transfer functions (2nd-order) */
   struct primordial pm;       /* primordial spectra */
   struct spectra sp;          /* output spectra (1st-order) */
-  struct bispectra bi;        /* bispectra */
-  struct fisher fi;           /* fisher matrix */
   struct nonlinear nl;        /* non-linear spectra */
   struct lensing le;          /* lensed spectra */
+  struct bispectra bi;        /* bispectra */
+  struct fisher fi;           /* fisher matrix */
   struct output op;           /* output files */
   ErrorMsg errmsg;            /* error messages */
 
@@ -75,22 +67,26 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
-
-  if (input_init_from_arguments(argc,argv,&pr,&ba,&th,&pt,&bs,&tr,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
+  if (input_init_from_arguments(argc,argv,&pr,&ba,&th,&pt,&tr,&pm,&sp,&nl,&le,&bs,&bi,&fi,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
     return _FAILURE_;
   }
 
-  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
+  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&tr,&bs,&bs2,&tr2,&pm,&sp,&nl,&le,&bi,&fi,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
     return _FAILURE_;
   }
 
+  /* Running indices */
+  int index_tau;
+  int index_bg;           // Index on the type of background quantity
+  double tau, var, a;
+  
 
+  // ======================
+  // = Compute background =
+  // ======================
 
-  // =======================================
-  // = Compute background & thermodynamics =
-  // =======================================
   if (background_init(&pr,&ba) == _FAILURE_) {
     printf("\n\nError running background_init \n=>%s\n",ba.error_message);
     return _FAILURE_;
@@ -101,56 +97,40 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
-
-  /* Some useful information */
-  printf ("a_equality = %g\n", ba.a_eq);
-
-  // Time sampling
-  int tau_size = ba.bt_size;
-  double * tau_sampling = ba.tau_table;
-  
-  // Running indices
-  int index_tau;
-  int index_bg;           // Index on the type of background quantity
-  double tau, var, a;
-  
-  // Vector that will contain background quantities (we are only interested in 'a')
-  int dump;
-  double * pvecback = malloc(ba.bg_size*sizeof(double));
-  // double * pvecthermo = malloc(ba.bg_size_short*sizeof(double));  
-
   
   // ==============================
   // = Print the background table =
   // ==============================
 
+  /* First print some useful information */
+  printf ("a_equality = %g\n", ba.a_eq);
+
   /* Loop on time */
-  for (index_tau = 0; index_tau < tau_size; ++index_tau) {
+  for (index_tau = 0; index_tau < ba.bt_size; ++index_tau) {
     
-    /* Take only a limited number of points */
-    if ((index_tau%4!=0)&&(index_tau!=tau_size-1)) continue;
+    /* Print only a limited number of lines */
+    if ((index_tau%4!=0)&&(index_tau!=ba.bt_size-1))
+      continue;
   
-    tau = tau_sampling[index_tau];
+    tau = ba.tau_table[index_tau];
   
-    // Find H in conformal time, i.e. a_prime_over_a
+    /* Find H in conformal time, i.e. a_prime_over_a */
     double a = ba.background_table[index_tau*ba.bg_size+ba.index_bg_a];
     double a_prime_over_a = a*ba.background_table[index_tau*ba.bg_size+ba.index_bg_H];
         
-    // First column is time.  The plus indicates that even plus signs will be printed.
+    /* First column is time.  The plus indicates that even plus signs will be printed. */
     fprintf (stderr, "%+6e ", tau);
   
-    // Columns from 2 to ba.bg_size+1 are the background quantities
+    /* Columns from 2 to ba.bg_size+1 are the background quantities */
     for (index_bg = 0; index_bg < ba.bg_size; ++index_bg) {
-     
       var = ba.background_table[index_tau*ba.bg_size+index_bg];
-         
       fprintf (stderr, "%+6e ", var);
     }
     
-    // The column before the last is a_prime_over_a
+    /* The column before the last is a_prime_over_a */
     fprintf (stderr, "%+6e ", a_prime_over_a);
     
-    // Last column is the scale factor normalized to equality, i.e. y as used by Pitrou et al.
+    /* Last column is the scale factor normalized to equality */
     fprintf (stderr, "%+6e\n", log10(a/ba.a_eq));
   }
   

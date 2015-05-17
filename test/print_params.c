@@ -211,27 +211,27 @@ int main(int argc, char **argv) {
   // printf("\tfi.squeezed_ratio = %g\n", fi.squeezed_ratio);
 
   /* Precision parameters - multipoles */
-  printf("* Precision parameters - multipoles\n");
-  printf("\tpr2.m_size = %d, ", pr2.m_size);
-  printf("\tpr2.m_max_2nd_order = %d, ", pr2.m_max_2nd_order);
-  printf("\tpr2.m = ");
-  int index_m;
-  for (index_m=0; index_m < pr2.m_size; ++index_m)
-    printf("%d%s ", pr2.m[index_m], index_m!=(pr2.m_size-1)?",":"\n");
-  printf("\tpr2.l_max_g_2nd_order = %d\n", pr2.l_max_g_2nd_order);
-  printf("\tpr2.l_max_pol_g_2nd_order = %d\n", pr2.l_max_pol_g_2nd_order);
-  printf("\tpr2.l_max_ur_2nd_order = %d\n", pr2.l_max_ur_2nd_order);
-  printf("\tpr2.l_max_g_ten_2nd_order = %d\n", pr2.l_max_g_ten_2nd_order);
-  printf("\tpr2.l_max_pol_g_ten_2nd_order = %d\n", pr2.l_max_pol_g_ten_2nd_order);
-  printf("\tpr2.l_max_g_quadsources = %d\n", pr2.l_max_g_quadsources);
-  printf("\tpr2.l_max_pol_g_quadsources = %d\n", pr2.l_max_pol_g_quadsources);
-  printf("\tpr2.l_max_ur_quadsources = %d\n", pr2.l_max_ur_quadsources);
-  printf("\tpr2.l_max_g_ten_quadsources = %d\n", pr2.l_max_g_ten_quadsources);
-  printf("\tpr2.l_max_pol_g_ten_quadsources = %d\n", pr2.l_max_pol_g_ten_quadsources);
-  printf("\tpr2.l_max_los_t = %d\n", pr2.l_max_los_t);
-  printf("\tpr2.l_max_los_quadratic_t = %d\n", pr2.l_max_los_quadratic_t);
-  printf("\tpr2.l_max_los_p = %d\n", pr2.l_max_los_p);
-  printf("\tpr2.l_max_los_quadratic_p = %d\n", pr2.l_max_los_quadratic_p);
+  // printf("* Precision parameters - multipoles\n");
+  // printf("\tpr2.m_size = %d, ", pr2.m_size);
+  // printf("\tpr2.m_max_2nd_order = %d, ", pr2.m_max_2nd_order);
+  // printf("\tpr2.m = ");
+  // int index_m;
+  // for (index_m=0; index_m < pr2.m_size; ++index_m)
+  //   printf("%d%s ", pr2.m[index_m], index_m!=(pr2.m_size-1)?",":"\n");
+  // printf("\tpr2.l_max_g_2nd_order = %d\n", pr2.l_max_g_2nd_order);
+  // printf("\tpr2.l_max_pol_g_2nd_order = %d\n", pr2.l_max_pol_g_2nd_order);
+  // printf("\tpr2.l_max_ur_2nd_order = %d\n", pr2.l_max_ur_2nd_order);
+  // printf("\tpr2.l_max_g_ten_2nd_order = %d\n", pr2.l_max_g_ten_2nd_order);
+  // printf("\tpr2.l_max_pol_g_ten_2nd_order = %d\n", pr2.l_max_pol_g_ten_2nd_order);
+  // printf("\tpr2.l_max_g_quadsources = %d\n", pr2.l_max_g_quadsources);
+  // printf("\tpr2.l_max_pol_g_quadsources = %d\n", pr2.l_max_pol_g_quadsources);
+  // printf("\tpr2.l_max_ur_quadsources = %d\n", pr2.l_max_ur_quadsources);
+  // printf("\tpr2.l_max_g_ten_quadsources = %d\n", pr2.l_max_g_ten_quadsources);
+  // printf("\tpr2.l_max_pol_g_ten_quadsources = %d\n", pr2.l_max_pol_g_ten_quadsources);
+  // printf("\tpr2.l_max_los_t = %d\n", pr2.l_max_los_t);
+  // printf("\tpr2.l_max_los_quadratic_t = %d\n", pr2.l_max_los_quadratic_t);
+  // printf("\tpr2.l_max_los_p = %d\n", pr2.l_max_los_p);
+  // printf("\tpr2.l_max_los_quadratic_p = %d\n", pr2.l_max_los_quadratic_p);
 
   /* Precision parameters - integration */
   // printf("* Precision parameters - integration\n");    

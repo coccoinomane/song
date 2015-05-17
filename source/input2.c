@@ -1448,7 +1448,7 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   // =                              Tolerance                          =
   // ===================================================================
 
-  ppr2->tol_perturb_integration_2nd_order=1.e-5;
+  ppr2->tol_perturb_integration_2nd_order=1e-5;
 
 
   // ==================================================================
