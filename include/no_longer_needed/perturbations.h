@@ -7,7 +7,7 @@
 #include "evolver_ndf15.h"
 #include "evolver_rkck.h"
 
-// *** MY MODIFICATIONS ***
+// *** (V) MY MODIFICATIONS ***
 #include "song_tools.h"  /* needed to access d_minus and d_plus */
 // *** END OF MY MODIFICATIONS ***
 
@@ -38,7 +38,7 @@ enum ncdmfa_flags {ncdmfa_off, ncdmfa_on};
 
 //@{
 
-// *** MY MODIFICATIONS ***
+// *** (V) MY MODIFICATIONS ***
 /* Add a tca_none method */
 enum tca_method {first_order_MB,first_order_CAMB,first_order_CLASS,second_order_CRS,second_order_CLASS,compromise_CLASS,tca_none};
 // *** END OF MY MODIFICATIONS ***
@@ -72,7 +72,7 @@ enum selection_type {gaussian,tophat};
 //@}
 
 
-// *** MY MODIFICATIONS ***
+// *** (V) MY MODIFICATIONS ***
 /**
   * Possible sampling methods for the ppt->tau_sampling arrays.
   */
@@ -115,8 +115,10 @@ struct perturbs
   short has_tensors; /**< do we need tensors? */
 
   short has_ad;              /**< do we need adiabatic mode? */
+// *** MY MODIFICATIONS *** 
   short has_ad_maberty;      /**< do we need adiabatic mode, with Ma & Bertschinger initial conditions? */  
   short has_zero_ic;         /**< do we need adiabatic mode, with vanishing initial conditions? */  
+// *** END OF MY MODIFICATIONS ***
   short has_bi;              /**< do we need isocurvature bi mode? */
   short has_cdi;             /**< do we need isocurvature cdi mode? */
   short has_nid;             /**< do we need isocurvature nid mode? */
@@ -124,13 +126,15 @@ struct perturbs
 
   short has_cl_cmb_temperature;       /**< do we need Cl's for CMB temperature? */
   short has_cl_cmb_polarization;      /**< do we need Cl's for CMB polarization? */
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
 
   short has_bi_cmb_temperature;       /**< do we need bispectra for CMB temperature? */
   short has_bi_cmb_polarization;      /**< do we need bispectra for CMB polarization? */
+// *** MY MODIFICATIONS *** 
   short has_bi_cmb_rayleigh;          /**< do we need bispectra for CMB Rayleigh scattering? */
 
   short has_cl_cmb_rayleigh;          /**< do we need Cl's for the CMB Rayleigh scattering? */
+// *** END OF MY MODIFICATIONS ***
   short has_cl_cmb_zeta;              /**< do we need Cl's for the primordial curvature perturbation zeta?
                                            This is needed to reproduce the analytical approximation of the
                                            squeezed temperature bispectrum in Lewis
@@ -222,7 +226,7 @@ struct perturbs
   short has_source_delta_fld;  /**< do we need source for delta of dark energy? */
   short has_source_delta_ur; /**< do we need source for delta of ultra-relativistic neutrinos/relics? */
   short has_source_delta_ncdm; /**< do we need source for delta of all non-cold dark matter species (e.g. massive neutrinos)? */
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
   short has_source_zeta; /**< do we need source for the primordial curvature perturbation zeta? */
   // *** END OF MY MODIFICATIONS ***
 
@@ -240,7 +244,7 @@ struct perturbs
   int index_tp_delta_fld;  /**< index value for delta of dark energy */
   int index_tp_delta_ur; /**< index value for delta of ultra-relativistic neutrinos/relics */
   int index_tp_delta_ncdm1; /**< index value for delta of first non-cold dark matter species (e.g. massive neutrinos) */
-  // *** MY MODIFICATIONS ***
+  // *** MY (V) MODIFICATIONS ***
   int index_tp_zeta; /**< index value for the primordial curvature perturbation zeta */
   // *** END OF MY MODIFICATIONS ***
 
@@ -312,7 +316,7 @@ struct perturbs
 
 
 
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
   
   
   // ========================================================================================
@@ -482,7 +486,7 @@ struct perturbs
 struct perturb_vector
 {
   
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
 
   // *** E-mode polarization (not computed in original CLASS)
 
@@ -658,7 +662,7 @@ struct perturb_workspace
   //@}
 
 
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
   
   /* Counter that keeps track of how many times the function perturb2_derivs has been called
   for the considered set of k1,k2,cosk1k2. */
@@ -688,7 +692,7 @@ struct perturb_parameters_and_workspace {
   int index_mode;                 /**< index of mode (scalar/.../vector/tensor) */
   struct perturb_workspace * ppw; /**< worspace defined above */
 
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
   int index_ic;                   
   int index_k;                    
   double k;
@@ -742,33 +746,12 @@ struct perturb_parameters_and_workspace {
 				    struct perturbs * ppt
 				    );
 
-    int perturb_indices_of_perturbs_2nd_order_eqs(
-				    struct precision * ppr,
-				    struct background * pba,
-				    struct thermo * pth,
-				    struct perturbs * ppt
-				    );
-
     int perturb_timesampling_for_sources(
 					 struct precision * ppr,
 					 struct background * pba,
 					 struct thermo * pth,
 					 struct perturbs * ppt
 					 );
-					 
-    int perturb_timesampling_for_sources_1st_order(
-					 struct precision * ppr,
-					 struct background * pba,
-					 struct thermo * pth,
-					 struct perturbs * ppt
-					 );
-
-    int perturb_timesampling_for_sources_2nd_order_eqs(
-					 struct precision * ppr,
-					 struct background * pba,
-					 struct thermo * pth,
-					 struct perturbs * ppt
-					 );					 
 					 
     int perturb_get_k_list(
 			   struct precision * ppr,
@@ -786,21 +769,6 @@ struct perturb_parameters_and_workspace {
 				     struct precision * ppr,
 				     struct background * pba,
 				     struct perturbs * ppt);
-
-    int perturb_get_k_list_1st_order(
-			   struct precision * ppr,
-			   struct background * pba,
-			   struct thermo * pth,
-			   struct perturbs * ppt,
-			   int index_mode);
-
-
-    int perturb_get_k_list_2nd_order_eqs(
-			   struct precision * ppr,
-			   struct background * pba,
-			   struct thermo * pth,
-			   struct perturbs * ppt,
-			   int index_mode);
 
     int perturb_workspace_init(
 			       struct precision * ppr,
@@ -918,37 +886,8 @@ struct perturb_parameters_and_workspace {
 			 struct perturb_workspace * ppw
 			 );
 
-    int perturb_compute_psi_prime(
-           struct precision * ppr,
-           struct background * pba,
-           struct thermo * pth,
-           struct perturbs * ppt,
-           double tau,
-           double * y,
-           double * dy,
-           double * psi_prime,
-           struct perturb_workspace * ppw
-           );
 
     int perturb_source_terms(
-			     double tau,
-			     double * y,
-			     double * dy,
-			     int index_tau,
-			     void * parameters_and_workspace,
-			     ErrorMsg error_message
-			     );
-
-    int perturb_source_terms_1st_order(
-			     double tau,
-			     double * y,
-			     double * dy,
-			     int index_tau,
-			     void * parameters_and_workspace,
-			     ErrorMsg error_message
-			     );
-
-    int perturb_source_terms_2nd_order_eqs(
 			     double tau,
 			     double * y,
 			     double * dy,
@@ -967,27 +906,6 @@ struct perturb_parameters_and_workspace {
 			struct perturb_workspace * ppw
 			);
 
-    int perturb_sources_1st_order(
-			struct precision * ppr,
-      struct background * pba,
-			struct perturbs * ppt,
-			int index_mode,
-			int index_ic,
-			int index_k,
-			struct perturb_workspace * ppw
-			);
-
-    int perturb_sources_2nd_order_eqs(
-			struct precision * ppr,
-      struct background * pba,
-			struct perturbs * ppt,
-			int index_mode,
-			int index_ic,
-			int index_k,
-			struct perturb_workspace * ppw
-			);
-
-
     int perturb_print_variables(double tau,
 				double * y,
 				double * dy,
@@ -1004,7 +922,7 @@ struct perturb_parameters_and_workspace {
 		       );
            
            
-    // *** MY MODIFICATIONS
+    // *** (V) MY MODIFICATIONS
 
     int perturb_quadsources_at_tau_for_all_types(
              struct precision * ppr,
@@ -1038,6 +956,70 @@ struct perturb_parameters_and_workspace {
             double tau,
             double * psource
             );
+            
+    int perturb_indices_of_perturbs_2nd_order_eqs(
+				    struct precision * ppr,
+				    struct background * pba,
+				    struct thermo * pth,
+				    struct perturbs * ppt
+				    );
+					 
+    int perturb_timesampling_for_sources_1st_order(
+					 struct precision * ppr,
+					 struct background * pba,
+					 struct thermo * pth,
+					 struct perturbs * ppt
+					 );
+
+    int perturb_source_terms_1st_order(
+			     double tau,
+			     double * y,
+			     double * dy,
+			     int index_tau,
+			     void * parameters_and_workspace,
+			     ErrorMsg error_message
+			     );
+
+    int perturb_source_terms_2nd_order_eqs(
+			     double tau,
+			     double * y,
+			     double * dy,
+			     int index_tau,
+			     void * parameters_and_workspace,
+			     ErrorMsg error_message
+			     );
+           
+    int perturb_sources_1st_order(
+			struct precision * ppr,
+      struct background * pba,
+			struct perturbs * ppt,
+			int index_mode,
+			int index_ic,
+			int index_k,
+			struct perturb_workspace * ppw
+			);
+
+    int perturb_sources_2nd_order_eqs(
+			struct precision * ppr,
+      struct background * pba,
+			struct perturbs * ppt,
+			int index_mode,
+			int index_ic,
+			int index_k,
+			struct perturb_workspace * ppw
+			);
+
+    int perturb_compute_psi_prime(
+           struct precision * ppr,
+           struct background * pba,
+           struct thermo * pth,
+           struct perturbs * ppt,
+           double tau,
+           double * y,
+           double * dy,
+           double * psi_prime,
+           struct perturb_workspace * ppw
+           );
 
     // *** END OF MY MODIFICATIONS
 

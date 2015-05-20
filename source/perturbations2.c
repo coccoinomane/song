@@ -1,3 +1,45 @@
+/** @file perturbations2.c Documented module for second-order perturbations
+ *
+ * Guido W. Pettinari, 01.01.2011
+ *
+ * Compute and store cosmological perturbations at second order.
+ *
+ * The computation involves solving the Einstein-Boltzmann system of
+ * coupled differential equations at second order in the cosmological
+ * perturbations. Every passage is documented in the source code. For
+ * a more detailed explanation of the physics behind this module,
+ * please refer to chapter 3 and 4 of my thesis (http://arxiv.org/abs/1405.2280).
+ * For details on the methodology, the evolver used (ndf15) and the
+ * differential system, please look at chapter 5.
+ *
+ * Once their evolution is known, the perturbations are used to build
+ * the line-of-sight sources for the photon temperature and polarisation
+ * (and other observables), just as it is done at first order in CLASS.
+ * These sources are the main output of the module and will be later
+ * integrated in the transfer2.c module to obtain today's value of the 
+ * second-order transfer functions. See sec 5.5 of my thesis (link above)
+ * for details on this line-of-sight integration. The transfer functions
+ * are the main ingredient to predict observables such as the CMB bispectrum
+ * (chapter 6) that can be then compared with experiment results.
+ *
+ * The following functions can be called externally:
+ *
+ * -# perturb2_init() to compute the perturbations, but only after background_init() and thermodynamics_init()
+ * -# perturb2_free() to free all the memory associated to the module
+ * 
+ * If the flag ppt2->store_sources_to_disk is active, the module will save the 
+ * line-of-sight sources to disk and then free the associated memory. To reload them
+ * from disk, the user can use the following function when needed:
+ *
+ * -# perturb2_allocate_k1_level()
+ * -# perturb2_load_sources_from_disk()
+ *
+ * To free again the memory associated to the sources, the user can call:
+ *
+ * -# perturb2_free_k1_level()
+ */
+
+
 #include "perturbations2.h"
 #include "perturbations2_macros.h"
 

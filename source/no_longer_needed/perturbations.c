@@ -160,7 +160,7 @@ int perturb_init(
     printf ("WARNING: The SW and ISW effects have not been tested with Rayleigh scattering. Do not trust results.");
 
 
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
 
   /* The last possible TCA scheme is tca_none, and not compromise_CLASS */
   class_test ((ppr->tight_coupling_approximation < first_order_MB) ||
@@ -412,7 +412,7 @@ int perturb_free(
      )
 {
 
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
   
   /* Free second-order related arrays. This should be done before freeing the standard
   ppt arrays because it relies on them. */
@@ -558,7 +558,7 @@ int perturb_indices_of_perturbs_1st_order(
 
 
 
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
 
   /* We should allocate the k-vectors only if we are not solving the second-order system. In
   fact, at second-order, the k-list is determined within the second-order module according to
@@ -645,7 +645,7 @@ int perturb_indices_of_perturbs_1st_order(
       else
   ppt->has_source_g = _FALSE_;
 
-      // *** MY MODIFICATIONS ***
+      // *** (V) MY MODIFICATIONS ***
 
       if (ppt->has_cl_cmb_zeta == _TRUE_) {
         ppt->has_source_zeta = _TRUE_;
@@ -722,7 +722,7 @@ int perturb_indices_of_perturbs_1st_order(
   ppt->index_ic_ad = index_ic;
   index_ic++;
       }
-      // *** MY MODIFICATIONS ***
+      // *** (X) MY MODIFICATIONS ***
       if (ppt->has_ad_maberty == _TRUE_) {
   ppt->index_ic_ad_maberty = index_ic;
   index_ic++;
@@ -731,7 +731,7 @@ int perturb_indices_of_perturbs_1st_order(
   ppt->index_ic_zero = index_ic;
   index_ic++;
       }
-      // *** END OF MY MODIFICATIONS ***
+      // *** (X) END OF MY MODIFICATIONS ***
       if (ppt->has_bi == _TRUE_) {
   ppt->index_ic_bi = index_ic;
   index_ic++;
@@ -795,7 +795,7 @@ int perturb_indices_of_perturbs_1st_order(
 
     /** (c) for each mode, define k values with perturb_get_k_list() */
 
-    // *** MY MODIFICATIONS ***
+    // *** (V) MY MODIFICATIONS ***
 
     /* We run this function only if we are not solving the second-order system.  In fact, at
     second order the k-list is determined within the second-order module according to the
@@ -1302,7 +1302,7 @@ int perturb_get_k_list(
     while (k < k_max_cl) {
       
 
-      // *** MY MODIFICATIONS ***
+      // *** (V) MY MODIFICATIONS ***
 
       /* Add a logarithmic leg to best sample the smallest k's */
 
@@ -1378,7 +1378,7 @@ int perturb_get_k_list(
 
     while (index_k < ppt->k_size_cl[index_mode]) {
       
-      // *** MY MODIFICATIONS ***
+      // *** (V) MY MODIFICATIONS ***
 
       /* Linear step */
       double lin_step = ppr->k_scalar_step_super 
@@ -1501,7 +1501,7 @@ int perturb_get_k_list(
   /* vectors not coded yet */
 
   
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
 
   /* Print out the k-list */
   // for (index_k=0; index_k < ppt->k_size[ppt->index_md_scalars]; ++index_k) {
@@ -1898,7 +1898,7 @@ int perturb_workspace_init(
 
   if ((ppt->has_scalars == _TRUE_) && (index_mode == ppt->index_md_scalars)) {
 
-    // *** MY MODIFICATIONS ***
+    // *** (?) MY MODIFICATIONS ***
     /* By default, assume TCA is off (this does not have any effect) */
     ppw->approx[ppw->index_ap_tca]=(int)tca_off;
     // *** END OF MY MODIFICATIONS ***
@@ -1913,7 +1913,7 @@ int perturb_workspace_init(
 
   if ((ppt->has_tensors == _TRUE_) && (index_mode == ppt->index_md_tensors)) {
 
-    // *** MY MODIFICATIONS ***
+    // *** (?) MY MODIFICATIONS ***
     /* By default, assume TCA is off (this does not have any effect) */
     ppw->approx[ppw->index_ap_tca]=(int)tca_off;
     // *** END OF MY MODIFICATIONS ***
@@ -2164,7 +2164,7 @@ int perturb_solve(
   tau_upper = ppt->tau_sampling[0];
   
 
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
 
   /* Include information on the considered k in order to print meaningful debug */
   ppw->index_k = index_k;
@@ -2304,14 +2304,14 @@ int perturb_solve(
 
 
 
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
 
   /* Here I include index_ic and index_k inside pppaw, so that they are available
     for perturb_source_terms_2nd_order_eqs */
   ppaw.index_ic = index_ic;
   ppaw.index_k = index_k;  
 
-  /* Reset the counter that keeps track of the number of calls of the function perturb2_derivs */
+  /* Reset the counter that keeps track of the number of calls of the function perturb_derivs */
   ppw->derivs_count = 0;
 
   // *** END OF MY MODIFICATIONS ***
@@ -2416,7 +2416,7 @@ int perturb_solve(
 
 
 
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
 
   /* Re-solve the system to obtain the quadratic sources.  We do that because the time needed to re-solve
   the first-order system is negligible compared to the second-order one.  The alternative would be to
@@ -3147,7 +3147,7 @@ int perturb_vector_init(
     }
     
     
-    // *** MY MODIFICATIONS ***
+    // *** (V) MY MODIFICATIONS ***
     
     /* Include the E-mode polarization hierarchy (scalar modes).  Note that we shall
     execute the following block of code no matter what is the adopted approximation
@@ -3251,7 +3251,7 @@ int perturb_vector_init(
      omitting perturbations in this list will not change the
      results!) */
 
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
 
   /* In order to compute the source terms for the second-order equations,
   we do need all the perturbations computed at first order. Hence, I shall
@@ -3381,7 +3381,7 @@ int perturb_vector_init(
 	
       }
 
-     // *** MY MODIFICATIONS ***
+     // *** (V) MY MODIFICATIONS ***
      /* The following test should be performed only if the user actually wants the TCA */
      if (ppr->tight_coupling_approximation != tca_none)
         class_test(ppw->approx[ppw->index_ap_tca] == (int)tca_off,
@@ -3448,7 +3448,7 @@ int perturb_vector_init(
 	  we will treat other variables case by case. */
 
 
-      // *** MY MODIFICATIONS ***
+      // *** (V) MY MODIFICATIONS ***
 
       /* Include the E-mode polarization hierarchy (scalar modes). Note that we shall
       execute the following block of code no matter what is the adopted approximation
@@ -4618,7 +4618,7 @@ int perturb_approximations(
     }
 
 
-    // *** MY MODIFICATIONS
+    // *** (V) MY MODIFICATIONS
     /* Always turn the TCA off if the user asked so */
     if (ppr->tight_coupling_approximation == tca_none) {
 	    ppw->approx[ppw->index_ap_tca] = (int)tca_off;
@@ -5575,7 +5575,7 @@ int perturb_source_terms_1st_order(
       	  /* newtonian gauge */
       	  if (ppt->gauge == newtonian) {
 
-            // *** MY MODIFICATIONS ***
+            // *** (X) MY MODIFICATIONS ***
       
             /* We break down the line of sight sources into difference contributions */
             double S0_delta_g=0, S0_scattering=0, S1_scattering=0, dS2_scattering=0;
@@ -5685,7 +5685,7 @@ int perturb_source_terms_1st_order(
       } // end of if(temperature)
       
 
-      // *** MY MODIFICATIONS ***
+      // *** (X) MY MODIFICATIONS ***
 
       /* Rayleigh scattering temperature. The sources are computed as shown in eq. 2.1 and 2.2 of arXiv:1307.8148 */
       if ((ppt->has_source_r == _TRUE_) && (index_type == ppt->index_tp_r)) {
@@ -5773,7 +5773,7 @@ int perturb_source_terms_1st_order(
       }
 
 
-      // *** MY MODIFICATIONS ***
+      // *** (V) MY MODIFICATIONS ***
 
       /* Curvature perturbation zeta (see Lewis 2012) */
 
@@ -6015,7 +6015,7 @@ int perturb_source_terms_1st_order(
 
 
 
-// *** MY MODIFICATIONS ***
+// *** (V) MY MODIFICATIONS ***
 
 /** Compute the derivative of the gravitational potential with respect to conformal time
  * (psi_prime) in Newtonian gauge, needed for the ISW effect. We compute it here,
@@ -6163,7 +6163,7 @@ int perturb_sources_1st_order(
 
     if ((ppt->has_scalars == _TRUE_) && (index_mode == ppt->index_md_scalars)) {
 
-      // *** MY MODIFICATIONS ***
+      // *** (X) MY MODIFICATIONS ***
       if (((ppt->has_source_T == _TRUE_) && (index_type == ppt->index_tp_t))
         ||((ppt->has_source_r == _TRUE_) && (index_type == ppt->index_tp_r))) {
       // *** PREVIOUSLY
@@ -6258,7 +6258,7 @@ int perturb_sources_1st_order(
   } /* end of loop over types */
 
 
-  // *** MY MODIFICATIONS ***
+  // *** (X) MY MODIFICATIONS ***
 
   /* Debug - print a custom number of sources */
   // if (index_k == 30) {
@@ -6570,7 +6570,7 @@ int perturb_derivs(double tau,
   pvecmetric = ppw->pvecmetric;
 
 
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
   
   /* Update counter of calls */
   ppw->derivs_count++;
@@ -7269,7 +7269,7 @@ int perturb_derivs(double tau,
     }
     
     
-    // *** MY MODIFICATIONS ***
+    // *** (V) MY MODIFICATIONS ***
   
     /* Include the equations for the E-mode polarization hierarchy.  Note that we shall
     execute the following block of code no matter what is the adopted approximation
@@ -7589,7 +7589,7 @@ int perturb_timesampling_for_sources(
     ppt->error_message, ppt->error_message);
 
 
-  /* Uncomment the following lines in order to us a custom time sampling. */
+  /* Uncomment the following lines in order to use a custom time sampling. */
   // double tau_end = 1000;
   // 
   // int index_tau_end = 0;
@@ -7608,6 +7608,7 @@ int perturb_timesampling_for_sources(
   // printf("\n");
   
 
+  // *** (V) MY MODIFICATIONS *** 
 
   // ***************              Allocate ppt->quadsources         *****************
 
@@ -7673,6 +7674,9 @@ int perturb_timesampling_for_sources(
     }
 
   } // end of if(has_perturbations2)
+  
+  // *** END OF MY MODIFICATIONS ***
+
         
 
   return _SUCCESS_;
@@ -8501,10 +8505,9 @@ int perturb_source_terms_2nd_order_eqs(
 }
 
 
-
-
 // *** END OF MY MODIFICATIONS ***
 
+// *** (V) MY MODIFICATIONS *** 
 int perturb_sources_2nd_order_eqs (
         struct precision * ppr,
         struct background * pba,
@@ -8541,8 +8544,11 @@ int perturb_sources_2nd_order_eqs (
   
 }
 
+// *** END OF MY MODIFICATIONS ***
 
-// *** MY MODIFICATIONS ***
+
+
+// *** (V) MY MODIFICATIONS ***
 
 
 /**
