@@ -549,7 +549,7 @@ int primordial_analytic_spectrum_init(
 
       if ((ppt->has_scalars == _TRUE_) && (index_mode == ppt->index_md_scalars)) {
 
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
   /* Include our custom initial conditions to avoid the below quantity to be zero */
 	if ((
 	  (ppt->has_ad == _TRUE_) && (index_ic1 == ppt->index_ic_ad) ||
@@ -560,6 +560,7 @@ int primordial_analytic_spectrum_init(
 	  one_tilt = ppm->n_s;
 	  one_running = ppm->alpha_s;
 	}
+  // *** END OF MY MODIFICATIONS ***
 
 	if ((ppt->has_bi == _TRUE_) && (index_ic1 == ppt->index_ic_bi)) {
 	  one_amplitude = ppm->A_s*ppm->f_bi*ppm->f_bi;

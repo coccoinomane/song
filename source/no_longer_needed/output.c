@@ -106,7 +106,7 @@ int output_init(
 		struct spectra * psp,
 		struct nonlinear * pnl,
 		struct lensing * ple,
-    /* MY MODIFICATIONS */
+    /* (V) MY MODIFICATIONS */
     struct bispectra * pbi,
     struct fisher * pfi,
     /* END OF MY MODIFICATIONS */
@@ -117,7 +117,7 @@ int output_init(
 
   /** - check that we really want to output at least one spectrum */
 
-  /* MY MODIFICATIONS */
+  /* (V) MY MODIFICATIONS */
   /* Include Fisher */
   if ((ppt->has_cls == _FALSE_) && (ppt->has_pk_matter == _FALSE_) && (pfi->has_fisher == _FALSE_)) {
     if (pop->output_verbose > 0)
@@ -162,7 +162,7 @@ int output_init(
 	       pop->error_message);
   }
 
-  /* MY MODIFICATIONS */
+  /* (V) MY MODIFICATIONS */
   if (pfi->has_fisher == _TRUE_) {
 
     class_call(output_fisher(pbi,pfi,pop),
@@ -610,7 +610,7 @@ int output_cl(
 	      psp->md_size*sizeof(double *),
 	      pop->error_message);
 
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
 
   /* Allocate array for derivatives of C_l's */
   double ** dcl_md;
@@ -656,7 +656,7 @@ int output_cl(
 	      psp->ct_size*sizeof(double),
 	      pop->error_message);
 
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
 
   /* Allocate array for derivatives of C_l's */
   double * dcl_tot;
@@ -687,7 +687,7 @@ int output_cl(
   }
 
 
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
 
   /* Create file for derivatives of C_l's */
   FILE * out_dcl;
@@ -741,7 +741,7 @@ int output_cl(
 		  psp->ct_size*sizeof(double),
 		  pop->error_message);
 
-    // *** MY MODIFICATIONS ***
+    // *** (V) MY MODIFICATIONS ***
 
     /* Allocate array for derivatives of C_l's */
     if (psp->compute_cl_derivative == _TRUE_) {
@@ -924,8 +924,13 @@ int output_cl(
 
   for (l = 2; l <= psp->l_max_tot; l++) {  
 
+// *** (X) MY MODIFICATIONS *** 
+
     /* Factor multiplying all outputted C_l's */
     double factor = l*(l+1)/2./_PI_;
+
+// *** END OF MY MODIFICATIONS ***
+
 
     class_call(spectra_cl_at_l(psp,(double)l,cl_tot,cl_md,cl_md_ic),
 	       psp->error_message,
@@ -937,15 +942,19 @@ int output_cl(
 	       pop->error_message);
 
 
-    // *** MY MODIFICATIONS ***
+    // *** (V) MY MODIFICATIONS ***
 
     /* Interpolate array with the derivatives of C_l's and output to file */
   
     if (psp->compute_cl_derivative == _TRUE_) { 
 
+      // *** (X) MY MODIFICATIONS *** 
+
       /* The logarithmic derivative should never be multiplied by any factor,
       as it is naturally of order one */
       double factor = 1;
+
+      // *** END OF MY MODIFICATIONS ***
       
       class_call(spectra_dcl_at_l(psp,(double)l,dcl_tot,dcl_md,dcl_md_ic),
   	       psp->error_message,
@@ -1019,7 +1028,7 @@ int output_cl(
   if (ple->has_lensed_cls == _TRUE_) {
     fclose(out_lensed);
   }
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
   if (psp->compute_cl_derivative == _TRUE_) {
     fclose(out_dcl);
     free(dcl_tot);
@@ -1765,7 +1774,7 @@ int output_open_cl_file(
     if (pop->output_format == class_format) {
       if (psp->has_tt == _TRUE_)
   fprintf(*clfile,"TT               ");
-      // *** MY MODIFICATIONS ***
+      // *** (X) MY MODIFICATIONS ***
       if (psp->has_rr == _TRUE_)
   fprintf(*clfile,"RR               ");
       if (psp->has_tr == _TRUE_)
@@ -1775,7 +1784,7 @@ int output_open_cl_file(
 	fprintf(*clfile,"EE               ");
       if (psp->has_te == _TRUE_)
 	fprintf(*clfile,"TE                "); 
-      // *** MY MODIFICATIONS ***
+      // *** (V) MY MODIFICATIONS ***
       if (psp->has_tz == _TRUE_)
   fprintf(*clfile,"TZ               ");
       if (psp->has_ez == _TRUE_)
@@ -1802,7 +1811,7 @@ int output_open_cl_file(
     if (pop->output_format == camb_format) {
       if (psp->has_tt == _TRUE_)
 	fprintf(*clfile,"TT               ");
-      // *** MY MODIFICATIONS ***
+      // *** (X) MY MODIFICATIONS ***
       if (psp->has_rr == _TRUE_)
   fprintf(*clfile,"RR               ");
       if (psp->has_tr == _TRUE_)
@@ -1814,7 +1823,7 @@ int output_open_cl_file(
 	fprintf(*clfile,"BB               ");
       if (psp->has_te == _TRUE_)
 	fprintf(*clfile,"TE                "); 
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
       if (psp->has_tz == _TRUE_)
   fprintf(*clfile,"TZ               ");
       if (psp->has_ez == _TRUE_)
@@ -1862,7 +1871,7 @@ int output_one_line_of_cl(
 			  FILE * clfile,
 			  double l,
 			  double * cl, /* array with argument cl[index_ct] */
-        // *** MY MODIFICATIONS ***
+        // *** (X) MY MODIFICATIONS ***
         double * dcl,
         double factor,
         // *** END OF MY MODIFICATIONS ***
@@ -1873,11 +1882,16 @@ int output_one_line_of_cl(
 
   fprintf(clfile,"%4d",(int)l);
 
-  // *** MY MODIFICATIONS ***
+  // *** (X) MY MODIFICATIONS *** 
 
   /* Moved the following variable to the argument list. */
   // factor = l*(l+1)/2./_PI_;
 
+  // *** END OF MY MODIFICATIONS ***
+
+
+  // *** (V) MY MODIFICATIONS ***
+  
   /* Added the logarithmic derivative of the C_l's, which is the same regardless of the required output
   format (no dimension involved). Note that the result will blow for mixed C_l's such as TE, because
   they cross the zero line. */
@@ -1891,10 +1905,7 @@ int output_one_line_of_cl(
     return _SUCCESS_;    
   }
 
-
   // *** END OF MY MODIFICATIONS ***
-
-
 
 
 
@@ -1910,7 +1921,7 @@ int output_one_line_of_cl(
 
     if (psp->has_tt == _TRUE_)
       fprintf(clfile," %16.10e",factor*pow(pba->T_cmb*1.e6,2)*cl[psp->index_ct_tt]);
-    // *** MY MODIFICATIONS ***
+    // *** (X) MY MODIFICATIONS ***
     if (psp->has_rr == _TRUE_)
       fprintf(clfile," %16.10e",factor*pow(pba->T_cmb*1.e6,2)*cl[psp->index_ct_rr]);
     if (psp->has_tr == _TRUE_)
@@ -1922,7 +1933,7 @@ int output_one_line_of_cl(
       fprintf(clfile," %16.10e",factor*pow(pba->T_cmb*1.e6,2)*cl[psp->index_ct_bb]);
     if (psp->has_te == _TRUE_)
       fprintf(clfile," %16.10e",factor*pow(pba->T_cmb*1.e6,2)*cl[psp->index_ct_te]);
-    // *** MY MODIFICATIONS ***
+    // *** (V)  MY MODIFICATIONS ***
     if (psp->has_tz == _TRUE_)
       fprintf(clfile," %16.10e",factor*pba->T_cmb*1.e6*cl[psp->index_ct_tz]);
     if (psp->has_ez == _TRUE_)

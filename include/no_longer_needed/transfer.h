@@ -41,7 +41,7 @@ struct transfers {
   int index_tt_b;      /**< index for transfer type = B-polarization */
   int index_tt_lcmb;   /**< index for transfer type = CMB lensing */
   int index_tt_density; /**< index for first bin of transfer type = matter density */
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
   int index_tt_zeta;      /**< index for transfer type = zeta curvature perturbation */
   // *** END OF MY MODIFICATIONS ***
 

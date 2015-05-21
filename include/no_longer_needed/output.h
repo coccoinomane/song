@@ -88,7 +88,7 @@ extern "C" {
 		  struct spectra * psp,
 		  struct nonlinear * pnl,
 		  struct lensing * ple,
-      /* MY MODIFICATIONS */
+      /* (V) MY MODIFICATIONS */
       struct bispectra * pbi,
       struct fisher * pfi,
       /* END OF MY MODIFICATIONS */
@@ -103,7 +103,7 @@ extern "C" {
     struct output * pop
     );
 
-  /* MY MODIFICATIONS */
+  /* (V) MY MODIFICATIONS */
   int output_fisher(
     struct bispectra * pbi,
     struct fisher * pfi,
@@ -148,7 +148,7 @@ extern "C" {
 			    FILE * clfile,
 			    double l,
           double * cl,
-          // *** MY MODIFICATIONS ***
+          // *** (X) MY MODIFICATIONS ***
           double * cl_2,
           double factor,
           // *** END OF MY MODIFICATIONS ***

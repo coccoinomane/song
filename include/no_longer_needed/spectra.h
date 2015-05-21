@@ -44,10 +44,10 @@ struct spectra {
   //@{
 
   int has_tt; /**< do we want C_l^TT ? (T = temperature) */
-  // *** MY MODIFICATIONS ***
+  // *** (X) MY MODIFICATIONS ***
   int has_rr; /**< do we want C_l^RR ? (R = Rayleigh) */
   int has_tr; /**< do we want C_l^TR ? */
-  // *** MY MODIFICATIONS ***
+  // *** END OF MY MODIFICATIONS ***
   int has_ee; /**< do we want C_l^EE ? (E = E-polarization) */
   int has_te; /**< do we want C_l^TE ? */
   int has_bb; /**< do we want C_l^BB ? (B = B-polarization) */
@@ -56,16 +56,16 @@ struct spectra {
   int has_ep; /**< do we want C_l^E-phi ? */
   int has_dd; /**< do we want C_l^dd ? */
   int has_td; /**< do we want C_l^Td ? */
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
   int has_tz; /**< do we want C_l^TZ ? (Z = curvature pertubation) */
   int has_ez; /**< do we want C_l^EZ ? (Z = curvature pertubation) */
   // *** END OF MY MODIFICATIONS ***
 
   int index_ct_tt; /**< index for type C_l^TT */
-  // *** MY MODIFICATIONS ***
+  // *** (X) MY MODIFICATIONS ***
   int index_ct_rr; /**< index for type C_l^RR */
   int index_ct_tr; /**< index for type C_l^TR */
-  // *** MY MODIFICATIONS ***
+  // *** END OF MY MODIFICATIONS ***
   int index_ct_ee; /**< index for type C_l^EE */
   int index_ct_te; /**< index for type C_l^TE */
   int index_ct_bb; /**< index for type C_l^BB */
@@ -74,7 +74,7 @@ struct spectra {
   int index_ct_ep; /**< index for type C_l^E-phi */
   int index_ct_dd; /**< first index for type C_l^dd (d_size*d_size values) */
   int index_ct_td; /**< first index for type C_l^Td (d_size values) */
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
   int index_ct_tz; /**< index for type C_l^T-Z */
   int index_ct_ez; /**< index for type C_l^E-Z */
   // *** END OF MY MODIFICATIONS ***
@@ -102,7 +102,7 @@ struct spectra {
   cl[index_mode][(index_l * psp->ic_ic_size[index_mode] + index_ic1_ic2) * psp->ct_size + index_ct] */
   double ** ddcl; /**< second derivatives of previous table with respect to l, in view of spline interpolation */ 
 
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
 
   /* Should we compute and store the derivative d(l*l*C_l)/dl? Needed by the bispectrum
   module to compute the analytical approximations in Creminelli, Pitrou, Vernizzi (2011) and Lewis
@@ -207,7 +207,7 @@ extern "C" {
           double * * cl_md_ic
           );
         
-  /* MY MODIFICATIONS */
+  /* (V) MY MODIFICATIONS */
   int spectra_dcl_at_l(
           struct spectra * psp,
           double l,

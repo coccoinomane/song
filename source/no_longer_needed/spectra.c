@@ -214,7 +214,7 @@ int spectra_cl_at_l(
 
 
 
-// *** MY MODIFICATIONS ***
+// *** (V) MY MODIFICATIONS ***
 
 /**
  * Interpolate d/dl(l^2*C_l) at a given l. This function is a simple find and replace of 'spectra_cl_at_l'
@@ -1211,7 +1211,7 @@ int spectra_free(
 	free(psp->cl[index_mode]);
 	free(psp->ddcl[index_mode]);
 
-  // *** MY MODIFICATION ***
+  // *** (V) MY MODIFICATION ***
 	if (psp->compute_cl_derivative == _TRUE_) {
 	  free(psp->lsq_cl[index_mode]);
 	  free(psp->d_lsq_cl[index_mode]);
@@ -1227,7 +1227,7 @@ int spectra_free(
       free(psp->cl);
       free(psp->ddcl);
 
-      // *** MY MODIFICATION ***
+      // *** (V) MY MODIFICATION ***
     	if (psp->compute_cl_derivative == _TRUE_) {
     	  free(psp->lsq_cl);
     	  free(psp->d_lsq_cl);
@@ -1334,7 +1334,7 @@ int spectra_indices(
       psp->has_tt = _FALSE_;
     }
 
-    // *** MY MODIFICATIONS ***
+    // *** (X) MY MODIFICATIONS ***
     if (ppt->has_cl_cmb_rayleigh == _TRUE_) {
       psp->has_rr = _TRUE_;
       psp->index_ct_rr=index_ct;      
@@ -1432,7 +1432,7 @@ int spectra_indices(
       psp->has_td = _FALSE_;
     }
     
-    // *** MY MODIFICATIONS ***
+    // *** (V) MY MODIFICATIONS ***
 
     /* Cross correlation between temperature and the primordial curvature perturbation zeta */
     if ((ppt->has_cl_cmb_temperature == _TRUE_) && (ppt->has_cl_cmb_zeta == _TRUE_) && (ppt->has_scalars == _TRUE_)) {
@@ -1546,7 +1546,7 @@ int spectra_cls(
   class_alloc(psp->cl,sizeof(double *)*psp->md_size,psp->error_message);
   class_alloc(psp->ddcl,sizeof(double *)*psp->md_size,psp->error_message);
   
-  // *** MY MODIFICATION ***
+  // *** (V) MY MODIFICATION ***
   if (psp->compute_cl_derivative == _TRUE_) {
     class_alloc(psp->lsq_cl,sizeof(double *)*psp->md_size,psp->error_message);
     class_alloc(psp->d_lsq_cl,sizeof(double *)*psp->md_size,psp->error_message);
@@ -1579,7 +1579,7 @@ int spectra_cls(
     class_alloc(psp->cl[index_mode],sizeof(double)*psp->l_size[index_mode]*psp->ct_size*psp->ic_ic_size[index_mode],psp->error_message);
     class_alloc(psp->ddcl[index_mode],sizeof(double)*psp->l_size[index_mode]*psp->ct_size*psp->ic_ic_size[index_mode],psp->error_message);
     
-    // *** MY MODIFICATION ***
+    // *** (V) MY MODIFICATION ***
     if (psp->compute_cl_derivative == _TRUE_) {
       class_alloc(psp->lsq_cl[index_mode],sizeof(double)*psp->l_size[index_mode]*psp->ct_size*psp->ic_ic_size[index_mode],psp->error_message);
       class_alloc(psp->d_lsq_cl[index_mode],sizeof(double)*psp->l_size[index_mode]*psp->ct_size*psp->ic_ic_size[index_mode],psp->error_message);
@@ -1724,7 +1724,7 @@ int spectra_cls(
 	       psp->error_message,
 	       psp->error_message);
 	       
-    // *** MY MODIFICATIONS ***
+    // *** (V) MY MODIFICATIONS ***
     
     /* Compute the first derivative of the l^2*C_l. To do so, we first compute and store l^2*C_l and then take its
     derivative. This is numerically more stable than computing 2*l*C_l + l^2*dC_l because the function l^2*C_l is
@@ -1881,7 +1881,7 @@ int spectra_compute_cl(
   * transfer_ic2[ptr->index_tt_t]
   * 4. * _PI_ / k;
 
-  // *** MY MODIFICATIONS ***
+  // *** (X) MY MODIFICATIONS ***
     if (psp->has_rr == _TRUE_)
       cl_integrand[index_k*cl_integrand_num_columns+1+psp->index_ct_rr]=
   primordial_pk[index_ic1_ic2]
@@ -1963,7 +1963,7 @@ int spectra_compute_cl(
       }
     }
     
-    // *** MY MODIFICATIONS ***
+    // *** (V) MY MODIFICATIONS ***
 
     /* Cross correlation between temperature and the primordial curvature perturbation zeta */
     if ((psp->has_tz == _TRUE_) && (ppt->has_scalars == _TRUE_) && (index_mode == ppt->index_md_scalars)) {
@@ -1991,7 +1991,7 @@ int spectra_compute_cl(
     /* treat null spectra (C_l^BB of scalars, C_l^pp of tensors, etc. */
 
     if (((psp->has_bb == _TRUE_) && (index_ct == psp->index_ct_bb) && (ppt->has_scalars == _TRUE_) && (index_mode == ppt->index_md_scalars)) ||
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
   ((psp->has_tz == _TRUE_) && (index_ct == psp->index_ct_tz) && (ppt->has_tensors == _TRUE_) && (index_mode == ppt->index_md_tensors)) ||
   ((psp->has_ez == _TRUE_) && (index_ct == psp->index_ct_ez) && (ppt->has_tensors == _TRUE_) && (index_mode == ppt->index_md_tensors)) ||
   // *** END OF MY MODIFICATIONS ***

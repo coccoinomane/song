@@ -62,7 +62,8 @@ CFLAGS += -DWITH_BISPECTRA
 # ==========================================================================
 
 # Source files also present in CLASS
-TOOLS = growTable.o dei_rkck.o sparse.o evolver_rkck.o evolver_ndf15.o arrays.o parser.o quadrature.o common.o
+TOOLS = growTable.o dei_rkck.o sparse.o evolver_rkck.o  evolver_ndf15.o arrays.o parser.o quadrature.o hyperspherical.o common.o
+SOURCE_CLASS = input.o background.o thermodynamics.o perturbations.o primordial.o nonlinear.o transfer.o spectra.o lensing.o
 INPUT = input.o
 BACKGROUND = background.o
 THERMO = thermodynamics.o
@@ -70,7 +71,6 @@ PERTURBATIONS = perturbations.o
 TRANSFER = transfer.o
 PRIMORDIAL = primordial.o
 SPECTRA = spectra.o
-BISPECTRA = bispectra.o
 NONLINEAR = trg.o nonlinear.o
 LENSING = lensing.o
 OUTPUT = output.o
@@ -82,6 +82,7 @@ PERTURBATIONS2 = perturbations2.o
 BESSEL = bessel.o
 BESSEL2 = bessel2.o
 TRANSFER2 = transfer2.o
+BISPECTRA = bispectra.o
 BISPECTRA2 = bispectra2.o
 FISHER = fisher.o
 UTILITY = utility.o
@@ -122,71 +123,65 @@ PRINT_KERNEL = print_kernel.o
 PRINT_MATRICES = print_matrices.o
 TEST_COUPLINGS = test_couplings.o
 
-song: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2)\
-	$(BESSEL) $(BESSEL2) $(TRANSFER) $(TRANSFER2) $(PRIMORDIAL) $(SPECTRA) $(BISPECTRA) $(BISPECTRA2)\
-	$(FISHER) $(NONLINEAR) $(LENSING) $(OUTPUT) $(UTILITY) $(SONG)
+song: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2)\
+	$(BESSEL) $(BESSEL2) $(TRANSFER2) $(BISPECTRA) $(BISPECTRA2)\
+	$(FISHER) $(UTILITY) $(SONG)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-test_bispectra: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2)\
-	$(BESSEL) $(BESSEL2) $(TRANSFER) $(TRANSFER2) $(PRIMORDIAL) $(SPECTRA) $(BISPECTRA) test_bispectra.o
+test_bispectra: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2)\
+	$(BESSEL) $(BESSEL2) $(TRANSFER2) $(BISPECTRA) test_bispectra.o
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-test_input: $(INPUT) $(INPUT2) $(TEST_INPUT) $(BACKGROUND) $(SONG_TOOLS)
+print_params: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PRINT_PARAMS)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-print_params: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PRINT_PARAMS)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
-
-print_sources1: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2) \
+print_sources1: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2) \
 	$(PRINT_SOURCES1)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-print_sources2: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2) \
+print_sources2: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2) \
 	$(PRINT_SOURCES2)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-print_transfers1: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2)\
-	$(BESSEL) $(BESSEL2) $(TRANSFER) $(TRANSFER2) $(PRINT_TRANSFERS1)
+print_transfers1: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2)\
+	$(BESSEL) $(BESSEL2) $(TRANSFER2) $(PRINT_TRANSFERS1)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-print_transfers2: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2)\
-	$(BESSEL) $(BESSEL2) $(TRANSFER) $(TRANSFER2) $(PRINT_TRANSFERS2)
+print_transfers2: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2)\
+	$(BESSEL) $(BESSEL2) $(TRANSFER2) $(PRINT_TRANSFERS2)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-print_cls: $(SONG_TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(BESSEL) $(TRANSFER) $(PRIMORDIAL)\
-	$(SPECTRA) $(BISPECTRA) $(FISHER) $(LENSING) $(NONLINEAR) $(OUTPUT) $(PRINT_CLS)
+print_cls: $(SONG_TOOLS) $(SOURCE_CLASS) $(BESSEL)\
+	$(BISPECTRA) $(FISHER) $(PRINT_CLS)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-print_bispectra: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PERTURBATIONS2)\
-	$(BESSEL) $(BESSEL2) $(TRANSFER) $(TRANSFER2) $(PRIMORDIAL) $(SPECTRA) $(BISPECTRA) $(BISPECTRA2) $(FISHER)\
-	$(FISHER) $(NONLINEAR) $(LENSING) $(OUTPUT)	$(UTILITY) $(PRINT_BISPECTRA)
+print_bispectra: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2)\
+	$(BESSEL) $(BESSEL2) $(TRANSFER2) $(BISPECTRA) $(BISPECTRA2) $(FISHER)\
+	$(UTILITY) $(PRINT_BISPECTRA)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-print_background: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PRINT_BACKGROUND)
+print_background: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PRINT_BACKGROUND)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-print_thermo: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PRINT_THERMO)
+print_thermo: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PRINT_THERMO)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-print_k: $(SONG_TOOLS) $(INPUT) $(INPUT2) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PRINT_K)
+print_k: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PRINT_K)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-print_k_2nd_order: $(SONG_TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PRINT_K_2ND_ORDER)
+print_k_2nd_order: $(SONG_TOOLS) $(SOURCE_CLASS) $(PRINT_K_2ND_ORDER)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-print_tau_2nd_order: $(SONG_TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PRINT_TAU_2ND_ORDER)
+print_tau_2nd_order: $(SONG_TOOLS) $(SOURCE_CLASS) $(PERTURBATIONS2) $(PRINT_TAU_2ND_ORDER)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-print_initial_conditions_2nd_order: $(SONG_TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) \
+print_initial_conditions_2nd_order: $(SONG_TOOLS) $(SOURCE_CLASS) $(PERTURBATIONS2) \
 	$(PRINT_INITIAL_CONDITIONS_2ND_ORDER)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm	
 
-print_kernel: $(SONG_TOOLS) $(INPUT) $(BACKGROUND) $(THERMO) $(PERTURBATIONS) $(PRINT_KERNEL)
+print_kernel: $(SONG_TOOLS) $(SOURCE_CLASS) $(PERTURBATIONS2) $(PRINT_KERNEL)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-print_matrices: $(SONG_TOOLS) $(INPUT) $(BACKGROUND) $(THREEJ) $(PRINT_MATRICES)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm	
-
-test_couplings: $(SONG_TOOLS) $(INPUT) $(BACKGROUND) $(TEST_COUPLINGS)
+test_couplings: $(SONG_TOOLS) $(SOURCE_CLASS) $(TEST_COUPLINGS)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 

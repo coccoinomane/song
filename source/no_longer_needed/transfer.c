@@ -602,7 +602,7 @@ int transfer_indices_of_transfers(
     index_tt++;
   }
 
-  // *** MY MODIFICATIONS ***
+  // *** (X) MY MODIFICATIONS ***
   if (ppt->has_cl_cmb_rayleigh == _TRUE_) {
     ptr->index_tt_r = index_tt;
     index_tt++;
@@ -632,7 +632,7 @@ int transfer_indices_of_transfers(
       index_tt+=ppt->selection_num;
     }
 
-    // *** MY MODIFICATIONS ***
+    // *** (V) MY MODIFICATIONS ***
     if (ppt->has_cl_cmb_zeta == _TRUE_) {
       ptr->index_tt_zeta = index_tt;
       index_tt++;
@@ -674,7 +674,7 @@ int transfer_indices_of_transfers(
   class_alloc(ptr->k,ptr->md_size * sizeof(double *),ptr->error_message);
 
 
-  // *** MY MODIFICATIONS ***
+  // *** (V) MY MODIFICATIONS ***
 
   /* DISABLED: Now we use the same k-sampling as at first order */
   /* We should allocate the k-vectors for the transfer functions only if we are not working at
@@ -717,7 +717,7 @@ int transfer_indices_of_transfers(
 
 
 
-    // *** MY MODIFICATIONS ***
+    // *** (V) MY MODIFICATIONS ***
 
     /* DISABLED: now we use CLASS k-sampling for the first-order transfer functions */
     /* We run this function only if we are not working at second order.  In fact, at
@@ -1009,7 +1009,7 @@ int transfer_interpolate_sources(
     if ((ppt->has_cl_cmb_temperature == _TRUE_) && (index_tt == ptr->index_tt_t)) 
       index_type=ppt->index_tp_t;
 
-    // *** MY MODIFICATIONS ***
+    // *** (X) MY MODIFICATIONS ***
     if ((ppt->has_cl_cmb_rayleigh == _TRUE_) && (index_tt == ptr->index_tt_r)) 
       index_type=ppt->index_tp_r;
     // *** END OF MY MODIFICATIONS ***    
@@ -1025,7 +1025,7 @@ int transfer_interpolate_sources(
       class_alloc(pvecback,pba->bg_size*sizeof(double),ppt->error_message); 
     }
     
-    // *** MY MODIFICATIONS ***
+    // *** (V) MY MODIFICATIONS ***
     if ((ppt->has_cl_cmb_zeta == _TRUE_) && (index_tt == ptr->index_tt_zeta)) 
       index_type=ppt->index_tp_zeta;
     // *** END OF MY MODIFICATIONS ***
@@ -1314,8 +1314,9 @@ int transfer_compute_for_each_l(
     multiply_by_factor=_TRUE_;
     extra_factor=sqrt((l+2.) * (l+1.) * l * (l-1.));
     
-  // *** MY MODIFICATIONS ***
-  
+  // *** (V) MY MODIFICATIONS ***
+  /* TODO: verify that this is needed */
+  /* TODO: if this is needed, why switching the sign only for m=0 (scalars)? */
   /* Flip sign of E-mode transfer functions, to match with what we do at second order
   (which follows Hu & White convention) */
   extra_factor *= -1;

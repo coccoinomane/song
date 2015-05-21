@@ -6406,7 +6406,6 @@ int perturb2_derivs (
       double tau, /**< current time */
       double * y, /**< values of evolved perturbations at tau (y[index_pt2_XXX]) */
       double * dy, /**< output: derivatives of evolved perturbations at tau (dy[index_pt2_XXX]) */
-      int index_tau, /**< current time index (from ppt2->tau_sampling array) */
       void * parameters_and_workspace, /**< generic structure with all needed parameters, including
                                        backgroudn and thermo structures; will be cast to type
                                        perturb2_parameters_and_workspace()  */
