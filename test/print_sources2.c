@@ -1,13 +1,17 @@
 /** @file print_sources2.c 
+ *
  * Created by Guido W. Pettinari on 10.08.2011
- * Last edited by Guido W. Pettinari on 03.07.2012
+ * Last edited by Guido W. Pettinari on 20.05.2015
  *
  * Print to screen the sources array inside the perturbs2 structure,
- * along with conformal time (1st column), scale factor (second column), and
- * the scale factor normalized to equality a/a_eq (third column).
+ * along with conformal time (first column), scale factor (second column),
+ * and the scale factor normalized to equality a/a_eq (third column).
  *
  * usage:     print_sources2 <ini file> <pre file> <variable to print> <index_1> <index_2> <index_3>
- *            print_sources2 <run_directory> <variable to print> <index_1> <index_2> <index_3
+ *            print_sources2 <run_directory> <variable to print> <index_1> <index_2> <index_3>
+ *
+ * <variable to print> can be either 'k2', 'k' or 'tau'.
+ * Specify a negative time index to show the sources at the peak of recombination.
  */
  
 #include "song.h"
@@ -20,57 +24,66 @@ int main(int argc, char **argv) {
   struct thermo th;           /* thermodynamics */
   struct perturbs pt;         /* source functions (1st-order) */
   struct perturbs2 pt2;       /* source functions (2nd-order) */  
+  struct transfers tr;        /* transfer functions (1st-order) */
   struct bessels bs;          /* bessel functions (1st-order) */
   struct bessels2 bs2;        /* bessel functions (2nd-order) */
-  struct transfers tr;        /* transfer functions (1st-order) */
   struct transfers2 tr2;      /* transfer functions (2nd-order) */
   struct primordial pm;       /* primordial spectra */
   struct spectra sp;          /* output spectra (1st-order) */
-  struct bispectra bi;        /* bispectra */
-  struct fisher fi;           /* fisher matrix */
   struct nonlinear nl;        /* non-linear spectra */
   struct lensing le;          /* lensed spectra */
+  struct bispectra bi;        /* bispectra */
+  struct fisher fi;           /* fisher matrix */
   struct output op;           /* output files */
   ErrorMsg errmsg;            /* error messages */
 
 
-
-  // =====================================
-  // =         Parse arguments           =
-  // =====================================
+  // ===================================================================================
+  // =                                 Parse arguments                                 =
+  // ===================================================================================
 
   /* We introduce the n_args variable to differentiate between CLASS arguments (either 1 or 2) and
   the arguments for this function (n_args) */
   int n_args = 4;
   
-  /* Indices that address the levels of pt2.sources[index_type][index_k1][index_k2][index_tau*k3_size + index_k3] */
-  int index_type, index_k1, index_k2, index_k3, index_tau;
-  double k1, k2, k3, cosk1k2, tau;
-
   /* Variable that will be printted, read from command line, either "k2", "k", "tau" */
   char variable_to_print[32];
 
   /* Account for the different inputs accepted by CLASS (either 1 or 2 arguments)  */
   int first_arg;
 
-  if (argc == 2 + n_args)
+  if (argc == 2 + n_args) {
     first_arg = 2;
-  else if (argc == 3 + n_args)
+  }
+  else if (argc == 3 + n_args) {
     first_arg = 3;
+  }
   else {
-    printf ("usage:     %s <ini file> <pre file> <variable to print> <index_1> <index_2> <index_3>\n", argv[0]);
-    printf ("           %s <run_directory> <variable to print> <index_1> <index_2> <index_3>\n", argv[0]);
-    printf ("specify a negative time index to show the sources at the peak of recombination\n");
+    printf ("\n");
+    printf ("usage:  %s <ini file> <pre file> <variable to print> <index_1> <index_2> <index_3>\n", argv[0]);
+    printf ("        %s <run_directory> <variable to print> <index_1> <index_2> <index_3>\n", argv[0]);
+    printf ("\n");
+    printf ("<variable to print> can be either 'k2', 'k3' or 'tau'\n");
+    printf ("The index arguments vary according to what you choose for <variable to print>.\n");
+    printf ("Here are the possible combinations:\n");
+    printf ("        %s <ini file> <pre file> tau index_k1 index_k2 index_k3\n", argv[0]);
+    printf ("        %s <ini file> <pre file> k3 index_k1 index_k2 index_tau\n", argv[0]);
+    printf ("        %s <ini file> <pre file> k2 index_k1 index_k3 index_tau\n", argv[0]);
+    printf ("Specify a negative time index to show the sources at the peak of recombination.\n");
     return _FAILURE_;
   }
 
-  
+
   /* Decide which variable to print according to the first argument */
   strcpy(variable_to_print, argv[first_arg]);
   short PRINT_K2 = _FALSE_;
   short PRINT_K3 = _FALSE_;
   short PRINT_TAU = _FALSE_;
   double * pvecback, a, * pvecthermo, kappa_dot, exp_minus_kappa;
+
+  /* Indices to access pt2.sources[index_type][index_k1][index_k2][index_tau*k3_size+index_k3] */
+  int index_k1, index_k2, index_k3, index_tau;
+  double k1, k2, k3, cosk1k2, tau;
 
   if (strcmp(variable_to_print, "k2") == 0) {
     
@@ -79,14 +92,17 @@ int main(int argc, char **argv) {
     index_k3 = atoi(argv[first_arg+2]);
     index_tau = atoi(argv[first_arg+3]);
   }
-  else if ((strcmp(variable_to_print, "k") == 0) || (strcmp(variable_to_print, "k3") == 0) || (strcmp(variable_to_print, "cos") == 0)) {
+  else if ((strcmp(variable_to_print, "k") == 0)
+    || (strcmp(variable_to_print, "k3") == 0)
+    || (strcmp(variable_to_print, "cos") == 0)) {
     
     PRINT_K3 = _TRUE_;
     index_k1 = atoi(argv[first_arg+1]);
     index_k2 = atoi(argv[first_arg+2]);
     index_tau = atoi(argv[first_arg+3]);
   }
-  else if (strcmp(variable_to_print, "tau") == 0) {
+  else if ((strcmp(variable_to_print, "tau") == 0)
+    || (strcmp(variable_to_print, "time") == 0)) {
     
     PRINT_TAU = _TRUE_;
     index_k1 = atoi(argv[first_arg+1]);
@@ -98,10 +114,8 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
-
   /* Check that index_k2 is correct */
   if (PRINT_K2 == _FALSE_) {
-
     if (index_k2 > index_k1) {
       printf ("ERROR: index_k1=%d must be larger than index_k2=%d.\n", index_k1, index_k2);
       return _FAILURE_;
@@ -109,24 +123,23 @@ int main(int argc, char **argv) {
   }
   
 
-
-
-
-  // ======================================================
-  // =              Calculate perturbations               =
-  // ======================================================
+  // ===================================================================================
+  // =                               Compute perturbations                             =
+  // ===================================================================================
 
   /* Decrease the argument counter. The reason is that CLASS should be fed only its default arguments,
   that is the parameter files and, optionally, the run directory */
   argc -= n_args;
 
-  if (input_init_from_arguments(argc,argv,&pr,&ba,&th,&pt,&bs,&tr,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
+  if (input_init_from_arguments(argc,argv,&pr,&ba,&th,&pt,&tr,&pm,
+    &sp,&nl,&le,&bs,&bi,&fi,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
     return _FAILURE_;
   }
-
-  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
-    printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
+  
+  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&tr,&bs,&bs2,&tr2,&pm,
+    &sp,&nl,&le,&bi,&fi,&op,errmsg) == _FAILURE_) {
+    printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg);
     return _FAILURE_;
   }
 
@@ -149,7 +162,6 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
   
-  
   /* Now that we loaded the background module, we can allocate the background vector */
   if (PRINT_TAU) {
     pvecback = malloc(ba.bg_size*sizeof(double));
@@ -165,9 +177,9 @@ int main(int argc, char **argv) {
   // class_stop("","");
   
   
-  // =====================================================
-  // =                  Perform checks                   =
-  // =====================================================
+  // =====================================================================
+  // =                            Perform checks                         =
+  // =====================================================================
   
   /* Sizes associated to the non-running indices in the ****sources table */
   int tau_size = pt2.tau_size;
@@ -182,7 +194,13 @@ int main(int argc, char **argv) {
     if(index_k2 > k_size-1) index_k2 = k_size-1;
     if(index_k2 < 0) index_k2 = 0;
   }
-  
+
+  if (PRINT_K3 == _FALSE_) {
+    k3_size = pt2.k3_size[index_k1][index_k2];
+    if(index_k3 > k3_size-1) index_k3 = k3_size-1;
+    if(index_k3 < 0) index_k3 = 0;
+  }
+
   if (PRINT_TAU == _FALSE_) {
     
     /* Fix sources at recombination time if no time is specified */
@@ -199,9 +217,9 @@ int main(int argc, char **argv) {
   }
   
   
-  // =============================================================
-  // =                  Load sources from disk                   =
-  // =============================================================
+  // ==========================================================================
+  // =                           Load sources from disk                       =
+  // ==========================================================================
   
   /* Load sources from disk if they were previously stored.  This can be true either because we are loading
   them from a precomputed run, or because we stored them in this run. */
@@ -217,29 +235,28 @@ int main(int argc, char **argv) {
   }
   
   
-  
   // ===================================================================
   // =                           Print debug info                      =
   // ===================================================================
   
-  /* Print Information about the cosmological model */
+  /* Information about the cosmological model */
   double h = ba.h;
-  
+  double a_equality = ba.a_eq;  
   fprintf (stderr, "# Cosmological parameters:\n");
-  fprintf (stderr, "# tau0 = %g, a_equality = %g, Omega_b = %g, Tcmb = %g, Omega_cdm = %g, omega_lambda = %g, Omega_ur = %g, Omega_fld = %g, h = %g, tau0 = %g\n",
-    ba.conformal_age, ba.a_eq, ba.Omega0_b, ba.T_cmb, ba.Omega0_cdm, ba.Omega0_lambda, ba.Omega0_ur, ba.Omega0_fld, ba.h, ba.conformal_age);
+  fprintf (stderr, "# tau0 = %g, a_equality = %g, Omega_b = %g, Tcmb = %g, Omega_cdm = %g\n",
+    ba.conformal_age, ba.a_eq, ba.Omega0_b, ba.T_cmb, ba.Omega0_cdm);
+  fprintf (stderr, "# omega_lambda = %g, Omega_ur = %g, Omega_fld = %g, h = %g, tau0 = %g\n",
+    ba.Omega0_lambda, ba.Omega0_ur, ba.Omega0_fld, ba.h, ba.conformal_age);
   fprintf (stderr, "# omega_b = %g, omega_cdm = %g, omega_lambda = %g, omega_ur = %g, omega_fld = %g\n",
     ba.Omega0_b*h*h, ba.Omega0_cdm*h*h, ba.Omega0_lambda*h*h, ba.Omega0_ur*h*h, ba.Omega0_fld*h*h);
-  
-  
-  /* Info about the used gauge */
+    
+  /* Info about the used gauge at first order */
   fprintf (stderr, "# gauge = ");
   if (pt.gauge == newtonian)
     fprintf (stderr, "Newtonian gauge\n");
   if (pt.gauge == synchronous)
     fprintf (stderr, "synchronous gauge\n");
-  
-  
+    
     
   /* Extract values for the quantities that are fixed */
   k1 = pt2.k[index_k1];
@@ -351,8 +368,10 @@ int main(int argc, char **argv) {
     cosk1k2 = (k3*k3 - k1*k1 - k2*k2)/(2.*k1*k2);
     double cosk1k = (k1 + k2*cosk1k2)/k3;
     double cosk2k = (k2 + k1*cosk1k2)/k3;
-    fprintf (stderr, "# tau spans %d values from k1=%g to %g\n", tau_size, pt2.tau_sampling[0], pt2.tau_sampling[tau_size-1]);
-    fprintf (stderr, "# k1 = %g, k2 = %g, cosk1k2 = %g, k = %g, cosk1k = %g, cosk2k = %g\n", k1, k2, cosk1k2, k3, cosk1k, cosk2k);
+    fprintf (stderr, "# tau spans %d values from k1=%g to %g\n",
+      tau_size, pt2.tau_sampling[0], pt2.tau_sampling[tau_size-1]);
+    fprintf (stderr, "# k1 = %g, k2 = %g, k3 = %g, cosk1k = %g, cosk2k = %g, cosk1k2 = %g\n",
+      k1, k2, cosk1k2, k3, cosk1k, cosk2k);
   }
   
       
@@ -393,7 +412,7 @@ int main(int argc, char **argv) {
     fprintf (stderr, "%11s(%03d) ", "y", index_print++);             // Scale factor normalized to equality
   }
   
-  for (index_type = 0; index_type < tp2_size; ++index_type)
+  for (int index_type = 0; index_type < tp2_size; ++index_type)
     fprintf (stderr, "%11s(%03d) ", pt2.tp2_labels[index_type], index_print++);
   
   fprintf (stderr, "%11s(%03d) ", "kappa_dot", index_print++);
@@ -499,7 +518,7 @@ int main(int argc, char **argv) {
   
   
     /* Columns from 4 to tp2_size+3 are the sources */
-    for (index_type = 0; index_type < tp2_size; ++index_type) {
+    for (int index_type = 0; index_type < tp2_size; ++index_type) {
       
       if (WRITE_ZERO == _FALSE_) {
         /* We only computed the sources for the case k1 >= k2 because they are symmetric with respect to k1 <-> k2 */
@@ -542,7 +561,7 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
   
-  if (perturb_free(&pr,&pt) == _FAILURE_) {
+  if (perturb_free(&pt) == _FAILURE_) {
     printf("\n\nError in perturb_free \n=>%s\n",pt.error_message);
     return _FAILURE_;
   }

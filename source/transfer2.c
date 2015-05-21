@@ -131,7 +131,7 @@ int transfer2_init(
   if (ppr2->load_transfers_from_disk == _TRUE_) {
     
     if (ptr2->transfer2_verbose > 0)
-      printf(" -> leaving transfer2 module without having computed the transfer functions, which will be read from disk\n");
+      printf(" -> leaving transfer2 module; transfer functions will be read from disk\n");
     
     return _SUCCESS_;
   }

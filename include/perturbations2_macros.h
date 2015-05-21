@@ -89,7 +89,7 @@ with the z-axis. The E-modes are set to be different from zero only if polarizat
 requested.  We have no need for the B-modes because they vanish at 1st order.
 
 IMPORTANT: These macros can be used whenever a pvec_sources1 vector exists. This happens
-either after a call to with perturb_quadsources_at_tau_for_all_types (as in perturb_source_term
+either after a call to with perturb_song_sources_at_tau (as in perturb_source_term
 or perturb2_save_early_transfers) or when pvec_sources1 and pvec_sources2 directly access the
 quadratic sources stored in ppt->quadsources (as in perturb2_quadratic_sources). */
 #define I_1_tilde(l) ( l < 0 ? 0 : pvec_sources1[ppt->index_qs_monopole_g + l] )

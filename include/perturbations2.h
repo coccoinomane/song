@@ -112,7 +112,7 @@ struct perturbs2
 
   /* Index pointing to the first-order initial conditions needed to solve the second order system. For the
   time being it is set to adiabatic initial conditions only. */
-  int index_ic;
+  int index_ic_first_order;
 
 
 
@@ -524,10 +524,6 @@ struct perturbs2
 
 
 };
-
-
-
-
 
 
 
@@ -1149,23 +1145,14 @@ struct perturb2_parameters_and_workspace {
            double * psi_prime,
            struct perturb2_workspace * ppw2);
 
-    int perturb2_source_terms(
-           double tau,
-           double * y,
-           double * dy,
-           int index_tau,
-           void * parameters_and_workspace,
-           ErrorMsg error_message
-           );
-
     int perturb2_sources(
-      struct precision * ppr,
-      struct precision2 * ppr2,
-      struct background * pba,
-      struct perturbs * ppt,
-      struct perturbs2 * ppt2,
-      struct perturb2_workspace * ppw2
-      );
+          double tau,
+          double * y,
+          double * dy,
+          int index_tau,
+          void * parameters_and_workspace,
+          ErrorMsg error_message
+          );
 
     int perturb2_save_early_transfers(double tau,
               double * y,
@@ -1266,7 +1253,7 @@ struct perturb2_parameters_and_workspace {
             struct perturb2_workspace * ppw2
             );
 
-    int perturb2_quadratic_sources_at_tau_cubic_spline(
+    int perturb2_quadratic_sources_at_tau_spline(
             struct perturbs * ppt,
             struct perturbs2 * ppt2,
             double tau,

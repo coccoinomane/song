@@ -22,27 +22,62 @@
  * are the main ingredient to predict observables such as the CMB bispectrum
  * (chapter 6) that can be then compared with experiment results.
  *
- * The following functions can be called externally:
- *
- * -# perturb2_init() to compute the perturbations, but only after background_init() and thermodynamics_init()
- * -# perturb2_free() to free all the memory associated to the module
+ * The main functions that can be called externally are:
+ * -# perturb2_init() to run the module, requires background_init() and thermodynamics_init()
+ * -# perturb2_free() to free all the memory associated to the module.
  * 
- * If the flag ppt2->store_sources_to_disk is active, the module will save the 
+ * If the user specified 'store_sources_to_disk=yes', the module will save the 
  * line-of-sight sources to disk and then free the associated memory. To reload them
- * from disk, the user can use the following function when needed:
- *
- * -# perturb2_allocate_k1_level()
- * -# perturb2_load_sources_from_disk()
- *
+ * from disk, the user can use the following functions:
+ * - perturb2_allocate_k1_level()
+ * - perturb2_load_sources_from_disk()
  * To free again the memory associated to the sources, the user can call:
- *
- * -# perturb2_free_k1_level()
+ * - perturb2_free_k1_level()
  */
 
 
 #include "perturbations2.h"
 #include "perturbations2_macros.h"
 
+/**
+ *
+ * Fill all the fields in the perturbs2 structure, especially the ppt2->sources
+ * array.
+ * 
+ * This function calls the other perturb2_XXX functions in the order needed to 
+ * solve the Boltzmann-Einstein system of equations at second order (BES2) in the
+ * cosmological perturbations. In the process, it also runs perturb_init()
+ * to compute the first-order perturbations required to solve the second-order system,
+ * and it fills the ppt2 structure so that it can be used in the subsequent modules
+ * (transfer2.c, bispectra2.c, ...).
+ *
+ * Before calling this function, make sure that background_init() and
+ * thermodynamics_init() have already been executed. 
+ * 
+ * Details on the physics and on the adopted method can be found in my thesis
+ * (http://arxiv.org/abs/1405.2280), chapters 3 to 5. The code itself is
+ * extensively documented and hopefully will give you further insight.
+ *
+ * In detail, this function does:
+ *
+ * -# Determine which line of sight sources need to be computed and their
+ *    k-sampling via perturb2_indices_of_perturbs().
+ *
+ * -# Determine the time sampling for the sources via the function
+ *    perturb2_timesampling_for_sources().
+ *
+ * -# Solve the system at first order via perturb_init().
+ *
+ * -# Allocate one workspace per thread to store temporary values related
+ *    to the second-order system.
+ *
+ * -# Solve the Boltzmann-Einstein system at second order in Fourier space
+ *    for all the desired (k1,k2,k3) configurations via perturb2_solve().
+ *    In the process, build and store the line of sight sources in ppt2->sources.
+ *
+ * -# If requested, store to disk the content of ppt2->sources and free the array.
+ * 
+ */
 int perturb2_init (
      struct precision * ppr,
      struct precision2 * ppr2,
@@ -65,18 +100,12 @@ int perturb2_init (
     printf("Computing second-order perturbations\n");
 
 
-  // ===============================================================================================
-  // =                                   Indices and samplings                                     =
-  // ===============================================================================================
+  // =======================================================================================
+  // =                               Indices and samplings                                 =
+  // =======================================================================================
 
-  /* Initialize all indices and arrays in the ppt2 structure.
-    In detail, this function does the following:
-     - assigns tp2 indices
-     - call perturb2_get_k_lists, that allocates and fills ppt2->k_size, ppt2->k3_size
-     - fill ppt2->k, ppt2->k3[index_k1,index_k2]
-     - set ppt->k = ppt2->k
-     - fill the lm_arrays used to index the Boltzmann hierarchies 
-  */
+  /** - determine which sources need to be computed and their k-sampling */
+
   class_call (perturb2_indices_of_perturbs(
                 ppr,
                 ppr2,
@@ -88,13 +117,8 @@ int perturb2_init (
   ppt2->error_message);
 
 
-  /* The following function will:
-    
-      - define the common time sampling for all sources in ppt2->tau_sampling
-      - define the time sampling for the first-order quadratic sources in ppt->tau_sampling_quadsources
-      - allocate the k1, k2, k3 and tau levels of ppt2->sources
-      
-  */
+  /** - determine the time sampling for the sources */
+  
   class_call (perturb2_timesampling_for_sources (
                 ppr,
                 ppr2,
@@ -106,18 +130,24 @@ int perturb2_init (
     ppt2->error_message);
 
 
+  // =====================================================================================
+  // =                              Solve 1st-order system                               =
+  // =====================================================================================
 
+  /** - Run the first-order perturbations module in order to:
+  
+    - Compute and store in ppt->quadsources the perturbations needed to solve the
+      2nd-order system.
+    
+    - Compute and store in ppt->sources the line-of-sight sources needed to compute
+      the first-order transfer functions (not the C_l's).
 
-  // ===============================================================================================
-  // =                                  Solve 1st-order system                                     =
-  // ===============================================================================================
+    SONG overrides the functions that are normally called to determine the wavemode
+    (ppt->k) and time sampling (ppt->tau_sampling_quadsources) in perturb_init(),
+    that is, perturb_timesampling_for_sources() and perturb_get_k_list(). Instead,
+    SONG determines the two domains with two functions of its own, that is
+    perturb2_get_k_lists() and perturb2_timesampling_for_sources(). */
 
-  /* We now compute the 1st-order perturbations in order to (i) fill ppt->quadsources with the 1st-order quantities
-  needed to compute the quadratic sources to the 2nd-order equations, and (ii) fill ppt->sources with the line-
-  of-sight sources needed to compute the first-order transfer functions and Cl's.
-
-  Note that the k-sampling for the first order sources (ppt->k) is determined by perturb2_get_k_lists;
-  the time sampling (ppt->tau_sampling_quadsources) is determined by perturb2_timesampling_for_sources */
   class_call (perturb_init (
                 ppr,
                 pba,
@@ -125,13 +155,9 @@ int perturb2_init (
                 ppt),
     ppt->error_message, ppt2->error_message);
   
-  /* For the time being, we assume that 1st-order adiabatic initial conditions were computed.
-  In the future, this should be set in input.c and should depend on the ic_2nd_order option */
-  ppt2->index_ic = ppt->index_ic_ad;
-
 
   /* If the user asked to output only the 1st-order transfer functions needed by the second-order module,
-    then we stop here. */
+  then we stop here. */
   if (ppt2->has_early_transfers1_only == _TRUE_) {
 
     if (ppt2->perturbations2_verbose > 0)
@@ -145,10 +171,11 @@ int perturb2_init (
   // -                    Adjust 1st-order time sampling                 -
   // ---------------------------------------------------------------------
   
-  /* The first-order time-sampling for the line-of-sight sources in CLASS goes all the way to today.  At
-  second-order, we might be interested in recombination effects only, and thus limit the 2nd-order
-  sampling to a smaller range. As we want to consider the same effects at first and second order, we adapt
-  the end time of the first-order time sampling (ppt->tau_sampling) to the second-order one (ppt2->tau_sampling) */
+  /* The first-order time-sampling for the line-of-sight sources in CLASS goes all
+  the way to today.  At second-order, we might be interested in recombination effects
+  only, and thus set an upper limit on the time sampling. Since we want to consider
+  the same effects at first and second order, we adapt the end time of the first-order
+  time sampling (ppt->tau_sampling) to the second-order one (ppt2->tau_sampling) */
   
   if (ppt2->match_final_time_los == _TRUE_) {
 
@@ -179,7 +206,7 @@ int perturb2_init (
 
 
 
-  /* Print some info on the screen */
+  /* Print some info to screen */
   if (ppt2->perturbations2_verbose > 0) {
     printf(" -> computing %s2nd-order sources ",
       ppt2->rescale_quadsources == _TRUE_ ? "RESCALED " : "");
@@ -202,18 +229,15 @@ int perturb2_init (
   if (ppr2->load_sources_from_disk == _TRUE_) {
     
     if (ppt2->perturbations2_verbose > 0)
-      printf(" -> leaving perturbs2 module without having computed the line-of-sight sources, which will be read from disk\n");
+      printf(" -> leaving perturbs2 module; line-of-sight sources will be read from disk\n");
     
     return _SUCCESS_;
   }
 
 
-
-
-
-  // ===============================================================================================
-  // =                                     Allocate workspace                                      =
-  // ===============================================================================================
+  // ========================================================================================
+  // =                                 Allocate workspace                                   =
+  // ========================================================================================
 
   /* Number of available omp threads (remains always one if no openmp) */
   int number_of_threads = 1;
@@ -223,7 +247,6 @@ int perturb2_init (
 
   /* Flag for error management inside parallel regions */
   int abort;
-
   
   /* Find number of threads */
   #ifdef _OPENMP
@@ -277,9 +300,9 @@ int perturb2_init (
   if (abort == _TRUE_) return _FAILURE_;
   
 
-  // ======================================================================================================
-  // =                                  Solve 2nd-order differential system                               =
-  // ======================================================================================================
+  // ===========================================================================================
+  // =                           Solve 2nd-order differential system                           =
+  // ===========================================================================================
 
   /* Beginning of parallel region */
   abort = _FALSE_;    
@@ -297,16 +320,15 @@ int perturb2_init (
       printf ("     * computing sources for index_k1=%d of %d, k1=%g\n",
         index_k1, ppt2->k_size-1, ppt2->k[index_k1]);
 
-    /* Allocate the k1 level of
-    ppt2->sources[index_type][index_k1][index_k2][index_tau*k3_size + index_k],
-    which will contain the results of the computations made in this module.  */
+    /* Allocate the k1 level of ppt2->sources, so that it can be filled by perturb2_solve() */
     class_call_parallel (perturb2_allocate_k1_level (ppt2, index_k1),
       ppt2->error_message, ppt2->error_message);
 
     /* IMPORTANT: we are assuming that the quadratic sources are given in a form symmetric
     under exchange of k1 and k2.  Hence, we shall solve the system only for those k2 that
-    are equal to or larger than k1, which means that the cycle on k2 will be starting
-    from index_k1.*/
+    are equal to or larger than k1, which means that the cycle on k2 will stop when
+    index_k2 = index_k1. */
+      
     for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
 
       for (int index_k3 = 0; index_k3 < ppt2->k3_size[index_k1][index_k2]; ++index_k3) {
@@ -393,6 +415,168 @@ int perturb2_init (
 
 
 
+/**
+  * Allocate the k1 level of the sources array ppt2->sources.
+  *
+  * This function can be called only after perturb2_indices_of_perturbs(),
+  * perturb2_timesampling_for_sources(), perturb2_get_k_lists().
+  *
+  */
+int perturb2_allocate_k1_level(
+     struct perturbs2 * ppt2, /*<< pointer to perturbs2 structure */
+     int index_k1             /*<< index in ppt2->k that we want to load the sources for  */
+     // int index_m
+     )
+{
+
+  /* Issue an error if ppt2->sources[index_k1] has already been allocated */
+  class_test (ppt2->has_allocated_sources[index_k1] == _TRUE_,
+              ppt2->error_message,
+              "the index_k1=%d level of ppt2->sources is already allocated, stop to prevent error", index_k1);
+
+
+  long int count=0;
+  
+  for (int index_type = 0; index_type < ppt2->tp2_size; index_type++) {
+
+    /* Allocate only the level corresponding to the considered 'm' mode */
+    // if (ppt2->corresponding_index_m[index_type] != index_m) continue;
+
+    /* Allocate k2 level.  Note that the size of this level is smaller than ppt2->k_size,
+    and depends on k1.  The reason is that we shall solve the system only for those k2's
+    that are smaller than k1 (our equations are symmetrised wrt to k1<->k2) */
+
+    class_alloc (
+      ppt2->sources[index_type][index_k1],
+      (index_k1+1) * sizeof(double *),
+      ppt2->error_message);
+
+    for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
+
+      /* Allocate k3-tau level. Use calloc as we rely on the array to be initialised to zero. */
+      class_calloc (
+        ppt2->sources[index_type][index_k1][index_k2],
+        ppt2->tau_size*ppt2->k3_size[index_k1][index_k2],
+        sizeof(double),
+        ppt2->error_message);
+    
+      #pragma omp atomic
+      ppt2->count_allocated_sources += ppt2->tau_size*ppt2->k3_size[index_k1][index_k2];
+      count += ppt2->tau_size*ppt2->k3_size[index_k1][index_k2];
+
+    } // end of for (index_k2)
+  } // end of for (index_type)
+
+  /* Print some debug information on memory consumption */
+  if (ppt2->perturbations2_verbose > 2)
+    printf(" -> allocated ~ %.3g MB (%ld doubles) for index_k1=%d; the size of ppt2->sources so far is ~ %.3g MB;\n",
+      count*sizeof(double)/1e6, count, index_k1, ppt2->count_allocated_sources*sizeof(double)/1e6);
+
+  /* We succesfully allocated the k1 level of ppt2->sources */
+  ppt2->has_allocated_sources[index_k1] = _TRUE_;
+
+
+  return _SUCCESS_;
+
+}
+
+
+/**
+  * Load the line of sight sources from disk for a given k1 value.
+  *
+  * The sources will be read from the file given in ppt2->sources_paths[index_k1] and stored
+  * in the array ppt2->sources. Before running this function, make sure to allocate the
+  * corresponding k1 level of ppt2->sources using perturb2_allocate_k1_level().
+  *
+  * This function is used in the transfer2.c module.
+  */
+int perturb2_load_sources_from_disk(
+        struct perturbs2 * ppt2,
+        int index_k1
+        )
+{
+ 
+  /* Allocate memory to keep the line-of-sight sources */
+  class_call (perturb2_allocate_k1_level(ppt2, index_k1), ppt2->error_message, ppt2->error_message);
+  
+  /* Open file for reading */
+  class_open (ppt2->sources_files[index_k1], ppt2->sources_paths[index_k1], "rb", ppt2->error_message);
+
+  /* Print some debug */
+  if (ppt2->perturbations2_verbose > 2)
+    printf("     * reading line-of-sight source for index_k1=%d from '%s' ... \n", index_k1, ppt2->sources_paths[index_k1]);
+  
+  for (int index_type = 0; index_type < ppt2->tp2_size; ++index_type) {
+  
+    for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
+
+      int k3_size = ppt2->k3_size[index_k1][index_k2];
+
+        int n_to_read = ppt2->tau_size*k3_size;
+
+        int n_read = fread(
+              ppt2->sources[index_type][index_k1][index_k2],
+              sizeof(double),
+              n_to_read,
+              ppt2->sources_files[index_k1]);
+
+        /* Read a chunk with all the time values for this set of (type,k1,k2,k3) */
+        class_test( n_read != n_to_read,
+          ppt2->error_message,
+          "Could not read in '%s' file, read %d entries but expected %d",
+          ppt2->sources_paths[index_k1], n_read, n_to_read);
+
+        /* Update the counter for the values stored in ppt2->sources */
+        #pragma omp atomic
+        ppt2->count_memorised_sources += n_to_read;
+
+    } // end of for (index_k2)
+    
+  } // end of for (index_type)
+  
+  /* Close file */
+  fclose(ppt2->sources_files[index_k1]);
+  
+  // if (ppt2->perturbations2_verbose > 2)
+  //   printf ("Done.\n");
+
+  return _SUCCESS_; 
+  
+}
+
+
+
+/**
+  * Free the k1 level of the sources array ppt2->sources.
+  */
+int perturb2_free_k1_level(
+     struct perturbs2 * ppt2,
+     int index_k1
+     )
+{
+
+  /* Issue an error if ppt2->sources[index_k1] has already been freed */
+  class_test (ppt2->has_allocated_sources[index_k1] == _FALSE_,
+    ppt2->error_message,
+    "the index_k1=%d level of ppt2->sources is already free, stop to prevent error", index_k1);
+
+  int k1_size = ppt2->k_size;
+
+  for (int index_type = 0; index_type < ppt2->tp2_size; index_type++) {
+    for (int index_k2 = 0; index_k2 <= index_k1; index_k2++)
+        free(ppt2->sources[index_type][index_k1][index_k2]);
+  
+    free(ppt2->sources[index_type][index_k1]);
+  
+  } // end of for (index_type)
+
+
+  /* We succesfully freed the k1 level of ppt2->sources */
+  ppt2->has_allocated_sources[index_k1] = _FALSE_;
+
+  return _SUCCESS_;
+
+}
 
 
 
@@ -401,9 +585,26 @@ int perturb2_init (
 
 
 
+/**
+ *
+ * Initialize indices and arrays in the ppt2 structure.
+ *
+ * In detail, this function does:
+ *
+ *  -# Determine what source terms need to be computed by assigning the index_tp2_XXX indices.
+ *
+ *  -# Allocate and fill the second-order k-sampling arrays (ppt2->k and ppt2->k3[index_k1,index_k2])
+ *     by calling perturb2_get_k_lists().
+ *
+ *  -# Set the first-order k-sampling to match the second-order one (ppt->k = ppt2->k).
+ *
+ *  -# Fill the multipole arrays (ppt2->lm_array, ppt2->lm_array_quad, ...) used to index the Boltzmann
+ *     hierarchies, by calling the perturb2_get_lm_lists().
+ *
+ *  -# Opens the files to store the line of sight sources.
+ *
+ */
 
-
-/* Here we set the indices and arrays associated to the system of equations at second perturbative order. */
 int perturb2_indices_of_perturbs(
         struct precision * ppr,
         struct precision2 * ppr2,
@@ -414,7 +615,7 @@ int perturb2_indices_of_perturbs(
         )
 {
 
-  
+
   // ==========================================================================
   // =                           Consistency Checks                           =
   // ==========================================================================
@@ -424,7 +625,7 @@ int perturb2_indices_of_perturbs(
     (ppt2->has_cmb_temperature == _FALSE_) &&
     (ppt2->has_cmb_polarization_e == _FALSE_) &&
     (ppt2->has_cmb_polarization_b == _FALSE_),
-    ppt2->error_message, "please specify a probe");
+    ppt2->error_message, "please specify at least an output");
 
   /* Synchronous gauge not supported yet */
   class_test (ppt->gauge == synchronous,
@@ -461,7 +662,6 @@ int perturb2_indices_of_perturbs(
       ppt2->error_message,
       "insufficient number of first-order multipoles. Please set 'l_max_ur_2nd_order' smaller or equal than 'l_max_ur + %d'", ppt2->lm_extra);
 
-
   /* Make sure that the number of sources kept in the line of sight integration is smaller than the number of
   evolved 2nd-order multipoles */
   if (ppt2->has_cmb_temperature)
@@ -473,7 +673,6 @@ int perturb2_indices_of_perturbs(
     class_test (ppr2->l_max_los_p > ppr2->l_max_pol_g_2nd_order,
       ppt2->error_message,
       "you chose to compute more line-of-sight sources than evolved multipoles at first order. Make sure that l_max_los_p is smaller or equal than l_max_pol_g_2nd_order.");
-
 
   /* Make sure that the number of quadratic sources kept in the line of sight integration is smaller than the number of
   available 1st-order multipoles */
@@ -488,12 +687,9 @@ int perturb2_indices_of_perturbs(
       "you chose to compute more line-of-sight quadratic sources than evolved multipoles at first order. Make sure that l_max_los_quadratic_p is smaller or equal than l_max_pol_g.");
 
 
-
-
   // ======================================================================================
   // =                              What sources to compute?                              =
   // ======================================================================================
-
 
   /* Allocate and fill the m-array, which contains the azimuthal moments to evolve.  We just copy
   it from the precision structure. */
@@ -609,6 +805,21 @@ int perturb2_indices_of_perturbs(
   class_alloc (ppt2->sources, ppt2->tp2_size * sizeof(double ***), ppt2->error_message);
 
 
+  // --------------------------------------------------------------------
+  // -                          Initial conditions                      -
+  // --------------------------------------------------------------------
+  
+  /* SONG supports only adiabatic initial conditions. You can skip the following
+  test but you risk to obtain unconsistent results. */
+
+  class_test (ppt->has_ad == _FALSE_,
+    ppt->error_message,
+    "SONG only supports adiabatic initial conditions; make sure ic=ad in parameter file");
+
+  ppt2->index_ic_first_order = ppt->index_ic_ad;
+
+  
+
 
   // ==============================================================================
   // =                            Fill (l,m) arrays                               =
@@ -693,18 +904,29 @@ int perturb2_indices_of_perturbs(
 
 
 /**
- * This function will allocate and fill the following fields:
- *   ppt2->m
- *   ppr2->index_m_max
- *   ppt2->largest_l
- *   ppt2->largest_l_quad
- *   ppt2->index_monopole
- *   ppt2->corresponding_l
- *   ppt2->corresponding_index_m
- *   ppt2->lm_array
- *   ppt2->lm_array_quad
- *   ppt2->nlm_array
- *   ppt2->c_minus, c_plus, etc.
+ * Compute quantities related to the spherical harmonics projection of the
+ * perturbations.
+ *
+ * In detail, this function does:
+ *
+ * -# Compute quantities arrays needed to index the (l,m) level of ppt->sources:
+ *    - ppt2->m
+ *    - ppt2->largest_l
+ *    - ppt2->largest_l_quad
+ *    - ppt2->index_monopole
+ *    - ppt2->corresponding_l
+ *    - ppt2->corresponding_index_m
+ *    - ppt2->lm_array
+ *    - ppt2->lm_array_quad
+ *    - ppt2->nlm_array
+ *
+ * -# Compute the coupling coefficients required to build the Boltzmann equations:
+ *    - ppt2->c_minus
+ *    - ppt2->c_plus
+ *    - ppt2->d_minus
+ *    - ppt2->d_plus
+ *    - ppt2->d_zero
+ *    - ppt2->coupling_coefficients
  */
 
 int perturb2_get_lm_lists (
@@ -797,7 +1019,7 @@ int perturb2_get_lm_lists (
                   ppt2->error_message);
 
     /* We enter the loop only if index_m_max >= 0. This is important because all the loops
-      on m in this module will cycle in this way. */
+    on m in this module will cycle in this way. */
     for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
 
       ppt2->lm_array[l][index_m] = multipole2offset_l_indexm (l, ppt2->m[index_m], ppt2->m, ppt2->m_size);
@@ -1294,20 +1516,32 @@ int perturb2_get_lm_lists (
 
 
 
-
-
-
-
-
-
-
-
-
 /**
- * Determine the (k1,k2,k3) grid where the 2nd-order system of equations will be solved.
- * The following fields will be written:
- *   ppt2->k, ppt2->k_size, ppt2->k3, ppt2->k3_size, 
- *   ppt->k, ppt->k_size, ppt->k_size_cl
+ * Determine the Fourier grid in (k1,k2,k3) that will be used to sample the line of
+ * sight sources.
+ * 
+ * At second order, the perturbations depend on three Fourier wavemodes rather than one,
+ * due to mode coupling. As a result, we need to solve the Boltzmann-Einstein system on a
+ * 3D grid in (k1,k2,k3).
+ *
+ * Here we define the (k1,k2,k3) grid using an optimised algorithm way; for an average
+ * precision run, the final list will consist of about 10^6 triplets (compare to the about
+ * 400 values of k at first order).
+ *
+ * The algorithm we use is described in sec. 5.3.2 of http://arxiv.org/abs/1405.2280; more
+ * detail on mode coupling is in sec 3.5.2.
+ *
+ * This function will write the following fields in the ppt2 structure:
+ *  - ppt2->k
+ *  - ppt2->k_size
+ *  - ppt2->k3
+ *  - ppt2->k3_size
+ *
+ * and the following ones in the ppt structure:
+ *  - ppt->k
+ *  - ppt->k_size
+ *  - ppt->k_size_cl
+ *  - ppt->k_size_cmb
  */
 int perturb2_get_k_lists (
           struct precision * ppr,
@@ -1323,7 +1557,6 @@ int perturb2_get_k_lists (
   // ============================================================================================
   // =                              Determine grid for k1 and k2                                =
   // ============================================================================================
-  
   
   // --------------------------------------------------------
   // -                 Logarithmic k-sampling               -
@@ -1819,10 +2052,6 @@ int perturb2_get_k_lists (
 
 
 
-
-
-
-
   // ==============================================================================================
   // =                                    First-order k-grid                                      =
   // ==============================================================================================
@@ -1833,6 +2062,9 @@ int perturb2_get_k_lists (
 
   class_alloc (ppt->k_size_cl, sizeof(int *), ppt2->error_message);
   ppt->k_size_cl[0] = ppt2->k_size;
+
+  class_alloc (ppt->k_size_cmb, sizeof(int *), ppt2->error_message);
+  ppt->k_size_cmb[0] = ppt2->k_size;
 
   class_alloc (ppt->k, sizeof(double *), ppt2->error_message);
   class_alloc (ppt->k[0], ppt->k_size[0]*sizeof(double), ppt2->error_message);
@@ -1850,14 +2082,20 @@ int perturb2_get_k_lists (
 
 
 
-
-
-
-
-
 /**
- * Define time-sampling for the source terms.
- * Here allocate and fill ppt2->tau_sampling, and we allocate ppt2->sources.
+ *
+ * Define the time sampling for the source terms; tau stands for conformal time.
+ *
+ * In detail, this function does:
+ *  
+ *  -# Define the time sampling for the line of sight sources in ppt2->tau_sampling.
+ *
+ *  -# Define the time sampling for the quadratic sources in ppt->tau_sampling_quadsources,
+ *     so that it can be later passed to the first-order perturbations.c module.
+ *
+ *  -# Allocate the (k1, k2, k3, tau) levels of ppt2->sources.
+ *
+ *  TODO: streamline code, using realloc like CLASS.
  */
 int perturb2_timesampling_for_sources (
              struct precision * ppr,
@@ -1904,8 +2142,6 @@ int perturb2_timesampling_for_sources (
   } // end of if (has_custom_timesampling)
 
 
-
-
   // ==================================================================
   // =                Standard 2nd-order time sampling                =
   // ==================================================================
@@ -1914,6 +2150,7 @@ int perturb2_timesampling_for_sources (
   metric or lensing terms in the line-of-sight integral, which are important all the way up to today.  
   We use the same time-sampling technique as in standard CLASS, who is optimized to sample the visibility
   function and the late ISW regime. For details, please refer to the function perturb_timesampling_for_sources. */
+  
   else {
 
 
@@ -2025,8 +2262,7 @@ int perturb2_timesampling_for_sources (
 
       timescale_source1 = g/g_dot
       timescale_source2 = 1/sqrt |2*a_dot_dot/a - Hc^2|
-      timescale_source = 1 / (1/timescale_source1 + 1/timescale_source2)
-    */
+      timescale_source = 1 / (1/timescale_source1 + 1/timescale_source2) */
 
     double tau = tau_ini;
 
@@ -2562,13 +2798,18 @@ determine a starting integration time for the first-order system, maybe by using
 
 
 /**
-  * As in the 1st-order case, initial_conditions is called inside the vector_init function,
-  * which is in the innermost cycle on the k-modes (k1,k2,k3).  This function is called
-  * as many times as the points in the grid (k1, k2, k3). 
-  * IMPORTANT:  you should not set shear_g here, not even to zero!  At this stage, if the tca
-  * approx is on, then index_pt_shear_g = 0 which means that setting it will overwrite
-  * delta_g!
-  */
+ * Compute initial conditions for the second-order system.
+ * 
+ * This function is called once for each k-triplet (k1,k2,k3) by perturb2_vector_init(),
+ * which in turn is called by perturb2_solve(); it fills the ppw2->pv->y array. It is
+ * assumed here that all values have been set previously to zero, only non-zero values are set
+ * here.
+ *
+ * Important: mind which approximations are turned on when this function is called.
+ * Usually, the tight-coupling approximation is turned on at early times, meaning that any
+ * attempt to overwrite quantities that are not evolved if tca=on will result in a
+ * segmentation fault or, even worse, in unpredictable behaviour.
+ */
 int perturb2_initial_conditions (
              struct precision * ppr,
              struct precision2 * ppr2,
@@ -2580,7 +2821,6 @@ int perturb2_initial_conditions (
              struct perturb2_workspace * ppw2
              )
 {
-
 
   /* Shortcuts */
   double * y = ppw2->pv->y;
@@ -2659,11 +2899,11 @@ int perturb2_initial_conditions (
   }
 
   // *** Interpolate first-order quantities (ppw2->psources_1)
-  class_call (perturb_quadsources_at_tau_for_all_types (
+  class_call (perturb_song_sources_at_tau (
                 ppr,
                 ppt,
                 ppt->index_md_scalars,
-                ppt2->index_ic,
+                ppt2->index_ic_first_order,
                 ppw2->index_k1,
                 tau,
                 ppt->inter_normal,
@@ -2673,11 +2913,11 @@ int perturb2_initial_conditions (
     ppt2->error_message);
 
   // *** Interpolate first-order quantities (ppw2->psources_2)  
-  class_call (perturb_quadsources_at_tau_for_all_types (
+  class_call (perturb_song_sources_at_tau (
                 ppr,
                 ppt,
                 ppt->index_md_scalars,
-                ppt2->index_ic,
+                ppt2->index_ic_first_order,
                 ppw2->index_k2,
                 tau,
                 ppt->inter_normal,
@@ -2763,9 +3003,6 @@ int perturb2_initial_conditions (
 
 
 
-
-
-
   // ========================================================
   // =            First-order initial conditions            =
   // ========================================================
@@ -2840,7 +3077,6 @@ int perturb2_initial_conditions (
     }
 
   }
-
 
 
 
@@ -5374,7 +5610,7 @@ int perturb2_solve (
                   ppr->perturb_integration_stepsize,    /* Not needed when using the ndf15 integrator */
                   ppt2->tau_sampling,
                   tau_actual_size,
-                  perturb2_source_terms,
+                  perturb2_sources,
                   /* next entry = 'NULL' in standard
                runs; = 'perturb2_print_variables' if
                you want to output perturbations at
@@ -5396,7 +5632,6 @@ int perturb2_solve (
   } // end of for (index_interval)
 
 
-
   /* Free quantitites allocated at the beginning of the routine */  
   class_call (perturb2_vector_free (ppw2->pv),
      ppt2->error_message,
@@ -5407,18 +5642,6 @@ int perturb2_solve (
   free (interval_approx);
   free (interval_limit); 
   free(interval_number_of);
-
-  /* Add to the sources the effects that depend on the time derivative of perturbations */
-  class_call (perturb2_sources (
-                ppr,
-                ppr2,
-                pba,
-                ppt,
-                ppt2,
-                ppw2),
-    ppt2->error_message,
-    ppt2->error_message);
-
 
   return _SUCCESS_;
           
@@ -6158,25 +6381,37 @@ int perturb2_free(
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Compute the time derivatives of all the perturbations to be integrated.
+ *
+ * The derivatives of the perturbations are with respect to conformal time (tau)
+ * and are computed using as an input the current value of the perturbations, contained
+ * in the argument y. You can find find a summary of all equations involved in sec. 5.3.1 
+ * http://arxiv.org/abs/1405.2280. More technical details on the differential system
+ * and on the solver can be found in sec 5.3.2 and 5.3.3.
+ *
+ * We are going to store the time derivatives in the array dy, passed as argument.
+ * Both y and dy are accessed with the index_pt2_XXX indices.
+ *
+ * This function is never called explicitly in this module. Instead, it is passed as an
+ * argument to the evolver, which calls it whenever it needs to update dy. Since the
+ * evolver should work with functions passed from various modules, the format of the
+ * arguments is a bit special:
+ * - fixed parameters and workspaces are passed through the generic pointer.
+ *   parameters_and_workspace.
+ * - errors are not written as usual in ppt2->error_message, but in a generic
+ *   error_message passed in the list of arguments.
+ */
 int perturb2_derivs (
-       double tau,
-       double * y,
-       double * dy,
-       void * parameters_and_workspace,
-       ErrorMsg error_message
-       )
+      double tau, /**< current time */
+      double * y, /**< values of evolved perturbations at tau (y[index_pt2_XXX]) */
+      double * dy, /**< output: derivatives of evolved perturbations at tau (dy[index_pt2_XXX]) */
+      int index_tau, /**< current time index (from ppt2->tau_sampling array) */
+      void * parameters_and_workspace, /**< generic structure with all needed parameters, including
+                                       backgroudn and thermo structures; will be cast to type
+                                       perturb2_parameters_and_workspace()  */
+      ErrorMsg error_message /**< error message */
+      )
 {
   
   /* Define shortcuts to avoid heavy notation */
@@ -7481,12 +7716,12 @@ int perturb2_quadratic_sources (
  
       /* First-order sources in k1 */
       ppw2->pvec_sources1[index_type] =
-        ppt->quadsources[ppt->index_md_scalars][ppt2->index_ic*qs_size + index_type]
+        ppt->quadsources[ppt->index_md_scalars][ppt2->index_ic_first_order*qs_size + index_type]
                         [index_tau*ppt->k_size[ppt->index_md_scalars]+ppw2->index_k1];
  
       /* First-order sources in k2 */
       ppw2->pvec_sources2[index_type] =
-        ppt->quadsources[ppt->index_md_scalars][ppt2->index_ic*qs_size + index_type]
+        ppt->quadsources[ppt->index_md_scalars][ppt2->index_ic_first_order*qs_size + index_type]
                         [index_tau*ppt->k_size[ppt->index_md_scalars]+ppw2->index_k2];
     }
   }
@@ -7494,11 +7729,11 @@ int perturb2_quadratic_sources (
   else {
         
     /* Interpolate first-order quantities in tau and k1 (ppw2->psources_1) */
-    class_call (perturb_quadsources_at_tau_for_all_types (
+    class_call (perturb_song_sources_at_tau (
                  ppr,
                  ppt,
                  ppt->index_md_scalars,
-                 ppt2->index_ic,
+                 ppt2->index_ic_first_order,
                  ppw2->index_k1,
                  tau,
                  ppt->inter_normal,
@@ -7508,11 +7743,11 @@ int perturb2_quadratic_sources (
        ppt2->error_message);
   
     /* Interpolate first-order quantities in tau and k2 (ppw2->psources_2) */ 
-    class_call (perturb_quadsources_at_tau_for_all_types (
+    class_call (perturb_song_sources_at_tau (
                  ppr,
                  ppt,
                  ppt->index_md_scalars,
-                 ppt2->index_ic,
+                 ppt2->index_ic_first_order,
                  ppw2->index_k2,
                  tau,
                  ppt->inter_normal,
@@ -8512,19 +8747,35 @@ int perturb2_quadratic_sources (
 
 
 /**
-  * Get the sources terms from the solutions of the second-order system of equations at a fixed tau and k.
-  * This function is going to be used inside the evolver to get the 2nd-order quantities as they are computed.
-  * Remember that 'y' is the vector that contains the instantaneous value of the evolved perturbations,
-  * i.e. those that are indexed with index_pt2
-  */
-int perturb2_source_terms (
-    double tau,
-    double * y,
-    double * dy,
-    int index_tau,
-    void * parameters_and_workspace,
-    ErrorMsg error_message
-    )
+ * Build the second-order line-of-sight sources and store them in ppt2->sources.
+ *
+ * This function is called from inside the differential solver, so that it can
+ * access all perturbations as they are evolved.
+ *
+ * The derivatives of the perturbations need to be written with respect to conformal time
+ * (tau). You can find find a summary of all equations involved in sec. 5.3.1 
+ * http://arxiv.org/abs/1405.2280. More technical details on the differential system
+ * and on the solver can be found in sec 5.3.2 and 5.3.3.
+ *
+ * This function is never called explicitly in this module. Instead, it is passed as an
+ * argument to the evolver, which calls it whenever it hits a time contained in the time
+ * sampling array ppt2->tau_sampling. Since the evolver should work with functions passed
+ * from various modules, the format of the arguments is a bit special:
+ * - fixed parameters and workspaces are passed through the generic pointer.
+ *   parameters_and_workspace.
+ * - errors are not written as usual in ppt2->error_message, but in a generic
+ *   error_message passed in the list of arguments.
+ */
+int perturb2_sources (
+      double tau, /**< current time */
+      double * y, /**< values of evolved perturbations at tau (y[index_pt2_XXX]) */
+      double * dy, /**< output: derivatives of evolved perturbations at tau (dy[index_pt2_XXX]) */
+      int index_tau, /**< current time index (from ppt2->tau_sampling array) */
+      void * parameters_and_workspace, /**< generic structure with all needed parameters, including
+                                       backgroudn and thermo structures; will be cast to type
+                                       perturb2_parameters_and_workspace()  */
+      ErrorMsg error_message /**< error message */
+      )
 {
 
   /* Shortcuts for the structures */
@@ -8627,11 +8878,11 @@ int perturb2_source_terms (
   }
   
   /* Interpolate first-order quantities in tau and k1 (ppw2->psources_1) */
-  class_call (perturb_quadsources_at_tau_for_all_types (
+  class_call (perturb_song_sources_at_tau (
                 ppr,
                 ppt,
                 ppt->index_md_scalars,
-                ppt2->index_ic,
+                ppt2->index_ic_first_order,
                 ppw2->index_k1,
                 tau,
                 ppt->inter_normal,
@@ -8641,11 +8892,11 @@ int perturb2_source_terms (
     error_message);
   
   /* Interpolate first-order quantities in tau and k2 (ppw2->psources_2) */
-  class_call (perturb_quadsources_at_tau_for_all_types (
+  class_call (perturb_song_sources_at_tau (
                 ppr,
                 ppt,
                 ppt->index_md_scalars,
-                ppt2->index_ic,
+                ppt2->index_ic_first_order,
                 ppw2->index_k2,
                 tau,
                 ppt->inter_normal,
@@ -8785,7 +9036,8 @@ int perturb2_source_terms (
   double delta_b_1 = pvec_sources1[ppt->index_qs_delta_b];
   double delta_b_2 = pvec_sources2[ppt->index_qs_delta_b];
     
-  /* First-order photon velocity (for explanations on the following definitions, see comments in perturb2_quadratic_sources) */
+  /* First-order photon velocity (for explanations on the following definitions, see comments
+  in perturb2_quadratic_sources()) */
   double v_g_1 = ppw2->pvec_sources1[ppt->index_qs_v_g];
   double v_g_2 = ppw2->pvec_sources2[ppt->index_qs_v_g];
   double v_g_0_1 = -k1*v_g_1;
@@ -8850,7 +9102,7 @@ int perturb2_source_terms (
     
   /* We are now going to fill ppt2->sources, the multi-array containing the line-of-sight
   source functions for each type of source function and for each value of k1,k2,k3 and
-  tau. This is he main product of the whole perturbations2.c module.
+  tau. This is the main product of the whole perturbations2.c module.
     
     The sources array is indexed as
   
@@ -8883,10 +9135,10 @@ int perturb2_source_terms (
    *
    *   The scattering part of the LOS sources is given by the multipole decomposition of the quadratic part of
    * the collision term.  For the monopole, which lacks a purely second-order collision term, there is an extra
-   * kappa_dot*I(0,0) contribution.  The scattering part is the simplest part to treat, as it is strongly suppressed after
-   * recombination.  When all other sources are turned off, the sources of the LOS integration need to be computed
-   * only up to shortly after recombination.  Furthermore, the (l,m) contribution from the quadratic sources is
-   * is suppressed for l>2 multipoles by tight coupling.
+   * kappa_dot*I(0,0) contribution.  The scattering part is the simplest part to treat, as it is strongly
+   * suppressed after recombination.  When all other sources are turned off, the sources of the LOS integration
+   * need to be computed only up to shortly after recombination.  Furthermore, the (l,m) contribution from
+   * the quadratic sources is suppressed for l>2 multipoles by tight coupling.
    */
 
 
@@ -9528,36 +9780,7 @@ int perturb2_source_terms (
   
   return _SUCCESS_;
 
-} // end of perturb2_source_terms
-
-
-
-
-
-
-
-/**
- * Compute some of the line of sight sources by means of integration by parts.
- */
-int perturb2_sources (
-  struct precision * ppr,
-  struct precision2 * ppr2,
-  struct background * pba,
-  struct perturbs * ppt,
-  struct perturbs2 * ppt2,
-  struct perturb2_workspace * ppw2)
-{
-  
-    
-  return _SUCCESS_;   
-    
-}
-
-
-
-
-
-
+} // end of perturb2_sources
 
 
 
@@ -9817,11 +10040,11 @@ int perturb2_save_early_transfers (
   }
   
   /* Interpolate first-order quantities (ppw2->psources_1) */
-  class_call (perturb_quadsources_at_tau_for_all_types (
+  class_call (perturb_song_sources_at_tau (
                ppr,
                ppt,
                ppt->index_md_scalars,
-               ppt2->index_ic,
+               ppt2->index_ic_first_order,
                ppw2->index_k1,
                tau,
                ppt->inter_normal,
@@ -9831,11 +10054,11 @@ int perturb2_save_early_transfers (
      ppt2->error_message);
   
   /* Interpolate first-order quantities (ppw2->psources_2) */
-  class_call (perturb_quadsources_at_tau_for_all_types (
+  class_call (perturb_song_sources_at_tau (
                ppr,
                ppt,
                ppt->index_md_scalars,
-               ppt2->index_ic,
+               ppt2->index_ic_first_order,
                ppw2->index_k2,
                tau,
                ppt->inter_normal,
@@ -10763,7 +10986,7 @@ int perturb2_quadratic_sources_at_tau (
   /* Cubic spline interpolation */
   else if (ppr->quadsources_time_interpolation == cubic_interpolation) {
 
-    class_call(perturb2_quadratic_sources_at_tau_cubic_spline (
+    class_call(perturb2_quadratic_sources_at_tau_spline (
               ppt,
               ppt2,
               tau,            
@@ -10916,7 +11139,7 @@ int perturb2_quadratic_sources_at_tau_linear(
 
 
 
-int perturb2_quadratic_sources_at_tau_cubic_spline (
+int perturb2_quadratic_sources_at_tau_spline (
         struct perturbs * ppt,
         struct perturbs2 * ppt2,
         double tau,
@@ -10944,71 +11167,6 @@ int perturb2_quadratic_sources_at_tau_cubic_spline (
   return _SUCCESS_; 
 
 }
-
-
-
-/**
-  * Load the line of sight sources from disk for a given k1 value. The sources will be read from the file
-  * given in ppt2->sources_paths[index_k1].
-  *
-  * This function is used in the transfer2.c module.
-  *
-  */
-int perturb2_load_sources_from_disk(
-        struct perturbs2 * ppt2,
-        int index_k1
-        )
-{
- 
-  /* Allocate memory to keep the line-of-sight sources */
-  class_call (perturb2_allocate_k1_level(ppt2, index_k1), ppt2->error_message, ppt2->error_message);
-  
-  /* Open file for reading */
-  class_open (ppt2->sources_files[index_k1], ppt2->sources_paths[index_k1], "rb", ppt2->error_message);
-
-  /* Print some debug */
-  if (ppt2->perturbations2_verbose > 2)
-    printf("     * reading line-of-sight source for index_k1=%d from '%s' ... \n", index_k1, ppt2->sources_paths[index_k1]);
-  
-  for (int index_type = 0; index_type < ppt2->tp2_size; ++index_type) {
-  
-    for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
-
-      int k3_size = ppt2->k3_size[index_k1][index_k2];
-
-        int n_to_read = ppt2->tau_size*k3_size;
-
-        int n_read = fread(
-              ppt2->sources[index_type][index_k1][index_k2],
-              sizeof(double),
-              n_to_read,
-              ppt2->sources_files[index_k1]);
-
-        /* Read a chunk with all the time values for this set of (type,k1,k2,k3) */
-        class_test( n_read != n_to_read,
-          ppt2->error_message,
-          "Could not read in '%s' file, read %d entries but expected %d",
-          ppt2->sources_paths[index_k1], n_read, n_to_read);
-
-        /* Update the counter for the values stored in ppt2->sources */
-        #pragma omp atomic
-        ppt2->count_memorised_sources += n_to_read;
-
-    } // end of for (index_k2)
-    
-  } // end of for (index_type)
-  
-  /* Close file */
-  fclose(ppt2->sources_files[index_k1]);
-  
-  // if (ppt2->perturbations2_verbose > 2)
-  //   printf ("Done.\n");
-
-  return _SUCCESS_; 
-  
-}
-
-
 
 
 
@@ -11063,113 +11221,6 @@ int perturb2_store_sources_to_disk(
   return _SUCCESS_; 
   
 }
-  
-  
-  
-
-
-
-/**
-  * Allocate the k1 level of the array ppt2->sources[index_type][index_k1][index_k2][index_tau*k3_size + index_k3.
-  * This function must be called after the functions perturb2_indices_of_perturbs and perturb2_get_k_lists, and
-  * after the ppt2->tau_size field have been filled.
-  *
-  */
-int perturb2_allocate_k1_level(
-     struct perturbs2 * ppt2,
-     int index_k1
-     // int index_m
-     )
-{
-
-  /* Issue an error if ppt2->sources[index_k1] has already been allocated */
-  class_test (ppt2->has_allocated_sources[index_k1] == _TRUE_,
-              ppt2->error_message,
-              "the index_k1=%d level of ppt2->sources is already allocated, stop to prevent error", index_k1);
-
-
-  int index_k2, index_k3, index_type;
-  long int count=0;
-  
-  for (index_type = 0; index_type < ppt2->tp2_size; index_type++) {
-
-    /* Allocate only the level corresponding to the considered 'm' mode */
-    // if (ppt2->corresponding_index_m[index_type] != index_m) continue;
-
-    /* Allocate k2 level.  Note that the size of this level is smaller than ppt2->k_size,
-    and depends on k1.  The reason is that we shall solve the system only for those k2's
-    that are smaller than k1 (our equations are symmetrised wrt to k1<->k2) */
-
-    class_alloc (
-      ppt2->sources[index_type][index_k1],
-      (index_k1+1) * sizeof(double *),
-      ppt2->error_message);
-
-    for (index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
-
-      /* Allocate k3-tau level. Use calloc as we rely on the array to be initialised to zero. */
-      class_calloc (
-        ppt2->sources[index_type][index_k1][index_k2],
-        ppt2->tau_size*ppt2->k3_size[index_k1][index_k2],
-        sizeof(double),
-        ppt2->error_message);
-    
-      #pragma omp atomic
-      ppt2->count_allocated_sources += ppt2->tau_size*ppt2->k3_size[index_k1][index_k2];
-      count += ppt2->tau_size*ppt2->k3_size[index_k1][index_k2];
-
-    } // end of for (index_k2)
-  } // end of for (index_type)
-
-  /* Print some debug information on memory consumption */
-  if (ppt2->perturbations2_verbose > 2)
-    printf(" -> allocated ~ %.3g MB (%ld doubles) for index_k1=%d; the size of ppt2->sources so far is ~ %.3g MB;\n",
-      count*sizeof(double)/1e6, count, index_k1, ppt2->count_allocated_sources*sizeof(double)/1e6);
-
-  /* We succesfully allocated the k1 level of ppt2->sources */
-  ppt2->has_allocated_sources[index_k1] = _TRUE_;
-
-
-  return _SUCCESS_;
-
-}
-
-
-
-
-
-
-
-int perturb2_free_k1_level(
-     struct perturbs2 * ppt2,
-     int index_k1
-     )
-{
-
-  /* Issue an error if ppt2->sources[index_k1] has already been freed */
-  class_test (ppt2->has_allocated_sources[index_k1] == _FALSE_,
-    ppt2->error_message,
-    "the index_k1=%d level of ppt2->sources is already free, stop to prevent error", index_k1);
-
-  int k1_size = ppt2->k_size;
-
-  for (int index_type = 0; index_type < ppt2->tp2_size; index_type++) {
-    for (int index_k2 = 0; index_k2 <= index_k1; index_k2++)
-        free(ppt2->sources[index_type][index_k1][index_k2]);
-  
-    free(ppt2->sources[index_type][index_k1]);
-  
-  } // end of for (index_type)
-
-
-  /* We succesfully freed the k1 level of ppt2->sources */
-  ppt2->has_allocated_sources[index_k1] = _FALSE_;
-
-  return _SUCCESS_;
-
-}
-
-
 
 #undef sources
 

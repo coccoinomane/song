@@ -29,13 +29,13 @@ int main(int argc, char **argv) {
   ErrorMsg errmsg;            /* error messages */
 
   if (input_init_from_arguments(argc,argv,&pr,&ba,&th,&pt,&tr,&pm,
-  &sp,&nl,&le,&bs,&bi,&fi,&op,errmsg) == _FAILURE_) {
+    &sp,&nl,&le,&bs,&bi,&fi,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
     return _FAILURE_;
   }
 
   if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&tr,&bs,&bs2,&tr2,&pm,
-  &sp,&nl,&le,&bi,&fi,&op,errmsg) == _FAILURE_) {
+    &sp,&nl,&le,&bi,&fi,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg);
     return _FAILURE_;
   }
