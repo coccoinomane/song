@@ -6,68 +6,83 @@
 
 
 // ======================================================================================
-// =                                   Approximations                                   =
+// =                                  Enum structures                                   =
 // ======================================================================================
 
 /**
- * Labels that denote the different ways in which each approximation scheme is implemented
- * at second order.
+ * Implementations of the tight coupling approximation.
  */
- 
-
-/* Tight coupling approximation */
 enum tca2_method {
-  tca2_none,                        /* No TCA approximation */
-  tca2_zero                         /* Zero-order TCA approximation */
+  tca2_none,           /**< No TCA approximation */
+  tca2_zero            /**< Zero-order TCA approximation (NOT IMPLEMENTED YET) */
 };
 
-/* Radiation streaming approximation, i.e. sub-horizon solution for monopole and dipole */
+/**
+ * Implementations of the radiation streaming approximation. RSA provides a 
+ * way to track the oscillations of the photon monopole and dipole at
+ * subhorizon scales, all the way to today.
+ */
 enum rsa2_method {
-  rsa2_none,                        /* No RSA approximation */
-  rsa2_null                         /* Just set all photon multipoles to zero */
+  rsa2_none,          /**< No RSA approximation */
 };
 
-/* Ultra relativistic fluid approximation, i.e. RSA for neutrinos */
+/**
+ * Implementations of the ultra relativistic fluid approximation. RSA allows
+ * to track the oscillations of the neutrino monopole and dipole at
+ * subhorizon scales.
+ */
 enum ufa2_method {
-  ufa2_none,                         /* No UFA approximation */
-  ufa2_null                          /* Just set all UR multipoles to zero */
+  ufa2_none            /**< No UFA approximation */
 };
 
-
-/* No radiation approximation, i.e. stop evolving radiation well after equality */
+/**
+ * No radiation approximation. This is a blunt approximation where, well after
+ * matter radiation equality, we either stop evolving massless species or we
+ * approximate them with a perfect fluid.
+ */
 enum nra2_method {
-  nra2_none,                        /* No NRA approximation */
-  nra2_all,                         /* Switch off all multipoles for all relativistic species */
-  nra2_fluid                        /* Switch off l>1 multipoles for all relativistic species */
+  nra2_none,            /**< No NRA approximation */
+  nra2_all,             /**< Switch off all multipoles for all relativistic species */
+  nra2_fluid            /**< Switch off l>1 multipoles for all relativistic species */
 };
 
-/* No radiation approximation flags */
-enum nra_flags {nra_off, nra_on};
+/**
+ * On and off flags for the NRA (no radiation approximation)
+ */
+enum nra_flags {
+  nra_off,
+  nra_on
+};
 
 
-/* Which Einstein equation to use for the derivative of the Newtonian potential phi? */
+/**
+ * Which Einstein equation to use for the derivative of the Newtonian potential phi?
+ */
 enum phi_prime_equation {
-  poisson,
-  longitudinal
+  poisson,      /**< Use Poisson equation (eq 5.2 of http://arxiv.org/abs/1405.2280) */
+  longitudinal  /**< Use the longitudinal equation (eq 3.98 of http://arxiv.org/abs/1405.2280) */
 };
 
-
-/* Possible sampling methods for the ppt2->k array */
+/**
+ * Possible sampling methods for the ppt2->k array
+ */
 enum sources2_k_sampling {
-  lin_k_sampling,                  /* Linear k sampling */
-  log_k_sampling,                  /* Logarithmic k sampling */
-  class_sources_k_sampling,        /* k sampling adopted in perturb_get_k_list */
-  smart_sources_k_sampling         /* smart k-sampling, logarithmic + linear */
+  lin_k_sampling,                  /**< Linear k sampling */
+  log_k_sampling,                  /**< Logarithmic k sampling */
+  class_sources_k_sampling,        /**< k sampling adopted in perturb_get_k_list */
+  smart_sources_k_sampling         /**< smart k-sampling, logarithmic + linear */
 };
 
 
-/* Possible sampling methods for the ppt2->k3[index_k1][index_k2] array */
+/**
+ * Possible sampling methods for the ppt2->k3[index_k1][index_k2] array
+ */
 enum sources2_k3_sampling {
-  lin_k3_sampling,                  /* Linear k sampling */
-  log_k3_sampling,                  /* Logarithmic k sampling */
-  smart_k3_sampling,                /* k sampling adopted in perturb_get_k3_list */
-  theta12_k3_sampling,              /* Sampling linear in the angle between k1 and k2 */
-  theta13_k3_sampling               /* Sampling linear in the angle between k1 and k3 */
+  lin_k3_sampling,                  /**< Linear k sampling */
+  log_k3_sampling,                  /**< Logarithmic k sampling */
+  smart_k3_sampling,                /**< k sampling adopted in perturb_get_k3_list */
+  theta12_k3_sampling,              /**< Sampling linear in the angle between k1 and k2 */
+  theta13_k3_sampling               /**< Sampling linear in the angle between k1 and k3 */
 };
 
 

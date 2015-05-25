@@ -6,7 +6,7 @@
 # =========================================================================
 
 # Your C compiler and library tool
-CC			 = gcc
+CC			 = gcc 
 AR       = ar rv
 
 # Optimization flags
@@ -17,6 +17,7 @@ CFLAGS     += -g
 # CFLAGS     += -w
 CFLAGS     += -std=c99
 CFLAGS     += -fopenmp # comment for compiling without parallel support
+# CFLAGS     += -DVALGRIND
 
 # Header files and libraries
 INCLUDES 					  = -I../include -I../$(CLASS_DIR)/include

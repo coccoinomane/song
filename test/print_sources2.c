@@ -123,12 +123,12 @@ int main(int argc, char **argv) {
   }
   
 
-  // ===================================================================================
-  // =                               Compute perturbations                             =
-  // ===================================================================================
+  // ===============================================================================
+  // =                           Compute perturbations                             =
+  // ===============================================================================
 
-  /* Decrease the argument counter. The reason is that CLASS should be fed only its default arguments,
-  that is the parameter files and, optionally, the run directory */
+  /* Decrease the argument counter. The reason is that CLASS should be fed only its
+  default arguments, that is the parameter files and, optionally, the run directory */
   argc -= n_args;
 
   if (input_init_from_arguments(argc,argv,&pr,&ba,&th,&pt,&tr,&pm,
@@ -143,9 +143,13 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
-  /* Compute the second-order sources only no matter what is written in params.ini */
-  pt2.has_perturbations2 = _TRUE_;
+  if (pt2.has_perturbations2 == _FALSE_) {
+    printf ("\n\nSpecify an output requiring a second-order computation (e.g. out=tCl2)\n");
+    return _FAILURE_;
+  }
 
+  /* Print the source functions without the artificial rescaling factor sin(theta)^m */
+  pt2.rescale_quadsources = _FALSE_;
 
   if (background_init(&pr,&ba) == _FAILURE_) {
     printf("\n\nError running background_init \n=>%s\n",ba.error_message);

@@ -1,6 +1,9 @@
-/** @file input2.c Documented input module for SONG.
+/** @file input2.c
  *
- * Guido W. Pettinari, 13.03.2013
+ * Input module for SONG.
+ *
+ * Created by Guido W. Pettinari on the 13.03.2013
+ * Based on input.c by the CLASS team (http://class-code.net/)
  */
 
 #include "input2.h" 
@@ -277,7 +280,8 @@ int input2_init (
   // =                           Perturbations, time sampling                           =
   // ====================================================================================
 
-  class_read_double("tau_start_evolution_2nd_order", ppt2->tau_start_evolution);
+  class_read_double("tau_start_evolution_2nd_order", ppt2->tau_start_evolution); /* obsolete */
+  class_read_double("tau_start_evolution_song", ppt2->tau_start_evolution);
 
   class_read_double("recombination_max_to_end_ratio", ppt2->recombination_max_to_end_ratio);
 
@@ -318,9 +322,19 @@ int input2_init (
   }
    
   /* Precision parameters for the time sampling */
-  class_read_double("perturb_sampling_stepsize_for_2nd_order", ppr2->perturb_sampling_stepsize_2nd_order);
-  class_read_double("start_small_k_at_tau_c_over_tau_h_2nd_order", ppr2->start_small_k_at_tau_c_over_tau_h_2nd_order);
-  class_read_double("start_large_k_at_tau_h_over_tau_k_2nd_order", ppr2->start_large_k_at_tau_h_over_tau_k_2nd_order);
+  class_read_double("perturb_sampling_stepsize_for_2nd_order",
+    ppr2->perturb_sampling_stepsize_song); /* obsolete */
+  class_read_double("start_small_k_at_tau_c_over_tau_h_2nd_order",
+    ppr2->start_small_k_at_tau_c_over_tau_h_song); /* obsolete */
+  class_read_double("start_large_k_at_tau_h_over_tau_k_2nd_order",
+    ppr2->start_large_k_at_tau_h_over_tau_k_song); /* obsolete */
+
+  class_read_double("perturb_sampling_stepsize_song",
+    ppr2->perturb_sampling_stepsize_song);
+  class_read_double("start_small_k_at_tau_c_over_tau_h_song",
+    ppr2->start_small_k_at_tau_c_over_tau_h_song);
+  class_read_double("start_large_k_at_tau_h_over_tau_k_song",
+    ppr2->start_large_k_at_tau_h_over_tau_k_song);
   
 
   // ===========================================================================
@@ -354,22 +368,34 @@ int input2_init (
   }
 
   /* Parameters for the smart k1-k2 sampling */
-  class_read_double("k_scalar_min_tau0_2nd_order",ppr2->k_scalar_min_tau0_2nd_order);
-  class_read_double("k_scalar_max_tau0_over_l_max_2nd_order",ppr2->k_scalar_max_tau0_over_l_max_2nd_order);
-  class_read_double("k_scalar_step_sub_2nd_order",ppr2->k_scalar_step_sub_2nd_order);
-  class_read_double("k_scalar_linstep_super_2nd_order",ppr2->k_scalar_linstep_super_2nd_order);
-  class_read_double("k_scalar_logstep_super_2nd_order",ppr2->k_scalar_logstep_super_2nd_order);
-  class_read_double("k_scalar_step_transition_2nd_order",ppr2->k_scalar_step_transition_2nd_order);
 
-  class_test (ppr2->k_scalar_logstep_super_2nd_order <= 1,
+  class_read_double("k_scalar_min_tau0_2nd_order",ppr2->k_min_tau0); /* obsolete */
+  class_read_double("k_scalar_max_tau0_over_l_max",ppr2->k_max_tau0_over_l_max); /* obsolete */
+  class_read_double("k_scalar_step_sub_2nd_order",ppr2->k_step_sub); /* obsolete */
+  class_read_double("k_scalar_linstep_super_2nd_order",ppr2->k_step_super); /* obsolete */
+  class_read_double("k_scalar_logstep_super_2nd_order",ppr2->k_logstep_super); /* obsolete */
+  class_read_double("k_scalar_step_transition_2nd_order",ppr2->k_step_transition); /* obsolete */
+
+  class_read_double("k_min_tau0_song",ppr2->k_min_tau0);
+  class_read_double("k_max_tau0_over_l_max_song",ppr2->k_max_tau0_over_l_max);
+  class_read_double("k_step_sub_song",ppr2->k_step_sub);
+  class_read_double("k_step_super_song",ppr2->k_step_super);
+  class_read_double("k_logstep_super_song",ppr2->k_logstep_super);
+  class_read_double("k_step_transition_song",ppr2->k_step_transition);
+
+  class_test (ppr2->k_logstep_super <= 1,
     ppr2->error_message,
-    "a logarithmic step must be larger than 1");
+    "logarithmic step must be larger than 1");
     
   /* Parameters for the custom lin/log sampling */
-  class_read_double("k_min_scalars", ppr2->k_min_scalars);
-  class_read_double("k_max_scalars", ppr2->k_max_scalars);
-  class_read_int("k_size_scalars", ppr2->k_size_scalars);
 
+  class_read_double("k_min_scalars", ppr2->k_min_custom); /* obsolete */
+  class_read_double("k_max_scalars", ppr2->k_max_custom); /* obsolete */
+  class_read_int("k_size_scalars", ppr2->k_size_custom); /* obsolete */
+
+  class_read_double("k_min_custom_song", ppr2->k_min_custom);
+  class_read_double("k_max_custom_song", ppr2->k_max_custom);
+  class_read_int("k_size_custom_song", ppr2->k_size_custom);
 
 
   /* - k3 sampling of the sources */
@@ -446,6 +472,10 @@ int input2_init (
   if ((flag1 == _TRUE_) && (strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL)) {
     ppt2->has_perfect_cdm = _FALSE_;
   }
+
+  class_read_double("tol_perturb_integration_2nd_order",
+    ppr2->tol_perturb_integration_song); /* obsolete */
+  class_read_double("tol_perturb_integration_song",ppr2->tol_perturb_integration_song);
 
 
   // ====================================================================================
@@ -592,6 +622,9 @@ int input2_init (
   /* Only adiabatic or vanishing initial conditions are supported so far */
   class_call(parser_read_string(pfc,"ic_2nd_order",&string1,&flag1,errmsg),
     errmsg,
+    errmsg); /* obsolete */
+  class_call(parser_read_string(pfc,"ic_song",&string1,&flag1,errmsg),
+    errmsg,
     errmsg);
 
   if (flag1 == _TRUE_) {
@@ -607,7 +640,7 @@ int input2_init (
       || (strstr(string1,"ad1") != NULL))
       ppt2->has_ad_first_order=_TRUE_; 
 
-    if ((strstr(string1,"zero") != NULL) || (strstr(string1,"AD_ZERO") != NULL))
+    if ((strstr(string1,"zero") != NULL) || (strstr(string1,"ZERO") != NULL))
       ppt2->has_zero_ic=_TRUE_; 
 
     if (strstr(string1,"unphysical") != NULL)
@@ -634,28 +667,55 @@ int input2_init (
   /* Tight coupling.  Note that, contrary to the 1st order case, we read the approximation settings
   directly into the ppt2 structure rather than in the precision one.  We do so in order to keep all
   2nd-order related quantities in the same structure */
-  class_read_int("tight_coupling_approximation_2nd_order", ppt2->tight_coupling_approximation);
+  class_read_int("tight_coupling_approximation_2nd_order",
+    ppt2->tight_coupling_approximation); /* obsolete */
   class_read_double("tight_coupling_trigger_tau_c_over_tau_h_2nd_order",  
-    ppt2->tight_coupling_trigger_tau_c_over_tau_h);
+    ppt2->tight_coupling_trigger_tau_c_over_tau_h); /* obsolete */
   class_read_double("tight_coupling_trigger_tau_c_over_tau_k_2nd_order",
+    ppt2->tight_coupling_trigger_tau_c_over_tau_k); /* obsolete */
+
+  class_read_int("tight_coupling_approximation_song",
+    ppt2->tight_coupling_approximation);
+  class_read_double("tight_coupling_trigger_tau_c_over_tau_h_song",  
+    ppt2->tight_coupling_trigger_tau_c_over_tau_h);
+  class_read_double("tight_coupling_trigger_tau_c_over_tau_k_song",
     ppt2->tight_coupling_trigger_tau_c_over_tau_k);
 
   /* Radiation streaming */
-  class_read_int("radiation_streaming_approximation_2nd_order", ppt2->radiation_streaming_approximation);
+  class_read_int("radiation_streaming_approximation_2nd_order",
+    ppt2->radiation_streaming_approximation); /* obsolete */
   class_read_double("radiation_streaming_trigger_tau_over_tau_k_2nd_order",
+   ppt2->radiation_streaming_trigger_tau_over_tau_k); /* obsolete */
+
+  class_read_int("radiation_streaming_approximation_song",
+    ppt2->radiation_streaming_approximation);
+  class_read_double("radiation_streaming_trigger_tau_over_tau_k_song",
    ppt2->radiation_streaming_trigger_tau_over_tau_k);
 
-  class_read_int("ur_fluid_approximation_2nd_order", ppt2->ur_fluid_approximation);
-  class_read_double("ur_fluid_trigger_tau_over_tau_k_2nd_order", ppt2->ur_fluid_trigger_tau_over_tau_k);
+  /* Ultra relativistic fluid approximation */
+  class_read_int("ur_fluid_approximation_2nd_order",
+    ppt2->ur_fluid_approximation); /* obsolete */
+  class_read_double("ur_fluid_trigger_tau_over_tau_k_2nd_order",
+    ppt2->ur_fluid_trigger_tau_over_tau_k); /* obsolete */
+
+  class_read_int("ur_fluid_approximation_song",
+    ppt2->ur_fluid_approximation);
+  class_read_double("ur_fluid_trigger_tau_over_tau_k_song",
+    ppt2->ur_fluid_trigger_tau_over_tau_k);
 
   /* No radiation approximation */
-  class_read_int("no_radiation_approximation_2nd_order", ppt2->no_radiation_approximation);
+  class_read_int("no_radiation_approximation_2nd_order",
+  ppt2->no_radiation_approximation); /* obsolete */
   class_read_double("no_radiation_approximation_rho_m_over_rho_r_2nd_order",
+    ppt2->no_radiation_approximation_rho_m_over_rho_r); /* obsolete */
+
+  class_read_int("no_radiation_approximation_song",
+  ppt2->no_radiation_approximation);
+  class_read_double("no_radiation_approximation_rho_m_over_rho_r_song",
     ppt2->no_radiation_approximation_rho_m_over_rho_r);
 
-  class_test(ppt2->ur_fluid_trigger_tau_over_tau_k==ppt2->radiation_streaming_trigger_tau_over_tau_k,
-    errmsg,
-    "please choose different values for precision parameters ur_fluid_trigger_tau_over_tau_k and radiation_streaming_trigger_tau_over_tau_k, in order to avoid switching two approximation schemes at the same time");
+  class_test(ppt2->ur_fluid_trigger_tau_over_tau_k==ppt2->radiation_streaming_trigger_tau_over_tau_k, errmsg,
+    "please choose different values for precision parameters ur_fluid_trigger_tau_over_tau_k_song and radiation_streaming_trigger_tau_over_tau_k_song, in order to avoid switching two approximation schemes at the same time");
 
 
   // ====================================================================================
@@ -741,21 +801,20 @@ int input2_init (
   if (ppt2->has_bispectra) 
     pbs2->extend_l1_using_m = _TRUE_;
 
-  /* Minimum x treshold for the spherical Bessels with j_l1(x).  These are the
+  /* Minimum x treshold for the spherical Bessels with j_l1(x). These are the
   Bessels that are summed to obtain J_Llm */
-  class_read_double("bessel_j_cut_2nd_order", ppr2->bessel_j_cut_2nd_order);
+  class_read_double("bessel_j_cut_2nd_order", ppr2->bessel_j_cut_song); /* obsolete */
+  class_read_double("bessel_j_cut_song", ppr2->bessel_j_cut_song);
 
   /* Minimum treshold for the functions J_Llm(x).  These are obtained as a
   weighted sum of spherical Bessels j_l1(x) with |L-l| <= l1 <= L+l */
-  class_read_double("bessel_J_cut_2nd_order", ppr2->bessel_J_cut_2nd_order);
+  class_read_double("bessel_J_cut_2nd_order", ppr2->bessel_J_cut_song); /* obsolete */
+  class_read_double("bessel_J_cut_song", ppr2->bessel_J_cut_song);
 
   /* Linear step dx where we are going to sample the j_l1(x) and J_Llm(x) */
-  class_read_double("bessel_x_step_2nd_order", ppr2->bessel_x_step_2nd_order);
-
-  /* Tolerance for the integration of the 2nd-order system.  This parameter goes
-  directly into the evolver as the parameter 'rtol' */
-  class_read_double("tol_perturb_integration_2nd_order",ppr2->tol_perturb_integration_2nd_order);
-
+  class_read_double("bessel_x_step_2nd_order", ppr2->bessel_x_step_song); /* obsolete */
+  class_read_double("bessel_x_step_song", ppr2->bessel_x_step_song);
+  
 
   // =========================================================================================
   // =                                  Transfer functions                                   =
@@ -764,26 +823,56 @@ int input2_init (
   class_read_int("transfer2_verbose", ptr2->transfer2_verbose);
 
   /* - k sampling */
-  class_call(parser_read_string(pfc,"transfer2_k_sampling",&string1,&flag1,errmsg),
+  class_call(parser_read_string(pfc,"transfer2_k3_sampling",&string1,&flag1,errmsg),
        errmsg,
        errmsg);
 
   if (flag1 == _TRUE_) {
 
     if (strstr(string1,"bessel") != NULL)
-      ptr2->k_sampling = bessel_k_sampling;
+      ptr2->k_sampling = bessel_k3_sampling;
 
     else if ((strstr(string1,"class") != NULL) || (strstr(string1,"smart") != NULL))
-      ptr2->k_sampling = class_transfer2_k_sampling;
+      ptr2->k_sampling = class_transfer2_k3_sampling;
     
     else
       class_stop(errmsg,
-        "transfer2_k_sampling=%s not supported, choose between 'bessel', 'smart' and 'class'.", string1);
+        "transfer2_k3_sampling=%s not supported, choose between 'bessel', 'smart' and 'class'.", string1);
   }
 
-  /* If 'transfer2_k_sampling=class', choose the density of the k3-sampling for the transfer functions */
-  class_read_double("k_step_trans_scalars_2nd_order", ppr2->k_step_trans_scalars_2nd_order);
+  /* If 'transfer2_k3_sampling=class', choose the density of the k3-sampling for the transfer functions */
+  class_read_double("k_step_trans_scalars_2nd_order", ppr2->q_linstep_song); /* obsolete */
+  class_read_double("q_linstep_song",ppr2->q_linstep_song);
 
+  /* Older versions of SONG used the parameter 'k_step_trans_scalars_2nd_order' instead of
+  'q_linstep_song' to specify the frequency of the k-sampling for the second-order transfer
+  functions. The change is not only in name but in substance, because the two parameters
+  have a different definition:
+    q_linstep / k_step_trans_scalars = (tau0-tau_rec)/pth->rs_rec ~ 95.
+  Here we apply the corrective factor, hoping that the user will update his parameter file
+  with q_linstep. For more detail, please refer to the comment in transfer.c on top of the
+  definition of q_period.*/
+
+  class_call(parser_read_double(pfc,"k_step_trans_scalars_2nd_order",&param1,&flag1,errmsg),
+    errmsg,
+    errmsg);
+
+  if (flag1==_TRUE_) {
+
+    ppr2->old_run = _TRUE_;
+  
+    /* The estimate (tau0-tau_rec)/pth->rs_rec ~ 95 is not exact, so there will be
+    a slight difference between the old and the new k-sampling.  For this reason,
+    we modify the parameter only if not loading from disk an older run, because
+    in that case any difference in the k-sampling will result in errors. */
+    if (ppr->load_run == _FALSE_) {
+        double ratio = 95;
+        ppr2->q_linstep_song = param1 * ratio;
+        printf ("\nOBSOLETE PARAMETER: changed k_step_trans_scalars_2nd_order=%g to q_linstep_song=%g (ratio=%g).\n",
+          param1, ppr2->q_linstep_song, ratio);
+    }
+  }
+  
 
   /* - time sampling */
   class_call(parser_read_string(pfc,"transfer2_tau_sampling",&string1,&flag1,errmsg),
@@ -804,7 +893,8 @@ int input2_init (
   }
 
   /* If 'transfer2_tau_sampling=custom', choose the density of the tau-sampling for the transfer functions */
-  class_read_double("tau_step_trans_2nd_order", ppr2->tau_step_trans_2nd_order);
+  class_read_double("tau_step_trans_2nd_order", ppr2->tau_step_trans_song); /* obsolete */
+  class_read_double("tau_step_trans_song", ppr2->tau_step_trans_song);
   
 
   // =============================================================================================
@@ -999,47 +1089,53 @@ int input2_init (
   // =========================================================================================
 
   /* Rear l_max for the Boltzmann hierarchies */
-  class_read_int("l_max_g_2nd_order", ppr2->l_max_g_2nd_order);
-  class_read_int("l_max_pol_g_2nd_order", ppr2->l_max_pol_g_2nd_order);    
-  class_read_int("l_max_ur_2nd_order", ppr2->l_max_ur_2nd_order);        
-  class_read_int("l_max_g_ten_2nd_order", ppr2->l_max_g_ten_2nd_order);       
-  class_read_int("l_max_pol_g_ten_2nd_order", ppr2->l_max_pol_g_ten_2nd_order);            
+  class_read_int("l_max_g_2nd_order", ppr2->l_max_g_song); /* obsolete */
+  class_read_int("l_max_pol_g_2nd_order", ppr2->l_max_pol_g_song); /* obsolete */
+  class_read_int("l_max_ur_2nd_order", ppr2->l_max_ur_song);   /* obsolete */
+  class_read_int("l_max_g_ten_2nd_order", ppr2->l_max_g_ten_song); /* obsolete */
+  class_read_int("l_max_pol_g_ten_2nd_order", ppr2->l_max_pol_g_ten_song); /* obsolete */
+  
+  class_read_int("l_max_g_song", ppr2->l_max_g_song);
+  class_read_int("l_max_pol_g_song", ppr2->l_max_pol_g_song);    
+  class_read_int("l_max_ur_song", ppr2->l_max_ur_song);        
+  class_read_int("l_max_g_ten_song", ppr2->l_max_g_ten_song);       
+  class_read_int("l_max_pol_g_ten_song", ppr2->l_max_pol_g_ten_song);            
 
   /* Read l_max for the quadratic sources in the Boltzmann hierarchies. If the user specified
-  a negative value for one of them, set it to the corresponding l_max_2nd_order (see above).
-  Also make sure that each of them is not larger than the corresponding l_max_2nd_order. The
-  following lines MUST go below the definitions of l_max_g_2nd_order, etc. */
+  a negative value for one of them, set it to the corresponding l_max_XXX_song (see above).
+  Also make sure that each of them is not larger than the corresponding l_max_XXX_song. The
+  following lines must go below the definitions of l_max_g_song, etc. */
   class_read_int("l_max_g_quadsources", ppr2->l_max_g_quadsources);
-  if ((ppr2->l_max_g_quadsources<0) || (ppr2->l_max_g_quadsources>ppr2->l_max_g_2nd_order))
-    ppr2->l_max_g_quadsources = ppr2->l_max_g_2nd_order;
+  if ((ppr2->l_max_g_quadsources<0) || (ppr2->l_max_g_quadsources>ppr2->l_max_g_song))
+    ppr2->l_max_g_quadsources = ppr2->l_max_g_song;
 
   class_read_int("l_max_pol_g_quadsources", ppr2->l_max_pol_g_quadsources);
-  if ((ppr2->l_max_pol_g_quadsources<0) || (ppr2->l_max_pol_g_quadsources>ppr2->l_max_pol_g_2nd_order))
-    ppr2->l_max_pol_g_quadsources = ppr2->l_max_pol_g_2nd_order;
+  if ((ppr2->l_max_pol_g_quadsources<0) || (ppr2->l_max_pol_g_quadsources>ppr2->l_max_pol_g_song))
+    ppr2->l_max_pol_g_quadsources = ppr2->l_max_pol_g_song;
 
   class_read_int("l_max_ur_quadsources", ppr2->l_max_ur_quadsources);
-  if ((ppr2->l_max_ur_quadsources<0) || (ppr2->l_max_ur_quadsources>ppr2->l_max_ur_2nd_order))
-    ppr2->l_max_ur_quadsources = ppr2->l_max_ur_2nd_order;
+  if ((ppr2->l_max_ur_quadsources<0) || (ppr2->l_max_ur_quadsources>ppr2->l_max_ur_song))
+    ppr2->l_max_ur_quadsources = ppr2->l_max_ur_song;
 
   class_read_int("l_max_g_ten_quadsources", ppr2->l_max_g_ten_quadsources);
-  if ((ppr2->l_max_g_ten_quadsources<0) || (ppr2->l_max_g_ten_quadsources>ppr2->l_max_g_ten_2nd_order))
-    ppr2->l_max_g_ten_quadsources = ppr2->l_max_g_ten_2nd_order;
+  if ((ppr2->l_max_g_ten_quadsources<0) || (ppr2->l_max_g_ten_quadsources>ppr2->l_max_g_ten_song))
+    ppr2->l_max_g_ten_quadsources = ppr2->l_max_g_ten_song;
 
   class_read_int("l_max_pol_g_ten_quadsources", ppr2->l_max_pol_g_ten_quadsources);
-  if ((ppr2->l_max_pol_g_ten_quadsources<0) || (ppr2->l_max_pol_g_ten_quadsources>ppr2->l_max_pol_g_ten_2nd_order))
-    ppr2->l_max_pol_g_ten_quadsources = ppr2->l_max_pol_g_ten_2nd_order;
+  if ((ppr2->l_max_pol_g_ten_quadsources<0) || (ppr2->l_max_pol_g_ten_quadsources>ppr2->l_max_pol_g_ten_song))
+    ppr2->l_max_pol_g_ten_quadsources = ppr2->l_max_pol_g_ten_song;
 
   /* Read l_max for the line of sight integration */
-  class_read_int("l_max_T_los", ppr2->l_max_los_t); /* obsolete, use l_max_los_t */
-  class_read_int("l_max_E_los", ppr2->l_max_los_p); /* obsolete, use l_max_los_p */
-  class_read_int("l_max_B_los", ppr2->l_max_los_p); /* obsolete, use l_max_los_p */
+  class_read_int("l_max_T_los", ppr2->l_max_los_t); /* obsolete */
+  class_read_int("l_max_E_los", ppr2->l_max_los_p); /* obsolete */
+  class_read_int("l_max_B_los", ppr2->l_max_los_p); /* obsolete */
   class_read_int("l_max_los_t", ppr2->l_max_los_t);
   class_read_int("l_max_los_p", ppr2->l_max_los_p);
 
   /* Same as above, but for the quadratic terms */
-  class_read_int("l_max_T_quadratic_los", ppr2->l_max_los_quadratic_t); /* obsolete, use l_max_los_quadratic_t */
-  class_read_int("l_max_E_quadratic_los", ppr2->l_max_los_quadratic_p); /* obsolete, use l_max_los_quadratic_p */
-  class_read_int("l_max_B_quadratic_los", ppr2->l_max_los_quadratic_p); /* obsolete, use l_max_los_quadratic_p */
+  class_read_int("l_max_T_quadratic_los", ppr2->l_max_los_quadratic_t); /* obsolete */
+  class_read_int("l_max_E_quadratic_los", ppr2->l_max_los_quadratic_p); /* obsolete */
+  class_read_int("l_max_B_quadratic_los", ppr2->l_max_los_quadratic_p); /* obsolete */
   class_read_int("l_max_los_quadratic_t", ppr2->l_max_los_quadratic_t);
   class_read_int("l_max_los_quadratic_p", ppr2->l_max_los_quadratic_p);
 
@@ -1063,13 +1159,14 @@ int input2_init (
   // =======================================================================================
 
   /* Read the list of requested azimuthal 'm' values. They must be given in ascending order. */
+
   class_call (parser_read_list_of_integers (
-                pfc,
-                "modes_2nd_order",
-                &(ppr2->m_size),
-                &(int_pointer),
-                &flag1,
-                errmsg),
+    pfc,"modes_2nd_order",&(ppr2->m_size),&(int_pointer),&flag1, errmsg),
+    errmsg,
+    errmsg); /* obsolete */
+
+  class_call (parser_read_list_of_integers (
+    pfc,"modes_song",&(ppr2->m_size),&(int_pointer),&flag1, errmsg),
     errmsg,
     errmsg);
     
@@ -1217,16 +1314,16 @@ int input2_init (
   /* Determine pbs2->xx_max, the upper limit of the x-domain of the projection functions J_Llm(x).
   These appear in the second-order line-of-sight integral with x = k*(tau0-tau), therefore we set
   pbs2->xx_max = k_max*tau0, where tau0 is the conformal age of the Universe */
-  pbs2->xx_max = ppr2->k_scalar_max_tau0_over_l_max_2nd_order * ppt->l_scalar_max;
+  pbs2->xx_max = ppr2->k_max_tau0_over_l_max * ppt->l_scalar_max;
 
   /* Accomodate for the case where the k-sampling is set manually (usually for debug purposes) */
   if ((ppt2->k_sampling == lin_k_sampling) || (ppt2->k_sampling == log_k_sampling)) {
     double tau0_guess = 18000;
-    pbs2->xx_max = ppr2->k_max_scalars * tau0_guess;
+    pbs2->xx_max = ppr2->k_max_custom * tau0_guess;
   }
 
   /* Copy the step size in xx to the bessel2 structure */
-  pbs2->xx_step = ppr2->bessel_x_step_2nd_order;
+  pbs2->xx_step = ppr2->bessel_x_step_song;
 
   /* Extend pbs2->xx_max to avoid potential out-of-bounds errors in the interpolation of J_Llm(x) */
   pbs2->xx_max += pbs2->xx_step;
@@ -1415,7 +1512,7 @@ int input2_default_params (
   // =                     transfer2 structure                  =
   // ============================================================
   ptr2->transfer2_verbose = 0;
-  ptr2->k_sampling = class_transfer2_k_sampling;
+  ptr2->k_sampling = class_transfer2_k3_sampling;
   ptr2->tau_sampling = custom_transfer2_tau_sampling;
 
 
@@ -1455,7 +1552,7 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   // =                              Tolerance                          =
   // ===================================================================
 
-  ppr2->tol_perturb_integration_2nd_order=1e-5;
+  ppr2->tol_perturb_integration_song=1e-5;
 
 
   // ==================================================================
@@ -1464,11 +1561,11 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
 
   ppr2->m_max_2nd_order=0;
 
-  ppr2->l_max_g_2nd_order=10;
-  ppr2->l_max_pol_g_2nd_order=10;
-  ppr2->l_max_ur_2nd_order=10; 
-  ppr2->l_max_g_ten_2nd_order=10;
-  ppr2->l_max_pol_g_ten_2nd_order=10;
+  ppr2->l_max_g_song=10;
+  ppr2->l_max_pol_g_song=10;
+  ppr2->l_max_ur_song=10; 
+  ppr2->l_max_g_ten_song=10;
+  ppr2->l_max_pol_g_ten_song=10;
 
   ppr2->l_max_g_quadsources=-1;
   ppr2->l_max_pol_g_quadsources=-1;
@@ -1488,9 +1585,9 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   // =                            Time samplings                          =
   // ======================================================================
 
-  ppr2->perturb_sampling_stepsize_2nd_order = 0.4;
-  ppr2->start_small_k_at_tau_c_over_tau_h_2nd_order = 0.0015;  /* decrease to start earlier in time */
-  ppr2->start_large_k_at_tau_h_over_tau_k_2nd_order = 0.07;    /* decrease to start earlier in time */
+  ppr2->perturb_sampling_stepsize_song = 0.4;
+  ppr2->start_small_k_at_tau_c_over_tau_h_song = 0.0015;  /* decrease to start earlier in time */
+  ppr2->start_large_k_at_tau_h_over_tau_k_song = 0.07;    /* decrease to start earlier in time */
 
 
 
@@ -1499,23 +1596,23 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   // =====================================================================
 
   /* CLASS smart sampling */
-  ppr2->k_scalar_min_tau0_2nd_order = 1.;
-  ppr2->k_scalar_max_tau0_over_l_max_2nd_order = 2.;
-  ppr2->k_scalar_step_sub_2nd_order = 0.05;
-  ppr2->k_scalar_linstep_super_2nd_order = 0.0025;
-  ppr2->k_scalar_logstep_super_2nd_order = 1.2;
-  ppr2->k_scalar_step_transition_2nd_order = 0.2;
+  ppr2->k_min_tau0 = 1.;
+  ppr2->k_max_tau0_over_l_max = 2.;
+  ppr2->k_step_sub = 0.05;
+  ppr2->k_step_super = 0.0025;
+  ppr2->k_logstep_super = 1.2;
+  ppr2->k_step_transition = 0.2;
 
-  /* Transfer function k-sampling (used only if ptr2->k_sampling == class_transfer2_k_sampling) */
-  ppr2->k_step_trans_scalars_2nd_order = 0.004;
+  /* Transfer function k-sampling (used only if ptr2->k_sampling == class_transfer2_k3_sampling) */
+  ppr2->q_linstep_song = 0.45;
 
   /* Transfer function tau-sampling (used only if ptr2->tau_sampling == custom_transfer2_tau_sampling) */
-  ppr2->tau_step_trans_2nd_order = 4;
+  ppr2->tau_step_trans_song = 4;
   
   /* Scalars */
-  ppr2->k_min_scalars = 1e-4;
-  ppr2->k_max_scalars = 0.1;  
-  ppr2->k_size_scalars = 10;
+  ppr2->k_min_custom = 1e-4;
+  ppr2->k_max_custom = 0.1;  
+  ppr2->k_size_custom = 10;
 
   /* k-triangular */
   ppr2->k3_size_min = 5;
@@ -1525,9 +1622,9 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   // ====================================================================
   // =                           Bessel functions                       =
   // ====================================================================
-  ppr2->bessel_j_cut_2nd_order = 1e-12;
-  ppr2->bessel_J_cut_2nd_order = 1e-6;
-  ppr2->bessel_x_step_2nd_order = 0.3;
+  ppr2->bessel_j_cut_song = 1e-12;
+  ppr2->bessel_J_cut_song = 1e-6;
+  ppr2->bessel_x_step_song = 0.3;
 
 
 
@@ -1543,6 +1640,7 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   // =                                  Technical stuff                            =
   // ===============================================================================
 
+  ppr2->old_run = _FALSE_;
   ppr2->store_sources_to_disk = _FALSE_;
   ppr2->load_sources_from_disk = _FALSE_;
   ppr2->store_transfers_to_disk = _FALSE_;

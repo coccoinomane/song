@@ -2,9 +2,11 @@
 // -                          Shortcuts for 2nd-order moments                         -
 // ------------------------------------------------------------------------------------
 
-/* Shortcut to access the ppt2->sources array. It must be used only if the workspace ppw2 is
-defined, and after the functions perturb2_geometrical_corner and perturb2_get_k_lists have
-been called. */
+/**
+ * Shortcut to access the ppt2->sources array. It can be used only when ppw2 is
+ * defined and after the functions perturb2_geometrical_corner() and
+ * perturb2_get_k_lists() have been called
+ */
 #define sources(index_type) ppt2->sources[(index_type)]\
                             [ppw2->index_k1]\
                             [ppw2->index_k2]\

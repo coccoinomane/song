@@ -9,30 +9,55 @@
 #include "bessel.h"
 #include "bessel2.h"
 
+/**
+ * Method to determine the sampling of the k3 direction of the second-order transfer
+ * functions. This is the direction that is integrated in the line of sight integral
+ * (k in 5.95 of http://arxiv.org/abs/1405.2280). All methods use the same grid in
+ * ppt2->k3 up to a certain k3, and afterwards they use a finer grid.
+ */
+enum transfer2_k3_sampling {
+  bessel_k3_sampling, /**< add points to grid based on x-sampling of the Bessel functions */
+  class_transfer2_k3_sampling   /**< add points to grid based on input from user */
+};
 
-/* Which k-sampling should we use for the second-order transfer functions? */
-enum transfer2_k_sampling {bessel_k_sampling, class_transfer2_k_sampling};
-
-/* Which time-sampling should we use for the second-order transfer functions? */
-enum transfer2_tau_sampling {bessel_tau_sampling, custom_transfer2_tau_sampling};
+/**
+ * Method to determine the integration grid in time for line of sight integral. All
+ * methods use the grid in ppt2->tau_sampling plus some extra points.
+ */
+enum transfer2_tau_sampling {
+  bessel_tau_sampling, /**< add extra points to the integration grid based on the x-sampling of the Bessel functions */
+  custom_transfer2_tau_sampling /** add extra points to the integration grid based on input from user */
+};
 
 
 /**
- * Structure containing everything about transfer functions in harmonic space \f$ \Delta_l^{X} (k) \f$ that other modules need to know.
+ * In order to access the sources for the line of sight integration,
+ * we define a preprocessor macro that takes as arguments the time and
+ * k3 indices.
+ */
+#undef sources
+#define sources(INDEX_TAU,INDEX_K_TRIANGULAR) \
+  ppt2->sources[index_tp2]\
+               [index_k1]\
+               [index_k2]\
+               [(INDEX_TAU)*k_pt_size + (INDEX_K_TRIANGULAR)]
+
+
+/**
+ * Structure containing everything about the second-order transfer functions in
+ * harmonic space \f$ \T_l^{X} (k1,k2,k3) \f$ that other modules need to know.
  *
  * Once initialized by transfer2_init(), contains all tables of
  * transfer functions used for interpolation in other modules, for all
- * requested modes (scalar/vector/tensor), initial conditions, type
- * (temperature, polarization, etc), multipole l and wavenumber k.
+ * requested azimuthal modes m, type (temperature, polarization, etc), multipole l
+ * and wavenumber (k1,k2,k3).
  * 
- * The content of this structure is entirely computed in this module,
- * given the content of the 'precision', 'bessels', 'background',
- * 'thermodynamics' and 'perturbation' structures.
+ * The content of this structure is entirely computed in the transfer2.c module,
+ * given the content of the 'precision', 'background', 'thermodynamics',
+ * 'perturbation', 'transfer' and 'bessel' structures.
  */
 
 struct transfers2 {
-
-
 
 
   // ==========================================================================================
@@ -71,13 +96,9 @@ struct transfers2 {
 
 
 
-
-
-
   // ==============================================================================
   // =                                  Multipoles                                =
   // ==============================================================================
-
 
   // *** Number and list of multipoles
 
@@ -112,10 +133,8 @@ struct transfers2 {
   // =                                 k-sampling                                  =
   // ===============================================================================
 
-
-
   /* Which k-sampling should we use for the second-order transfer functions? */  
-  enum transfer2_k_sampling k_sampling;
+  enum transfer2_k3_sampling k_sampling;
 
   /* Which time-sampling should we use for the second-order transfer functions? */  
   enum transfer2_tau_sampling tau_sampling;
@@ -140,14 +159,9 @@ struct transfers2 {
   
 
 
-
-
-
-
   // =================================================================================
   // =                        Storage of intermediate results                        =
   // =================================================================================
-  
 
   /* Files where the transfer functions will be stored (one file for each transfer type) */
   char transfers_dir[_FILENAMESIZE_];
@@ -160,7 +174,6 @@ struct transfers2 {
 
 
 
-
   // ==================================================================================
   // =                            Cosmological quantities                             =
   // ==================================================================================
@@ -168,7 +181,6 @@ struct transfers2 {
   double tau0;                /* Conformal age */  
   double tau_rec;             /* Conformal time at recombination */
   double rs_rec;              /* Comoving sound horizon at recombination */
-
 
 
 
@@ -190,9 +202,7 @@ struct transfers2 {
   /* If true, compute only the 2nd-order transfer functions today, and do not care about
   other flags invoking the subsequent modules */
   short has_transfers2_only;
-
-
-
+  
 
 };
 

@@ -1,6 +1,9 @@
-/** @file bispectra.c documented spectra module for second-order perturbations
+/** @file bispectra2.c
  *
- * Guido W Pettinari, 19.07.2012
+ * Module to compute and store the intrinsic bispectra of the CMB using
+ * the second-order transfer functions computed in transfer2.c.
+ *
+ * Created by Guido W Pettinari on the 19.07.2012.
  */
 
 #include "bispectra2.h"
@@ -868,7 +871,6 @@ int bispectra2_intrinsic_workspace_init (
   /* We need a k3_grid per thread because it varies with k1 and k2 due to the triangular condition */
   class_alloc (pwb->k3_grid, number_of_threads*sizeof(double*), pbi->error_message);
   class_alloc (pwb->delta_k3, number_of_threads*sizeof(double*), pbi->error_message);
-  class_alloc (pwb->T_rescaling_factor, number_of_threads*sizeof(double*), pbi->error_message);
   class_alloc (pwb->integral_splines, number_of_threads*sizeof(double*), pbi->error_message);
   class_alloc (pwb->interpolated_integral, number_of_threads*sizeof(double*), pbi->error_message);
   class_alloc (pwb->f, number_of_threads*sizeof(double*), pbi->error_message);
@@ -886,7 +888,6 @@ int bispectra2_intrinsic_workspace_init (
       number of k-values for the best sampled (k1,k2) wavemode in the transfer2 module */
     class_calloc_parallel(pwb->k3_grid[thread], ptr2->k3_size_max, sizeof(double), pbi->error_message);
     class_calloc_parallel(pwb->delta_k3[thread], ptr2->k3_size_max, sizeof(double), pbi->error_message);
-    class_calloc_parallel(pwb->T_rescaling_factor[thread], ptr2->k3_size_max, sizeof(double), pbi->error_message);
   
   
     /* Allocate memory for the interpolation arrays (used only for the k2 and k3 integrations) */
@@ -1026,7 +1027,6 @@ int bispectra2_intrinsic_workspace_free(
   
     free(pwb->k3_grid[thread]);
     free(pwb->delta_k3[thread]);
-    free(pwb->T_rescaling_factor[thread]);
     free(pwb->integral_splines[thread]);
     free(pwb->interpolated_integral[thread]);
     free(pwb->f[thread]);
@@ -1035,7 +1035,6 @@ int bispectra2_intrinsic_workspace_free(
   
   free(pwb->k3_grid);
   free(pwb->delta_k3);
-  free(pwb->T_rescaling_factor);
   free(pwb->integral_splines);
   free(pwb->interpolated_integral);
   free(pwb->f);
@@ -1255,7 +1254,9 @@ int bispectra2_intrinsic_integrate_over_k3 (
               "something went terribly wrong, negative trapezoidal measure for index_k1=%d, index_k2=%d :-/",
               index_k1, index_k2);
 
-          /* Define the pointer to the second-order transfer function as a function of k3. */
+          /* Define the pointer to the second-order transfer function as a function of k3.
+          Note that this transfer function has already been rescaled according to eq. 6.26
+          of http://arxiv.org/abs/1405.2280 in the perturbations.c module.  */
           double * transfer = ptr2->transfer[index_tt2_k3 + lm_cls(index_l3,index_M3)]
                               [index_k1]
                               [index_k2];
@@ -1284,7 +1285,7 @@ int bispectra2_intrinsic_integrate_over_k3 (
               pbi->error_message,
               pbi->error_message);
 
-            /* Check when 'm' is odd and k1=k2 then T(k1,k2,k3) is small with respect to 1 (which is
+            /* Check that when 'm' is odd and k1=k2, then T(k1,k2,k3) is small with respect to 1 (which is
             the same as assuming that the bispectrum is small with respect to A_s*A_s). */
             /* TODO: It is a good idea to have this check, but here probably it's not the best place.
             Maybe we can move the check in the perturbations module. There, the order of the perturbations
@@ -1444,7 +1445,7 @@ int bispectra2_interpolate_over_k2 (
                   k_pt,
                   k_pt_size,
                   f,
-                  1,  /* How many columns to consider */
+                  1,  /* how many columns to consider */
                   integral_splines,
                   _SPLINE_EST_DERIV_,
                   pbi->error_message),

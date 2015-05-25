@@ -1,6 +1,15 @@
-/** @file bessel2.c Documented Bessel module.
+/** @file bessel2.c
+ * 
+ * Module to compute and store the projection functions for SONG.
  *
- * Guido W. Pettinari, 17.03.2013
+ * The projection functions are purely geometrical object needed to convert
+ * the line of sight sources at recombination, which were computed by the
+ * perturbations2.c module, into the transfer functions today, which will be
+ * computed by the bispectra2.c module.
+ *
+ * The procedure is detailed in sec. 5.5 of http://arxiv.org/abs/1405.2280,
+ * and is a generalisation of the classical line of sight formalism initially
+ * proposed in 1996 by Seljak and Zaldarriaga (see references of ibidem).
  *
  * This module loads spherical Bessel functions
  * (either read from file or computed from scratch).
@@ -10,6 +19,9 @@
  * -# bessel_init() at the beginning (anytime after input_init() and before transfer_init())
  * -# bessel_at_x() at any time for computing a value j_l(x) at any x by interpolation
  * -# bessel_free() at the end
+ *
+ * Created by Guido W. Pettinari on the 17.03.2013
+ * Based on bessel.c by the CLASS team (http://class-code.net/)
  */
 
 #include "bessel2.h"
@@ -78,8 +90,8 @@ int bessel2_init(
   pbs2->count_allocated_Js = 0;
 
   /* Determine minimum allowed values of the Bessels and of the J's */
-  pbs2->j_l1_cut  = ppr2->bessel_j_cut_2nd_order;
-  pbs2->J_Llm_cut = ppr2->bessel_J_cut_2nd_order;
+  pbs2->j_l1_cut  = ppr2->bessel_j_cut_song;
+  pbs2->J_Llm_cut = ppr2->bessel_J_cut_song;
 
   /* Determine the grid in x where J_Llm(x) will be sampled */
   class_call (bessel2_get_xx_list (ppr, ppr2, ppt2, pbs, pbs2),
@@ -1225,7 +1237,7 @@ int bessel2_J_Llm (
     l1 = pbs2->l1[index_l1_in_jl1];
 
     /* If the Bessel function that is being summed is smaller than the treshold set in 
-    ppr2->bessel_j_cut_2nd_order, then skip it */
+    ppr2->bessel_j_cut_song, then skip it */
     if (index_x_in_jl1 < 0) {
       if (pbs2->bessels2_verbose > 2)
         printf("     \\ Assumed that the l1=%d contribution to J_%d_%d_%d(%g) vanishes (i.e. j_%d(%g) < %g)\n",
@@ -1294,7 +1306,7 @@ int bessel2_J_Llm (
   // if (projection_function == J_TT) {
   //   if (val==0.) {
   //     fprintf (stderr, "Abs[J[%d,%d,%d][%g]]<10^%g,\n",
-  //     L,l,m,x,log10(ppr2->bessel_J_cut_2nd_order));
+  //     L,l,m,x,log10(ppr2->bessel_J_cut_song));
   //   }
   // }
   // double val = *J_Llm_x;
