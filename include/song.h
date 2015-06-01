@@ -15,5 +15,6 @@
 
 /* Tools needed by SONG */
 #include "song_tools.h"
+#include "utility.h"
 
 #endif

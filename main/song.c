@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
-  /* Compute background and thermodynamics */
+  /* Compute background quantities */
   if (background_init(&pr,&ba) == _FAILURE_) {
     printf("\n\nError running background_init \n=>%s\n",ba.error_message);
     return _FAILURE_;
@@ -59,8 +59,8 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
-  /* Compute the first-order C_l's */
-  if (compute_cls (&pr,&ba,&th,&sp,&nl,&le,errmsg) == _FAILURE_) {
+  /* Compute the first-order C_l */
+  if (compute_cls (&pr,&ba,&th,&sp,&le,errmsg) == _FAILURE_) {
     printf("\n\nError in compute_cls \n=>%s\n",errmsg);
     return _FAILURE_;
   }
@@ -71,31 +71,40 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
-  /* Compute geometrical factors needed for the line of sight integration */
-  if (bessel_init(&pr,&bs) == _FAILURE_) {
+  /* Compute primordial power spectrum from inflation */
+  if (primordial_init(&pr,&pt,&pm) == _FAILURE_) {
+    printf("\n\nError in primordial_init \n=>%s\n",pm.error_message);
+    return _FAILURE_;
+  }
+
+  /* Compute nonlinear corrections */
+  if (nonlinear_init(&pr,&ba,&th,&pt,&pm,&nl) == _FAILURE_) {
+    printf("\n\nError in nonlinear_init \n=>%s\n",nl.error_message);
+    return _FAILURE_;
+  }
+
+  /* Compute first-order transfer functions using the line of sight formalism */
+  if (transfer_init(&pr,&ba,&th,&pt,&nl,&tr) == _FAILURE_) {
+    printf("\n\nError in transfer_init \n=>%s\n",tr.error_message);
+    return _FAILURE_;
+  }
+  
+  /* Compute geometrical factors needed for the bispectrum integration */
+  if (bessel_init(&pr,&ba,&tr,&bs) == _FAILURE_) {
     printf("\n\nError in bessel_init \n =>%s\n",bs.error_message);
     return _FAILURE_;
   }
   
+  /* Compute geometrical factors needed for the line of sight integration
+  at second order */
   if (bessel2_init(&pr,&pr2,&pt2,&bs,&bs2) == _FAILURE_) {
     printf("\n\nError in bessel2_init \n =>%s\n",bs2.error_message);
     return _FAILURE_;
   }
   
-  /* Compute transfer functions using the line of sight integration */
-  if (transfer_init(&pr,&ba,&th,&pt,&bs,&tr) == _FAILURE_) {
-    printf("\n\nError in transfer_init \n=>%s\n",tr.error_message);
-    return _FAILURE_;
-  }
-  
+  /* Compute second-order transfer functions using the line of sight formalism */
   if (transfer2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2) == _FAILURE_) {
     printf("\n\nError in transfer2_init \n=>%s\n",tr2.error_message);
-    return _FAILURE_;
-  }
-  
-  /* Compute the primordial power spectrum of curvature perturbations */
-  if (primordial_init(&pr,&pt,&pm) == _FAILURE_) {
-    printf("\n\nError in primordial_init \n=>%s\n",pm.error_message);
     return _FAILURE_;
   }
   
@@ -105,6 +114,7 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
   
+  /* Compute the intrinsic bispectrum */
   if (bispectra2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&sp,&le,&bi) == _FAILURE_) {
     printf("\n\nError in bispectra2_init \n=>%s\n",bi.error_message);
     return _FAILURE_;
@@ -147,19 +157,9 @@ int main(int argc, char **argv) {
       return _FAILURE_;
     }
   }
-  
-  if (primordial_free(&pm) == _FAILURE_) {
-    printf("\n\nError in primordial_free \n=>%s\n",pm.error_message);
-    return _FAILURE_;
-  }
-  
+    
   if (transfer2_free(&pr2,&pt2,&tr2) == _FAILURE_) {
     printf("\n\nError in transfer2_free \n=>%s\n",tr2.error_message);
-    return _FAILURE_;
-  }
-  
-  if (transfer_free(&tr) == _FAILURE_) {
-    printf("\n\nError in transfer_free \n=>%s\n",tr.error_message);
     return _FAILURE_;
   }
   
@@ -173,6 +173,21 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
   
+  if (transfer_free(&tr) == _FAILURE_) {
+    printf("\n\nError in transfer_free \n=>%s\n",tr.error_message);
+    return _FAILURE_;
+  }
+
+  if (nonlinear_free(&nl) == _FAILURE_) {
+    printf("\n\nError in nonlinear_free \n=>%s\n",nl.error_message);
+    return _FAILURE_;
+  }
+
+  if (primordial_free(&pm) == _FAILURE_) {
+    printf("\n\nError in primordial_free \n=>%s\n",pm.error_message);
+    return _FAILURE_;
+  }
+
   if (perturb2_free(&pr2,&pt2) == _FAILURE_) {
     printf("\n\nError in perturb2_free \n=>%s\n",pt2.error_message);
     return _FAILURE_;

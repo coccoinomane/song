@@ -104,7 +104,7 @@ int transfer2_init(
 
     ptr2->has_cls = _FALSE_;
     if (ptr2->transfer2_verbose > 0)
-      printf("No harmonic space transfer functions to compute. Second-order transfer module skipped.\n");
+      printf("Second-order transfer module skipped.\n");
 
     return _SUCCESS_;
 
@@ -116,8 +116,8 @@ int transfer2_init(
     printf("Computing second-order transfer functions\n");
 
   /* Get conformal age, recombination time and comoving sound horizon at recombination
-    from background / thermodynamics structures (only place where these structures
-    are used in this module) */
+  from background / thermodynamics structures (only place where these structures
+  are used in this module) */
   ptr2->tau0 = pba->conformal_age;
   ptr2->tau_rec = pth->tau_rec;
   ptr2->rs_rec = pth->rs_rec;
@@ -129,7 +129,7 @@ int transfer2_init(
   // ===================================================================================
 
   /* Initialize all indices in the transfers structure and allocate all its arrays. This
-  function also calls transfer2_get_lm_lists that fills ptr2->l, and transfer2_get_k3_sizes()
+  function also calls transfer2_get_lm_lists() that fills ptr2->l, and transfer2_get_k3_sizes()
   that finds for all (k1,k2) pairs the allowed k3 range. */
   class_call (transfer2_indices_of_transfers (ppr,ppr2,ppt2,pbs,pbs2,ptr,ptr2),
     ptr2->error_message,
@@ -694,7 +694,7 @@ int transfer2_load_transfers_from_disk(
   /* Print some debug */
   if (ptr2->transfer2_verbose > 2)
     printf("     * transfer2_load_transfers_from_disk: reading results for index_tt=%d from '%s' ...",
-      index_tt, ptr2->transfers_paths);
+      index_tt, ptr2->transfers_paths[index_tt]);
   
   /* Open file for reading */
   class_open (ptr2->transfers_files[index_tt], ptr2->transfers_paths[index_tt], "rb", ptr2->error_message);
@@ -822,21 +822,30 @@ int transfer2_free(
 
 
 /**
- * This routine defines all indices and allocates all tables 
- * in the transfers structure 
  *
- * Compute list of (k, l) values, allocate and fill corresponding
- * arrays in the transfers structure. Allocate the array of transfer
- * function tables.
+ * Initialize indices and arrays in the second-order transfer functions structure.
  *
- * @param ppr Input : pointer to precision structure 
- * @param ppt Input : pointer to perturbation structure
- * @param pbs Input : pointer to bessels structure
- * @param ptr Input/Output: pointer to transfer structure
- * @param rs_rec  Input : comoving distance to recombination
- * @return the error status
+ * In detail, this function does:
+ *
+ *  -# Computes the list of multipoles where to compute the transfer functions via
+ *     transfer2_get_l_list().    
+ *
+ *  -# Determine which transfer functions to compute based on the previous modules, and
+ *     assign them the ptr2->index_tt2_XXX indices.
+ *
+ *  -# Define the indexing strategy of the transfer functions array (ptr2->transfer)
+ *     and establish a correspondence between line of sight sources and transfer 
+ *     functions, via transfer2_get_lm_lists().
+ *
+ *  -# In transfer2_get_k3_sizes(), fill the array ptr2->k_size_k1k2 which, for each
+ *     (k1,k2) pair, determines the size of the k3 grid of the transfer functions, based
+ *     on the triangular condition.
+ *
+ *  -# Allocate the type level of the transfer array, ptr2->transfer[index_tt].
+ *
+ *  -# Open the files where we will store the transfer functions at the end of the computation.
+ *
  */
-
 int transfer2_indices_of_transfers(
           struct precision * ppr,
           struct precision2 * ppr2,
@@ -929,9 +938,6 @@ int transfer2_indices_of_transfers(
 
 
 
-
-
-
   // ==================================================================================
   // =                       Determine range of k3(k1,k2)                             =
   // ==================================================================================
@@ -949,11 +955,9 @@ int transfer2_indices_of_transfers(
 
 
 
-
   // =======================================================================================
   // =                      Allocate first levels of ptr2->transfer                        =
   // =======================================================================================
-
   
   /* ptr2->transfer has five levels that should be indexed in the following way:
         ptr2->transfer [index_tt]
@@ -962,8 +966,6 @@ int transfer2_indices_of_transfers(
                        [index_k]
     Important: as in ppt2->sources, index_k2 goes from 0 to ppt2->k_size-index_k1.  */
 
-  int index_k1, index_k2;
-  
   /* Counter to keep track of the memory usage of ptr2->transfer */
   ptr2->count_memorised_transfers = 0;
   ptr2->count_allocated_transfers = 0;
@@ -1135,8 +1137,6 @@ int transfer2_get_lm_lists (
 
     } // end of for(index_m)
   } // end of for(index_l)
-
-
 
 
 
@@ -2975,7 +2975,7 @@ int transfer2_free_k1_level(
       count*sizeof(double)/1e6, count, index_k1);
 
   /* We succesfully freed the k1 level of ptr2->transfer */
-  ptr2->has_allocated_transfers[index_k1] == _FALSE_;
+  ptr2->has_allocated_transfers[index_k1] = _FALSE_;
 
   return _SUCCESS_;
 

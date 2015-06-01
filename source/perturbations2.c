@@ -32,7 +32,7 @@
  * To free again the memory associated to the sources, call
  * perturb2_free_k1_level().
  *
- * Created by Guido W. Pettinari on the 01.01.2011
+ * Created by Guido W. Pettinari on 01.01.2011
  * Based on perturbations.c by the CLASS team (http://class-code.net/)
  */
 
@@ -590,11 +590,11 @@ int perturb2_free_k1_level(
 
 /**
  *
- * Initialize indices and arrays in the ppt2 structure.
+ * Initialize indices and arrays in the second-order perturbations structure.
  *
  * In detail, this function does:
  *
- *  -# Determine what source terms need to be computed by assigning the index_tp2_XXX indices.
+ *  -# Determine what source terms need to be computed and assign them the ppt2->index_tp2_XXX indices.
  *
  *  -# Allocate and fill the second-order k-sampling arrays (ppt2->k and ppt2->k3[index_k1,index_k2])
  *     by calling perturb2_get_k_lists().
@@ -604,7 +604,7 @@ int perturb2_free_k1_level(
  *  -# Fill the multipole arrays (ppt2->lm_array, ppt2->lm_array_quad, ...) used to index the Boltzmann
  *     hierarchies, by calling the perturb2_get_lm_lists().
  *
- *  -# Opens the files to store the line of sight sources.
+ *  -# Open the files where we will store the line of sight sources at the end of the computation.
  *
  */
 
@@ -2780,7 +2780,7 @@ determine a starting integration time for the first-order system, maybe by using
     double k3_max = ppt2->k3[ppt2->k_size-1][ppt2->k_size-1][k3_max_size-1];
     printf("     * sources k3 sampling for k1=k2=max: %d times in the range (%g,%g)\n",
       k3_max_size, k3_min, k3_max);
-    printf("     * we shall solve the second-order differential system %d (%.2g million) times\n",
+    printf("     * we shall solve the second-order differential system %ld (%.2g million) times\n",
       ppt2->count_k_configurations, (double)ppt2->count_k_configurations/1e6);
 
     
@@ -9246,10 +9246,11 @@ int perturb2_sources (
             source += kappa_dot * 0.1 * (I(2,m) - sqrt_6*E(2,m));
 
           /* Tensor metric contribution */
-          if (ppt2->has_metric_in_los == _TRUE_)
+          if (ppt2->has_metric_in_los == _TRUE_) {
             if (m == 2) source += 4 * gamma_m2_prime;
           else if (ppt2->has_isw == _TRUE_)
             if (m == 2) source += 4 * gamma_m2_prime;
+          }
 
         } // end of quadrupole sources
 

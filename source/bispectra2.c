@@ -3,7 +3,7 @@
  * Module to compute and store the intrinsic bispectra of the CMB using
  * the second-order transfer functions computed in transfer2.c.
  *
- * Created by Guido W Pettinari on the 19.07.2012.
+ * Created by Guido W Pettinari on 19.07.2012.
  */
 
 #include "bispectra2.h"
@@ -227,7 +227,7 @@ int bispectra2_harmonic (
   if (ppr->store_bispectra_to_disk == _TRUE_)
     for (int index_bt = 0; index_bt < pbi->bt_size; ++index_bt)
       if (pbi->bispectrum_type[index_bt] == intrinsic_bispectrum)
-        class_call (bispectra_save_to_disk (
+        class_call (bispectra_store_to_disk (
                       pbi,
                       index_bt),
           pbi->error_message,

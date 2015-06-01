@@ -43,30 +43,31 @@ int main (int argc, char **argv) {
   struct output op;           /* output files */
   ErrorMsg errmsg;            /* error messages */
 
-  // =====================================
-  // =         Parse arguments           =
-  // =====================================
+  // ===============================================================================
+  // =                               Parse arguments                               =
+  // ===============================================================================
 
   /* We introduce the n_args variable to differentiate between Song arguments and the arguments
   for this function */
   int n_args = 3;
 
   /* The arguments are:
-   * index_k1, index of k1 wavemode inside ppt2->k
-   * index_k2, index of k2 wavemode inside ppt2->k
-   * transfer_string, a string of the format X_l_m, where X is the desired type (T for temperature,
-   * E for E-mode polarization, B for B-mode polarization) and (l,m) is the desired angular multipole
-   */
+  - index_k1: index of k1 wavemode inside ppt2->k
+  - index_k2: index of k2 wavemode inside ppt2->k
+  - transfer_string: a string of the format X_l_m, where X is the desired type (T for
+    temperature, E for E-mode polarization, B for B-mode polarization) and (l,m) is
+    the desired angular multipole */
+
 	int index_k1, index_k2, l, m;
   char type;
 
-
-	/* CLASS can accept either one or two arguments */
+	/* SONG can accept either one argument (the run directory)... */
   if (argc == 2 + n_args) {
     index_k1 = atoi(argv[2]);
     index_k2 = atoi(argv[3]);
     sscanf (argv[4], "%c_%d_%d", &type, &l, &m);
   }
+  /* ... or two arguments (ini and pre files) */
   else if (argc == 3 + n_args) {
     index_k1 = atoi(argv[3]);
     index_k2 = atoi(argv[4]);
@@ -101,8 +102,8 @@ int main (int argc, char **argv) {
     return _FAILURE_;
   }
   
-  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&tr,&bs,&bs2,&tr2,&pm,
-    &sp,&nl,&le,&bi,&fi,&op,errmsg) == _FAILURE_) {
+  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&tr,&bs,&bs2,
+    &tr2,&pm, &sp,&nl,&le,&bi,&fi,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg);
     return _FAILURE_;
   }
@@ -154,6 +155,11 @@ int main (int argc, char **argv) {
     return _FAILURE_;
   }
   
+  if (nonlinear_init(&pr,&ba,&th,&pt,&pm,&nl) == _FAILURE_) {
+    printf("\n\nError in nonlinear_init \n=>%s\n",nl.error_message);
+    return _FAILURE_;
+  }
+  
   if (transfer_init(&pr,&ba,&th,&pt,&nl,&tr) == _FAILURE_) {
     printf("\n\nError in transfer_init \n=>%s\n",tr.error_message);
     return _FAILURE_;
@@ -169,12 +175,15 @@ int main (int argc, char **argv) {
     return _FAILURE_;
   }
 
-
   if (transfer2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2) == _FAILURE_) {
     printf("\n\nError in transfer2_init \n=>%s\n",tr2.error_message);
     return _FAILURE_;
   }
 
+
+  // ===============================================================================
+  // =                               What to print?                                =
+  // ===============================================================================
 
   /* Find the index corresponding to the desired transfer-type monopole */
   int index_tt_monopole;
@@ -245,9 +254,9 @@ int main (int argc, char **argv) {
   
   
   
-  // =======================================================================
-  // =                            Print debug info                         =
-  // =======================================================================
+  // ====================================================================================
+  // =                                Print debug info                                  =
+  // ====================================================================================
   
   /* Information about the cosmological model */
   double h = ba.h;
@@ -371,12 +380,7 @@ int main (int argc, char **argv) {
     printf("\n\nError in transfer2_free \n=>%s\n",tr2.error_message);
     return _FAILURE_;
   }
-  
-  if (transfer_free(&tr) == _FAILURE_) {
-    printf("\n\nError in transfer_free \n=>%s\n",tr.error_message);
-    return _FAILURE_;
-  }
-  
+
   if (bessel2_free(&pr,&pr2,&bs,&bs2) == _FAILURE_)  {
     printf("\n\nError in bessel2_free \n=>%s\n",bs2.error_message);
     return _FAILURE_;
@@ -386,7 +390,22 @@ int main (int argc, char **argv) {
     printf("\n\nError in bessel_free \n=>%s\n",bs.error_message);
     return _FAILURE_;
   }
-  
+
+  if (transfer_free(&tr) == _FAILURE_) {
+    printf("\n\nError in transfer_free \n=>%s\n",tr.error_message);
+    return _FAILURE_;
+  }
+
+  if (nonlinear_free(&nl) == _FAILURE_) {
+    printf("\n\nError in nonlinear_free \n=>%s\n",nl.error_message);
+    return _FAILURE_;
+  }
+
+  if (primordial_free(&pm) == _FAILURE_) {
+    printf("\n\nError in primordial_free \n=>%s\n",pm.error_message);
+    return _FAILURE_;
+  }
+ 
   if (perturb2_free(&pr2,&pt2) == _FAILURE_) {
     printf("\n\nError in perturb2_free \n=>%s\n",pt2.error_message);
     return _FAILURE_;

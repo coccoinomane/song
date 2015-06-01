@@ -11,22 +11,17 @@
  * and is a generalisation of the classical line of sight formalism initially
  * proposed in 1996 by Seljak and Zaldarriaga (see references of ibidem).
  *
- * This module loads spherical Bessel functions
- * (either read from file or computed from scratch).
+ * The following functions can be called from other modules:
  *
- * Hence the following functions can be called from other modules:
+ * -# bessel2_init()
+ * -# bessel2_free()
+ * -# bessel2_convolution()
  *
- * -# bessel_init() at the beginning (anytime after input_init() and before transfer_init())
- * -# bessel_at_x() at any time for computing a value j_l(x) at any x by interpolation
- * -# bessel_free() at the end
- *
- * Created by Guido W. Pettinari on the 17.03.2013
+ * Created by Guido W. Pettinari on 17.03.2013
  * Based on bessel.c by the CLASS team (http://class-code.net/)
  */
 
 #include "bessel2.h"
-
-
 
 
 /**
@@ -475,10 +470,112 @@ int bessel2_init(
 
 
 
+/**
+ * Compute the convolution integral between a spherical Bessel function and up two two arrays.
+ * This is the same function as bessel_convolution in the bessel module, except that the order
+ * of the Bessel function has to belong to pbs2->l1, which is an extended version of pbs2->l. 
+ */
+int bessel2_convolution (
+    struct precision * ppr,
+    struct bessels2 * pbs2,
+    double * kk,
+    double * delta_kk,
+    int k_size,
+    double * f,
+    double * g,
+    int index_l,
+    double r,
+    double * integral,
+    ErrorMsg error_message
+    )
+{
+
+  /* Loop variable */
+  int index_k;
+
+  /* Initialize the integral */
+  *integral = 0;
+
+  /* Find the value of l from the Bessel structure */
+  int l = pbs2->l1[index_l];
+     
+  /* We shall store the value of j_l2(r*k2) in here */
+  double j;
+
+  
+  // *** Actual integration ***
+    
+  for (index_k = 0; index_k < k_size; ++index_k) {
+
+    /* Value of the function f in k */
+    double f_in_k = f[index_k];
+
+    /* If the function f vanishes, do not bother computing the Bessel function,
+    and jump to the next iteration without incrementing the integral.  Note that this
+    is important because CLASS transfer functions at first-order are set to zero above
+    a certain value of k. */
+    if (f_in_k == 0.)
+      continue;
+
+    /* Same for the g function, if it is defined */
+    double g_in_k = 1.;
+    
+    if (g != NULL) {
+
+      g_in_k = g[index_k];
+
+      if (g_in_k == 0.)
+        continue;
+    }
+
+    /* Value of the considered k */
+    double k = kk[index_k];
+
+    
+    // *** Bessel interpolation ***
+
+    double x = k*r;
+
+    /* j_l(x) vanishers for x < x_min(l) */
+    if (x < pbs2->x_min_l1[index_l])
+      continue;
+    
+    int index_x = (int)((x-pbs2->x_min_l1[index_l])/pbs2->xx_step);
+    double a = (pbs2->x_min_l1[index_l]+pbs2->xx_step*(index_x+1) - x)/pbs2->xx_step;
+
+    /* Store in 'j' the value of j_l(r*k) */
+    if (ppr->bessels_interpolation == linear_interpolation) {
+      
+      j = a * pbs2->j_l1[index_l][index_x] 
+          + (1.-a) * pbs2->j_l1[index_l][index_x+1];
+
+    }
+    else if (ppr->bessels_interpolation == cubic_interpolation) {
+
+      j = a * pbs2->j_l1[index_l][index_x] 
+          + (1.-a) * ( pbs2->j_l1[index_l][index_x+1]
+            - a * ((a+1.) * pbs2->ddj_l1[index_l][index_x]
+            +(2.-a) * pbs2->ddj_l1[index_l][index_x+1]) 
+            * pbs2->xx_step * pbs2->xx_step / 6.0);
+ 
+    }
 
 
+    /* Value of the integrand function */
+    double integrand = k * k * j * f_in_k * g_in_k;
 
-
+    /* Increment the estimate of the integral */
+    *integral += integrand * delta_kk[index_k];
+    
+  } // end of for(index_k)
+   
+   
+  /* Divide the integral by a factor 1/2 to account for the trapezoidal rule */
+  (*integral) *= 0.5;
+   
+  return _SUCCESS_;
+  
+} // end of bessel_convolution
 
 
 
@@ -1027,13 +1124,14 @@ int bessel2_J_for_Llm (
     initial guess was way too high and the Bessels are all very damped (x_min_up >> l1_min+0.5),
     or that we entered into the oscillatory regime of J_Llm and hit an x-value corresponding
     to a zero crossing.  In both cases, we return an error.  */
-    if (fabs(J) < pbs2->J_Llm_cut)                // if cut is already satisfied
+    if (fabs(J) < pbs2->J_Llm_cut) {              // if cut is already satisfied
       if (might_be_negligible)                    // if pbs2->xx_max < l1_min+0.5
-        is_negligible == _TRUE_;
+        is_negligible = _TRUE_;
       else                                        // if pbs2->xx_max > l1_min+0.5
         class_test(fabs(J) < pbs2->J_Llm_cut,      
            pbs2->error_message,
            "in bisection, wrong initial guess for x_min_up.");
+    }
 
     // --------------------------------------------------------------
     // -                       Actual bisection                     -
@@ -1256,17 +1354,18 @@ int bessel2_J_Llm (
     cases, the parity forces the prefactors to be just (real) alternating signs. */
     short is_even = ((l-l1-L)%2==0);
 
-    if ((projection_function==J_TT)||(projection_function==J_EE))
+    if ((projection_function==J_TT)||(projection_function==J_EE)) {
       if (is_even)
         i_prefactor = ALTERNATING_SIGN((l-l1-L)/2);
       else
         continue;
-
-    else if (projection_function==J_EB)
+    }
+    else if (projection_function==J_EB) {
       if (!is_even)
         i_prefactor = ALTERNATING_SIGN((l-l1-L-1)/2);
       else
         continue;
+    }
 
 
 
@@ -1546,7 +1645,7 @@ int bessel2_l1_at_x_linear(
 /**
  * Get spherical Bessel functions for given value of l1.
  *
- * This function it is equivalent to bessel_j_for_l. The only difference
+ * This function it is equivalent to bessel_j_for_l(). The only difference
  * is that it computes the spherical Bessels for the extended list pbs2->l1
  * instead that pbs2->l.
  *
@@ -1714,115 +1813,6 @@ int bessel2_j_for_l1(
 
 }
 
-
-
-
-/**
- * Compute the convolution integral between a spherical Bessel function and up two two arrays.
- * This is the same function as bessel_convolution in the bessel module, except that the order
- * of the Bessel function has to belong to pbs2->l1, which is an extended version of pbs2->l. 
- */
-int bessel2_convolution (
-    struct precision * ppr,
-    struct bessels2 * pbs2,
-    double * kk,
-    double * delta_kk,
-    int k_size,
-    double * f,
-    double * g,
-    int index_l,
-    double r,
-    double * integral,
-    ErrorMsg error_message
-    )
-{
-
-  /* Loop variable */
-  int index_k;
-
-  /* Initialize the integral */
-  *integral = 0;
-
-  /* Find the value of l from the Bessel structure */
-  int l = pbs2->l1[index_l];
-     
-  /* We shall store the value of j_l2(r*k2) in here */
-  double j;
-
-  
-  // *** Actual integration ***
-    
-  for (index_k = 0; index_k < k_size; ++index_k) {
-
-    /* Value of the function f in k */
-    double f_in_k = f[index_k];
-
-    /* If the function f vanishes, do not bother computing the Bessel function,
-    and jump to the next iteration without incrementing the integral.  Note that this
-    is important because CLASS transfer functions at first-order are set to zero above
-    a certain value of k. */
-    if (f_in_k == 0.)
-      continue;
-
-    /* Same for the g function, if it is defined */
-    double g_in_k = 1.;
-    
-    if (g != NULL) {
-
-      g_in_k = g[index_k];
-
-      if (g_in_k == 0.)
-        continue;
-    }
-
-    /* Value of the considered k */
-    double k = kk[index_k];
-
-    
-    // *** Bessel interpolation ***
-
-    double x = k*r;
-
-    /* j_l(x) vanishers for x < x_min(l) */
-    if (x < pbs2->x_min_l1[index_l])
-      continue;
-    
-    int index_x = (int)((x-pbs2->x_min_l1[index_l])/pbs2->xx_step);
-    double a = (pbs2->x_min_l1[index_l]+pbs2->xx_step*(index_x+1) - x)/pbs2->xx_step;
-
-    /* Store in 'j' the value of j_l(r*k) */
-    if (ppr->bessels_interpolation == linear_interpolation) {
-      
-      j = a * pbs2->j_l1[index_l][index_x] 
-          + (1.-a) * pbs2->j_l1[index_l][index_x+1];
-
-    }
-    else if (ppr->bessels_interpolation == cubic_interpolation) {
-
-      j = a * pbs2->j_l1[index_l][index_x] 
-          + (1.-a) * ( pbs2->j_l1[index_l][index_x+1]
-            - a * ((a+1.) * pbs2->ddj_l1[index_l][index_x]
-            +(2.-a) * pbs2->ddj_l1[index_l][index_x+1]) 
-            * pbs2->xx_step * pbs2->xx_step / 6.0);
- 
-    }
-
-
-    /* Value of the integrand function */
-    double integrand = k * k * j * f_in_k * g_in_k;
-
-    /* Increment the estimate of the integral */
-    *integral += integrand * delta_kk[index_k];
-    
-  } // end of for(index_k)
-   
-   
-  /* Divide the integral by a factor 1/2 to account for the trapezoidal rule */
-  (*integral) *= 0.5;
-   
-  return _SUCCESS_;
-  
-} // end of bessel_convolution
 
 
 

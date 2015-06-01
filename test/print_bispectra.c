@@ -1,13 +1,21 @@
 /** @file print_bispectra.c 
+ *
+ * Print to screen bispectra computed by the bispectra.c module.
+ *
+ * The bispectra are stored in the bi.bispectra array which is indexed as
+ * bi.bispectra [index_bt][X][Y][Z][index_l1_l2_l3].
+ *
+ * usage:    print_bispectra <type> <print mode> [<print mode args>] <ini file> <pre file> 
+ *           print_bispectra <type> <print mode> [<print mode args>] run_directory> 
+ *
+ * examples: print_bispectra local_ttt equilateral params.ini params.pre
+ *           print_bispectra orthogonal_tee squeezed_small_scale 6 params.ini params.pre
+ *
+ * To see a list of the different available bispectra types, run ./print_bispectra
+ * with no arguments.
+ *
  * Created by Guido W. Pettinari on 11.08.2012
- * Last edited by Guido W. Pettinari on 11.08.2012
- *
- * Print to screen bispectra stored in bi.bispectra.
- *
- * usage:     print_bispectra <bispectrum type> <print mode> <options . . .> <ini file> <pre file> 
- *            print_bispectra <bispectrum type> <options . . .> <run_directory> 
- * example:   print_bispectra local_ttt equilateral params.ini params.pre
- *
+ * Last edited by Guido W. Pettinari on 01.06.2015
  */
  
 #include "song.h"
@@ -20,34 +28,37 @@ int main(int argc, char **argv) {
   struct thermo th;           /* thermodynamics */
   struct perturbs pt;         /* source functions (1st-order) */
   struct perturbs2 pt2;       /* source functions (2nd-order) */  
+  struct transfers tr;        /* transfer functions (1st-order) */
   struct bessels bs;          /* bessel functions (1st-order) */
   struct bessels2 bs2;        /* bessel functions (2nd-order) */
-  struct transfers tr;        /* transfer functions (1st-order) */
   struct transfers2 tr2;      /* transfer functions (2nd-order) */
   struct primordial pm;       /* primordial spectra */
   struct spectra sp;          /* output spectra (1st-order) */
-  struct bispectra bi;        /* bispectra */
-  struct fisher fi;           /* fisher matrix */
   struct nonlinear nl;        /* non-linear spectra */
   struct lensing le;          /* lensed spectra */
+  struct bispectra bi;        /* bispectra */
+  struct fisher fi;           /* fisher matrix */
   struct output op;           /* output files */
   ErrorMsg errmsg;            /* error messages */
+  
 
   // =================================================================================
   // =                              Parse arguments                                  =
   // =================================================================================
   
-  /* Indices that address the levels of bi.bispectra[index_bt][index_bp][index_l1][index_l2][index_l3] */
-  int index_bt, index_bp, index_l1, index_l2, index_l3;
+  /* Labels for the bispectrum type (local, intrinsic, cmb-lensing...) */
+  char bt_label[128];
+  
+  /* Label for the bispecttrum field (T for temperature, E for E-mode polarisation,
+  B for B-mode polarisation)  */
+  char X_label[128], Y_label[128], Z_label[128];
 
-  /* Names of the selected bispectra (X,Y,Z=T,E...)*/
-  char bt_label[128], X_label[128], Y_label[128], Z_label[128];
-
-  /* What to print, read from command line: "triangular", "equilateral", "squeezed_pitrou". These are the meanings
-    of the arguments according to the chosen mode:
+  /* What to print, read from command line: "triangular", "equilateral",
+  "squeezed_pitrou". These are the meanings of the arguments according to the chosen mode:
       "triangular"              :  two arguments, that is the fixed values of l1 and l2
       "equilateral"             :  no argument needed, the output will be a b_L_L_L versus L
-      "squeezed_pitrou"         :  1 argument 'ratio'. Tale l2=l3=ratio*l1 and let l1 vary. Requires interpolation.
+      "squeezed_pitrou"         :  1 argument 'ratio'. Tale l2=l3=ratio*l1 and let l1 vary.
+                                   Requires interpolation.
       "squeezed_large_scale"    :  1 argument 'short_mode'. Take l1=l2=short_mode and let l3 vary.
       "squeezed_small_scale"    :  1 argument 'long_mode'. Take l1=long_mode and let l2=l3 vary.
   */
@@ -64,7 +75,6 @@ int main(int argc, char **argv) {
   int l_long;
   int l_short;
 
-
   /* Minimum number of command line arguments that this function will accept. 
   This is given by the minimum number of arguments accepted by CLASS (one) plus that
   needed by the function itself (two: bispectrum type and configurations to print) */
@@ -76,8 +86,8 @@ int main(int argc, char **argv) {
   sprintf (usage, "  *  usage:     %s <bispectra_type> <print mode> <print mode args> <ini file> \n", argv[0]);
   sprintf (usage, "%s  *             %s <bispectra_type> <print mode> <print mode args> <ini file> <pre file> \n", usage, argv[0]);
   sprintf (usage, "%s  *             %s <bispectra_type> <print mode> <print mode args> <run_directory>\n", usage, argv[0]);
-  sprintf (usage, "%s  *  The type of bispectra should be in the form 'model_probe', e.g. 'local_ttt', 'intrinsic_tee', 'orthogonal_eee'",
-    usage, argv[0]);
+  sprintf (usage, "%s  *  \n", usage);
+  sprintf (usage, "%s  *  <bispectra_type> should be in the form 'type_XYZ', e.g. 'local_ttt', 'intrinsic_tee', 'orthogonal_eee'\n", usage);
   sprintf (usage, "%s  *  \n", usage);
   sprintf (usage, "%s  *  The allowed print modes are:\n", usage);
   sprintf (usage, "%s  *              - triangular <l1> <l2>\n", usage);
@@ -86,7 +96,8 @@ int main(int argc, char **argv) {
   sprintf (usage, "%s  *              - squeezed_small_scale <long mode>\n", usage);
   sprintf (usage, "%s  *              - squeezed_large_scale <short mode>\n", usage);
   sprintf (usage, "%s  *  Example:\n", usage);
-  sprintf (usage, "%s  *              %s local_ttt squeezed_small_scale 6 ini/primordial.ini ini/primordial.pre\n", usage, argv[0]);
+  sprintf (usage, "%s  *              %s local_ttt equilateral ini/primordial.ini ini/primordial.pre\n", usage, argv[0]);
+  sprintf (usage, "%s  *              %s intrinsic_tee squeezed_small_scale 6 ini/primordial.ini ini/primordial.pre\n", usage, argv[0]);
   
   /* Parse compulsory arguments */
   if (argc > n_min_args) {
@@ -114,7 +125,7 @@ int main(int argc, char **argv) {
   short PRINT_SQUEEZED_LARGE_SCALE = _FALSE_;
 
 
-  // *** Parse the arguments given according to the chosen 'print_mode'
+  /* Parse the arguments given according to the chosen 'print_mode' */
   
   int remaining_args = argc - current_arg;
 
@@ -127,9 +138,11 @@ int main(int argc, char **argv) {
     }
 
     PRINT_TRIANGULAR = _TRUE_;
-    if (strlen(argv[current_arg]) > 4) printf ("WARNING: Mixing arguments between SONG and print mode?");
+    if (strlen(argv[current_arg]) > 4)
+      printf ("WARNING: Mixing arguments between SONG and print mode?");
     l1_fixed = atoi(argv[current_arg++]);
-    if (strlen(argv[current_arg]) > 4) printf ("WARNING: Mixing arguments between SONG and print mode?");
+    if (strlen(argv[current_arg]) > 4)
+      printf ("WARNING: Mixing arguments between SONG and print mode?");
     l2_fixed = atoi(argv[current_arg++]);
     
   } // end of if(triangular)
@@ -196,8 +209,8 @@ int main(int argc, char **argv) {
   // =                                  Calculate stuff                              =
   // =================================================================================
 
-  /* Determine which arguments to pass to CLASS/SONG. The '+1' accounts for argv[0] that should be the name of 
-  the executable */
+  /* Determine which arguments to pass to CLASS/SONG. The '+1' accounts for argv[0] that
+  is just the name of the executable */
   int argc_for_SONG = argc - current_arg + 1;
   char ** argv_for_SONG = malloc (sizeof(char *)*argc_for_SONG);
   int i; for (i=0; i<argc_for_SONG; ++i) argv_for_SONG[i] = malloc(sizeof(char) * 1024);
@@ -218,30 +231,25 @@ int main(int argc, char **argv) {
   // for (i=0; i<argc_for_SONG; ++i)
   //   printf("argv_for_SONG[%d] = %s\n", i, argv_for_SONG[i]);
 
-  if (input_init_from_arguments(argc_for_SONG,argv_for_SONG,&pr,&ba,&th,&pt,&bs,
-    &tr,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
+  if (input_init_from_arguments(argc_for_SONG,argv_for_SONG,&pr,&ba,&th,
+    &pt,&tr,&pm,&sp,&nl,&le,&bs,&bi,&fi,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
     return _FAILURE_;
   }
   
-  if (input2_init_from_arguments(argc_for_SONG,argv_for_SONG,&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,
-    &tr,&tr2,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
-    printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
+  if (input2_init_from_arguments(argc_for_SONG,argv_for_SONG,&pr,&pr2,&ba,&th,
+    &pt,&pt2,&tr,&bs,&bs2,&tr2,&pm, &sp,&nl,&le,&bi,&fi,&op,errmsg) == _FAILURE_) {
+    printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg);
     return _FAILURE_;
   }
   
-  /* Flags needed to access the quantities that make up the analytical approximation for the squeezed limit */
+  /* We want to compute the analytical approximation for the squeezed limit of
+  the intrinsic bispectrum no matter what */
   bi.has_intrinsic_squeezed = _TRUE_;
   pt.has_cl_cmb_zeta = _TRUE_;
   sp.compute_cl_derivative = _TRUE_;
-
-  /* Always compute the local squeezed approximation as it is used as a normalisation to show
-  the intrinsic bispectrum in the squeezed limit */
-  bi.has_local_squeezed = _TRUE_;
-
-  /* Always compute the quadratic correction as it is used to compute the bolometric temperature
-  correction */
-  bi.has_quadratic_correction = _TRUE_;
+  bi.has_local_squeezed = _TRUE_; /* for normalisation */
+  bi.has_quadratic_correction = _TRUE_; /* for bolometric temperature */
   
   if (background_init(&pr,&ba) == _FAILURE_) {
     printf("\n\nError running background_init \n=>%s\n",ba.error_message);
@@ -253,35 +261,47 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
   
-  if (pt2.has_perturbations2 == _TRUE_)
-    if (compute_cls (&pr,&ba,&th,&sp,&nl,&le,errmsg) == _FAILURE_) {
+  if (pt2.has_perturbations2 == _TRUE_) {
+    if (compute_cls (&pr,&ba,&th,&sp,&le,errmsg) == _FAILURE_) {
       printf("\n\nError in compute_cls \n=>%s\n",errmsg);
       return _FAILURE_;
     }
+  }
   
-  if (pt2.has_perturbations2 == _FALSE_)
+  if (pt2.has_perturbations2 == _FALSE_) {
     if (perturb_init(&pr,&ba,&th,&pt) == _FAILURE_) {
       printf("\n\nError in perturb_init \n=>%s\n",pt.error_message);
       return _FAILURE_;
     }
+  }
   
   if (perturb2_init(&pr,&pr2,&ba,&th,&pt,&pt2) == _FAILURE_) {
     printf("\n\nError in perturb2_init \n=>%s\n",pt2.error_message);
     return _FAILURE_;
   }
+
+  if (primordial_init(&pr,&pt,&pm) == _FAILURE_) {
+    printf("\n\nError in primordial_init \n=>%s\n",pm.error_message);
+    return _FAILURE_;
+  }
   
-  if (bessel_init(&pr,&bs) == _FAILURE_) {
+  if (nonlinear_init(&pr,&ba,&th,&pt,&pm,&nl) == _FAILURE_) {
+    printf("\n\nError in nonlinear_init \n=>%s\n",nl.error_message);
+    return _FAILURE_;
+  }
+
+  if (transfer_init(&pr,&ba,&th,&pt,&nl,&tr) == _FAILURE_) {
+    printf("\n\nError in transfer_init \n=>%s\n",tr.error_message);
+    return _FAILURE_;
+  }
+
+  if (bessel_init(&pr,&ba,&tr,&bs) == _FAILURE_) {
     printf("\n\nError in bessel_init \n =>%s\n",bs.error_message);
     return _FAILURE_;
   }
   
   if (bessel2_init(&pr,&pr2,&pt2,&bs,&bs2) == _FAILURE_) {
     printf("\n\nError in bessel2_init \n =>%s\n",bs2.error_message);
-    return _FAILURE_;
-  }
-  
-  if (transfer_init(&pr,&ba,&th,&pt,&bs,&tr) == _FAILURE_) {
-    printf("\n\nError in transfer_init \n=>%s\n",tr.error_message);
     return _FAILURE_;
   }
   
@@ -302,13 +322,8 @@ int main(int argc, char **argv) {
     call the function 'compute_cls' which extends l_max to l_max + delta_l_max. */
     if (pr.extend_lensed_cls == _FALSE_) {
   
-      if (spectra_init(&pr,&ba,&pt,&tr,&pm,&sp) == _FAILURE_) {
+      if (spectra_init(&pr,&ba,&pt,&pm,&nl,&tr,&sp) == _FAILURE_) {
         printf("\n\nError in spectra_init \n=>%s\n",sp.error_message);
-        return _FAILURE_;
-      }
-  
-      if (nonlinear_init(&pr,&ba,&th,&pm,&sp,&nl) == _FAILURE_) {
-        printf("\n\nError in nonlinear_init \n=>%s\n",nl.error_message);
         return _FAILURE_;
       }
   
@@ -319,7 +334,7 @@ int main(int argc, char **argv) {
     }
     else {
 
-      if (compute_cls (&pr,&ba,&th,&sp,&nl,&le,errmsg) == _FAILURE_) {
+      if (compute_cls (&pr,&ba,&th,&sp,&le,errmsg) == _FAILURE_) {
         printf("\n\nError in compute_cls \n=>%s\n",errmsg);
         return _FAILURE_;
       }
@@ -330,11 +345,12 @@ int main(int argc, char **argv) {
     printf("\n\nError in bispectra_init \n=>%s\n",bi.error_message);
     return _FAILURE_;
   }
-  
-  if (bispectra2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&sp,&le,&bi) == _FAILURE_) {
-    printf("\n\nError in bispectra2_init \n=>%s\n",bi.error_message);
-    return _FAILURE_;
-  }
+
+  /* TODO: uncomment once you have updated the bispectra2.c module */
+  // if (bispectra2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&sp,&le,&bi) == _FAILURE_) {
+  //   printf("\n\nError in bispectra2_init \n=>%s\n",bi.error_message);
+  //   return _FAILURE_;
+  // }
 
   /* Uncomment to compute the Fisher matrix too */
   // if (fisher_init(&pr,&ba,&th,&pt,&bs,&tr,&pm,&sp,&le,&bi,&fi) == _FAILURE_) {
@@ -352,12 +368,13 @@ int main(int argc, char **argv) {
   // =================================================================================
   
   /* Find out the indices corresponding to the requested bispectrum */
-  index_bt = 0;
+  int index_bt = 0;
   while (strcmp(bi.bt_labels[index_bt], bt_label)!=0) {
     index_bt++;
     if (index_bt >= bi.bt_size) {
       printf ("ERROR: bispectrum type '%s' does not exist or it wasn't computed. Try one between: ", bt_label);
-      for (i=0; i < bi.bt_size; ++i) printf ("%s ", bi.bt_labels[i]); printf ("\n");
+      for (i=0; i < bi.bt_size; ++i)
+        printf ("%s ", bi.bt_labels[i]); printf ("\n");
       return _FAILURE_;
     }
   }
@@ -368,7 +385,8 @@ int main(int argc, char **argv) {
     X++;
     if (X >= bi.bf_size) {
       printf ("ERROR: field '%s' does not exist or it wasn't computed. Try with: ", X_label);
-      for (i=0; i < bi.bf_size; ++i) printf ("%s ", bi.bf_labels[i]); printf ("\n");
+      for (i=0; i < bi.bf_size; ++i)
+        printf ("%s ", bi.bf_labels[i]); printf ("\n");
       return _FAILURE_;
     }
   }
@@ -376,7 +394,8 @@ int main(int argc, char **argv) {
     Y++;
     if (Y >= bi.bf_size) {
       printf ("ERROR: field '%s' does not exist or it wasn't computed. Try with: ", Y_label);
-      for (i=0; i < bi.bf_size; ++i) printf ("%c ", bi.bf_labels[i]); printf ("\n");
+      for (i=0; i < bi.bf_size; ++i)
+        printf ("%s ", bi.bf_labels[i]); printf ("\n");
       return _FAILURE_;
     }
   }
@@ -384,29 +403,30 @@ int main(int argc, char **argv) {
     Z++;
     if (Z >= bi.bf_size) {
       printf ("ERROR: field '%s' does not exist or it wasn't computed. Try with: ", Z_label);
-      for (i=0; i < bi.bf_size; ++i) printf ("%c ", bi.bf_labels[i]); printf ("\n");
+      for (i=0; i < bi.bf_size; ++i)
+        printf ("%s ", bi.bf_labels[i]); printf ("\n");
       return _FAILURE_;
     }
   }
 
-  /* The warning below is useless now, as we just print the configurations where l1>=l2>=l3 when considering
-  the analytical approximation */
-  //   if (((bi.has_intrinsic_squeezed == _TRUE_) && (index_bt == bi.index_bt_intrinsic_squeezed)))
-  //     printf ("WARNING: while printing the squeezed-limit bispectrum, keep in mind that we write as \
-  // in eq. 4.1 of Lewis 2012 (http://arxiv.org/abs/1204.5018), which is not symmetrised. Hence, you \
-  // should ignore those configurations where the condition l1<=l2<=l3 is not met.\n");
+  /* The warning below is useless now, as we just print the configurations where l1>=l2>=l3
+  when considering the analytical approximation */
+  if ((bi.has_intrinsic_squeezed==_TRUE_) && (index_bt==bi.index_bt_intrinsic_squeezed))
+    printf ("WARNING: while printing the squeezed-limit bispectrum, keep in mind that we compute it \
+as in eq. 4.1 of Lewis 2012 (http://arxiv.org/abs/1204.5018), which is not symmetrised. Hence, you \
+should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
 
 
   // =================================================================================
   // =                           Load bispectra from disk                            =
   // =================================================================================
   
-  /* Load bispectrum from disk, if it was not already computed. Note that we load the bispectrum from disk
-  only if it a secondary bispectrum, since the primary ones are always recomputed as they are very quick
-  to obtain. */
+  /* Load bispectrum from disk, if it was not already computed. Note that we load
+  the bispectrum only if it is a non-separable bispectrum, since all other bispectra
+  are quick to compute on the fly. */
   if ((bi.bispectrum_type[index_bt] == non_separable_bispectrum)
    || (bi.bispectrum_type[index_bt] == intrinsic_bispectrum)) {
-    if ( (pr.load_bispectra_from_disk == _TRUE_) || (pr.store_bispectra_to_disk == _TRUE_) ) {
+    if ((pr.load_bispectra_from_disk==_TRUE_) || (pr.store_bispectra_to_disk==_TRUE_)) {
       if (bispectra_load_from_disk(&bi, index_bt) == _FAILURE_) {
         printf("\n\nError in bispectra_load_from_disk \n=>%s\n", bi.error_message);
         return _FAILURE_;
@@ -419,8 +439,9 @@ int main(int argc, char **argv) {
   // =                                  Quick access                                 =
   // =================================================================================
 
-  /* Uncomment to quickly access the bispectra without all the complicated machinery that follows. */
-  // for (index_l1=0; index_l1 < bi.l_size; ++index_l1) {
+  /* Uncomment to quickly access the bispectra without all the complicated machinery
+  that follows. */
+  // for (int index_l1=0; index_l1 < bi.l_size; ++index_l1) {
   //   
   //   int l1 = bi.l[index_l1];
   //   
@@ -428,11 +449,13 @@ int main(int argc, char **argv) {
   //     
   //     int l2 = bi.l[index_l2];
   // 
-  //     /* Skip those configurations that are forbidden by the triangular condition (optimization) */
+  //     /* Skip those configurations that are forbidden by the triangular
+  //     condition (optimization) */
   //     if (l2 < l1/2)
   //       continue;
   // 
-  //     /* Determine the limits for l3, which come from the triangular inequality |l1-l2| <= l3 <= l1+l2 */
+  //     /* Determine the limits for l3, which come from the triangular inequality
+  //     |l1-l2| <= l3 <= l1+l2 */
   //     int index_l3_min = bi.index_l_triangular_min[index_l1][index_l2];
   //     int index_l3_max = MIN (index_l2, bi.index_l_triangular_max[index_l1][index_l2]);
   //     
@@ -526,8 +549,8 @@ int main(int argc, char **argv) {
   
   if (PRINT_TRIANGULAR == _TRUE_) {
   
-    index_l1_fixed = bs.index_l[l1_fixed];
-    index_l2_fixed = bs.index_l[l2_fixed];
+    index_l1_fixed = tr.index_l[l1_fixed];
+    index_l2_fixed = tr.index_l[l2_fixed];
   
     if ((index_l1_fixed<0) || (index_l2_fixed<0)) {
   
@@ -541,7 +564,7 @@ int main(int argc, char **argv) {
   }
   else if ( PRINT_SQUEEZED_SMALL_SCALE == _TRUE_ ) {
   
-    index_l_long = bs.index_l[l_long];
+    index_l_long = tr.index_l[l_long];
   
     if (index_l_long < 0) {
   
@@ -555,7 +578,7 @@ int main(int argc, char **argv) {
   }
   else if ( PRINT_SQUEEZED_LARGE_SCALE == _TRUE_ ) {
   
-    index_l_short = bs.index_l[l_short];
+    index_l_short = tr.index_l[l_short];
   
     if (index_l_short < 0) {
   
@@ -573,25 +596,27 @@ int main(int argc, char **argv) {
   // =                                 Print debug info                              =
   // =================================================================================
   
-  /* Print Information about the cosmological model */
+  /* Information about the cosmological model */
   double h = ba.h;
-  
-  fprintf(stderr, "# Cosmological parameters:\n");
-  fprintf(stderr, "# tau0 = %g, a_equality = %g, Omega_b = %g, Tcmb = %g, Omega_cdm = %g, omega_lambda = %g, Omega_ur = %g, Omega_fld = %g, h = %g, tau0 = %g\n",
-    ba.conformal_age, ba.a_eq, ba.Omega0_b, ba.T_cmb, ba.Omega0_cdm, ba.Omega0_lambda, ba.Omega0_ur, ba.Omega0_fld, ba.h, ba.conformal_age);
-  fprintf(stderr, "# omega_b = %g, omega_cdm = %g, omega_lambda = %g, omega_ur = %g, omega_fld = %g\n",
+  double a_equality = ba.a_eq;  
+  fprintf (stderr, "# Cosmological parameters:\n");
+  fprintf (stderr, "# tau0 = %g, a_equality = %g, Omega_b = %g, Tcmb = %g, Omega_cdm = %g\n",
+    ba.conformal_age, ba.a_eq, ba.Omega0_b, ba.T_cmb, ba.Omega0_cdm);
+  fprintf (stderr, "# omega_lambda = %g, Omega_ur = %g, Omega_fld = %g, h = %g, tau0 = %g\n",
+    ba.Omega0_lambda, ba.Omega0_ur, ba.Omega0_fld, ba.h, ba.conformal_age);
+  fprintf (stderr, "# omega_b = %g, omega_cdm = %g, omega_lambda = %g, omega_ur = %g, omega_fld = %g\n",
     ba.Omega0_b*h*h, ba.Omega0_cdm*h*h, ba.Omega0_lambda*h*h, ba.Omega0_ur*h*h, ba.Omega0_fld*h*h);
-  
-  
-  /* Info about the used gauge */
-  fprintf(stderr, "# gauge = ");
+    
+  /* Info about the used gauge at first order */
+  fprintf (stderr, "# gauge = ");
   if (pt.gauge == newtonian)
-    fprintf(stderr, "Newtonian gauge\n");
+    fprintf (stderr, "Newtonian gauge\n");
   if (pt.gauge == synchronous)
-    fprintf(stderr, "synchronous gauge\n");
+    fprintf (stderr, "synchronous gauge\n");  
   
   /* Which bispectrum are we printing? */
-  fprintf(stderr, "# Showing the '%s_%s%s%s' bispectrum (index_bt=%d)\n", bt_label, X_label, Y_label, Z_label, index_bt);
+  fprintf(stderr, "# Showing the '%s_%s%s%s' bispectrum (index_bt=%d)\n",
+    bt_label, X_label, Y_label, Z_label, index_bt);
   
   /* Print information on what we are going to print */
   if (PRINT_TRIANGULAR == _TRUE_) {
@@ -600,7 +625,8 @@ int main(int argc, char **argv) {
     int index_l3_min = bi.index_l_triangular_min[index_l1_fixed][index_l2_fixed]; 
     int l3_min = bi.l[index_l3_min];
   
-    fprintf (stderr, "# Tabulating TRIANGULAR configurations of b(l1,l2,l3) with l1=%d, l2=%d, l3=L free to vary\n", l1_fixed, l2_fixed);
+    fprintf (stderr, "# Tabulating TRIANGULAR configurations of b(l1,l2,l3) with l1=%d, l2=%d, l3=L free to vary\n",
+      l1_fixed, l2_fixed);
     fprintf (stderr, "# L spans %d values from %d to %d\n", l3_size, l3_min, bi.l[index_l3_min + l3_size - 1]);
   }
   else if (PRINT_EQUILATERAL == _TRUE_) {
@@ -610,16 +636,19 @@ int main(int argc, char **argv) {
   } 
   else if (PRINT_SQUEEZED_PITROU == _TRUE_) {
   
-    fprintf (stderr, "# Tabulating SQUEEZED_PITROU configurations of b(l1,l2,l3) with %d*l1=l2=l3, with l1=L free to vary\n", short_to_long_ratio);
+    fprintf (stderr, "# Tabulating SQUEEZED_PITROU configurations of b(l1,l2,l3) with %d*l1=l2=l3, with l1=L free to vary\n",
+      short_to_long_ratio);
   }
   else if (PRINT_SQUEEZED_SMALL_SCALE == _TRUE_) {
   
-    fprintf (stderr, "# Tabulating SQUEEZED_SMALL_SCALE configurations of b(l1,l2,l3) with l1=%d, l2=l3=L free to vary\n", l_long);
+    fprintf (stderr, "# Tabulating SQUEEZED_SMALL_SCALE configurations of b(l1,l2,l3) with l1=%d, l2=l3=L free to vary\n",
+      l_long);
     fprintf (stderr, "# L spans %d values from %d to %d\n", bi.l_size, bi.l[0], bi.l[bi.l_size-1]);
   }
   else if (PRINT_SQUEEZED_LARGE_SCALE == _TRUE_) {
   
-    fprintf (stderr, "# Tabulating SQUEEZED_LARGE_SCALE configurations of b(l1,l2,l3) with l1=l2=%d, l3=L free to vary\n", l_short);
+    fprintf (stderr, "# Tabulating SQUEEZED_LARGE_SCALE configurations of b(l1,l2,l3) with l1=l2=%d, l3=L free to vary\n",
+      l_short);
     fprintf (stderr, "# L spans %d values from %d to %d\n", bi.l_size, bi.l[0], bi.l[bi.l_size-1]);
   }
 
@@ -651,7 +680,6 @@ int main(int argc, char **argv) {
   fprintf (stderr, "%20s(%03d) ", "brightness_T_K", index_print++);
   fprintf (stderr, "%20s(%03d) ", "bolometric_T_K", index_print++);
   
-
   /* Analytical approximation in Lewis 2012 (L2012).
   We normalize all the quantities in these papers by -1/12 C_long * C_short */
   if ( (PRINT_SQUEEZED_SMALL_SCALE == _TRUE_) || (PRINT_SQUEEZED_LARGE_SCALE == _TRUE_) ) {
@@ -691,23 +719,25 @@ int main(int argc, char **argv) {
   fprintf(stderr, "\n");
   
   
+
   // ===================================================================================
   // =                                    Print columns                                =
   // ===================================================================================
   
-  
-  /* We now loop over the (l1,l2,l3) configurations that satisfy the triangular condition. Since we
-  computed the bispectra only for l1>=l2>=l3, we obtain the values outside that range using
-  the symmetry of the bispectrum wrt to permutations of (l1,l2,l3) */
-  for (index_l1=0; index_l1 < bi.l_size; ++index_l1) {
+  /* We now loop over the (l1,l2,l3) configurations that satisfy the triangular condition.
+  Since we computed the bispectra only for l1>=l2>=l3, we obtain the values outside that
+  range using the symmetry of the bispectrum wrt to permutations of (l1,l2,l3) */
+  for (int index_l1=0; index_l1 < bi.l_size; ++index_l1) {
     
     int l1 = bi.l[index_l1];
     
-    for (index_l2=0; index_l2 < bi.l_size; ++index_l2) {
+    for (int index_l2=0; index_l2 < bi.l_size; ++index_l2) {
       
       int l2 = bi.l[index_l2];
+      int index_l3_min = bi.index_l_triangular_min[index_l1][index_l2];
+      int index_l3_max = bi.index_l_triangular_max[index_l1][index_l2];
   
-      for (index_l3=bi.index_l_triangular_min[index_l1][index_l2]; index_l3<=bi.index_l_triangular_max[index_l1][index_l2]; ++index_l3) {  
+      for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {  
   
         int l3 = bi.l[index_l3];
   
@@ -715,9 +745,9 @@ int main(int argc, char **argv) {
         print it for all (l1,l2,l3) configurations by permuting the field indices XYZ, as all physical
         bispectra of the form <X_l1 Y_l2 Z_l3> are symmetric with respec to the exchanges
         (l1,X) <-> (l2,Y), (l1,X) <-> (l3,Z) and (l2,Y) <-> (l3,Z). This cannot be done
-        for the bispectra that are inherently asymmetric, like it is the case for the analytical approximation
+        for the bispectra that are asymmetric by construction, like the analytical approximation
         for the squeezed configurations. In that case, we only print the configurations where l1>=l2>=l3, as
-        the other ones would not make sense. (In practice, we enforce l3>=l2>=l1 instead of l1>=l2>=l3
+        the other ones would not make sense. (Practical detail: we enforce l3>=l2>=l1 instead of l1>=l2>=l3
         because we have assigned l1 to be l_long, that is, the smallest of the three.) */
         if ((((bi.has_intrinsic_squeezed == _TRUE_) && (index_bt == bi.index_bt_intrinsic_squeezed)))
            ||((bi.has_local_squeezed == _TRUE_) && (index_bt == bi.index_bt_local_squeezed))
@@ -802,8 +832,8 @@ int main(int argc, char **argv) {
 
         /* Since we computed the bispectra only for l1>=l2>=l3, we obtain the values outside that range using
         the symmetry of the bispectrum with respect to permutations of (l1,l2,l3). This approach won't work
-        for the squeezed-limit approximations of the i_squeezed and l_squeezed bispectra (see comment above at
-        the beginning of l3 loop), but in that case the values of l1,l2 and l3 in this loop are constrained
+        for any squeezed-limit approximations, such as the i_squeezed and l_squeezed bispectra (see comment
+        above at the beginning of l3 loop), but in that case the values of l1,l2 and l3 in this loop are constrained
         to satisfy l1<=l2<=l3. */
              if ((l1>=l2) && (l2>=l3))
           bolometric_T = bi.bispectra[index_bt][X][Y][Z][index_l1_l2_l3];
@@ -830,7 +860,7 @@ int main(int argc, char **argv) {
         is small, as it is the case when m!=0. This happens because in the bispectrum module we summed
         the (big) temperature correction to the (small) bispectrum and here we are subtracting it.
         However, this is only a visualisation issue relevant to this function that does not affect Song. */
-        
+
         double quadratic_correction;
         
              if ((l1>=l2) && (l2>=l3))
@@ -1008,6 +1038,10 @@ int main(int argc, char **argv) {
               * (bi.cls[bi.index_ct_of_bf_bf[Y][Y]][l_short-2] + bi.cls[bi.index_ct_of_bf_bf[Z][Z]][l_short-2]);
           }
         
+          if (fabs(normalisation) < _MINUSCULE_) {
+            printf ("WARNING: normalisation=%g is small; beware of inf\n", normalisation);
+          }
+        
           /* Normalized version of the brightness temperature bispectrum */
           double brightness_T_normalized = brightness_T / normalisation;
           
@@ -1087,67 +1121,76 @@ int main(int argc, char **argv) {
   // =                                  Free memory                                  =
   // =================================================================================
   
-  for (i=0; i<argc_for_SONG; ++i) free (argv_for_SONG[i]);
-  free (argv_for_SONG);
-  
-  
-  if (bispectra_free(&pr,&pt,&sp,&le,&bi) == _FAILURE_) {
-    printf("\n\nError in bispectra_free \n=>%s\n",bi.error_message);
-    return _FAILURE_;
-  }
-  
-  if (pt.has_cls == _TRUE_) {
-    if (spectra_free(&sp) == _FAILURE_) {
-      printf("\n\nError in spectra_free \n=>%s\n",sp.error_message);
-      return _FAILURE_;
-    }
-  }
-  
-  if (primordial_free(&pm) == _FAILURE_) {
-    printf("\n\nError in primordial_free \n=>%s\n",pm.error_message);
-    return _FAILURE_;
-  }
-  
-  if (transfer2_free(&pr2,&pt2,&tr2) == _FAILURE_) {
-    printf("\n\nError in transfer2_free \n=>%s\n",tr2.error_message);
-    return _FAILURE_;
-  }
-  
-  if (transfer_free(&tr) == _FAILURE_) {
-    printf("\n\nError in transfer_free \n=>%s\n",tr.error_message);
-    return _FAILURE_;
-  }
-  
-  if (bessel2_free(&pr,&pr2,&bs,&bs2) == _FAILURE_)  {
-    printf("\n\nError in bessel2_free \n=>%s\n",bs2.error_message);
-    return _FAILURE_;
-  }
-  
-  if (bessel_free(&pr,&bs) == _FAILURE_)  {
-    printf("\n\nError in bessel_free \n=>%s\n",bs.error_message);
-    return _FAILURE_;
-  }
-  
-  if (perturb2_free(&pr2,&pt2) == _FAILURE_) {
-    printf("\n\nError in perturb2_free \n=>%s\n",pt2.error_message);
-    return _FAILURE_;
-  }
-  
-  if (perturb_free(&pr,&pt) == _FAILURE_) {
-    printf("\n\nError in perturb_free \n=>%s\n",pt.error_message);
-    return _FAILURE_;
-  }
-  
-  if (thermodynamics_free(&th) == _FAILURE_) {
-    printf("\n\nError in thermodynamics_free \n=>%s\n",th.error_message);
-    return _FAILURE_;
-  }
-  
-  if (background_free(&ba) == _FAILURE_) {
-    printf("\n\nError in background_free \n=>%s\n",ba.error_message);
-    return _FAILURE_;
-  }
-
+  // for (i=0; i<argc_for_SONG; ++i) free (argv_for_SONG[i]);
+  // free (argv_for_SONG);
+  //
+  //
+  // if (bispectra_free(&pr,&pt,&sp,&le,&bi) == _FAILURE_) {
+  //   printf("\n\nError in bispectra_free \n=>%s\n",bi.error_message);
+  //   return _FAILURE_;
+  // }
+  //
+  // if (pt.has_cls == _TRUE_) {
+  //   if (spectra_free(&sp) == _FAILURE_) {
+  //     printf("\n\nError in spectra_free \n=>%s\n",sp.error_message);
+  //     return _FAILURE_;
+  //   }
+  // }
+  //
+  // if (primordial_free(&pm) == _FAILURE_) {
+  //   printf("\n\nError in primordial_free \n=>%s\n",pm.error_message);
+  //   return _FAILURE_;
+  // }
+  //
+  // if (transfer2_free(&pr2,&pt2,&tr2) == _FAILURE_) {
+  //   printf("\n\nError in transfer2_free \n=>%s\n",tr2.error_message);
+  //   return _FAILURE_;
+  // }
+  //
+  // if (bessel2_free(&pr,&pr2,&bs,&bs2) == _FAILURE_)  {
+  //   printf("\n\nError in bessel2_free \n=>%s\n",bs2.error_message);
+  //   return _FAILURE_;
+  // }
+  //
+  // if (bessel_free(&bs) == _FAILURE_)  {
+  //   printf("\n\nError in bessel_free \n=>%s\n",bs.error_message);
+  //   return _FAILURE_;
+  // }
+  //
+  // if (transfer_free(&tr) == _FAILURE_) {
+  //   printf("\n\nError in transfer_free \n=>%s\n",tr.error_message);
+  //   return _FAILURE_;
+  // }
+  //
+  // if (nonlinear_free(&nl) == _FAILURE_) {
+  //   printf("\n\nError in nonlinear_free \n=>%s\n",nl.error_message);
+  //   return _FAILURE_;
+  // }
+  //
+  // if (primordial_free(&pm) == _FAILURE_) {
+  //   printf("\n\nError in primordial_free \n=>%s\n",pm.error_message);
+  //   return _FAILURE_;
+  // }
+  //
+  // if (perturb2_free(&pr2,&pt2) == _FAILURE_) {
+  //   printf("\n\nError in perturb2_free \n=>%s\n",pt2.error_message);
+  //   return _FAILURE_;
+  // }
+  //
+  // if (perturb_free(&pt) == _FAILURE_) {
+  //   printf("\n\nError in perturb_free \n=>%s\n",pt.error_message);
+  //   return _FAILURE_;
+  // }
+  //
+  // if (thermodynamics_free(&th) == _FAILURE_) {
+  //   printf("\n\nError in thermodynamics_free \n=>%s\n",th.error_message);
+  //   return _FAILURE_;
+  // }
+  //
+  // if (background_free(&ba) == _FAILURE_) {
+  //   printf("\n\nError in background_free \n=>%s\n",ba.error_message);
+  //   return _FAILURE_;
+  // }
 
   return _SUCCESS_;
 

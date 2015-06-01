@@ -63,8 +63,10 @@ CFLAGS += -DWITH_BISPECTRA
 # ==========================================================================
 
 # Source files also present in CLASS
-TOOLS = growTable.o dei_rkck.o sparse.o evolver_rkck.o  evolver_ndf15.o arrays.o parser.o quadrature.o hyperspherical.o common.o
-SOURCE_CLASS = input.o background.o thermodynamics.o perturbations.o primordial.o nonlinear.o transfer.o spectra.o lensing.o
+TOOLS = growTable.o dei_rkck.o sparse.o evolver_rkck.o  evolver_ndf15.o \
+arrays.o parser.o quadrature.o hyperspherical.o common.o
+SOURCE_CLASS = input.o background.o thermodynamics.o perturbations.o primordial.o \
+nonlinear.o transfer.o spectra.o lensing.o bessel.o bispectra.o # fisher.o
 INPUT = input.o
 BACKGROUND = background.o
 THERMO = thermodynamics.o
@@ -144,8 +146,7 @@ print_sources2: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2) \
 	$(PRINT_SOURCES2)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-print_transfers1: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2)\
-	$(BESSEL) $(BESSEL2) $(TRANSFER2) $(PRINT_TRANSFERS1)
+print_transfers1: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2) $(PRINT_TRANSFERS1)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_transfers2: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2)\
@@ -156,8 +157,13 @@ print_cls: $(SONG_TOOLS) $(SOURCE_CLASS) $(BESSEL)\
 	$(BISPECTRA) $(FISHER) $(PRINT_CLS)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
+# print_bispectra: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2)\
+# 	$(BESSEL) $(BESSEL2) $(TRANSFER2) $(BISPECTRA) $(BISPECTRA2) $(FISHER)\
+# 	$(UTILITY) $(PRINT_BISPECTRA)
+# 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+
 print_bispectra: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2)\
-	$(BESSEL) $(BESSEL2) $(TRANSFER2) $(BISPECTRA) $(BISPECTRA2) $(FISHER)\
+	$(BESSEL) $(BESSEL2) $(TRANSFER2) $(BISPECTRA)\
 	$(UTILITY) $(PRINT_BISPECTRA)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 

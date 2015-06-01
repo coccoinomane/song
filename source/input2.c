@@ -2,7 +2,7 @@
  *
  * Input module for SONG.
  *
- * Created by Guido W. Pettinari on the 13.03.2013
+ * Created by Guido W. Pettinari on 13.03.2013
  * Based on input.c by the CLASS team (http://class-code.net/)
  */
 

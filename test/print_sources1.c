@@ -1,8 +1,5 @@
 /** @file print_sources1.c 
  *
- * Created by Guido W. Pettinari on 17.06.2011
- * Last edited by Guido W. Pettinari on 20.05.2015
- *
  * Print to standard error either the first-order LOS sources from
  * CLASS (contained in pt.sources) or the first-order perturbations
  * needed for SONG (contained in pt.quadsources), according
@@ -22,6 +19,8 @@
  * usage:     print_sources1 <ini file> <pre file> <index k>"
  *            print_sources1 <run_directory> <index k>
  *
+ * Created by Guido W. Pettinari on 17.06.2011
+ * Last edited by Guido W. Pettinari on 20.05.2015
  */
  
 #include "song.h"
@@ -57,6 +56,7 @@ int main(int argc, char **argv) {
   int n_args = 1;
   int index_k;
 
+	/* CLASS/SONG can accept either one argument... */
   if (argc == 2 + n_args) {
     struct stat st;
     stat (argv[1], &st);
@@ -67,6 +67,7 @@ int main(int argc, char **argv) {
     }
     index_k = atoi(argv[2]);
   }
+  /* ... or two arguments */
   else if (argc == 3 + n_args) {
     index_k = atoi(argv[3]);
   }
@@ -300,9 +301,11 @@ int main(int argc, char **argv) {
   // =                                    Free memory                                    =
   // =====================================================================================
 
-  if (perturb2_free(&pr2, &pt2) == _FAILURE_) {
-    printf("\n\nError in perturb2_free \n=>%s\n",pt2.error_message);
-    return _FAILURE_;
+  if (pt.has_perturbations2 == _TRUE_) {
+    if (perturb2_free(&pr2, &pt2) == _FAILURE_) {
+      printf("\n\nError in perturb2_free \n=>%s\n",pt2.error_message);
+      return _FAILURE_;
+    }
   }
 
   if (perturb_free(&pt) == _FAILURE_) {

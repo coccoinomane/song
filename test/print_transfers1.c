@@ -1,11 +1,21 @@
-/** @file print_transfers2.c 
+/** @file print_transfers1.c 
+ *
+ * Print to screen the transfer functions at first order as a function
+ * of k.
+ *
+ * The transfer functions will be first computed by running the transfer.c
+ * module and then printed from the ptr->transfer array. Each transfer
+ * function will be printed with its label. When a label cannot be found,
+ * a question mark will be printed instead.
+ *
+ * usage:     print_transfers <ini file> <pre file> <n_columns> 
+ *            print_transfers <run directory> <n_columns> 
+ *
+ * where <n_columns> is the number of l-multipoles to print for each 
+ * transfer type.
+ *
  * Created by Guido W. Pettinari on 17.07.2012
- * Last edited by Guido W. Pettinari on 17.07.2012
- *
- * Print to screen the transfer array inside the transfer structure, with k varying.
- *
- * usage:     print_transfers <ini file> [<pre file>] <n_columns>
- *
+ * Last edited by Guido W. Pettinari on 01.06.2015
  */
  
 #include "song.h"
@@ -18,70 +28,75 @@ int main(int argc, char **argv) {
   struct thermo th;           /* thermodynamics */
   struct perturbs pt;         /* source functions (1st-order) */
   struct perturbs2 pt2;       /* source functions (2nd-order) */  
+  struct transfers tr;        /* transfer functions (1st-order) */
   struct bessels bs;          /* bessel functions (1st-order) */
   struct bessels2 bs2;        /* bessel functions (2nd-order) */
-  struct transfers tr;        /* transfer functions (1st-order) */
   struct transfers2 tr2;      /* transfer functions (2nd-order) */
   struct primordial pm;       /* primordial spectra */
   struct spectra sp;          /* output spectra (1st-order) */
-  struct bispectra bi;        /* bispectra */
-  struct fisher fi;           /* fisher matrix */
   struct nonlinear nl;        /* non-linear spectra */
   struct lensing le;          /* lensed spectra */
+  struct bispectra bi;        /* bispectra */
+  struct fisher fi;           /* fisher matrix */
   struct output op;           /* output files */
   ErrorMsg errmsg;            /* error messages */
-
 
   /* Fixed indices */
   int index_mode = 0;
   int index_ic = 0;
+  
 
-  // ===================
-  // = Parse arguments =
-  // ===================
+  // ===============================================================================
+  // =                               Parse arguments                               =
+  // ===============================================================================
 
-  /* We introduce the n_args variable to differentiate between CLASS arguments and the arguments
-  for this function */
+  /* We introduce the n_args variable to differentiate between CLASS arguments and the
+  arguments for this function */
   int n_args = 1;
 	int n_columns;
 	
-	/* CLASS can accept either one or two arguments */
+	/* CLASS/SONG can accept either one argument... */
   if (argc == 2 + n_args) {
     n_columns = atoi(argv[2]);
   }
+  /* ... or two arguments */
   else if (argc == 3 + n_args) {
     n_columns = atoi(argv[3]);
   }
   else {
     printf ("usage:     %s <ini file> <pre file> <n_columns>\n", argv[0]);
     printf ("           %s <run_directory> <n_columns>\n", argv[0]);
+    printf ("\n");
+    printf ("where <n_columns> is the number of l-multipoles to print for each transfer type\n");
     return _FAILURE_;
   }
 
 
-  // ===========================
-  // = Calculate perturbations =
-  // ===========================
+  // ===============================================================================
+  // =                           Compute perturbations                             =
+  // ===============================================================================
 
   /* Decrease the argument counter. The reason is that CLASS should be fed only its default arguments,
   that is the parameter files and, optionally, the run directory */
   argc -= n_args;
 
-  if (input_init_from_arguments(argc,argv,&pr,&ba,&th,&pt,&bs,&tr,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
+  if (input_init_from_arguments(argc,argv,&pr,&ba,&th,&pt,&tr,&pm,
+    &sp,&nl,&le,&bs,&bi,&fi,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
     return _FAILURE_;
   }
-
-  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
-    printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
+  
+  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&tr,&bs,&bs2,
+    &tr2,&pm, &sp,&nl,&le,&bi,&fi,&op,errmsg) == _FAILURE_) {
+    printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg);
     return _FAILURE_;
   }
 
   /* Compute the second-order sources and transfer functions no matter what is written in params.ini */
-  pt2.has_perturbations2 = _TRUE_;
-	pt.has_cls = pt2.has_cls = tr2.has_cls = _TRUE_;
-	pt.has_cl_cmb_temperature = pt2.has_cmb_temperature = _TRUE_;
-  bi.has_bispectra = _FALSE_;
+  // pt2.has_perturbations2 = _TRUE_;
+  // pt.has_cls = pt2.has_cls = tr2.has_cls = _TRUE_;
+  // pt.has_cl_cmb_temperature = pt2.has_cmb_temperature = _TRUE_;
+  // bi.has_bispectra = _FALSE_;
 
   if (background_init(&pr,&ba) == _FAILURE_) {
     printf("\n\nError running background_init \n=>%s\n",ba.error_message);
@@ -93,82 +108,68 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
-  if (pt.has_perturbations2 == _TRUE_) {
+  if (pt.has_perturbations2 == _FALSE_) {
+    if (perturb_init(&pr,&ba,&th,&pt) == _FAILURE_) {
+      printf("\n\nError in perturb_init \n=>%s\n",pt.error_message);
+      return _FAILURE_;
+    }
+  }
+  else {
     if (perturb2_init(&pr,&pr2,&ba,&th,&pt,&pt2) == _FAILURE_) {
       printf("\n\nError in perturb2_init \n=>%s\n",pt2.error_message);
       return _FAILURE_;
     }
   }
-  else {
-    if (perturb_init(&pr,&ba,&th,&pt) == _FAILURE_) {
-      printf("\n\nError in perturb_init \n=>%s\n",pt.error_message);
-      return _FAILURE_;
-    } 
-  }
 
-  if (bessel_init(&pr,&bs) == _FAILURE_) {
-    printf("\n\nError in bessel_init \n =>%s\n",bs.error_message);
+  if (transfer_init(&pr,&ba,&th,&pt,&nl,&tr) == _FAILURE_) {
+    printf("\n\nError in transfer_init \n=>%s\n",tr.error_message);
     return _FAILURE_;
   }
 
-  if (pt.has_perturbations2 == _TRUE_) {
-    if (bessel2_init(&pr,&pr2,&pt2,&bs,&bs2) == _FAILURE_) {
-      printf("\n\nError in bessel2_init \n =>%s\n",bs2.error_message);
-      return _FAILURE_;
-    }
-  }
-
-  if (pt2.k_size > 1)
-    if (transfer_init(&pr,&ba,&th,&pt,&bs,&tr) == _FAILURE_) {
-      printf("\n\nError in transfer_init \n=>%s\n",tr.error_message);
-      return _FAILURE_;
-    }
-
-  if (pt.has_perturbations2 == _TRUE_) {
-    if (transfer2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2) == _FAILURE_) {
-      printf("\n\nError in transfer2_init \n=>%s\n",tr2.error_message);
-      return _FAILURE_;
-    }
-  }
-  else {
-    if (transfer_init(&pr,&ba,&th,&pt,&bs,&tr) == _FAILURE_) {
-      printf("\n\nError in transfer_init \n=>%s\n",tr.error_message);
-      return _FAILURE_;
-    }
-  }
+  
+  // ====================================================================================
+  // =                                Print debug info                                  =
+  // ====================================================================================
   
   /* Information about the cosmological model */
   double h = ba.h;
   double a_equality = ba.a_eq;  
-  fprintf(stderr,"# Cosmological parameters:\n");
-  fprintf(stderr,"# tau0 = %g, a_equality = %g, Omega_b = %g, Tcmb = %g, Omega_cdm = %g, omega_lambda = %g, Omega_ur = %g, Omega_fld = %g, h = %g, tau0 = %g\n",
-    ba.conformal_age, ba.a_eq, ba.Omega0_b, ba.T_cmb, ba.Omega0_cdm, ba.Omega0_lambda, ba.Omega0_ur, ba.Omega0_fld, ba.h, ba.conformal_age);
-  fprintf(stderr,"# omega_b = %g, omega_cdm = %g, omega_lambda = %g, omega_ur = %g, omega_fld = %g\n",
+  fprintf (stderr, "# Cosmological parameters:\n");
+  fprintf (stderr, "# tau0 = %g, a_equality = %g, Omega_b = %g, Tcmb = %g, Omega_cdm = %g\n",
+    ba.conformal_age, ba.a_eq, ba.Omega0_b, ba.T_cmb, ba.Omega0_cdm);
+  fprintf (stderr, "# omega_lambda = %g, Omega_ur = %g, Omega_fld = %g, h = %g, tau0 = %g\n",
+    ba.Omega0_lambda, ba.Omega0_ur, ba.Omega0_fld, ba.h, ba.conformal_age);
+  fprintf (stderr, "# omega_b = %g, omega_cdm = %g, omega_lambda = %g, omega_ur = %g, omega_fld = %g\n",
     ba.Omega0_b*h*h, ba.Omega0_cdm*h*h, ba.Omega0_lambda*h*h, ba.Omega0_ur*h*h, ba.Omega0_fld*h*h);
-
+    
+  /* Info about the used gauge at first order */
+  fprintf (stderr, "# gauge = ");
+  if (pt.gauge == newtonian)
+    fprintf (stderr, "Newtonian gauge\n");
+  if (pt.gauge == synchronous)
+    fprintf (stderr, "synchronous gauge\n");  
+  
   /* Shortcuts */
-  int k_size = tr.k_size[index_mode];
+  int k_size = tr.q_size;
   int tt_size = tr.tt_size[index_mode];
   int l_size = tr.l_size[index_mode];  
   
-  /* Account for overshooting of the inputs */
-  if((n_columns>(tt_size*l_size)) || (n_columns<=0)) n_columns = tt_size*l_size;
-  
-  /* Some debug info */
-  fprintf(stderr,"# gauge = ");
-  if (pt.gauge == newtonian)
-    fprintf(stderr,"Newtonian gauge\n");
-  if (pt.gauge == synchronous)
-    fprintf(stderr,"synchronous gauge\n");
-  
+  /* Account for overshooting of the number of columns to print */
+  if ((n_columns>l_size) || (n_columns<=0))
+    n_columns = l_size;
+    
   fprintf(stderr,"# Time-sampling of quadsources with %d points from tau=%g to %g\n",
     pt.tau_size, pt.tau_sampling[0], pt.tau_sampling[pt.tau_size-1]);
-  fprintf(stderr,"# K-sampling of 1st-order transfer functions with %d points from k=%g to %g\n",
-    k_size, tr.k[index_mode][0], tr.k[index_mode][k_size-1]);
-  fprintf(stderr,"# Number of transfer types, multipoles, columns printed x type: %d, %d, %d\n",
-    tt_size, l_size, n_columns);
+  fprintf(stderr,"# k-sampling of 1st-order transfer functions with %d points from k=%g to %g\n",
+    k_size, tr.q[0], tr.q[k_size-1]);
+  fprintf(stderr,"# Number of transfer types = %d\n", tt_size);
+  fprintf(stderr,"# Number of multipoles = %d (printed to file = %d per type)\n",
+    l_size, n_columns);
   
 
+  // ==================================================================================
+  // =                                  Print transfers                               =
+  // ==================================================================================
 
   /* Running index used to number the columns */
   int index_print=1;
@@ -178,28 +179,39 @@ int main(int argc, char **argv) {
   char label[32];
 
   /* Print labels of transfer types */
-  for (int index_tt = 0; index_tt < MIN(tt_size,n_columns); ++index_tt) {
+  for (int index_tt = 0; index_tt < tt_size; ++index_tt) {
     for (int index_l = 0; index_l < MIN(l_size,n_columns); ++index_l) {
-      if (index_tt==tr.index_tt_t)
+      if ((pt.has_cl_cmb_temperature==_TRUE_) && (index_tt==tr.index_tt_t))
         sprintf (label, "T_%d", tr.l[index_l]);
-      else if (index_tt==tr.index_tt_e)
+      else if ((pt.has_cl_cmb_temperature==_TRUE_) && (index_tt==tr.index_tt_t0))
+        sprintf (label, "T0_%d", tr.l[index_l]);
+      else if ((pt.has_cl_cmb_temperature==_TRUE_) && (index_tt==tr.index_tt_t1))
+        sprintf (label, "T1_%d", tr.l[index_l]);
+      else if ((pt.has_cl_cmb_temperature==_TRUE_) && (index_tt==tr.index_tt_t2))
+        sprintf (label, "T2_%d", tr.l[index_l]);
+      else if ((pt.has_cl_cmb_polarization==_TRUE_) && (index_tt==tr.index_tt_e))
         sprintf (label, "E_%d", tr.l[index_l]);
-      fprintf (stderr,"%10s(%03d) ", label, index_print++);
+      else if ((pt.has_cl_cmb_polarization==_TRUE_) && (index_tt==tr.index_tt_b))
+        sprintf (label, "B_%d", tr.l[index_l]);
+      else if ((pt.has_cl_cmb_lensing_potential==_TRUE_) && (index_tt==tr.index_tt_lcmb))
+        sprintf (label, "LCMB_%d", tr.l[index_l]);
+      else if ((pt.has_cl_cmb_zeta==_TRUE_) && (index_tt==tr.index_tt_zeta))
+        sprintf (label, "Z_%d", tr.l[index_l]);
+      else
+        sprintf (label, "?_%d", tr.l[index_l]);
+      fprintf (stderr,"%10s(%03d) ", label, index_print++);      
     }
   }
   fprintf(stderr,"\n");
   
-
-  // **************    Loop on k    *****************//
+  /* Print transfer functions */
   for (int index_k = 0; index_k < k_size; ++index_k) {
+
+    double k = tr.q[index_k];
   
-    double k = tr.k[index_mode][index_k];
-  
-    /* Column containing k */
     fprintf (stderr,"%+15e ", k);
       
-    /* Columns from 3 to tt2_size+2 are the transfer functions */
-    for (int index_tt = 0; index_tt < MIN(tt_size,n_columns); ++index_tt) {
+    for (int index_tt = 0; index_tt < tt_size; ++index_tt) {
       for (int index_l = 0; index_l < MIN(l_size,n_columns); ++index_l) {
   
         double var = tr.transfer[index_mode] 
@@ -228,13 +240,15 @@ int main(int argc, char **argv) {
     printf("\n\nError in transfer_free \n=>%s\n",tr.error_message);
     return _FAILURE_;
   }
-  
-  if (bessel_free(&pr,&bs) == _FAILURE_)  {
-    printf("\n\nError in bessel_free \n=>%s\n",bs.error_message);
-    return _FAILURE_;
+
+  if (pt.has_perturbations2 == _TRUE_) {
+    if (perturb2_free(&pr2, &pt2) == _FAILURE_) {
+      printf("\n\nError in perturb2_free \n=>%s\n",pt2.error_message);
+      return _FAILURE_;
+    }
   }
   
-  if (perturb_free(&pr,&pt) == _FAILURE_) {
+  if (perturb_free(&pt) == _FAILURE_) {
     printf("\n\nError in perturb_free \n=>%s\n",pt.error_message);
     return _FAILURE_;
   }

@@ -9,7 +9,6 @@
 #include "transfer2.h"
 
 
-
 /**
  * Workspace that contains the intermediate results for the integration of an intrinsic
  * bispectrum.

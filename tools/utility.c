@@ -1,50 +1,55 @@
 /** @file utility.c Utility functions.
  *
- * Collection of high-level CLASS functions.
+ * Collection of high-level SONG functions.
  * 
- * Guido W. Pettinari, 26.04.2015
+ * Created by Guido W. Pettinari on 26.04.2015.
  */
 
 #include "utility.h"
 
 
 /** 
- * Utility function for CLASS and SONG.
+ * Compute the angular power spectrum of the CMB up to the desired multipole l.
  * 
- * Compute the angular power spectrum (C_l) of the CMB up to the
- * desired multipole l. In the process, fill the the background,
- * thermodynamics, spectra, nonlinear and lensing structures of
- * CLASS.
+ * This function makes sure that the lensed C_l are computed all the way up to
+ * the l_max specified in the parameter file, usually l_max_scalars. The
+ * default behaviour in CLASS, on the other hand, is to compute the lensed C_l
+ * only up to l_max-delta_l_max. 
+ *
+ * In SONG we need the lensed C_l up to l_max in order to compute the lensing
+ * of the bispectrum, and to add the lensing variance to the Fisher matrix.
+ *
+ * Fills the spectra (psp) and lensing (ple) structures, relies on the
+ * background (pba) and thermodynamics (pth) structures.
  */
 
 int compute_cls(
-     struct precision * ppr,
-     struct background * pba,
-     struct thermo * pth,
-     struct spectra * psp,
-     struct nonlinear * pnl,
-     struct lensing * ple,
+     struct precision * ppr, /**< input */
+     struct background * pba, /**< input */
+     struct thermo * pth, /**< input */
+     struct spectra * psp, /**< output */
+     struct lensing * ple, /**< output */
      ErrorMsg error_message
      )
 {
 
-  /* Structures that are not of interest for SONG */
+  /* Structures that will not be outputted */
   struct precision pr;
   struct perturbs pt;
-  struct bessels bs;
-  struct transfers tr;
   struct primordial pm;
+  struct nonlinear nl;
+  struct transfers tr;
+  struct bessels bs;
   struct bispectra bi;
   struct fisher fi;
   struct output op;
-
 
   // ======================================================================================
   // =                                Modify input parameters                             =
   // ======================================================================================
   
   /* Structure that contains the two input parameter files */
-  struct file_content * pfc = ppr->input_file_content;
+  struct file_content * pfc = ppr->parameter_files_content;
   int found = _FALSE_;
 
   /* Increment the maximum multipole for which we need to compute the C_l, if needed.
@@ -87,10 +92,11 @@ int compute_cls(
     error_message);
 
   /* Re-read the parameters, this time from the modified 'file_content' structure. */
-  class_call (input_init (pfc,&pr,pba,pth,&pt,&bs,&tr,&pm,psp,&bi,&fi,pnl,ple,&op,error_message),
+  class_call (input_init (pfc,&pr,pba,pth,&pt,&tr,&pm,psp,&nl,ple,
+    &bs,&bi,&fi,&op,error_message),
     error_message,
     error_message);
-    
+
   /* Turn off the second-order perturbations by setting the flag 'pt.has_perturbations2' to
   _FALSE_. In this way, SONG is ignored and the standard CLASS will compute the linear C_l's
   for the parameters specified in the input files. */    
@@ -102,35 +108,31 @@ int compute_cls(
   // =                                      Run CLASS                                     =
   // ======================================================================================
     
-  // pt.perturbations_verbose = 0;
+  pt.perturbations_verbose = 0;
   class_call (perturb_init(&pr,pba,pth,&pt),
     pt.error_message,
     error_message);
 
-  bs.bessels_verbose = 0;
-  class_call (bessel_init(&pr,&bs),
-    bs.error_message,
-    error_message);
-
-  tr.transfer_verbose = 0;
-  class_call (transfer_init(&pr,pba,pth,&pt,&bs,&tr),
-    tr.error_message,
-    error_message);
-  
   pm.primordial_verbose = 0;
   class_call (primordial_init(&pr,&pt,&pm),
     pm.error_message,
     error_message);
 
-  class_call (spectra_init(&pr,pba,&pt,&tr,&pm,psp),
+  nl.nonlinear_verbose = 0;
+  class_call (nonlinear_init(&pr,pba,pth,&pt,&pm,&nl),
+    nl.error_message,
+    error_message);
+
+  tr.transfer_verbose = 0;
+  class_call (transfer_init(&pr,pba,pth,&pt,&nl,&tr),
+    tr.error_message,
+    error_message);
+
+  class_call (spectra_init(&pr,pba,&pt,&pm,&nl,&tr,psp),
     psp->error_message,
     error_message);
   
-  class_call (nonlinear_init(&pr,pba,pth,&pm,psp,pnl),
-    pnl->error_message,
-    error_message);
-      
-  class_call (lensing_init(&pr,&pt,psp,pnl,ple),
+  class_call (lensing_init(&pr,&pt,psp,&nl,ple),
     ple->error_message,
     error_message);
 
@@ -138,21 +140,21 @@ int compute_cls(
   // =================================================================================
   // =                                  Free memory                                  =
   // =================================================================================
+      
+  class_call (transfer_free(&tr),
+    tr.error_message,
+    error_message);
+  
+  class_call (nonlinear_free(&nl),
+    nl.error_message,
+    error_message);
   
   class_call (primordial_free(&pm),
-    error_message,
-    error_message);
-    
-  class_call (transfer_free(&tr),
-    error_message,
+    pm.error_message,
     error_message);
   
-  class_call (bessel_free(&pr,&bs),
-    error_message,
-    error_message);
-  
-  class_call (perturb_free(&pr,&pt),
-    error_message,
+  class_call (perturb_free(&pt),
+    pt.error_message,
     error_message);
          
   return _SUCCESS_;
