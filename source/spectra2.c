@@ -1,0 +1,458 @@
+/** @file spectra2.c Compute spectra of second order pertrubations
+ *
+ * Christian Fidler, 11.05.2015    
+ * 
+ *
+ */
+
+#include "spectra2.h"
+
+
+#define sources(INDEX_TAU,INDEX_K_TRIANGULAR) \
+  ppt2->sources[index_tp2]\
+               [index_k1]\
+               [index_k2]\
+               [(INDEX_TAU)*k_pt_size + (INDEX_K_TRIANGULAR)]
+
+
+
+
+int spectra2_init(
+			struct primordial * ppm,
+      struct precision * ppr,
+      struct precision2 * ppr2,
+      struct background * pba,
+      struct thermo * pth,
+      struct perturbs * ppt,
+      struct perturbs2 * ppt2,
+      struct spectra2 * psp2
+      )
+{
+
+  // =================================================================================
+  // =                              Preliminary checks                               =
+  // =================================================================================
+
+
+ 
+  printf("Computing second order spectra \n");
+	
+ 
+  // ==================================================================================
+  // =                               Allocate workspaces                              =
+  // ==================================================================================
+
+
+	psp2->k_size = ppt2->k_size;
+  psp2->k = ppt2->k;
+
+ 	double ** interpolated_sources_in_k;
+  class_alloc (interpolated_sources_in_k, ppt2->tp2_size*sizeof(double *), psp2->error_message);
+  /* Vector that will contain the interpolated sources for a given k1,k2 and source type */
+  double ** power_spectra_in_k;
+  class_alloc (power_spectra_in_k, ppt2->tp2_size*sizeof(double *), psp2->error_message);
+  
+	double ** sources_k_spline;
+  class_alloc (sources_k_spline, ppt2->tp2_size*sizeof(double *), psp2->error_message);
+  
+  class_alloc (psp2 -> spectra, ppt2->tp2_size*sizeof(double *),psp2->error_message);
+  
+  for (int index_tp=0; index_tp<ppt2->tp2_size; ++index_tp) {
+         
+       class_alloc(
+          psp2->spectra[index_tp],
+          psp2->k_size*ppt2->tau_size*sizeof(double),
+          psp2->error_message);
+          for (int index_k3 = 0; index_k3 < psp2->k_size; ++index_k3) {
+						for (int index_tau = 0; index_tau < ppt2->tau_size; ++index_tau) {
+							psp2->spectra[index_tp][index_k3*ppt2->tau_size + index_tau] = 0.;
+						} 
+					}
+  }
+  
+  printf("allocated workspace \n");
+  
+  // ==================================================================================
+  // =                               ksampling					                              =
+  // ==================================================================================
+
+  
+  
+ 	class_call(spectra2_get_k3_size (
+      ppr,
+      ppr2,
+      ppt2,
+      psp2
+      ),
+    psp2->error_message,
+    psp2->error_message);
+    
+    printf("allocated k-space \n");
+  
+  // =====================================================================================
+  // =                            Main loop on (k1,k2)                            =
+  // =====================================================================================
+
+
+	/* Shortcut to the file where we shall print the transfer functions. */
+  FILE * file_sp = psp2->spectra_file;
+  
+  /* Choose how label & values should be formatted */
+  char format_label[64] = "%13s(%02d) ";
+  char format_value[64] = "%+17e ";      
+  char buffer[64];
+  
+  // conformal time
+  int index_sp = 1;
+	fprintf(file_sp, format_label, "tau",index_sp);
+  
+  index_sp++;
+  fprintf(file_sp, format_label, "magnet",index_sp);
+  index_sp++;
+  
+  fprintf(file_sp, "\n");
+
+  /* Four loops over k1, k2, transfer type follow */
+  double step_k1, step_k2;
+  for (int index_k1 = 0; index_k1 < psp2->k_size; ++index_k1) {
+		if (psp2->spectra2_verbose > 1)
+      printf ("     * computing integral for index_k1=%d of %d, k1=%g\n",
+        index_k1, psp2->k_size, psp2->k[index_k1]);
+        
+        if (index_k1 == 0) step_k1 = (psp2->k[1] - psp2->k[0])/2.;
+        else if (index_k1 == psp2->k_size -1) step_k1 = (psp2->k[psp2->k_size-1] - psp2->k[psp2->k_size -2])/2.;
+        else step_k1 = (psp2->k[index_k1+1] - psp2->k[index_k1 -1])/2.;
+
+				double k1 = psp2->k[index_k1];
+				double spectra_k1;
+    		class_call (primordial_spectrum_at_k (
+                  ppm,
+                  ppt->index_md_scalars,
+                  linear,
+                  k1,
+                  &spectra_k1),
+      			ppm->error_message,
+      			psp2->error_message);
+
+    				/* Convert CLASS dimensionless power spectrum for the curvature perturbation into the dimensional one. */
+    				spectra_k1 = 2*_PI_*_PI_/(k1*k1*k1) * spectra_k1;
+  
+    for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
+			/* Print some info */
+      if (psp2->spectra2_verbose > 2)
+        printf(" -> computing integral for (k1,k2) = (%.3g,%.3g)\n", psp2->k[index_k1], psp2->k[index_k2]);
+				if (index_k1 == 0) step_k2 = 0.;
+				else if (index_k2 == 0) step_k2 = (psp2->k[1] - psp2->k[0])/2.;
+        else if (index_k2 == index_k1) step_k1 = (psp2->k[index_k1] - psp2->k[index_k1-1])/2.;
+        else step_k2 = (psp2->k[index_k2+1] - psp2->k[index_k2 -1])/2.;
+        
+        
+        double k2 = psp2->k[index_k2];
+				double spectra_k2;
+    		class_call (primordial_spectrum_at_k (
+                  ppm,
+                  ppt->index_md_scalars,
+                  linear,
+                  k2,
+                  &spectra_k2),
+      			ppm->error_message,
+      			psp2->error_message);
+
+    				/* Convert CLASS dimensionless power spectrum for the curvature perturbation into the dimensional one. */
+    				spectra_k2 = 2*_PI_*_PI_/(k2*k2*k2) * spectra_k2;
+  
+ 				
+ 			if (psp2->spectra2_verbose > 2)
+        printf(" -> stepsizes (step_k1,step_k2) = (%.3g,%.3g)\n", step_k1,step_k2);
+				
+ 			
+      
+      // -----------------------------------------------------------------------
+      // -                      Interpolate sources in k                       -
+      // -----------------------------------------------------------------------
+
+      for (int index_tp=0; index_tp<ppt2->tp2_size; ++index_tp) {
+      	
+      
+       class_alloc(
+          interpolated_sources_in_k[index_tp],
+          psp2->k_size*ppt2->tau_size*sizeof(double),
+          psp2->error_message);
+       
+       class_alloc(
+          sources_k_spline[index_tp],
+          ppt2->k3_size[index_k1][index_k2]*ppt2->tau_size*sizeof(double),
+          psp2->error_message);
+       
+       /* we use the same grid for k that is also used for k1*/
+       
+        class_call (spectra2_interpolate_sources_in_k(
+                      ppr,
+                      ppr2,
+                      ppt,
+                      ppt2,
+                      psp2,
+                      index_k1,
+                      index_k2,
+                      index_tp,
+                      psp2->k,                       /* All the k_grid are filled */ 	
+                      sources_k_spline[index_tp],					    
+                      interpolated_sources_in_k[index_tp]   /* Will be filled with interpolated values */
+                      ),
+          psp2->error_message,
+          psp2->error_message);
+      
+  
+      	
+      	for (int index_k3 = 0; index_k3 < psp2->k_size; ++index_k3) {
+      		if (index_k1 == 16 && index_k2 == 10 && index_tp == 13) {
+      			 
+  						fprintf(file_sp, format_value, psp2->k[index_k3]);
+  
+ 		 					fprintf(file_sp, format_value, interpolated_sources_in_k[index_tp][index_k3*ppt2->tau_size + 300] );
+  	
+  						fprintf(file_sp, "\n");
+						}
+					
+					for (int index_tau = 0; index_tau < ppt2->tau_size; ++index_tau) {
+						psp2->spectra[index_tp][index_k3*ppt2->tau_size + index_tau] += 
+						4./2./_PI_/2./_PI_/2./_PI_ *k1*k2/psp2->k[index_k3]*step_k1*step_k2*spectra_k1*spectra_k2*
+						interpolated_sources_in_k[index_tp][index_k3*ppt2->tau_size + index_tau]*interpolated_sources_in_k[index_tp][index_k3*ppt2->tau_size + index_tau];
+					} 
+		      
+      	}
+      
+      } // end of for (index_tp)
+
+                    
+     
+      /* Free the memory for the interpolated sources */
+      for (int index_tp=0; index_tp<ppt2->tp2_size; ++index_tp) {
+        free(interpolated_sources_in_k[index_tp]);
+        free(sources_k_spline[index_tp]);
+      }
+
+    } // end of for(index_k2)
+
+    
+
+    
+  } // end of for(index_k1)
+
+	free (interpolated_sources_in_k);
+  free(sources_k_spline);
+  
+  
+ 
+  
+  
+  
+ 
+  fclose(psp2->spectra_file);
+  return _SUCCESS_;
+}
+
+
+
+/**
+ * This function interpolates sources S(k1, k2, k, tau) at the needed
+ * values of k and tau.  Note that the time sampling for the integration
+ * grid could be computed once and for all, as the k grid is fixed (the
+ * nodes do not depend on k1 and k2).
+ *
+ * @param pba                   Input : pointer to background structure
+ * @param ppt                   Input : pointer to perturbation structure
+ * @param ppt2                  Input : pointer to 2nd-order perturbation structure
+ * @param pbs                   Input : pointer to Bessel structure
+ * @param psp2                  Input : pointer to 2nd-order spectra structure
+ * @return the error status
+ */
+
+int spectra2_interpolate_sources_in_k(
+      struct precision * ppr,
+      struct precision2 * ppr2,
+      struct perturbs * ppt,
+      struct perturbs2 * ppt2,
+      struct spectra2 * psp2,
+      int index_k1,
+      int index_k2,
+      int index_tp2,
+      double * k_grid,
+      double * sources_k_spline,
+      double * interpolated_sources_in_k
+      )
+{
+
+
+  /* Shortcuts */
+  int k_pt_size = ppt2->k3_size[index_k1][index_k2];
+  double * k_pt = ppt2->k3[index_k1][index_k2];
+  int k_sp_size = psp2->k_size;
+  double * k_sp = k_grid;
+  
+  /* Cycle index */
+  int index_tau;
+
+   if (ppr2->sources_k3_interpolation == cubic_interpolation) {
+
+    class_call (array_spline_table_columns (
+                  ppt2->k3[index_k1][index_k2],
+                  ppt2->k3_size[index_k1][index_k2],
+                  ppt2->sources[index_tp2][index_k1][index_k2],
+                  ppt2->tau_size,
+                  sources_k_spline,
+                  _SPLINE_EST_DERIV_,
+                  psp2->error_message),
+         psp2->error_message,
+         psp2->error_message);
+  }
+ 
+  // =======================================================
+  // =                    Interpolation                    =
+  // =======================================================
+
+  /* Limits where for which we shall interpolate the sources */
+  int physical_size = psp2->k_physical_size_k1k2[index_k1][index_k2];
+  int first_physical_index = psp2->k_physical_start_k1k2[index_k1][index_k2];
+  int last_physical_index = first_physical_index + physical_size - 1;
+
+  /* Interpolate at each k value using the usual spline interpolation algorithm */
+  int index_k = 0;
+  double h = k_pt[index_k+1] - k_pt[index_k];
+  
+  int index_k_sp;
+    
+  for (index_k_sp = first_physical_index; index_k_sp <= last_physical_index; ++index_k_sp) {
+    
+    while (((index_k+1) < k_pt_size) && (k_pt[index_k+1] < k_sp[index_k_sp])) {
+      index_k++;
+      h = k_pt[index_k+1] - k_pt[index_k];
+    }
+    
+    class_test(h==0., psp2->error_message, "stop to avoid division by zero");
+    
+    double b = (k_sp[index_k_sp] - k_pt[index_k])/h;
+    double a = 1.-b;
+      
+    /* Interpolate for each value of conformal time */
+    if (ppr2->sources_k3_interpolation == linear_interpolation) {
+      for (index_tau = 0; index_tau < ppt2->tau_size; index_tau++)
+        interpolated_sources_in_k[index_k_sp*ppt2->tau_size + index_tau] = 
+          a * sources(index_tau,index_k) + b * sources(index_tau,index_k+1);
+    }
+    else if (ppr2->sources_k3_interpolation == cubic_interpolation) {
+      for (index_tau = 0; index_tau < ppt2->tau_size; index_tau++)
+        interpolated_sources_in_k[index_k_sp*ppt2->tau_size + index_tau] = 
+          a * sources(index_tau,index_k) + b * sources(index_tau,index_k+1)
+          + ((a*a*a-a) * sources_k_spline[index_tau*k_pt_size + index_k]
+          +(b*b*b-b) * sources_k_spline[index_tau*k_pt_size + index_k+1])*h*h/6.0;
+    } 
+  } // end of for (index_k_tr)
+
+
+ 
+  return _SUCCESS_;
+  
+} // end of spectra_interpolate_sources_in_k
+
+
+int spectra2_get_k3_size (
+      struct precision * ppr,
+      struct precision2 * ppr2,
+      struct perturbs2 * ppt2,
+      struct spectra2 * psp2
+      )
+{
+
+	 /* Allocate k1 level */
+  int k1_size = psp2->k_size;
+ 
+  class_alloc(psp2->k_physical_start_k1k2, k1_size*sizeof(int *), psp2->error_message);
+  class_alloc(psp2->k_physical_size_k1k2, k1_size*sizeof(int *), psp2->error_message);
+
+	int index_k1, index_k2;
+
+  for(index_k1=0; index_k1<k1_size; ++index_k1) {
+  
+  
+  
+    /* Allocate k2 level */
+    int k2_size = index_k1 + 1;
+
+	  class_alloc(psp2->k_physical_start_k1k2[index_k1], k2_size*sizeof(int), psp2->error_message);
+    class_alloc(psp2->k_physical_size_k1k2[index_k1], k2_size*sizeof(int), psp2->error_message);
+   
+    /* Fill k_size_k1k2, k_min and k_max */
+    for(index_k2=0; index_k2<=index_k1; ++index_k2) {
+ 
+      
+      int k_pt_size = ppt2->k3_size[index_k1][index_k2];
+  		double k_min_pt = ppt2->k3[index_k1][index_k2][0];
+ 			double k_max_pt = ppt2->k3[index_k1][index_k2][k_pt_size-1];
+
+  /* Some debug on the limits of k3 */
+  // if ((index_k1==85) && (index_k2==63)) {
+  //   
+  //  printf ("(k1, k2 ) = (%g,%g)\n", ppt2->k[index_k1],ppt2->k[index_k2]);
+  // printf ("(k_min_pt,|k1-k2|) = (%g,%g)\n", k_min_pt, fabs(ppt2->k[index_k1]-ppt2->k[index_k2]));
+  // printf ("(k_max_pt, k1+k2 ) = (%g,%g)\n", k_max_pt, ppt2->k[index_k1]+ppt2->k[index_k2]);
+  //   
+  // }
+
+  		int index_k_sp;
+
+ 			 // *** Count the number of necessary values
+
+  			/* First point */
+  
+  			index_k_sp = 0;
+  
+  			double k = psp2->k[index_k_sp];
+   
+  			
+
+ 				while (k < k_min_pt && index_k_sp<psp2->k_size -1) {
+  				index_k_sp++;
+				  k = psp2->k[index_k_sp];
+			  }
+	
+ 		 	/* The regime where the triangular condition is satisfied starts here */
+  		/*This needs allocation!!!!*/
+  		psp2->k_physical_start_k1k2[index_k1][index_k2] = index_k_sp;
+	
+			index_k_sp = psp2->k_size - 1;
+			k = psp2->k[index_k_sp];
+			while (k > k_max_pt && index_k_sp > 1) {
+  			index_k_sp--;
+	  		k = psp2->k[index_k_sp];  
+  		}
+
+  		psp2->k_physical_size_k1k2[index_k1][index_k2] = index_k_sp- psp2->k_physical_start_k1k2[index_k1][index_k2]+1;
+  		if (psp2->k_physical_size_k1k2[index_k1][index_k2] < 1) printf("Alert empty k3 range for k1 = %f and k2 = %f \n", psp2->k[index_k1],psp2->k[index_k2]);
+      /* Compute the number of points in the k3_grid for the given pair of (k1,k2) */
+    //  printf("found: kmin = %f as %d, kmax = %f as %d, number = %d \n",  psp2->k[psp2->k_physical_start_k1k2[index_k1][index_k2] ],psp2->k_physical_start_k1k2[index_k1][index_k2],psp2->k[psp2->k_physical_start_k1k2[index_k1][index_k2] + psp2->k_physical_size_k1k2[index_k1][index_k2] - 1 ],psp2->k_physical_start_k1k2[index_k1][index_k2] + psp2->k_physical_size_k1k2[index_k1][index_k2] - 1 ,psp2->k_physical_size_k1k2[index_k1][index_k2] );
+    } // end of for(index_k2)
+  } // end of for(index_k1)
+
+  
+  
+
+  /*add some debug*/   
+  return _SUCCESS_;
+  
+  
+} // end of transfer2_get_k3_size
+
+
+
+
+
+
+
+
+
+
+
+
+
+#undef sources

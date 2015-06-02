@@ -161,6 +161,7 @@ struct perturbs2
   short has_quadratic_collision;            /**< Shall we include the quadratic sources in the photon-baryon collision term? */      
   short has_perfect_baryons;                /**< Shall we treat baryons as a pressureless perfect fluid? */
   short has_perfect_cdm;                    /**< Shall we treat cold dark matter as a pressureless perfect fluid? */
+  short has_magnetic_field;									/**< Do we need to compute the magnetic fields from recombination? */
 
   short has_perturbed_recombination_stz;    /**< Shall we use the perturbed fraction of free electrons? */
   int perturbed_recombination_use_approx;   /**< Shall we use the approximation in eq. 3.23 of Senatore et al. 2009? */
@@ -289,10 +290,12 @@ struct perturbs2
   int index_tp2_T;                    /**< Index value for photon temperature */
   int index_tp2_E;                    /**< Index value for photon E-polarization */
   int index_tp2_B;                    /**< Index value for photon B-polarization */
+  int index_tp2_M;										/**< Index value for magnetic fields */
   int index_tp2_g;                    /**< Index value for gravitational potential */
   int n_sources_T;                    /**< Number of sources to be computed for photon temperature */
   int n_sources_E;                    /**< Number of sources to be computed for photon E-polarization */
   int n_sources_B;                    /**< Number of sources to be computed for photon B-polarization */
+  int n_sources_M;										/**< Number of sources to be computed for magneti fields temperature */
   int tp2_size;                       /**< Number of source types that we need to compute */
 
   /**< Array of strings that contain the labels of the various source types

@@ -739,7 +739,22 @@ int perturb2_indices_of_perturbs(
     
   }
 
-
+	// -------------------------------------------------------------------------
+  // -                      magnetic field sources                      -
+  // -------------------------------------------------------------------------
+  
+  if (ppt2->has_magnetic_field == _TRUE_) {
+  
+  	
+  	ppt2->n_sources_M = size_l_indexm (1, ppt2->m, ppt2->m_size);
+  	
+    ppt2->index_tp2_M = index_type;                  /* The first moment of the hierarchy is the monopole l=0, m=0 */
+    index_type += ppt2->n_sources_M;  /* Make space for l>0 moments of the hierarchy */
+	
+  
+  }
+  
+  
   // -------------------------------------------------------------------------
   // -                       Photon polarization sources                     -
   // -------------------------------------------------------------------------
@@ -817,8 +832,7 @@ int perturb2_indices_of_perturbs(
 
   class_test (ppt2->pf_size > _MAX_NUM_FIELDS_,
    "exceeded maximum number of allowed fields, increase _MAX_NUM_FIELDS_ in common.h",
-   ppt2->error_message);
-  
+   ppt2->error_message)
   if (ppt2->perturbations2_verbose > 1) {
     printf ("     * will compute tp2_size=%d source terms: ", ppt2->tp2_size);
     if (ppt2->has_cmb_temperature == _TRUE_)
@@ -855,8 +869,6 @@ int perturb2_indices_of_perturbs(
   ppt2->index_ic_first_order = ppt->index_ic_ad;
 
   
-
-
   // ==============================================================================
   // =                            Fill (l,m) arrays                               =
   // ==============================================================================
@@ -870,9 +882,6 @@ int perturb2_indices_of_perturbs(
                 ppt2),
     ppt2->error_message,
     ppt2->error_message);
-
-
-
 
 
   // ===============================================================================
@@ -892,10 +901,7 @@ int perturb2_indices_of_perturbs(
     ppt2->error_message,
     ppt2->error_message);
 
-
-
-
-  // ================================================================================
+// ================================================================================
   // =                          Create sources directory                            =
   // ================================================================================
   
@@ -1158,8 +1164,7 @@ int perturb2_get_lm_lists (
 
   /* Fill the above arrays */
   for (int index_tp = 0; index_tp < ppt2->tp2_size; index_tp++) {
-
-    /* Initialise the result to -1 */
+	    /* Initialise the result to -1 */
     int l = -1;
     int index_m = -1;
     int l_max = -1;
@@ -1183,8 +1188,30 @@ int perturb2_get_lm_lists (
 
       /* Some debug */
       // printf("T, index_tp=%d: lm_offset=%d -> (%d,%d), label=%s, monopole = %d\n",
-      //   index_tp, lm_offset, l, ppt2->m[index_m],
-      //   ppt2->tp2_labels[index_tp], ppt2->index_monopole[index_tp]);
+      // index_tp, lm_offset, l, ppt2->m[index_m],
+      // ppt2->tp2_labels[index_tp], ppt2->index_monopole[index_tp]);
+
+    }
+     // *** magnetic field ***
+    else if ((ppt2->has_magnetic_field == _TRUE_) 
+    && (index_tp >= ppt2->index_tp2_M) && (index_tp < ppt2->index_tp2_M+ppt2->n_sources_M)) {
+
+      /* Find the position of the monopole of the same type as index_tp */
+      ppt2->index_monopole[index_tp] = ppt2->index_tp2_M;
+
+      /* Find (l,index_m) associated with index_tp */
+      l_max = 1;
+      int lm_offset = index_tp - ppt2->index_monopole[index_tp];
+      offset2multipole_l_indexm (lm_offset, l_max, ppt2->m, ppt2->m_size,
+                                 &l, &index_m);
+                                 
+      /* Set the labels of the transfer types */
+      sprintf(ppt2->tp2_labels[index_tp], "M_%d_%d",l,ppt2->m[index_m]);
+
+      /* Some debug */
+      // printf("T, index_tp=%d: lm_offset=%d -> (%d,%d), label=%s, monopole = %d\n",
+      // index_tp, lm_offset, l, ppt2->m[index_m],
+      // ppt2->tp2_labels[index_tp], ppt2->index_monopole[index_tp]);
 
     }
 
@@ -1242,8 +1269,7 @@ int perturb2_get_lm_lists (
     
   } // end of for (index_tp)    
 
-
-  // ======================================================================================
+	// ======================================================================================
   // =                             Compute the C,D coefficients                           =
   // ======================================================================================
   
@@ -3777,8 +3803,11 @@ int perturb2_workspace_init_quadratic_sources (
   // -               magnetic fiels		            -
   // ----------------------------------------------
   
-  ppw2->index_qs2_monopole_mag = index_qs2;
-  index_qs2 += size_l_indexm (1, ppt2->m, ppt2->m_size);
+  if (ppt2->has_magnetic_field == _TRUE_) {
+  	ppw2->index_qs2_monopole_mag = index_qs2;
+  	index_qs2 += size_l_indexm (1, ppt2->m, ppt2->m_size);
+  }
+  
   
   /* Set the size of the quadratic sources */
   ppw2->qs2_size = index_qs2;
@@ -5958,10 +5987,11 @@ int perturb2_vector_init (
   // ==============================================
   // =               magnetic fields              =
   // ==============================================
-
-	ppv->index_pt2_monopole_mag = index_pt;
-	index_pt += size_l_indexm (1, ppt2->m, ppt2->m_size);
-
+	if (ppt2->has_magnetic_field == _TRUE_) {
+		ppv->index_pt2_monopole_mag = index_pt;
+		index_pt += size_l_indexm (1, ppt2->m, ppt2->m_size);
+	}
+	
   // ==============================================
   // =               Cold Dark Matter             =
   // ==============================================
@@ -6183,6 +6213,18 @@ int perturb2_vector_init (
       }
     }
     
+    //  *** magnetic field
+    
+  	if (ppt2->has_magnetic_field == _TRUE_) {
+      for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {    
+      
+        int m = ppr2->m[index_m];
+			
+				ppv->y[ppv->index_pt2_monopole_mag + lm(1,m)] =
+            ppw2->pv->y[ppw2->pv->index_pt2_monopole_mag + lm(1,m)];          
+             
+      }
+    }
     
     // *** Fluid component ***
 
@@ -7039,15 +7081,31 @@ int perturb2_derivs (
   // ----------------------------------------------
   // -               magnetic fields              -
   // ----------------------------------------------
-
-	for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
-    
-      int m = ppt2->m[index_m];
-    	dmag(0,m) = 0.;
-      dmag(1,m) = -mag(1,m);
-
+	if (ppt2->has_magnetic_field == _TRUE_) {
+		
+		dmag(0,0) = 0.;
+		
+		for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+      int m = ppt2->m[index_m];	
+      
+      /* the sources are hubble dilution and the tight coupling 
+      suppressed differences of baryon and photon velocity
+      
+      The quadsources contain the quadratic part and the generation 
+      from photon anisotropic stress*/
+      
+      dmag(1,m) = -2. * Hc * mag(1,m) + k
+      	* pvecback[pba->index_bg_rho_g] /*stupid trick we are computing noise here*/
+      	*(I(1,m) -  four_thirds * b(1,1,m))/4. /* I(3,m)*/; /*the cancelation is not really good*/
+      	/*this is not the fluid limit metric velocity add quadsources!*/
+      	}
+		
+		if (ppt2->has_quadratic_sources == _TRUE_) {
+      for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+        int m = ppr2->m[index_m];
+        dmag(1,m) += dmag_qs2(1,m);
+		}}
 	}
-
   // ----------------------------------------------
   // -               Cold Dark Matter             -
   // ----------------------------------------------
@@ -8313,13 +8371,25 @@ int perturb2_quadratic_sources (
  			// ----------------------------------------------
       // -               magnetic fields              -
       // ----------------------------------------------
- 
- 			for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+ 			if (ppt2->has_magnetic_field == _TRUE_) {
+ 				for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
           int m = ppt2->m[index_m];
-          dmag_qs2(1,m) = 1.;
-          dmag_qs2(0,m) = 0.;
-      }
-
+          	dmag_qs2(1,m) = k *   pvecback[pba->index_bg_rho_g] * ( 0.
+          			+( I_1(0,0) +phi_1 - psi_1) * ( I_2(1,m)/4. + k2_m[m+1] * v_b_2)
+          				+( I_2(0,0) +phi_2 - psi_2) * ( I_1(1,m)/4. + k1_m[m+1] * v_b_1)
+          				- I_1(0,0)* I_2(1,m)/4. + delta_b_1 * (-k2_m[m+1]) * v_b_2
+          				- I_2(0,0)* I_1(1,m)/4.+ delta_b_2 * (-k1_m[m+1]) * v_b_1
+          				- sqrt((2.-m)*(3.-m)/2.) *(I_1(2,m-1) * k2_m[1+1] * v_b_2)
+          				+ sqrt(4.-m*m) *(I_1(2,m) * k2_m[1] * v_b_2)
+        					- sqrt((2.+m)*(3.+m)/2.) *(I_1(2,m+1) * k2_m[1-1] * v_b_2)
+        					- sqrt((2.-m)*(3.-m)/2.) *(I_2(2,m-1) * k1_m[1+1] * v_b_1)
+          				+ sqrt(4.-m*m) *(I_2(2,m) * k1_m[1] * v_b_1)
+        					- sqrt((2.+m)*(3.+m)/2.) *(I_2(2,m+1) * k1_m[1-1] * v_b_1)
+          	);
+          
+     	 }
+			}
+			
       // ----------------------------------------------
       // -               Cold Dark Matter             -
       // ----------------------------------------------
@@ -9278,6 +9348,33 @@ int perturb2_sources (
 		return _SUCCESS_;
 	}
 
+  
+  // -------------------------------------------------------------------------------
+  // -                               magnetic field                                  -
+  // -------------------------------------------------------------------------------  
+	if (ppt2->has_magnetic_field == _TRUE_) {
+
+		for (int l=0; l<=1; ++l) {
+			for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+				int m = ppt2->m[index_m];
+  
+        /* We shall increment the source term for this (l,m)-multipole with several contributions */
+      	double source = 0;    
+        
+      	if (l==1) {
+					source += mag(1,m);
+
+				} // end of dipole sources
+				
+				sources(ppt2->index_tp2_M + lm(l,m)) = source;
+
+        #pragma omp atomic
+        ++ppt2->count_memorised_sources;
+				
+			}
+  	}
+  	    
+	}
   
   // -------------------------------------------------------------------------------
   // -                            Photon temperature                               -
@@ -10814,11 +10911,31 @@ int perturb2_save_early_transfers (
     else fprintf(file_tr, format_value, v_0_adiabatic);
   }  
   
-  
+  // #define V_g(m) I(1,m)*0.25 - delta_g_1*(-k2_m[m+1]*v_g_2) - delta_g_2*(-k1_m[m+1]*v_g_1)
+  // #define V_b(m) b(1,1,m)/3. - delta_b_1*(-k2_m[m+1]*v_b_2) - delta_b_2*(-k1_m[m+1]*v_b_1)
+
   // *** magnetic field
-  if (ppr2->compute_m[0] == _TRUE_) {
-  	if (index_tau==0) fprintf(file_tr, format_label, "mag", index_print_tr++);
-  	else fprintf(file_tr, format_value, mag(1,0));
+  if (ppt2->has_magnetic_field == _TRUE_) {
+  	if (ppr2->compute_m[1] == _TRUE_) {
+  		if (index_tau==0) fprintf(file_tr, format_label, "mag", index_print_tr++);
+  		else fprintf(file_tr, format_value, mag(1,1));
+  	}
+  	if (ppr2->compute_m[1] == _TRUE_) {
+  		if (index_tau==0) fprintf(file_tr, format_label, "dipsource", index_print_tr++);
+  		else fprintf(file_tr, format_value, kappa_dot */*pvecback[pba->index_bg_rho_g]*/
+  		 ( I(1,1)*0.25 - delta_g_1*(-k2_m[1+1]*v_g_2) - delta_g_2*(-k1_m[1+1]*v_g_1)
+  		 - (b(1,1,1)/3. - delta_b_1*(-k2_m[1+1]*v_b_2) - delta_b_2*(-k1_m[1+1]*v_b_1)) ));
+  	}
+  	
+  	if (ppr2->compute_m[1] == _TRUE_) {
+  		if (index_tau==0) fprintf(file_tr, format_label, "quad", index_print_tr++);
+  		else fprintf(file_tr, format_value, kappa_dot /*pvecback[pba->index_bg_rho_g]*/ *I(2,1));
+  	}
+  	
+  	if (ppr2->compute_m[1] == _TRUE_) {
+  		if (index_tau==0) fprintf(file_tr, format_label, "oct", index_print_tr++);
+  		else fprintf(file_tr, format_value, kappa_dot /*pvecback[pba->index_bg_rho_g]*/ *(I(3,1) ) );
+  	}
   }
   
   // *** Baryon fluid limit variables

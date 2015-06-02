@@ -82,7 +82,7 @@ or off. */
 
 /* Define magnetic field */
 
-#define mag(l,m) ( (abs(m)>l) ? 0 : y[ppw2->pv->index_pt2_monopole_mag + lm(l,m)] )
+#define mag(l,m) ( ((abs(m)>l) || (l<0)) ? 0 : y[ppw2->pv->index_pt2_monopole_mag + lm(l,m)] )
 #define dmag(l,m) dy[ppw2->pv->index_pt2_monopole_mag + lm(l,m)]
 
 // ------------------------------------------------------------------------------------
