@@ -3773,10 +3773,17 @@ int perturb2_workspace_init_quadratic_sources (
     
   }
   
+  // ----------------------------------------------
+  // -               magnetic fiels		            -
+  // ----------------------------------------------
+  
+  ppw2->index_qs2_monopole_mag = index_qs2;
+  index_qs2 += size_l_indexm (1, ppt2->m, ppt2->m_size);
+  
   /* Set the size of the quadratic sources */
   ppw2->qs2_size = index_qs2;
 
-
+	
 
 
   // ==========================================================================================
@@ -5947,6 +5954,14 @@ int perturb2_vector_init (
   index_pt += ppv->n_hierarchy_b;    
 
 
+
+  // ==============================================
+  // =               magnetic fields              =
+  // ==============================================
+
+	ppv->index_pt2_monopole_mag = index_pt;
+	index_pt += size_l_indexm (1, ppt2->m, ppt2->m_size);
+
   // ==============================================
   // =               Cold Dark Matter             =
   // ==============================================
@@ -7021,6 +7036,17 @@ int perturb2_derivs (
 
   }}}}
 
+  // ----------------------------------------------
+  // -               magnetic fields              -
+  // ----------------------------------------------
+
+	for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+    
+      int m = ppt2->m[index_m];
+    	dmag(0,m) = 0.;
+      dmag(1,m) = -mag(1,m);
+
+	}
 
   // ----------------------------------------------
   // -               Cold Dark Matter             -
@@ -8284,6 +8310,15 @@ int perturb2_quadratic_sources (
         }
       }
 
+ 			// ----------------------------------------------
+      // -               magnetic fields              -
+      // ----------------------------------------------
+ 
+ 			for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+          int m = ppt2->m[index_m];
+          dmag_qs2(1,m) = 1.;
+          dmag_qs2(0,m) = 0.;
+      }
 
       // ----------------------------------------------
       // -               Cold Dark Matter             -
@@ -10780,8 +10815,11 @@ int perturb2_save_early_transfers (
   }  
   
   
-  
-  
+  // *** magnetic field
+  if (ppr2->compute_m[0] == _TRUE_) {
+  	if (index_tau==0) fprintf(file_tr, format_label, "mag", index_print_tr++);
+  	else fprintf(file_tr, format_value, mag(1,0));
+  }
   
   // *** Baryon fluid limit variables
   if (ppr2->compute_m[0] == _TRUE_) {

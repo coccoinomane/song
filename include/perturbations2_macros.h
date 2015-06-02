@@ -80,6 +80,11 @@ or off. */
 #define cdm(n,l,m) ( ((abs(m)>l) || (l<0)) ? 0 : y[ppw2->pv->index_pt2_monopole_cdm + nlm(n,l,m)] )
 #define dcdm(n,l,m) dy[ppw2->pv->index_pt2_monopole_cdm + nlm(n,l,m)]
 
+/* Define magnetic field */
+
+#define mag(l,m) ( (abs(m)>l) ? 0 : y[ppw2->pv->index_pt2_monopole_mag + lm(l,m)] )
+#define dmag(l,m) dy[ppw2->pv->index_pt2_monopole_mag + lm(l,m)]
+
 // ------------------------------------------------------------------------------------
 // -                          Shortcuts for quadratic sources                         -
 // ------------------------------------------------------------------------------------
@@ -97,6 +102,7 @@ interpolated by perturb2_quadratic_sources_at_tau. */
 #define db_qs2(n,l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_b + nlm(n,l,m)]
 #define dcdm_qs2(n,l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_cdm + nlm(n,l,m)]
 #define dN_qs2(l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_ur + lm(l,m)]
+#define dmag_qs2(l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_mag + lm(l,m)]
 
 /* Same as above, but only for the collision term. These sources are never interpolated, and
 the split is useful to include the quadratic part of the collision term in the line of

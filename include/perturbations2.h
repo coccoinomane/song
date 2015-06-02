@@ -735,6 +735,10 @@ struct perturb2_workspace
   int index_qs2_dd_b;    /* Quadratic density of baryons */
   int index_qs2_vv_b;    /* Quadratic velocity of baryons */
   int index_qs2_vv_cdm;  /* Quadratic velocity of CDM */
+  
+  /* magnetic field quadratic sources */
+  
+  int index_qs2_monopole_mag;
 
   /* Constants needed to assign the indices */
   int l_max_g;
@@ -906,6 +910,10 @@ struct perturb2_vector
   // ***** Neutrino hierarchy
   int index_pt2_monopole_ur;
       
+  // ***** magnetic fields
+  
+  int index_pt2_monopole_mag;    
+  
   // ***** Metric variables
   int index_pt2_eta;                        /* Synchronous gauge metric perturbation eta */
   int index_pt2_phi;                        /* Newtonian gauge potential phi */
