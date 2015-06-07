@@ -29,9 +29,9 @@
  * To free again the memory associated to the sources, call
  * transfer2_free_type_level().
  * 
- * Guido W. Pettinari, 04.06.2012
- * Based on transfer.c by the CLASS team (http://class-code.net/)
- *
+ * Created by Guido W. Pettinari on 04.06.2012 based on transfer.c by the CLASS
+ * team (http://class-code.net/).
+ * Last modified by Guido W. Pettinari on 04.06.2015.
  */
 
 #include "transfer2.h"
@@ -669,14 +669,14 @@ int transfer2_allocate_type_level(
 
 
 /**
-  * Load the transfer functions from disk for a given transfer type.
-  *
-  * The transfer functions will be read from the file given in ptr2->transfers_paths[index_type]
-  * and stored in the array ptr2->transfer. Before running this function, make sure to
-  * allocate the corresponding type level of ptr2->transfer using transfer2_allocate_type_level().
-  *
-  * This function is used in the bispectra2.c module.
-  */
+ * Load the transfer functions from disk for a given transfer type.
+ *
+ * The transfer functions will be read from the file given in ptr2->transfers_paths[index_type]
+ * and stored in the array ptr2->transfer. Before running this function, make sure to
+ * allocate the corresponding type level of ptr2->transfer using transfer2_allocate_type_level().
+ *
+ * This function is used in the bispectra2.c module.
+ */
 int transfer2_load_transfers_from_disk(
         struct perturbs2 * ppt2,
         struct transfers2 * ptr2,

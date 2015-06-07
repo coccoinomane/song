@@ -23,7 +23,8 @@
  * (chapter 6) that can be then compared with experiment results.
  *
  * The main functions that can be called externally are:
- * -# perturb2_init() to run the module; requires background_init() and thermodynamics_init()
+ * -# perturb2_init() to run the module; requires background_init() and
+ *    thermodynamics_init()
  * -# perturb2_free() to free all the memory associated to the module.
  * 
  * If the user specified 'store_sources_to_disk=yes', the module will save the 
@@ -32,8 +33,9 @@
  * To free again the memory associated to the sources, call
  * perturb2_free_k1_level().
  *
- * Created by Guido W. Pettinari on 01.01.2011
- * Based on perturbations.c by the CLASS team (http://class-code.net/)
+ * Created by Guido W. Pettinari on 01.01.2011 based on perturbations.c by the
+ * CLASS team (http://class-code.net/).
+ * Last modified by Guido W. Pettinari on 04.06.2015.
  */
 
 
@@ -419,13 +421,13 @@ int perturb2_init (
 
 
 /**
-  * Allocate the k1 level of the array for the second-order line of sight sources (ppt2->sources).
-  *
-  * This function makes space for the line of sight sources functions; it is called before loading
-  * them from disk in perturb2_load_sources_from_disk(). It can only be called after
-  * perturb2_indices_of_perturbs(), perturb2_timesampling_for_sources(), perturb2_get_k_lists().
-  *
-  */
+ * Allocate the k1 level of the array for the second-order line of sight sources (ppt2->sources).
+ *
+ * This function makes space for the line of sight sources functions; it is called before loading
+ * them from disk in perturb2_load_sources_from_disk(). It can only be called after
+ * perturb2_indices_of_perturbs(), perturb2_timesampling_for_sources(), perturb2_get_k_lists().
+ *
+ */
 int perturb2_allocate_k1_level(
      struct perturbs2 * ppt2, /*<< pointer to perturbs2 structure */
      int index_k1             /*<< index in ppt2->k that we want to load the sources for  */
@@ -485,14 +487,14 @@ int perturb2_allocate_k1_level(
 
 
 /**
-  * Load the line of sight sources from disk for a given k1 value.
-  *
-  * The sources will be read from the file given in ppt2->sources_paths[index_k1] and stored
-  * in the array ppt2->sources. Before running this function, make sure to allocate the
-  * corresponding k1 level of ppt2->sources using perturb2_allocate_k1_level().
-  *
-  * This function is used in the transfer2.c module.
-  */
+ * Load the line of sight sources from disk for a given k1 value.
+ *
+ * The sources will be read from the file given in ppt2->sources_paths[index_k1] and stored
+ * in the array ppt2->sources. Before running this function, make sure to allocate the
+ * corresponding k1 level of ppt2->sources using perturb2_allocate_k1_level().
+ *
+ * This function is used in the transfer2.c module.
+ */
 int perturb2_load_sources_from_disk(
         struct perturbs2 * ppt2,
         int index_k1
@@ -550,8 +552,8 @@ int perturb2_load_sources_from_disk(
 
 
 /**
-  * Free the k1 level of the sources array ppt2->sources.
-  */
+ * Free the k1 level of the sources array ppt2->sources.
+ */
 int perturb2_free_k1_level(
      struct perturbs2 * ppt2,
      int index_k1
