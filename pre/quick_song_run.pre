@@ -1,7 +1,13 @@
+## Precision file for SONG intended to quickly compute the intrinisc bispectrum 
+## and to explain the precision parameters.
+
+
 # ==================================================================
 # =                        Multipole sampling                      =
 # ==================================================================
 
+# Setting l_max_scalars=100 results in an extremely low angular
+# resolution and an extremely quick run
 l_max_scalars = 100
 l_logstep = 1.35
 l_linstep = 50

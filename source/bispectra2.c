@@ -4,22 +4,23 @@
  * the second-order transfer functions computed in transfer2.c.
  *
  * Created by Guido W Pettinari on 19.07.2012.
+ * Last modified by Guido W Pettianri on 09.06.2015
  */
 
 #include "bispectra2.h"
 
 
 /**
- * This routine initializes the spectra structure (in particular, 
- * computes table of anisotropy and Fourier spectra \f$ C_l^{X}, P(k), ... \f$)
+ *
+ *
  * 
- * @param ppr Input : pointer to precision structure
- * @param pba Input : pointer to background structure (will provide H, Omega_m at redshift of interest)
- * @param ppt Input : pointer to perturbation structure
- * @param ptr Input : pointer to transfer structure
- * @param ppm Input : pointer to primordial structure
- * @param psp Output: pointer to initialized spectra structure
- * @return the error status
+ *
+ *
+ *
+ *
+ *
+ *
+ *
  */
 
 int bispectra2_init (
