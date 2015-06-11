@@ -13,7 +13,7 @@
  * Labels that denote the different ways in which each approximation scheme is implemented
  * at second order.
  */
- 
+
 
 /* Tight coupling approximation */
 enum tca2_method {
@@ -88,6 +88,7 @@ struct perturbs2
   short has_cmb_polarization_e;       /* Do we need to compute spectra or bispectra for the CMB E-modes? */
   short has_cmb_polarization_b;       /* Do we need to compute spectra or bispectra for the CMB B-modes? */
   short has_pk_matter;                /* Do we need the second-order matter Fourier spectrum? */
+  short has_matter_bispectrum;        /* Do we need the cdm matter bispectrum? */
 
   /* TODO: I am not sure we really need these two */
   short has_cls;                      /* Do we need any harmonic space spectrum C_l?*/
@@ -102,7 +103,7 @@ struct perturbs2
   /* Initial condition flags */
   short has_ad;                      /* Do we need adiabatic mode? */
   short has_ad_first_order;          /* Use first-order initial conditions for the adiabatic modes */
-  short has_zero_ic;                 /* Do we need adiabatic mode, with vanishing initial conditions? */  
+  short has_zero_ic;                 /* Do we need adiabatic mode, with vanishing initial conditions? */
   short has_unphysical_ic;           /* Custom initial conditions to be specified in perturb2_intial_conditions */
 
 
@@ -119,13 +120,13 @@ struct perturbs2
   // =======================================================================================
   // =                                Differential system                                  =
   // =======================================================================================
-  
+
 
   // *** Option flags for the differential system (initialized in the input module)
-  short has_polarization2;                  /* Shall we evolve the photon polarization hierarchy at second-order? */  
-  short has_quadratic_sources;              /* Shall we include the quadratic sources in the 2nd-order system at all? */  
-  short has_quadratic_liouville;            /* Shall we include the quadratic sources in the Liouville operator? */      
-  short has_quadratic_collision;            /* Shall we include the quadratic sources in the photon-baryon collision term? */      
+  short has_polarization2;                  /* Shall we evolve the photon polarization hierarchy at second-order? */
+  short has_quadratic_sources;              /* Shall we include the quadratic sources in the 2nd-order system at all? */
+  short has_quadratic_liouville;            /* Shall we include the quadratic sources in the Liouville operator? */
+  short has_quadratic_collision;            /* Shall we include the quadratic sources in the photon-baryon collision term? */
   short has_perfect_baryons;                /* Shall we treat baryons as a pressureless perfect fluid? */
   short has_perfect_cdm;                    /* Shall we treat cold dark matter as a pressureless perfect fluid? */
 
@@ -149,9 +150,9 @@ struct perturbs2
   is an issue because we compute the transfer functions only or k1>k2. However, since
   k1*sin(theta_1)=k2*sin(theta_2), we can still compute only the transfer functions with k1>k2 and
   obtain the k2>k1 ones using the following identity:
-  
+
   T_rescaled(k2,k1,k3) = T(k2,k1,k3) / sin(theta(k1,k2,k3))^m * (k2/k1)^m
-  
+
   which follows from these other identities:
 
   T_rescaled(k1,k2,k3) = T(k1,k2,k3) / sin(theta(k1,k2,k3))^m
@@ -159,7 +160,7 @@ struct perturbs2
   T(k1,k2,k3) = T(k2,k1,k3)
   k2 * sin(theta(k2,k1,k3)) = k1 * sin(theta(k1,k2,k3)),
   T_rescaled(k2,k1,k3) = T(k2,k1,k3) / sin(theta(k1,k2,k3))^m * (k2/k1)^m
-  
+
   where T is the symmetric transfer function. */
   short rescale_quadsources;
 
@@ -173,7 +174,7 @@ struct perturbs2
 
   /* Multi-array containing the source functions for each value of k1,k2,k3 and tau. The main task
   of the perturbations2 module is to fill such array.
-    
+
       ppt2->sources [index_type]
                     [index_k1]
                     [index_k2]
@@ -182,26 +183,27 @@ struct perturbs2
   Due to symmetry properties, 'index_k2' runs from 0 to index_k1, while
   'index_k3' runs from 0 to ppt2->k3_size[index_k1][index_k2]  */
   double **** sources;
-  
+
   /* Logical array. If the index_k1 position is true, then ppt2->sources[index_k1] is allocated */
   short * has_allocated_sources;
 
 
-  /* For which probes should we compute the sources? These are internal flags used only in 
+  /* For which probes should we compute the sources? These are internal flags used only in
   the perturbations2 module, contrary to the output flags. */
+  short has_source_delta_matter;      /* Do we need source for matter bispectrum? */
   short has_source_T;                 /* Do we need source for CMB temperature? */
   short has_source_E;                 /* Do we need source for CMB E-polarization? */
   short has_source_B;                 /* Do we need source for CMB B-polarization? */
   short has_source_g;                 /* Do we need source for gravitational potential? */
 
   short has_cmb;                      /* Do we need CMB-related sources (temperature, polarization) ? */
-  short has_lss;                      /* Do we need LSS-related sources (lensing potential, ...) ? */  
+  short has_lss;                      /* Do we need LSS-related sources (lensing potential, ...) ? */
 
   /* Line of sight sources from the collision term */
   short has_pure_scattering_in_los;           /* Shall we include the purely second-order scattering terms the LOS sources? */
   short has_photon_monopole_in_los;           /* Shall we include the g*I_0_0 term in the line-of-sight sources? */
   short has_quad_scattering_in_los;           /* Shall we include the 'baryon velocity times multipole' terms in the LOS sources? */
-  
+
   /* Line of sight sources from the Liouville term */
   short has_metric_in_los;                    /* Shall we include the metric terms in the LOS sources? */
   short has_quad_metric_in_los;               /* Shall we include the metric*metric terms in the LOS sources? */
@@ -223,7 +225,7 @@ struct perturbs2
   /* ~~~~~~~~~~~~~       INTEGRATION BY PARTS        ~~~~~~~~~~~~~~~~
    *
    * The following discussion is based on sec. 4.2 of http://arxiv.org/abs/1302.0832.
-   * 
+   *
    *   The source terms forming the line of sight integral can be included as they appear, or they can be integrated
    * by parts.  Applying integration by parts to a term in the source S_l,m generates two terms
    * involving the source on the previous multipole, S_(l-1),m. The first of such terms is peaked at recombination, while the
@@ -232,16 +234,16 @@ struct perturbs2
    * and integrated Sachs-Wolfe effects (e^-kappa (phi' + psi')), with the second vanishing for most of the
    * evolution of the Universe. This allows to split nicely the ISW effect into an early part (that cannot be separated
    * from the SW effect) and a late ISW, which is important in the presence of, for instance, dark energy.
-   * 
+   *
    *   It is important to note that integration by parts does not affect the final result, if one integrates the
    * sources up to today. Only in this case the surface term vanishes.
-   * 
+   *
    *   At second order, we have many more terms in the line of sight sources. Their time derivative does not
    * vanish at later times, not even in the case of the gravitational potentials (see, for example, eqs. 2.4
    * and 2.5 of http://iopscience.iop.org/1475-7516/2009/08/029/). Performing integration by parts is still
    * useful if one adopts the flat-sky approximation to compute the bispectrum (as done in CMBQuick) because
    * in that formalism it is important that all effects are peaked at recombination.
-   * 
+   *
    *   The has_integration_by_parts_of_los flag is completely dependent on the flags ppt2->has_sw
    * and ppt2->has_integration_by_parts_of_los, and it is set in the input module.
    */
@@ -251,6 +253,7 @@ struct perturbs2
 	short use_test_source;
 
   /* Indices running on types (temperature, polarization, lensing, ...) */
+  int index_tp2_delta_matter;         /* Index value for matter density */
   int index_tp2_T;                    /* Index value for photon temperature */
   int index_tp2_E;                    /* Index value for photon E-polarization */
   int index_tp2_B;                    /* Index value for photon B-polarization */
@@ -266,7 +269,7 @@ struct perturbs2
 
   // ===============================================================================
   // =                                  CMB fields                                 =
-  // =============================================================================== 
+  // ===============================================================================
 
   /* Indices running on the CMB fields (temperature, E-modes, B-modes, Rayleigh...) considered
   in the perturbation module. We will define similar indices also in the bispectrum module. It
@@ -298,8 +301,8 @@ struct perturbs2
      m>2 -> modes that do not couple with the metric.  */
   int * m;
   int m_size;
-  
-    
+
+
   /* Flags to denote whether ppt2->m contains m=0, m=1 or m=2 */
   short has_scalars;
   short has_vectors;
@@ -314,15 +317,15 @@ struct perturbs2
 
   /* 'lm_extra' is an index of the complexity of the angular dependence of the qudratic
   terms in Boltzmann equation.  It is equal to 1 for Newtonian gauge and 3 for
-  synchronous gauge.  It is defined so that the (L,M) multipole of the quadratic terms 
+  synchronous gauge.  It is defined so that the (L,M) multipole of the quadratic terms
   depends on multipoles with (L+-lm_extra, M+-lm_extra).  We use 'lm_extra' to fill and
   index the rotation vectors ppw2->rotation_1 and ppw2->rotation_2. */
   int lm_extra;
-  
+
   /* 'largest_l' is the maximum 'l' requested for the various species at second-order, as
   chosen by the user in the parameter files. */
   int largest_l;
-  
+
   /* 'largest_l_quad' is the highest l-index we shall ever need to use.  This is given by
   whatever is bigger between the number of multipoles evolved at first order, and 'largest_l'
   plus the 'lm_extra' contribution (see above). */
@@ -341,7 +344,7 @@ struct perturbs2
 
   /* 'lm_array_quad' has the same use of 'lm_array', but it runs up to 'l_max+lm_extra'
   and 'm_max + lm_extra'.  It is used to index the rotation coefficients. */
-  int ** lm_array_quad;  
+  int ** lm_array_quad;
 
   /* Coupling coefficients C and D (see eq. 141 of Beneke and Fidler 2010) */
   double ** c_minus;
@@ -349,7 +352,7 @@ struct perturbs2
   double ** d_minus;
   double ** d_plus;
   double ** d_zero;
-  
+
   /* Coupling coefficients in multipole space, given approximately by the product of two Clebsch-Gordan
   symbols. Indexed as ppt2->coupling_coefficients[index_pf][lm(l,m)][l1][m1+ppt2->l1_max][l2]. They
   vanish for configurations where the triangular inequality between l3, l1 and l2 is not met.
@@ -362,7 +365,7 @@ struct perturbs2
   for the delta_tilde transformation. */
   int l1_max;
   int l2_max;
-  
+
 
   // ===============================================================================
   // =                                 k-sampling                                  =
@@ -381,16 +384,16 @@ struct perturbs2
   equations respect the k1<->k2 symmetry.  This is why we have defined two
   separate ppt2->k1 and ppt2->k2 vectors, instead of using ppt2->k for both
   k1 and k2. */
-  
+
   enum sources2_k_sampling k_sampling;        /* lin, log or default CLASS sampling for ppt2->k? */
   double * k;                                 /* Array containing the magnitudes of the k1 and k2 wavemodes */
   int k_size;                                 /* Size of ppt2->k for what concerns the k1 and k2 sampling */
-                                                                  
-                                                                  
+
+
   enum sources2_k3_sampling k3_sampling;      /* lin, log or default CLASS sampling for ppt2->k3? */
   double *** k3;
   int ** k3_size;
-  
+
   /* Index in ppt2->k corresponding to ppt2->k3[index_k1][index_k2]. It is allocated only
   when the k3 sampling is set to smart. */
   int ** index_k3_min;
@@ -415,7 +418,7 @@ struct perturbs2
   double recombination_max_to_end_ratio;
 
   /* Should we compute the 2nd-order sources at the times specified by the user? */
-  short  has_custom_timesampling;          
+  short  has_custom_timesampling;
   double custom_tau_ini;                                    /* Initial time for the custom sampling of the source terms */
   double custom_tau_end;                                    /* Final time for the custom sampling of the source terms */
   int    custom_tau_size;                                      /* Number of points where to sample the source terms (custom timesampling) */
@@ -426,7 +429,7 @@ struct perturbs2
   2nd-order sources? If _TRUE_, the first-order Cl's will include line-of-sight effects up to
   the same time specified for the 2nd-order sources. */
   short match_final_time_los;
-    
+
 
 
 
@@ -435,7 +438,7 @@ struct perturbs2
   // =                                    Approximations                                     =
   // =========================================================================================
 
-  
+
   /* For simplicity, we store the 2nd-order approximation flags here (in the ppt2 structure) rather
   than in the precision one.  (This is not the case for the first-order perturbations in CLASS).
   The following parameters are documented in the declaration of the ppr structure inside the
@@ -490,7 +493,7 @@ struct perturbs2
   /* Count the number of values in ppt2->sources as we fill the array */
   long int count_allocated_sources;
   long int count_memorised_sources;
-  
+
   /* Count number of k-modes for which we shall solve the differential system */
   long int count_k_configurations;
 
@@ -502,10 +505,10 @@ struct perturbs2
   char quadliouville_filename[_FILENAMESIZE_];   /* File that will contain the quadratic sources of the Liouville perator for the different species */
   char quadcollision_filename[_FILENAMESIZE_];   /* File that will contain the quadratic sources of the collision term for the different species */
 
-  FILE * transfers_file;                        
-  FILE * quadsources_file;                       
-  FILE * quadliouville_file;                     
-  FILE * quadcollision_file;                     
+  FILE * transfers_file;
+  FILE * quadsources_file;
+  FILE * quadliouville_file;
+  FILE * quadcollision_file;
 
   int index_k1_debug;                /* Which k1 value should we dump to file? */
   int index_k2_debug;                /* Which k2 value should we dump to file? */
@@ -540,26 +543,26 @@ struct perturbs2
  * for the evolution of a given wavemode-set (k1,k2,k3). There will
  * be one such structure for each thread (in case of parallel computing).
  */
-struct perturb2_workspace 
+struct perturb2_workspace
 {
 
 
   // ***************       Geometrical Variables       *********************
-  
+
   /* Wavemodes for which we are solving the differential system. */
   int index_k1;
   int index_k2;
   int index_k3;
   double k1, k2;
-  
+
   /* Norm of the k3 vector, which is the sum of the k1 and k2 wavemodes. Inside the
     differential system, we shall call it simply 'k' */
   double k, k_sq;
-  
+
   /* Cosine of the angles between k1 and k, between k2 and k, and between k1 and k2. These are
   obtained assuming the vector k is aligned with the zenith (z axis) */
   double cosk1k, cosk2k, cosk1k2, sink1k, sink2k;
-  
+
   /* Angles between k and k1, and k and k2 */
   double theta_1, theta_2;
 
@@ -598,7 +601,7 @@ struct perturb2_workspace
     coefficients defined above.  It is not strictly necessary to precompute these product arrays,
     but it saves a lot of computational time as they do not depend on time and can be computed
     once for each wavemode-set we evolve */
-  
+
   /* Intensity couplings */
   double * c_minus_product_12;
   double * c_minus_product_21;
@@ -634,7 +637,7 @@ struct perturb2_workspace
   double * k_plus_product_11;
   double * k_plus_product_22;
 
-  
+
   /* B-mode polarization couplings */
   double * d_zero_product_12;
   double * d_zero_product_21;
@@ -659,7 +662,7 @@ struct perturb2_workspace
   int index_mt2_phi_prime_poisson;        /* (d phi/d tau) in newtonian gauge, using the Poisson equation */
   int index_mt2_phi_prime_longitudinal;   /* (d phi/d tau) in newtonian gauge, using the longitudinal equation */
   int index_mt2_omega_m1_prime;           /* vector mode of the metric in Newtonian gauge */
-  int index_mt2_gamma_m2_prime_prime;     /* tensor mode of the metric in Newtonian gauge */           
+  int index_mt2_gamma_m2_prime_prime;     /* tensor mode of the metric in Newtonian gauge */
 
 
   /* Synchronous gauge */
@@ -670,7 +673,7 @@ struct perturb2_workspace
 
   int mt2_size;              /**< size of metric perturbation vector */
 
- 
+
 
 
 
@@ -681,9 +684,9 @@ struct perturb2_workspace
   /* Quadratic sources for the metric, Newtonian gauge */
   int index_qs2_psi;
   int index_qs2_psi_prime;
-  int index_qs2_phi_prime;               
-  int index_qs2_phi_prime_poisson;      
-  int index_qs2_phi_prime_longitudinal;       
+  int index_qs2_phi_prime;
+  int index_qs2_phi_prime_poisson;
+  int index_qs2_phi_prime_longitudinal;
   int index_qs2_omega_m1_prime;
   int index_qs2_gamma_m2_prime_prime;
 
@@ -691,7 +694,7 @@ struct perturb2_workspace
   int index_qs2_h_prime;
   int index_qs2_h_prime_prime;
   int index_qs2_eta_prime;
-  int index_qs2_alpha_prime;  
+  int index_qs2_alpha_prime;
 
   /* Quadratic sources for each matter species */
   int index_qs2_monopole_g;
@@ -712,20 +715,20 @@ struct perturb2_workspace
   int l_max_pol_g;
   int n_hierarchy_pol_g;
   int n_hierarchy_b;
-  int n_hierarchy_cdm;    
+  int n_hierarchy_cdm;
   int l_max_ur;
   int n_hierarchy_ur;
-  
-  
+
+
   // ******************            Indices for the source terms          *********************
-  
+
   /* Indices for the ppw2->source_term_table, used to perform the integration by parts of the line-of-sight sources.
   We shall temporarily store in ppw2->source_term_table the results obtained from the differential system.
   We cannot use the ppt2->sources array for this task, as we don't want to keep these intermediate results. The
   advantage of using this buffer array ppw2->source_term_table is that we can obtain its derivatives once the evolution
   of the system is over. */
-   
-  int st2_size;                       /* Number of variables stored in pptw->source_term_table */ 
+
+  int st2_size;                       /* Number of variables stored in pptw->source_term_table */
 
   double * source_term_table;         /* Indexed as source_term_table[index_tau*ppw2->st2_size+index_st2] */
 
@@ -749,7 +752,7 @@ struct perturb2_workspace
 
   /* 1st-order perturbations in k1 and k2.  They are filled at each call of
   'perturb2_quadratic_sources' and 'perturb2_initial_conditions' */
-  double * pvec_sources1;       
+  double * pvec_sources1;
   double * pvec_sources2;
 
   /* Pointer to vector of integrated perturbations and their time-derivatives. */
@@ -772,7 +775,7 @@ struct perturb2_workspace
   int index_ap2_rsa;         /* Index for radiation streaming approximation */
   int index_ap2_ufa;         /* Index for ultra-relativistic fluid approximation */
   int index_ap2_nra;         /* Index for no-radiation approximation */
-                              
+
   int * approx;             /* Array of approximation flags holding at a given time: approx[index_ap] */
   int ap2_size;              /* Number of relevant approximations for a given mode */
 
@@ -781,7 +784,7 @@ struct perturb2_workspace
 
 
   // **********************  Baryon and CDM fluids   **************************
-  
+
   /* Value of the n=2 beta-moments for the baryon and CDM fluids, assuming they are perfect fluids */
   double b_200;
   double b_22m[3];
@@ -794,7 +797,7 @@ struct perturb2_workspace
   /* Counter that keeps track of how many times the function perturb2_derivs has been called
     for the considered set of k1,k2,k3. */
   int derivs_count;
-  
+
   /* Function used to output intermediate values from the differential system.  This
    function will be given as an argument to 'generic_evolver' and is  used only for debug
    purposes.  By default it is set to NULL, which means that it is never called.  It is
@@ -802,7 +805,7 @@ struct perturb2_workspace
    to the one requested through ppt2->index_k1_debug, ppt2->index_k2_debug and
    ppt2->index_k3_debug. */
   int (*print_function)(double x, double y[], double dy[], int index_x, void *parameters_and_workspace, ErrorMsg error_message);
-  
+
   /* String that contains information on the wavemode that is being currently integrated.
    such information is printed to the debug files if ppt2->perturbations2_verbose is high
    enough */
@@ -841,14 +844,14 @@ struct perturb2_vector
   int l_max_pol_g;              /* Max 'l' momentum in Boltzmann hierarchy */
   int l_max_ur;                 /* Max 'l' momentum in Boltzmann hierarchy */
   int n_hierarchy_g;            /* Number of photon temperature hierarchy equations */
-  int n_hierarchy_pol_g;        /* Number of photon polarization hierarchy equations (same for E and B-modes) */  
+  int n_hierarchy_pol_g;        /* Number of photon polarization hierarchy equations (same for E and B-modes) */
   int n_hierarchy_b;            /* Number of baryon hierarchy equations */
-  int n_hierarchy_cdm;          /* Number of cold dark matter hierarchy equations */    
+  int n_hierarchy_cdm;          /* Number of cold dark matter hierarchy equations */
   int n_hierarchy_ur;           /* Number of neutrino hierarchy equations */
 
   /* Needed to address the baryon and CDM hierarchies with a loop over n,l,m.
   For perfect fluids, n_max=l_max=1, otherwise =2. */
-  int n_max_b;                  
+  int n_max_b;
   int l_max_b;
   int n_max_cdm;
   int l_max_cdm;
@@ -856,13 +859,13 @@ struct perturb2_vector
 
 
   // ==============================================
-  // = Indices of evolved second-order quantities = 
+  // = Indices of evolved second-order quantities =
   // ==============================================
 
   // ***** Photon hierarchies
   int index_pt2_monopole_g;                   /* Photon temperature hierarchy starts here */
-  int index_pt2_monopole_E;                   /* Photon E-mode polarization hierarchy starts here */  
-  int index_pt2_monopole_B;                   /* Photon B-mode polarization hierarchy starts here */    
+  int index_pt2_monopole_E;                   /* Photon E-mode polarization hierarchy starts here */
+  int index_pt2_monopole_B;                   /* Photon B-mode polarization hierarchy starts here */
 
   // *** Baryons hierarchy
   int index_pt2_monopole_b;
@@ -872,7 +875,7 @@ struct perturb2_vector
 
   // ***** Neutrino hierarchy
   int index_pt2_monopole_ur;
-      
+
   // ***** Metric variables
   int index_pt2_eta;                        /* Synchronous gauge metric perturbation eta */
   int index_pt2_phi;                        /* Newtonian gauge potential phi */
@@ -890,7 +893,7 @@ struct perturb2_vector
   double * y;
 
   /* Vector containing the time-derivative of the pv->y. It is filled by each call of perturb2_derivs. */
-  double * dy;               
+  double * dy;
 
   /* Boolean array specifying which perturbations enter in the calculation of the source functions. Only
     the marked perturbations will be interpolated at the times requested in ppt2->tau_sampling. */
@@ -901,7 +904,7 @@ struct perturb2_vector
   // =     Misc      =
   // =================
 
- 
+
 };
 
 
@@ -911,7 +914,7 @@ struct perturb2_vector
  * Structure pointing towards all what the function that perturb2_derivs
  * needs to know: fixed input parameters and indices contained in the
  * various structures, workspace, etc.
-*/ 
+*/
 struct perturb2_parameters_and_workspace {
 
   struct precision * ppr;                         /* Pointer to the precision structure */
@@ -921,7 +924,7 @@ struct perturb2_parameters_and_workspace {
   struct perturbs * ppt;                          /* Pointer to the perturbation structure */
   struct perturbs2 * ppt2;                        /* Pointer to the 2nd-order perturbation structure */
   struct perturb2_workspace * ppw2;               /* Worspace defined above */
-    
+
 };
 
 
@@ -931,7 +934,7 @@ struct perturb2_parameters_and_workspace {
 /*************************************************************************************************************/
 
 /*
- * Boilerplate for C++ 
+ * Boilerplate for C++
  */
 #ifdef __cplusplus
   extern "C" {
@@ -950,7 +953,7 @@ struct perturb2_parameters_and_workspace {
          struct precision2 * ppr2,
          struct perturbs2 * ppt2
          );
-         
+
 
     int perturb2_indices_of_perturbs(
             struct precision * ppr,
@@ -969,8 +972,8 @@ struct perturb2_parameters_and_workspace {
            struct perturbs * ppt,
            struct perturbs2 * ppt2
            );
-           
-    
+
+
     int perturb2_get_lm_lists(
          struct precision * ppr,
          struct precision2 * ppr2,
@@ -996,7 +999,7 @@ struct perturb2_parameters_and_workspace {
                 struct background * pba,
                 struct thermo * pth,
                 struct perturbs * ppt,
-                struct perturbs2 * ppt2,                
+                struct perturbs2 * ppt2,
                 struct perturb2_workspace * ppw2
                 );
 
@@ -1042,7 +1045,7 @@ struct perturb2_parameters_and_workspace {
             struct perturbs2 * ppt2,
             int index_k1,
             int index_k2,
-            int index_k3,                    
+            int index_k3,
             struct perturb2_workspace * ppw2
             );
 
@@ -1056,7 +1059,7 @@ struct perturb2_parameters_and_workspace {
           struct perturbs2 * ppt2,
           int index_k1,
           int index_k2,
-          int index_k3,                    
+          int index_k3,
           struct perturb2_workspace * ppw2
           );
 
@@ -1170,7 +1173,7 @@ struct perturb2_parameters_and_workspace {
     int perturb2_save_early_transfers(double tau,
               double * y,
               double * dy,
-              int index_tau,              
+              int index_tau,
               void * parameters_and_workspace,
               ErrorMsg error_message
               );
@@ -1178,27 +1181,27 @@ struct perturb2_parameters_and_workspace {
     int perturb2_print_variables(double tau,
         double * y,
         double * dy,
-        int index_tau,        
+        int index_tau,
         void * parameters_and_workspace,
         ErrorMsg error_message
         );
 
 
-  
-  int what_if_ndf15_fails(int (*derivs)(double x, 
-            double * y, 
-            double * dy, 
+
+  int what_if_ndf15_fails(int (*derivs)(double x,
+            double * y,
+            double * dy,
             void * parameters_and_workspace,
             ErrorMsg error_message),
           double x_ini,
           double x_end,
-          double * y, 
+          double * y,
           int * used_in_output,
           int y_size,
           void * parameters_and_workspace_for_derivs,
-          double tolerance, 
+          double tolerance,
           double minimum_variation,
-          int (*evaluate_timescale)(double x, 
+          int (*evaluate_timescale)(double x,
             void * parameters_and_workspace,
             double * timescale,
             ErrorMsg error_message),
@@ -1212,7 +1215,7 @@ struct perturb2_parameters_and_workspace {
             void * parameters_and_workspace,
             ErrorMsg error_message),
           int (*print_variables)(double x,
-               double y[], 
+               double y[],
                double dy[],
                void * parameters_and_workspace,
                ErrorMsg error_message),
@@ -1230,7 +1233,7 @@ struct perturb2_parameters_and_workspace {
           struct precision * ppr,
           struct precision2 * ppr2,
           struct background * pba,
-          struct thermo * pth,            
+          struct thermo * pth,
           struct perturbs * ppt,
           struct perturbs2 * ppt2,
           int index_tau, /* if negative, use interpolation with tau, below */
@@ -1244,7 +1247,7 @@ struct perturb2_parameters_and_workspace {
           struct precision * ppr,
           struct precision2 * ppr2,
           struct background * pba,
-          struct thermo * pth,            
+          struct thermo * pth,
           struct perturbs * ppt,
           struct perturbs2 * ppt2,
           struct perturb2_workspace * ppw2
@@ -1309,7 +1312,7 @@ struct perturb2_parameters_and_workspace {
 #endif
 
 /**************************************************************/
-  
-  
+
+
 
 #endif
