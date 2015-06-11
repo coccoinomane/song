@@ -40,7 +40,6 @@ int main(int argc, char **argv) {
   //   return _FAILURE_;
   // }
 
-  /* TODO: why is this not working? */
   if (input2_init(pr.parameter_files_content,&pr,&pr2,&ba,&th,&pt,&pt2,&tr,&bs,&bs2,&tr2,&pm,
   &sp,&nl,&le,&bi,&fi,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg);
@@ -126,37 +125,36 @@ int main(int argc, char **argv) {
   // printf("\tpt.custom_tau_mode_quadsources = %d\n", pt.custom_tau_mode_quadsources);
   
   /* Time sampling for second-order sources */
-  // printf("* Time sampling for second-order sources\n");
-  // printf("\tpt2.tau_size = %d\n", pt2.tau_size);
-  // printf("\tpr2.perturb_sampling_stepsize_song = %g\n", pr2.perturb_sampling_stepsize_song);
-  // printf("\tpt2.tau_start_evolution = %g\n", pt2.tau_start_evolution);
-  // printf("\tpt2.recombination_max_to_end_ratio = %g\n", pt2.recombination_max_to_end_ratio);
-  // printf("\tpt2.has_custom_timesampling = %d\n", pt2.has_custom_timesampling);
-  // printf("\tpt2.custom_tau_ini = %g\n", pt2.custom_tau_ini);
-  // printf("\tpt2.custom_tau_end = %g\n", pt2.custom_tau_end);  
-  // printf("\tpt2.custom_tau_size = %d\n", pt2.custom_tau_size);
-  // printf("\tpt2.custom_tau_mode = %d\n", pt2.custom_tau_mode);
-  // printf("\tpt2.match_final_time_los = %d\n", pt2.match_final_time_los);
+  printf("* Time sampling for second-order sources\n");
+  printf("\tpr2.perturb_sampling_stepsize_song = %g\n", pr2.perturb_sampling_stepsize_song);
+  printf("\tpt2.tau_start_evolution = %g\n", pt2.tau_start_evolution);
+  printf("\tpt2.recombination_max_to_end_ratio = %g\n", pt2.recombination_max_to_end_ratio);
+  printf("\tpt2.has_custom_timesampling = %d\n", pt2.has_custom_timesampling);
+  printf("\tpt2.custom_tau_ini = %g\n", pt2.custom_tau_ini);
+  printf("\tpt2.custom_tau_end = %g\n", pt2.custom_tau_end);
+  printf("\tpt2.custom_tau_size = %d\n", pt2.custom_tau_size);
+  printf("\tpt2.custom_tau_mode = %d\n", pt2.custom_tau_mode);
+  printf("\tpt2.match_final_time_los = %d\n", pt2.match_final_time_los);
 
   /* Wavemode sampling */
-  printf("* Wavemode sampling for second-order sources\n");
-  printf("\tpt2.k_sampling = %d\n", pt2.k_sampling);
-  printf("\tpr2.k_min_tau0 = %g\n", pr2.k_min_tau0);
-  printf("\tpr2.k_max_tau0_over_l_max = %g\n", pr2.k_max_tau0_over_l_max);
-  printf("\tpr2.k_step_sub = %g\n", pr2.k_step_sub);
-  printf("\tpr2.k_step_super = %g\n", pr2.k_step_super);
-  printf("\tpr2.k_logstep_super = %g\n", pr2.k_logstep_super);
-  printf("\tpr2.k_step_transition = %g\n", pr2.k_step_transition);
-  printf("\tpr2.k_min_scalar = %g\n", pr2.k_min_custom);
-  printf("\tpr2.k_max_scalar = %g\n", pr2.k_max_custom);
-  printf("\tpr2.k_size_custom = %d\n", pr2.k_size_custom);
-  printf("\tpr2.q_linstep_song = %g\n", pr2.q_linstep_song);
-  printf("\tpt2.k3_sampling = %d\n", pt2.k3_sampling);
-  printf("\tpr2.k3_size_min = %d\n", pr2.k3_size_min);
-  printf("\tpr2.k3_size = %d\n", pr2.k3_size);
-  printf("\tpr2.tau_step_trans_song = %g\n", pr2.tau_step_trans_song);
-  printf("\ttr2.k_sampling = %d\n", tr2.k_sampling);
-  printf("\ttr2.tau_sampling = %d\n", tr2.tau_sampling);
+  // printf("* Wavemode sampling for second-order sources\n");
+  // printf("\tpt2.k_sampling = %d\n", pt2.k_sampling);
+  // printf("\tpr2.k_min_tau0 = %g\n", pr2.k_min_tau0);
+  // printf("\tpr2.k_max_tau0_over_l_max = %g\n", pr2.k_max_tau0_over_l_max);
+  // printf("\tpr2.k_step_sub = %g\n", pr2.k_step_sub);
+  // printf("\tpr2.k_step_super = %g\n", pr2.k_step_super);
+  // printf("\tpr2.k_logstep_super = %g\n", pr2.k_logstep_super);
+  // printf("\tpr2.k_step_transition = %g\n", pr2.k_step_transition);
+  // printf("\tpr2.k_min_scalar = %g\n", pr2.k_min_custom);
+  // printf("\tpr2.k_max_scalar = %g\n", pr2.k_max_custom);
+  // printf("\tpr2.k_size_custom = %d\n", pr2.k_size_custom);
+  // printf("\tpr2.q_linstep_song = %g\n", pr2.q_linstep_song);
+  // printf("\tpt2.k3_sampling = %d\n", pt2.k3_sampling);
+  // printf("\tpr2.k3_size_min = %d\n", pr2.k3_size_min);
+  // printf("\tpr2.k3_size = %d\n", pr2.k3_size);
+  // printf("\tpr2.tau_step_trans_song = %g\n", pr2.tau_step_trans_song);
+  // printf("\ttr2.k_sampling = %d\n", tr2.k_sampling);
+  // printf("\ttr2.tau_sampling = %d\n", tr2.tau_sampling);
 
   /* Initial conditions */
   // printf("* Initial conditions parameters\n");    

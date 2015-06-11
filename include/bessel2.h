@@ -52,7 +52,7 @@ struct bessels2 {
 
   double * xx;                   /**< xx is the grid where J_Llm(x) is sampled.  To each (L,l,m) it corresponds a different starting index in x. */
   double xx_step;                /**< Linear step dx for sampling the J_Llm Bessel functions */
-  int xx_size;                   /**< Size of xx. This is determined by pbs->x_max and pbs->x_step. */
+  int xx_size;                   /**< Size of xx. This is determined by pbs2->xx_max and pbs2->xx_step. */
   double xx_max;                 /**< Maximum value of xx (always multiple of xx-step).  Determined in input.c */
 
   /* Arrays and variables related to the projection functions */

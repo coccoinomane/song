@@ -161,14 +161,15 @@ int input2_init (
 
   /** - define local variables */
 
-  int flag1,flag2,flag3;
+  int flag1,flag2,flag3,flag;
   int int1;
   double param1,param2,param3;
   int entries_read;
-  int * int_pointer;
+  int * int_pointer, * int_pointer1, * int_pointer2;
   int * pointer_to_int;
   char string1[_ARGUMENT_LENGTH_MAX_];
   char string2[_ARGUMENT_LENGTH_MAX_];
+  char string[_ARGUMENT_LENGTH_MAX_];
   int i;
 
 
@@ -286,39 +287,61 @@ int input2_init (
   class_read_double("recombination_max_to_end_ratio", ppt2->recombination_max_to_end_ratio);
 
   class_call(parser_read_string(pfc,"custom_time_sampling_for_2nd_order_sources",
-      &(string1),&(flag1),errmsg), errmsg, errmsg);
+      &(string1),&(flag1),errmsg), errmsg, errmsg); /* obsolete */
+  class_call(parser_read_string(pfc,"custom_time_sampling_song_sources",
+      &(string2),&(flag2),errmsg), errmsg, errmsg); 
    
-  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+  /* string2 wins over string1 */
+  flag = _TRUE_;
+  if (flag2 == _TRUE_)
+    strcpy (string, string2);
+  else if (flag1 == _TRUE_)
+    strcpy (string, string1);
+  else
+    flag = _FALSE_;
+   
+  if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
     ppt2->has_custom_timesampling = _TRUE_;
 
-  class_read_double("custom_tau_ini_2nd_order_sources", ppt2->custom_tau_ini);
+  class_read_double("custom_tau_ini_2nd_order_sources", ppt2->custom_tau_ini); /* obsolete */
+  class_read_double("custom_tau_ini_song_sources", ppt2->custom_tau_ini);
 
   class_test (ppt2->custom_tau_ini<=0, errmsg, "please choose 'tau_ini' greater than zero.");
   
-  class_read_double("custom_tau_end_2nd_order_sources", ppt2->custom_tau_end);  
+  class_read_double("custom_tau_end_2nd_order_sources", ppt2->custom_tau_end); /* obsolete */
+  class_read_double("custom_tau_end_song_sources", ppt2->custom_tau_end);  
   
-  class_read_int("custom_tau_size_2nd_order_sources", ppt2->custom_tau_size);
+  class_read_int("custom_tau_size_2nd_order_sources", ppt2->custom_tau_size); /* obsolete */
+  class_read_int("custom_tau_size_song_sources", ppt2->custom_tau_size);
 
   class_call(parser_read_string(pfc,"custom_tau_mode_2nd_order_sources",&string1,&flag1,errmsg),
        errmsg,
+       errmsg); /* obsolete */
+  class_call(parser_read_string(pfc,"custom_tau_mode_song_sources",&string2,&flag2,errmsg),
+       errmsg,
        errmsg); 
 
-  if (flag1 == _TRUE_) {
+  /* string2 wins over string1 */
+  flag = _TRUE_;
+  if (flag2 == _TRUE_)
+    strcpy (string, string2);
+  else if (flag1 == _TRUE_)
+    strcpy (string, string1);
+  else
+    flag = _FALSE_;
 
-    if (((strstr(string1,"lin") != NULL) || (strstr(string1,"LIN") != NULL)))
+  if (flag == _TRUE_) {
+
+    if (((strstr(string,"lin") != NULL) || (strstr(string,"LIN") != NULL)))
       ppt2->custom_tau_mode = lin_tau_sampling;
 
-    else if (((strstr(string1,"log") != NULL) || (strstr(string1,"LOG") != NULL)))
+    else if (((strstr(string,"log") != NULL) || (strstr(string,"LOG") != NULL)))
       ppt2->custom_tau_mode = log_tau_sampling;
-
-    else if (((strstr(string1,"class") != NULL) || (strstr(string1,"CLASS") != NULL)))
-      ppt2->custom_tau_mode = class_tau_sampling;
     
     else
       class_stop(errmsg,         
-        "tau_mode_2nd_order_sources=%s not supported. Choose between 'lin', 'log' and 'class'",
-        string1);
-
+        "tau_mode_2nd_order_sources=%s not supported. Choose between 'lin' and 'log'",
+        string);
   }
    
   /* Precision parameters for the time sampling */
@@ -370,9 +393,10 @@ int input2_init (
   /* Parameters for the smart k1-k2 sampling */
 
   class_read_double("k_scalar_min_tau0_2nd_order",ppr2->k_min_tau0); /* obsolete */
-  class_read_double("k_scalar_max_tau0_over_l_max",ppr2->k_max_tau0_over_l_max); /* obsolete */
+  class_read_double("k_scalar_max_tau0_over_l_max_2nd_order",ppr2->k_max_tau0_over_l_max); /* obsolete */
   class_read_double("k_scalar_step_sub_2nd_order",ppr2->k_step_sub); /* obsolete */
   class_read_double("k_scalar_linstep_super_2nd_order",ppr2->k_step_super); /* obsolete */
+  class_read_double("k_linstep_super_2nd_order",ppr2->k_step_super); /* obsolete */
   class_read_double("k_scalar_logstep_super_2nd_order",ppr2->k_logstep_super); /* obsolete */
   class_read_double("k_scalar_step_transition_2nd_order",ppr2->k_step_transition); /* obsolete */
 
@@ -456,8 +480,8 @@ int input2_init (
   }
 
   class_call(parser_read_string(pfc,"polarization_second_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
-  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL))) {
-    ppt2->has_polarization2 = _TRUE_;
+  if ((flag1 == _TRUE_) && (strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL)) {
+    ppt2->has_polarization2 = _FALSE_;
   }
 
   if (ppt2->has_polarization2 == _TRUE_)
@@ -473,8 +497,7 @@ int input2_init (
     ppt2->has_perfect_cdm = _FALSE_;
   }
 
-  class_read_double("tol_perturb_integration_2nd_order",
-    ppr2->tol_perturb_integration_song); /* obsolete */
+  class_read_double("tol_perturb_integration_2nd_order",ppr2->tol_perturb_integration_song); /* obsolete */
   class_read_double("tol_perturb_integration_song",ppr2->tol_perturb_integration_song);
 
 
@@ -482,7 +505,7 @@ int input2_init (
   // =                      Perturbations, perturbed recombination                      =
   // ====================================================================================
 
-  class_call(parser_read_string(pfc,"perturbed_recombination",&(string1),&(flag1),errmsg),errmsg,errmsg);
+  class_call(parser_read_string(pfc,"perturbed_recombination_song",&(string1),&(flag1),errmsg),errmsg,errmsg);
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL))) {
     pth->has_perturbed_recombination_stz = _TRUE_;
     ppt->has_perturbed_recombination_stz = _TRUE_;
@@ -497,6 +520,7 @@ int input2_init (
   class_call(parser_read_string(pfc,"perturbed_recombination_use_approx",&(string1),&(flag1),errmsg),errmsg,errmsg);
 
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL))) {
+
     ppt2->perturbed_recombination_use_approx = _TRUE_;
     
     /* To use the analytical approximation, we only need the derivatives of the background ionization fraction X_e */
@@ -823,6 +847,9 @@ int input2_init (
   class_read_int("transfer2_verbose", ptr2->transfer2_verbose);
 
   /* - k sampling */
+  class_call(parser_read_string(pfc,"transfer2_k_sampling",&string1,&flag1,errmsg),
+       errmsg,
+       errmsg); /* obsolete */
   class_call(parser_read_string(pfc,"transfer2_k3_sampling",&string1,&flag1,errmsg),
        errmsg,
        errmsg);
@@ -868,7 +895,7 @@ int input2_init (
     if (ppr->load_run == _FALSE_) {
         double ratio = 95;
         ppr2->q_linstep_song = param1 * ratio;
-        printf ("\nOBSOLETE PARAMETER: changed k_step_trans_scalars_2nd_order=%g to q_linstep_song=%g (ratio=%g).\n",
+        printf ("\nOBSOLETE PARAMETER: changed k_step_trans_scalars_2nd_order=%g to q_linstep_song=%g (ratio=%g).\n\n",
           param1, ppr2->q_linstep_song, ratio);
     }
   }
@@ -1161,20 +1188,33 @@ int input2_init (
   /* Read the list of requested azimuthal 'm' values. They must be given in ascending order. */
 
   class_call (parser_read_list_of_integers (
-    pfc,"modes_2nd_order",&(ppr2->m_size),&(int_pointer),&flag1, errmsg),
+    pfc,"modes_2nd_order",&(ppr2->m_size),&(int_pointer1),&flag1, errmsg),
     errmsg,
     errmsg); /* obsolete */
 
   class_call (parser_read_list_of_integers (
-    pfc,"modes_song",&(ppr2->m_size),&(int_pointer),&flag1, errmsg),
+    pfc,"modes_song",&(ppr2->m_size),&(int_pointer2),&flag2, errmsg),
     errmsg,
     errmsg);
     
-  if (flag1 == _TRUE_) {
+  /* string2 wins over string1 */
+  flag = _TRUE_;
+  if (flag2 == _TRUE_)
+    int_pointer = int_pointer2;
+  else if (flag1 == _TRUE_)
+    int_pointer = int_pointer1;
+  else
+    flag = _FALSE_;
+
+  if (flag == _TRUE_) {
     for (i=0; i < ppr2->m_size; ++i)
       ppr2->m[i] = int_pointer[i];
-    free (int_pointer);
   }
+
+  if (flag1 == _TRUE_)
+    free (int_pointer1);
+  else if (flag2 == _TRUE_)
+    free (int_pointer2);
 
   /* Check that the m-list is strictly ascending */
   for (i=0; i < (ppr2->m_size-1); ++i)
@@ -1311,12 +1351,14 @@ int input2_init (
   // -                 Compute pbs2->xx_max                -
   // -------------------------------------------------------
 
-  /* Determine pbs2->xx_max, the upper limit of the x-domain of the projection functions J_Llm(x).
-  These appear in the second-order line-of-sight integral with x = k*(tau0-tau), therefore we set
-  pbs2->xx_max = k_max*tau0, where tau0 is the conformal age of the Universe */
+  /* Determine pbs2->xx_max, the upper limit of the x-domain of the projection functions
+  J_Llm(x). These appear in the second-order line-of-sight integral with x = k*(tau0-tau),
+  therefore we set pbs2->xx_max = k_max*tau0, where tau0 is the conformal age of the
+  Universe */
   pbs2->xx_max = ppr2->k_max_tau0_over_l_max * ppt->l_scalar_max;
 
-  /* Accomodate for the case where the k-sampling is set manually (usually for debug purposes) */
+  /* Accomodate for the case where the k-sampling is set manually (usually for
+  debug purposes) */
   if ((ppt2->k_sampling == lin_k_sampling) || (ppt2->k_sampling == log_k_sampling)) {
     double tau0_guess = 18000;
     pbs2->xx_max = ppr2->k_max_custom * tau0_guess;
@@ -1325,18 +1367,19 @@ int input2_init (
   /* Copy the step size in xx to the bessel2 structure */
   pbs2->xx_step = ppr2->bessel_x_step_song;
 
-  /* Extend pbs2->xx_max to avoid potential out-of-bounds errors in the interpolation of J_Llm(x) */
+  /* Extend pbs2->xx_max to avoid potential out-of-bounds errors in the interpolation
+  of J_Llm(x) */
   pbs2->xx_max += pbs2->xx_step;
   pbs2->xx_max *= 1.05;
 
-  /* Extend the domain of the Bessel functions j_l(x) computed in bessel.c (pbs->x_max) to match
-  the domain of the projection functions J_Llm(x) computed in bessel2.c (pbs2->xx_max). The reason
-  is that the computation of J_Llm(x) requires j_l(x).  */
+  /* Extend the domain of the Bessel functions j_l(x) computed in bessel.c (pbs->x_max) to
+  match the domain of the projection functions J_Llm(x) computed in bessel2.c (pbs2->xx_max).
+  The reason is that the computation of J_Llm(x) requires j_l(x). */
   pbs->x_max = MAX (pbs->x_max, pbs2->xx_max);
 
-  /* Determine the maximum value of L for which we should compute the projection functions J_Llm(x)
-  in the second-order Bessel module. To explain the inclusion of ppr2->m_max_2nd_order, refer to the
-  first long comment in bessel2_get_l1_list. */
+  /* Determine the maximum value of L for which we should compute the projection functions
+  J_Llm(x) in the second-order Bessel module. To explain the inclusion of
+  ppr2->m_max_2nd_order, refer to the first long comment in bessel2_get_l1_list. */
   pbs2->L_max = MAX (ppr2->l_max_los, ppr2->m_max_2nd_order);
 
   return _SUCCESS_;
@@ -1552,7 +1595,7 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   // =                              Tolerance                          =
   // ===================================================================
 
-  ppr2->tol_perturb_integration_song=1e-5;
+  ppr2->tol_perturb_integration_song=1e-4;
 
 
   // ==================================================================

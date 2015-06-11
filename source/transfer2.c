@@ -330,39 +330,32 @@ int transfer2_init(
       // -                    Interpolate sources in k3                      -
       // ---------------------------------------------------------------------      
 
+      /* Find the grid in k3 for the current (k1,k2) pair */
       int last_used_index_pt;
+      double * k_grid_temp;
+      class_alloc(k_grid_temp, ptr2->k3_size_max*sizeof(double), ptr2->error_message);
 
-      /* We call transfer2_get_k3_list() in a parallel region for simplicity, but this
-      is not really needeed, as its output depends only on k1 and k2, while the
-      parallel loop is on k. */
-      abort = _FALSE_;    
-      #pragma omp parallel private (thread)
-      {
+      class_call_parallel (transfer2_get_k3_list(
+                    ppr,
+                    ppr2,
+                    ppt2,
+                    pbs,
+                    pbs2,
+                    ptr2,
+                    index_k1,
+                    index_k2,
+                    k_grid_temp,  /* output */
+                    &last_used_index_pt
+                    ),
+        ptr2->error_message,
+        ptr2->error_message);
 
-        #ifdef _OPENMP
-        thread = omp_get_thread_num();
-        #endif
-
-        class_call_parallel (transfer2_get_k3_list(
-                      ppr,
-                      ppr2,
-                      ppt2,
-                      pbs,
-                      pbs2,
-                      ptr2,
-                      index_k1,
-                      index_k2,
-                      ppw[thread]->k_grid,  /* output */
-                      &last_used_index_pt
-                      ),
-          ptr2->error_message,
-          ptr2->error_message);
-
-        #pragma omp flush(abort)
-
-      } if (abort == _TRUE_) return _FAILURE_;
+      /* Copy the k3 grid in the pwb workspace. We do so in a parallel region because
+      we have as many pwb[thread] workspaces as the number of threads */
+      for (int thread=0; thread < number_of_threads; ++thread)
+        for (int index_k=0; index_k < ptr2->k_size_k1k2[index_k1][index_k2]; ++index_k)
+          ppw[thread]->k_grid[index_k] = k_grid_temp[index_k];
       
-
       /* Print some information */
       if (ptr2->transfer2_verbose > 3)
         printf("     * (k1,k2)=(%.3g,%.3g): the k3-grid comprises sources+transfer+left+right=%d+%d+%d+%d points from %g to %g\n",
@@ -373,6 +366,8 @@ int transfer2_init(
           ptr2->k_size_k1k2[index_k1][index_k2] - ptr2->k_physical_size_k1k2[index_k1][index_k2] - ptr2->k_physical_start_k1k2[index_k1][index_k2],
           ppw[thread]->k_grid[0], ppw[thread]->k_grid[ptr2->k_size_k1k2[index_k1][index_k2]-1]);
 
+      free (k_grid_temp);
+      
 
       // -----------------------------------------------------------------------
       // -                      Interpolate sources in k                       -
@@ -1583,7 +1578,8 @@ int transfer2_get_k3_list (
   
   index_k_pt++;
 
-  /* Points taken from perturbation2 module if the step is small enough */
+  /* Take the next point from the sources sampling (ppt->k3) if the step is small enough.
+  This assumes that ppt->k3 is a growing array. */
   while ((index_k_pt < k_pt_size) && ((ppt2->k3[index_k1][index_k2][index_k_pt] - k) < k_step_max)) {
       k = ppt2->k3[index_k1][index_k2][index_k_pt];
       k3[index_k_tr] = k;
@@ -1594,42 +1590,16 @@ int transfer2_get_k3_list (
   *last_used_index_pt = index_k_pt;
 
   /* Make sure that we do not introduce a jump in the extrapolation */
-  double last_triangular_step = ppt2->k3[index_k1][index_k2][k_pt_size-1] - ppt2->k3[index_k1][index_k2][k_pt_size-2];
+  double last_triangular_step = ppt2->k3[index_k1][index_k2][k_pt_size-1] 
+    - ppt2->k3[index_k1][index_k2][k_pt_size-2];
 
-  /* Then, points spaced linearily with step k_step_max. Note that when using k3-extrapolation, we add points beyond the
-  physical limit dictated by the triangular condition. */
+  /* Then, points spaced linearily with step k_step_max. Note that when using k3-extrapolation,
+  we add points beyond the physical limit dictated by the triangular condition. */
   while ((index_k_tr < k_tr_size) && (k < k_max_tr)) {
     k += MIN (k_step_max, n*last_triangular_step);
     k3[index_k_tr] = k;
     index_k_tr++;
   }
-
-  // index_k_pt++;
-  // double k_next = ppt2->k3[index_k1][index_k2][index_k_pt];
-  //
-  // /* Take the next point from the sources sampling (ppt->k3) if its step is small enough.
-  // This assumes that ppt->k3 is a growing array. */
-  // while ((index_k_pt < k_pt_size) && ((k_next-k) < k_step_max)) {
-  //     k = k_next;
-  //     k3[index_k_tr] = k;
-  //     index_k_pt++;
-  //     k_next = ppt2->k3[index_k1][index_k2][index_k_pt];
-  //     index_k_tr++;
-  // }
-  //
-  // *last_used_index_pt = index_k_pt;
-  //
-  // /* Make sure that we do not introduce a jump in the extrapolation */
-  // double last_triangular_step = ppt2->k3[index_k1][index_k2][k_pt_size-1]
-  //   - ppt2->k3[index_k1][index_k2][k_pt_size-2];
-  //
-  // /* Then, points spaced linearily with step k_step_max. Note that when using k3-extrapolation,
-  // we add points beyond the physical limit dictated by the triangular condition. */
-  // while ((index_k_tr < k_tr_size) && (k < k_max_tr)) {
-  //   k += MIN (k_step_max, n*last_triangular_step);
-  //   k3[index_k_tr] = k;
-  //   index_k_tr++;
-  // }
 
   /* Consistency check on the maximum value of k3 */
   class_test (k3[k_tr_size-1] > k_max_tr,
@@ -1638,34 +1608,37 @@ int transfer2_get_k3_list (
     k3[k_tr_size-1], k_max_tr);
 
   /* Some debug */
-  // int index_k1_debug = 4;
-  // int index_k2_debug = 3;
-  // 
+  // int index_k1_debug = 0;
+  // int index_k2_debug = 0;
+  //
   // if ((index_k1==index_k1_debug) && (index_k2==index_k2_debug)) {
-  //   
+  //
   //   fprintf (stderr, "# ~~~~ (index_k1,index_k2)=(%d,%d), (k1,k2)=(%g,%g), k_tr_size=%d ~~~~~\n",
   //     index_k1, index_k2, ppt2->k[index_k1], ppt2->k[index_k2], ptr2->k_size_k1k2[index_k1][index_k2]);
-  // 
+  //
   //   int first_k_phys = ptr2->k_physical_start_k1k2[index_k1][index_k2];
   //   int last_k_phys = ptr2->k_physical_start_k1k2[index_k1][index_k2] + ptr2->k_physical_size_k1k2[index_k1][index_k2] - 1;
-  //   
+  //
   //   fprintf (stderr, "# ~~~~  K-SAMPLING OF SOURCES (k1=%g, k2=%g, %d k's in [%g,%g], of which used: %d) ~~~~~\n",
   //     ppt2->k[index_k1], ppt2->k[index_k2], k_pt_size, k_min_pt, k_max_pt, *last_used_index_pt);
   //   for (index_k_pt=0; index_k_pt < k_pt_size; ++index_k_pt)
   //     fprintf(stderr, "# %12d %26.17f\n", index_k_pt, ppt2->k3[index_k1][index_k2][index_k_pt]);
-  //   
-  //   fprintf (stderr, "# ~~~~  LEFT-EXTRAPOLATION (%d k's in (%g,%g)) ~~~~~\n", first_k_phys, k3[0], k3[first_k_phys]);
+  //
+  //   fprintf (stderr, "# ~~~~  LEFT-EXTRAPOLATION (%d k's in (%g,%g)) ~~~~~\n",
+  //     first_k_phys, k3[0], k3[first_k_phys]);
   //   for (index_k_tr=0; index_k_tr < first_k_phys; ++index_k_tr)
   //     fprintf(stderr, "# %12d %26.17f\n", index_k_tr, k3[index_k_tr]);
-  //   
-  //   fprintf (stderr, "# ~~~~  PHYSICAL K's (%d k's in [%g,%g]) ~~~~~\n", last_k_phys-first_k_phys+1, k3[first_k_phys], k3[last_k_phys]);
+  //
+  //   fprintf (stderr, "# ~~~~  PHYSICAL K's (%d k's in [%g,%g]) ~~~~~\n",
+  //     last_k_phys-first_k_phys+1, k3[first_k_phys], k3[last_k_phys]);
   //   for (index_k_tr=first_k_phys; index_k_tr < last_k_phys+1; ++index_k_tr)
   //     fprintf(stderr, "# %12d %26.17f\n", index_k_tr, k3[index_k_tr]);
-  //   
-  //   fprintf (stderr, "# ~~~~  RIGHT-EXTRAPOLATION (%d k's in (%g,%g)) ~~~~~\n", k_tr_size-last_k_phys-1, k3[last_k_phys], k3[k_tr_size-1]);
+  //
+  //   fprintf (stderr, "# ~~~~  RIGHT-EXTRAPOLATION (%d k's in (%g,%g)) ~~~~~\n",
+  //     k_tr_size-last_k_phys-1, k3[last_k_phys], k3[k_tr_size-1]);
   //   for (index_k_tr=last_k_phys+1; index_k_tr < k_tr_size; ++index_k_tr)
   //     fprintf(stderr, "# %12d %26.17f\n", index_k_tr, k3[index_k_tr]);
-  // 
+  //
   // } // end of debug
 
   /* Check that the computed k3-grid always satisfies the triangular condition in the physical regime */
@@ -2081,13 +2054,6 @@ int transfer2_compute (
 
 
 
-
-
-
-
-
-
-
 int transfer2_integrate (
       struct precision * ppr,
       struct precision2 * ppr2,
@@ -2158,9 +2124,6 @@ int transfer2_integrate (
     return _SUCCESS_;
   }
       
-  
-  
-  
   /* We now want to see how much overlap there is between the sources and the projection functions.
   We define an 'index_tau_max' as the time-index of the sources after which the J's become
   negligible.  If 'index_tau_max' is close to zero, then the J's are almost always negligible
@@ -2174,51 +2137,41 @@ int transfer2_integrate (
     printf("     \\ adjusted integration range from tau=[%g,%g] to tau=[%g,%g]\n",
       pw->tau_grid[0], pw->tau_grid[pw->tau_grid_size-1], pw->tau_grid[0], pw->tau_grid[index_tau_max]);
   
-  
     
   
   // =====================================================================================
   // =                             Perform the integration                               =
   // =====================================================================================
   
-  /* We perform the line of sight integration starting from the initial time where the sources are sampled
-  (that is ppt2->tau_sampling[0]) up to pw->tau_grid[index_tau_max] (see above for details).
-  We implement the integration following the positive direction of time, which is the negative direction
-  of x=k(tau0-tau) */
+  /* We perform the line of sight integration starting from the initial time where the
+  sources are sampled (that is ppt2->tau_sampling[0]) up to pw->tau_grid[index_tau_max]
+  (see above for details). We implement the integration following the positive direction
+  of time, which is the negative direction of x=k(tau0-tau) */
   
-  /* We shall integrate over time */
-  int index_tau;
-  
-  /* The integrand function is the sum over L of the sources S_Lm(tau) with the projection functions
-  J_Llm(k(tau0-tau)) */
-  int index_L;
-  
-  /* Contribution of each time-step to the final integral, which will be stored in *transfer */
-  double integrand=0;
-
-
-  
-  /* We do not include the last point as we are cycling through integration intervals rather than through grid points */
-  for (index_tau=0; index_tau<index_tau_max; ++index_tau) {
+  /* Loop over time. We do not include the last point as we are cycling through integration
+  intervals rather than through grid points */
+  for (int index_tau=0; index_tau<index_tau_max; ++index_tau) {
   
     /* Value of x at the required time */
     double x = k * pw->tau0_minus_tau[index_tau];
       
-    /* Position at the left of x in the array pbs2->xx where we sampled the J (assumes pbs2->xx starts from zero) */
+    /* Position at the left of x in the array pbs2->xx where we sampled the J (assumes
+    pbs2->xx starts from zero) */
     int index_x = (int)(x/pbs2->xx_step);
   
     /* Interpolation weight of the left point for J(x) */
     double a_J = (pbs2->xx[index_x+1] - x)/pbs2->xx_step;
     
-    /* We shall increment 'integrand' with the sum over L of J_Llm*S_Lm */
-    integrand = 0;
+    /* The integrand function is the sum over L of the product between the source
+    S_Lm(tau) and the projection functions J_Llm(k(tau0-tau)).*/
+    double integrand = 0;
 
   
     // **********    Sum over L    ***********
 
     /* The upper limit for L is controlled by the various ppr2->l_max_los_xxx, which is O(few)
     when considering scattering sources only */
-    for(index_L=0; index_L<=pw->L_max; ++index_L) {
+    for(int index_L=0; index_L<=pw->L_max; ++index_L) {
   
       /* The 3j symbols in the definition of J force the azimuthal number 'm' to be smaller than L */
       int L = pbs2->L[index_L];
@@ -2283,34 +2236,37 @@ int transfer2_integrate (
       /* Increment the sum between J_Llm and S_Lm */
       integrand += J_Llm * source_Lm;
   
-      /* Some debug */
+      /* Some debug - print the transfer functions to screen */
       // if ((index_tau == 50) && (pw->index_k1==1) && (pw->index_k2==1)) {
-      // 
+      //
       //   int index_xmin_J = pbs2->index_xmin_J[index_J][index_L][index_l][index_m];
-      //   double x_left = pbs2->xx[index_x-index_xmin_J];    // pbs2->x_min_J[index_J][index_L][index_l][index_m] + pbs->x_step*index_x;
-      //   double x_right = pbs2->xx[index_x-index_xmin_J+1]; // pbs2->x_min_J[index_J][index_L][index_l][index_m] + pbs->x_step*(index_x+1);
-      // 
+      //   double x_left = pbs2->xx[index_x-index_xmin_J];
+      //   double x_right = pbs2->xx[index_x-index_xmin_J+1];
+      //
       //   if ((L == 2) && (l==4) && (m==0)) {
       //     if (x_left > -1) {
-      //       // double J_Llm_linear = a_J*J_Llm_left + (1-a_J)*J_Llm_right;
-      //       // fprintf(stderr, "%.17f %.17f %.17f %.17f %.17f\n", x, J_Llm, J_Llm_linear, J_Llm_left, J_Llm_right);
-      //       // fprintf(stderr, "JL(%d,%d,%d,x=%10.6g[%d]) = %10.6g\n", L, l, m, x_left, index_x-index_xmin_J, J_Llm_left);
-      //       // fprintf(stderr, "J(%d,%d,%d,x=%10.6g) = %10.6g\n", L, l, m, x, J_Llm);
-      //       // fprintf(stderr, "JR(%d,%d,%d,x=%10.6g[%d]) = %10.6g\n", L, l, m, x_right, index_x-index_xmin_J+1, J_Llm_right);
-      //       // fprintf(stderr, "\n");
+      //       double J_Llm_linear = a_J*J_Llm_left + (1-a_J)*J_Llm_right;
+      //       fprintf(stderr, "%.17f %.17f %.17f %.17f %.17f\n",
+      //         x, J_Llm, J_Llm_linear, J_Llm_left, J_Llm_right);
+      //       fprintf(stderr, "JL(%d,%d,%d,x=%10.6g[%d]) = %10.6g\n",
+      //         L, l, m, x_left, index_x-index_xmin_J, J_Llm_left);
+      //       fprintf(stderr, "J(%d,%d,%d,x=%10.6g) = %10.6g\n",
+      //         L, l, m, x, J_Llm);
+      //       fprintf(stderr, "JR(%d,%d,%d,x=%10.6g[%d]) = %10.6g\n",
+      //         L, l, m, x_right, index_x-index_xmin_J+1, J_Llm_right);
+      //       fprintf(stderr, "\n");
       //     }
       //   }
       // }
-      
-    } // end of for(index_L)
-        
-    /* Some debug - print the integrand function for a given set of (l,m,k1,k2,k) */
-    // if ( (l==100) && (m==0) ) {
-    //   if ( (pw->index_k1==0) && (pw->index_k2==1) && (pw->index_k==2500) ) {
-    //     fprintf (stderr, "%15f %15f\n", ptr2->tau0_minus_tau[index_tau], integrand);
-    //   }
-    // }
-    
+
+      /* Some debug - print the integrand function for a given set of (l,m,k1,k2,k) */
+      // if ( (l==100) && (m==0) ) {
+      //   if ( (pw->index_k1==0) && (pw->index_k2==1) && (pw->index_k==2500) ) {
+      //     fprintf (stderr, "%15f %15f\n", ptr2->tau0_minus_tau[index_tau], integrand);
+      //   }
+      // }
+
+    } // end of for(index_L)    
     
     /* Increment the result with the contribution from the considered time-step */
     *integral += integrand * pw->delta_tau[index_tau];
@@ -2320,10 +2276,14 @@ int transfer2_integrate (
     //   printf("transfer = %g\n", *integral);
   
   } // end of for(index_tau)
-  
-  
+    
   /* Correct for factor 1/2 from the trapezoidal rule */
   *integral *= 0.5;
+  
+  /* Test for nans */
+  class_test (isnan(*integral),
+    ptr2->error_message,
+    "found nan in second-order transfer function");
 
   return _SUCCESS_;
 }

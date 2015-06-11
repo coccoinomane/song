@@ -1,6 +1,7 @@
 #ifndef __PERTURBATIONS2__
 #define __PERTURBATIONS2__
 
+#include "perturbations2_macros.h"
 #include "perturbations.h"
 #include "common2.h"
 
@@ -86,9 +87,24 @@ enum sources2_k3_sampling {
 };
 
 
+// ---------------------------------------------------------------------------------
+// -                             Precision parameters                              -
+// ---------------------------------------------------------------------------------
+
+/* The differential system at second-order has to be solved for a set of three wavemodes
+(k1,k2,k3) whereby k3 has to be in the range |k1-k2|<=k3<=k1+k1. When k3 is too close
+to the boundaries, numerical instabilities might arise such as nan's or larger than one
+sines and cosines. In order to avoid that, we define here a safety distance between
+k3 and the bounds. This safety distance is going to correspond to the largest scale
+probed by SONG. Using k_min_tau0=1e-3, that corresponds to k_min=1e-8,
+it seems that setting _MIN_K3_DISTANCE_=1e-10 is ok. */
+#define _MIN_K3_DISTANCE_ 1e-10
+#define _MIN_K3_RATIO_ 100
+
+
+
 struct perturbs2
 {
-
 
   // ====================================================================================
   // =                                    Output flags                                  =
@@ -425,8 +441,11 @@ struct perturbs2
   /* Time at which the second-order system will start being evolved */
   double tau_start_evolution;
 
-  /* When does recombination ends? Used to define the last time where we sample the sources (but only
-    when the user didn't ask for metric or lensing terms in the line-of-sight sources) */
+  /* Value of g/g(tau_rec) when to stop sampling the line of sight sources, where g is the
+  visibility function. For example, if set to 100, then the last conformal time where
+  we will sample the sources will satisfy g(tau)/g(tau_rec)=100. This parameter is overridden
+  when the user asks for ISW or other late-time effects, because in that case the sampling
+  goes all the way to today */
   double recombination_max_to_end_ratio;
 
   /* Should we compute the 2nd-order sources at the times specified by the user? */
@@ -495,48 +514,37 @@ struct perturbs2
   // =                                 Debug parameters                                 =
   // ====================================================================================
 
+  ErrorMsg error_message; /**< String where to write error messages */
+  short perturbations2_verbose; /**< Flag regulating the amount of information sent to standard output (none if set to zero) */
 
-  /* String where to write error messages */
-  ErrorMsg error_message;
-
-  /* Flag regulating the amount of information sent to standard output (none if set to zero) */
-  short perturbations2_verbose;
-
-  /* Count the number of values in ppt2->sources as we fill the array */
-  long int count_allocated_sources;
-  long int count_memorised_sources;
+  long int count_allocated_sources;   /**< Number of allocated entries in ppt2->sources */
+  long int count_memorised_sources;   /**< Number of used entries of ppt2->sources */
   
-  /* Count number of k-modes for which we shall solve the differential system */
-  long int count_k_configurations;
+  long int count_k_configurations;   /**< Number of k-modes for which we shall solve the differential system */
 
-  /* Parameters related to the creation of debug files */
-  short has_debug_files;                         /* Shall we dump to file the intermediate results such as evolved transfer functions and quadratic sources? */
-
-  char transfers_filename[_FILENAMESIZE_];       /* File that will contain the early transfer functions for the different species */
-  char quadsources_filename[_FILENAMESIZE_];     /* File that will contain the quadratic sources for the different species */
-  char quadliouville_filename[_FILENAMESIZE_];   /* File that will contain the quadratic sources of the Liouville perator for the different species */
-  char quadcollision_filename[_FILENAMESIZE_];   /* File that will contain the quadratic sources of the collision term for the different species */
-
-  FILE * transfers_file;                        
-  FILE * quadsources_file;                       
-  FILE * quadliouville_file;                     
-  FILE * quadcollision_file;                     
-
-  int index_k1_debug;                /* Which k1 value should we dump to file? */
-  int index_k2_debug;                /* Which k2 value should we dump to file? */
-  int index_k3_debug;                /* Which k3 value should we dump to file? */
-  int l_max_debug;                   /* For any hierarchy, how many 'l' values should we dump to file? */
+  short has_early_transfers1_only; /**< If _TRUE_, SONG will compute only the first-order early transfer functions and
+                                        do not care about the other flags. Useful for debugging. */
+  short has_early_transfers2_only; /**< If _TRUE_, SONG will compute only the second-order early transfer functions and
+                                        do not care about the other flags. Useful for debugging. */
 
 
-  /* If _TRUE_, compute only the first-order and second-order early transfer functions, respectively, and
-  do not care about the other flags. Useful for debugging. */
-  short has_early_transfers1_only;
-  short has_early_transfers2_only;
+  /* - Parameters related to the creation of debug files */
+  short has_debug_files;        /**< Shall we dump to file the intermediate results such as evolved transfer functions and quadratic sources? */
 
+  char transfers_filename[_FILENAMESIZE_];       /**< Path to the file that will contain the early transfer functions for the different species */
+  char quadsources_filename[_FILENAMESIZE_];     /**< Path to the file that will contain the quadratic sources for the different species */
+  char quadliouville_filename[_FILENAMESIZE_];   /**< Path to the file that will contain the quadratic sources of the Liouville perator for the different species */
+  char quadcollision_filename[_FILENAMESIZE_];   /**< Path to the file that will contain the quadratic sources of the collision term for the different species */
 
+  FILE * transfers_file;         /**< File that will contain the early transfer functions for the different species */
+  FILE * quadsources_file;       /**< File that will contain the quadratic sources for the different species */ 
+  FILE * quadliouville_file;     /**< File that will contain the quadratic sources of the Liouville perator for the different species */ 
+  FILE * quadcollision_file;     /**< File that will contain the quadratic sources of the collision term for the different species */ 
 
-
-
+  int index_k1_debug;      /**< Which k1 value should we dump to file? */
+  int index_k2_debug;      /**< Which k2 value should we dump to file? */
+  int index_k3_debug;      /**< Which k3 value should we dump to file? */
+  int l_max_debug;         /**< For any hierarchy, how many 'l' values should we dump to file? */
 
 };
 
@@ -802,22 +810,25 @@ struct perturb2_workspace
 
   // **********************         Debug parameters         *************************
 
-  /* Counter that keeps track of how many times the function perturb2_derivs has been called
-    for the considered set of k1,k2,k3. */
-  int derivs_count;
+  int derivs_count;   /**< Counter to keep track of how many times the function perturb2_derivs has been called
+                           for the considered set of (k1,k2,k3). */
+
+  /** Function used to output intermediate values from the differential system.  This
+  function will be given as an argument to 'generic_evolver' and is  used only for debug
+  purposes.  By default it is set to NULL, which means that it is never called.  It is
+  called only if ppt2->has_debug_files==_TRUE_ and if the evolved wavemode corresponds
+  to the one requested through ppt2->index_k1_debug, ppt2->index_k2_debug and
+  ppt2->index_k3_debug. This function will be called for each time step in the
+  differential system. */
+  int (*print_function)(double x, double y[], double dy[], void *parameters_and_workspace, ErrorMsg error_message);
   
-  /* Function used to output intermediate values from the differential system.  This
-   function will be given as an argument to 'generic_evolver' and is  used only for debug
-   purposes.  By default it is set to NULL, which means that it is never called.  It is
-   called only if ppt2->has_debug_files==_TRUE_ and if the evolved wavemode corresponds
-   to the one requested through ppt2->index_k1_debug, ppt2->index_k2_debug and
-   ppt2->index_k3_debug. */
-  int (*print_function)(double x, double y[], double dy[], int index_x, void *parameters_and_workspace, ErrorMsg error_message);
-  
-  /* String that contains information on the wavemode that is being currently integrated.
-   such information is printed to the debug files if ppt2->perturbations2_verbose is high
-   enough */
+  /** String that contains information on the wavemode that is being currently integrated.
+  such information is printed to the debug files if ppt2->perturbations2_verbose is high
+  enough */
   char info [4096];
+
+  long int n_steps;   /**< Number of steps taken by the differential system so far for the active (k1,k2,k3) mode.
+                           Computed only if has_debug_files==_TRUE_ */
 
 };
 
@@ -1172,7 +1183,6 @@ struct perturb2_parameters_and_workspace {
     int perturb2_save_early_transfers(double tau,
               double * y,
               double * dy,
-              int index_tau,              
               void * parameters_and_workspace,
               ErrorMsg error_message
               );

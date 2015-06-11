@@ -15,35 +15,35 @@ int main(int argc, char **argv) {
   struct thermo th;           /* thermodynamics */
   struct perturbs pt;         /* source functions (1st-order) */
   struct perturbs2 pt2;       /* source functions (2nd-order) */  
+  struct transfers tr;        /* transfer functions (1st-order) */
   struct bessels bs;          /* bessel functions (1st-order) */
   struct bessels2 bs2;        /* bessel functions (2nd-order) */
-  struct transfers tr;        /* transfer functions (1st-order) */
   struct transfers2 tr2;      /* transfer functions (2nd-order) */
   struct primordial pm;       /* primordial spectra */
   struct spectra sp;          /* output spectra (1st-order) */
-  struct bispectra bi;        /* bispectra */
-  struct fisher fi;           /* fisher matrix */
   struct nonlinear nl;        /* non-linear spectra */
   struct lensing le;          /* lensed spectra */
+  struct bispectra bi;        /* bispectra */
+  struct fisher fi;           /* fisher matrix */
   struct output op;           /* output files */
   ErrorMsg errmsg;            /* error messages */
 
   /* Read parameters from input files */
-  if (input_init_from_arguments(argc,argv,&pr,&ba,&th,&pt,&bs,&tr,&pm,
-  &sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
+  if (input_init_from_arguments(argc,argv,&pr,&ba,&th,
+    &pt,&tr,&pm,&sp,&nl,&le,&bs,&bi,&fi,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
     return _FAILURE_;
   }
-
-  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,
-  &sp,&bi,&fi,&nl,&le,&op,errmsg) == _FAILURE_) {
-    printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
+  
+  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,
+    &pt,&pt2,&tr,&bs,&bs2,&tr2,&pm, &sp,&nl,&le,&bi,&fi,&op,errmsg) == _FAILURE_) {
+    printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg);
     return _FAILURE_;
   }
 
   /* This file is meant only for computations that involve second-order perturbations */
   if (pt2.has_perturbations2 == _FALSE_) {
-    printf ("\n\nThe computation you requested is linear. Use 'class' rather than 'song'.\n");
+    printf ("\nThe computation you requested is linear. Use 'class' rather than 'song'.\n");
     return _FAILURE_;
   }
 
@@ -127,10 +127,10 @@ int main(int argc, char **argv) {
   }
   
   /* Write output files */
-  if (output_init(&ba,&pt,&sp,&nl,&le,&bi,&fi,&op) == _FAILURE_) {
+  if (output_init(&ba,&th,&pt,&pm,&tr,&sp,&nl,&le,&bi,&fi,&op) == _FAILURE_) {
     printf("\n\nError in output_init \n=>%s\n",op.error_message);
     return _FAILURE_;
-  }  
+  }
   
   // =================================================================================
   // =                                  Free memory                                  =
@@ -168,7 +168,7 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
   
-  if (bessel_free(&pr,&bs) == _FAILURE_)  {
+  if (bessel_free(&bs) == _FAILURE_)  {
     printf("\n\nError in bessel_free \n=>%s\n",bs.error_message);
     return _FAILURE_;
   }
@@ -193,7 +193,7 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
   
-  if (perturb_free(&pr,&pt) == _FAILURE_) {
+  if (perturb_free(&pt) == _FAILURE_) {
     printf("\n\nError in perturb_free \n=>%s\n",pt.error_message);
     return _FAILURE_;
   }
@@ -213,8 +213,8 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
   
-  parser_free(pr.input_file_content);
-  free (pr.input_file_content);
+  parser_free(pr.parameter_files_content);
+  free (pr.parameter_files_content);
 
   return _SUCCESS_;
 

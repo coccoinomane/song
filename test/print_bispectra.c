@@ -705,6 +705,9 @@ should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
     /* Normalized temperature correction */
     fprintf (stderr, "%25s(%03d) ", "T_correction_norm", index_print++);
 
+    /* Normalized redshift correction */
+    fprintf (stderr, "%25s(%03d) ", "Z_correction_norm", index_print++);
+
     /* normalisation used to compare the analytical solution with the numerical one */
     fprintf (stderr, "%25s(%03d) ", "normalisation", index_print++);
       
@@ -880,9 +883,10 @@ should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
         double temperature_correction = -3/8. * quadratic_correction;
         double redshift_correction = +4/8. * quadratic_correction; 
         
-        /* Add the temperature & redshift corrections to the bispectrum manually */
-        // if (pbi2->add_quadratic_correction == _TRUE_)
-        //   bolometric_T += temperature_correction + redshift_correction;
+        /* Uncomment to subtract the temperature & redshift corrections from the bispectrum.
+        Equivalent to setting in the paramter file 'add_quadratic_correction=no' */
+        // if (bi.add_quadratic_correction == _TRUE_)
+        //   bolometric_T -= temperature_correction + redshift_correction;
         
         /* Value of the brightness temperature bispectrum */
         double brightness_T = bolometric_T - temperature_correction;
@@ -1048,9 +1052,11 @@ should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
           /* Normalized version of the bolometric temperature bispectrum */
           double bolometric_T_normalized = bolometric_T / normalisation;
           
-          /* Normalized temperature correction. Note that in this squeezed_small_scale limit, it is also given by
+          /* Normalized temperature correction. Note that in this squeezed_small_scale limit, it is
+          also given by
           -3 * cl_long*cl_short * (2 + cl_short/cl_long) / normalisation */
           double temperature_correction_normalized = temperature_correction / normalisation;
+          double redshift_correction_normalized = redshift_correction / normalisation;
           
           // -----------------------------------------------------------------
           // -                         Lewis 2012                            -
@@ -1085,13 +1091,14 @@ should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
           /* Lensing contribution, that is eq. 4.3 in CPV2011 */
           double cos_theta = (l*l - l_long*l_long - l_short*l_short)/(2.*l_long*l_short);
           double cos_2_theta = cos_theta*cos_theta - (1-cos_theta*cos_theta);
-          double bolometric_T_cpv_lensing = (6*cl_XX_long*(cl_XX_short*2*cos_2_theta - (1 + cos_2_theta)*dcl_YZ_short/l_short)) / normalisation;
+          double bolometric_T_cpv_lensing = (6*cl_XX_long*(cl_XX_short*2*cos_2_theta
+            - (1 + cos_2_theta)*dcl_YZ_short/l_short)) / normalisation;
           
           // -------------------------------------------------------
           // -                 Print extra columns                 -
           // -------------------------------------------------------
           
-          fprintf(stderr, "%30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g",
+          fprintf(stderr, "%30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g",
             brightness_T_normalized,
             bolometric_T_normalized,
             bolometric_T_lewis,
@@ -1099,6 +1106,7 @@ should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
             bolometric_T_lewis_redshift,
             bolometric_T_cpv_lensing,
             temperature_correction_normalized,
+            redshift_correction_normalized,
             normalisation,
             l*(l+1.)/(2.*_PI_)*ba.T_cmb*1e6*cl_Xz_short,
             l*(l+1.)/(2.*_PI_)*ba.T_cmb*1e6*cl_Xz_long,

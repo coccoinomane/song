@@ -475,36 +475,44 @@ int bessel2_init(
  * of the Bessel function has to belong to pbs2->l1, which is an extended version of pbs2->l. 
  */
 int bessel2_convolution (
-    struct precision * ppr,
-    struct bessels2 * pbs2,
-    double * kk,
-    double * delta_kk,
-    int k_size,
-    double * f,
-    double * g,
-    int index_l,
-    double r,
-    double * integral,
-    ErrorMsg error_message
+    struct precision * ppr, /**< pointer to precision2 structure */
+    struct bessels2 * pbs2, /**< pointer to Bessel2 structure, should be already initiated
+                            with bessel2_init() */
+    double * kk, /**< array with the integration grid in k */
+    double * delta_kk, /**< trapezoidal measure, compute as delta_k[i]=k[i+1]-k[i-1],
+                       and delta_k[0]=k[1]-k[0], delta_k[k_size-1]=k[k_size-1]-k[k_size-2] */
+    int k_size, /**< size of the integration grid in k */
+    double * f, /**< array with the integrand function f, of size k_size */
+    double * g, /**< array with the integrand function g, of size k_size; pass NULL
+                to automatically set it to unity */
+    int index_l, /**< order of the Bessel function, taken from the multipole array pbs2->l1 */
+    double r, /**< frequency of the Bessel function */
+    double * integral, /**< output, estimate of the integral */
+    ErrorMsg error_message /**< string to write error message */
     )
 {
+  
+#ifdef DEBUG
+  /* Test that the Bessel functions have been computed for the requested
+  multipole index (index_l) and argument (x=k*r) */
+  class_test ((index_l<0) || (index_l>=pbs2->l1_size),
+    error_message,
+    "index_l=%d out of bounds (l1_size=%d)", index_l, pbs2->l1_size);
 
-  /* Loop variable */
-  int index_k;
+  class_test ((kk[k_size-1]*r)>pbs2->xx[pbs2->xx_size-1],
+    error_message,
+    "r*k_max=%g is larger than x_max=%g (index_l1=%d)",
+    kk[k_size-1]*r, pbs2->xx[pbs2->xx_size-1], index_l);
+#endif // DEBUG
 
   /* Initialize the integral */
   *integral = 0;
 
   /* Find the value of l from the Bessel structure */
   int l = pbs2->l1[index_l];
-     
-  /* We shall store the value of j_l2(r*k2) in here */
-  double j;
 
-  
-  // *** Actual integration ***
-    
-  for (index_k = 0; index_k < k_size; ++index_k) {
+  /* Loop over the integration grid */ 
+  for (int index_k = 0; index_k < k_size; ++index_k) {
 
     /* Value of the function f in k */
     double f_in_k = f[index_k];
@@ -530,12 +538,11 @@ int bessel2_convolution (
     /* Value of the considered k */
     double k = kk[index_k];
 
-    
-    // *** Bessel interpolation ***
-
+    /* - Bessel interpolation j_l(k*r) */
+    double j;
     double x = k*r;
 
-    /* j_l(x) vanishers for x < x_min(l) */
+    /* j_l(x) vanishes for x < x_min(l) */
     if (x < pbs2->x_min_l1[index_l])
       continue;
     
@@ -793,7 +800,7 @@ int bessel2_get_l1_list(
  * Determine the x-grid where J_Llm(x) will be sampled and store it in pbs2->xx.
  *
  * The projection functions J_Llm(x) are a linear combination of spherical Bessel
- * functions j_l1(x); we therefore choose their x-sampling to be linear.
+ * functions j_l1(x), which in turn can be sampled linearly in x.
  * 
  */
 int bessel2_get_xx_list(
@@ -805,10 +812,12 @@ int bessel2_get_xx_list(
       )
 {
     
-  pbs2->xx_size = pbs2->xx_max/pbs2->xx_step + 1;
+  /* Update the vale of pbs2->xx_max to reflect pbs->x_max */
+  pbs2->xx_max = MAX (pbs2->xx_max, pbs->x_max);
   
+  /* Sample xx linearly between 0 and pbs2->xx_max with step pbs2->xx_step */
+  pbs2->xx_size = pbs2->xx_max/pbs2->xx_step + 1;
   class_alloc (pbs2->xx, pbs2->xx_size*sizeof(double), pbs2->error_message);
-
   lin_space (pbs2->xx, 0, pbs2->xx_max, pbs2->xx_size);
   
   return _SUCCESS_;
@@ -1429,9 +1438,9 @@ int bessel2_J_Llm (
 
 /**
  * Compute J_Llm(x) without relying on the precomputed spherical Bessel
- * in pbs2->j_l1.  To do so, use the SLATEC subroutine BESJ.  This function
- * might be useful to debug bessel_J_Llm, but it is never used in the
- * code.
+ * in pbs2->j_l1.  To do so, use the numerical recipes subroutine bessel_j.
+ * This function might be useful to debug bessel_J_Llm, but it is never
+ * used in SONG.
  */
 int bessel2_J_Llm_at_x_exact(
        struct bessels * pbs,
@@ -1445,13 +1454,13 @@ int bessel2_J_Llm_at_x_exact(
        )
 {
   
-  int l1, index_l1;
+  int l1;
   double j_l1_x = 0;         // Bessel function j_l(x)
   double i_coefficient;      // Coefficient i^(l-l1-L)
   (*J_Llm_x) = 0;            // We shall accumulate J over l1
 
   /* Summing up to 'l1_size' is equivalent to sum over all the allowed l1's */
-  for(index_l1=0; index_l1<bessel_3j_data->l1_size; ++index_l1) {
+  for(int index_l1=0; index_l1<bessel_3j_data->l1_size; ++index_l1) {
   
     /* The first 3j-symbol vanishes for odd l-l1-L */
     if (bessel_3j_data->first_3j[index_l1]==0.) continue;
@@ -1460,28 +1469,28 @@ int bessel2_J_Llm_at_x_exact(
     l1 = bessel_3j_data->l1_min + index_l1;
     
     /*  Due to the symmetries of the first 3j-symbol, we need to consider only
-      even l-l1-L. Hence, the coefficient i^(l-l1-L) depends on the parity of
-      of (l-l1-L)/2.  */
+    even l-l1-L. Hence, the coefficient i^(l-l1-L) depends on the parity of
+    of (l-l1-L)/2.  */
     i_coefficient = ALTERNATING_SIGN((l-l1-L)/2);
     
-    /* Value of the spherical Bessel function j_l(x), comment if you want
-    to use SLATEC version. */
+    /* Value of the spherical Bessel function j_l(x) */
     class_call (bessel_j(pbs,
-               l1,
-               x,
-               &j_l1_x),
-            pbs2->error_message,
-            pbs2->error_message);
+                  l1,
+                  x,
+                  &j_l1_x),
+      pbs2->error_message,
+      pbs2->error_message);
 
     /* Increment the result */
-    (*J_Llm_x) += i_coefficient * (2*l1+1) * bessel_3j_data->first_3j[index_l1] * bessel_3j_data->second_3j[index_l1] * j_l1_x;
+    (*J_Llm_x) += i_coefficient * (2*l1+1) * bessel_3j_data->first_3j[index_l1]
+                  * bessel_3j_data->second_3j[index_l1] * j_l1_x;
     
   } // end of for(index_l1)
 
   /* Apply constant factors */
   (*J_Llm_x) *= ALTERNATING_SIGN(m) * (2*l+1);
 
-  // *** Some debug
+  /* Debug - print the projection function */
   // printf("J(%d,%d,%d,%20.15g) = %.15g\n", L, l, m, x, *J_Llm_x);
   
   return _SUCCESS_;

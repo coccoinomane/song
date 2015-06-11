@@ -18,7 +18,7 @@ l_linstep = 50
 # =                      First-order k-sampling                    =
 # ==================================================================
 
-## Settings for about 10% precision
+## Settings for about 10% precision of fnl_intrinsic
 k_min_tau0 = 0.05
 k_max_tau0_over_l_max = 2.8
 k_step_sub = 0.1
@@ -85,8 +85,8 @@ k3_size_min = 5
 
 ## Second-order k-sampling for the transfer functions
 q_linstep = 0.4
-q_linstep_song = 0.1
-transfer2_k_sampling = class
+q_linstep_song = 0.4
+transfer2_k3_sampling = class
 
 
 
@@ -138,14 +138,14 @@ perturb_sampling_stepsize_song = 0.4
 recombination_max_to_end_ratio = 250
 
 ## Custom timesampling for the second-order line-of-sight sources
-custom_time_sampling_for_2nd_order_sources = no
-custom_tau_ini_2nd_order_sources = 0.5            # must be larger than tau_ini_quadsources
-custom_tau_end_2nd_order_sources = 1000              # enter 0 to save sources up to today
-custom_tau_size_2nd_order_sources = 500
-custom_tau_mode_2nd_order_sources = log             # either lin, log or class
+custom_time_sampling_song_sources = no
+custom_tau_ini_song_sources = 0.5            # must be larger than tau_ini_quadsources
+custom_tau_end_song_sources = 1000              # enter 0 to save sources up to today
+custom_tau_size_song_sources = 500
+custom_tau_mode_song_sources = log             # either lin, log or class
 
 ## Integration grid in time for 2nd-order transfer functions
-transfer2_tau_sampling = custom
+transfer2_tau_sampling = smart
 tau_step_trans_song = 4
 
 
@@ -216,7 +216,7 @@ bessel_j_cut_song = 1.e-15
 # Set J_Llm(x) function to zero if it is smaller than this.
 # Note that setting a high value for bessel_J_cut_song does affect
 # the J's too. A rule of thumb is to set bessel_j_cut_song 5 orders
-# of magnitude smaller than bessel_J_cut_2nd_order
+# of magnitude smaller than bessel_J_cut_song
 bessel_J_cut_song = 1.e-10
 
 ## Spherical Bessel functions at 1st-order

@@ -30,6 +30,12 @@ enum transfer2_tau_sampling {
 };
 
 
+/** 
+ * Macro used to index the first level ptr2->transfer.
+ */
+#define lm_cls(index_l,index_m) ptr2->lm_array[index_l][index_m]
+
+
 /**
  * In order to access the sources for the line of sight integration,
  * we define a preprocessor macro that takes as arguments the time and

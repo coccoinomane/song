@@ -8,37 +8,7 @@
 #ifndef __COMMON2__
 #define __COMMON2__
 
-#define _SONG_VERSION_ "v1.0"
-
-
-/* The differential system at second-order has to be solved for a set of three wavemodes
-(k1,k2,k3) whereby k3 has to be in the range |k1-k2|<=k3<=k1+k1. When k3 is too close
-to the boundaries, numerical instabilities might arise such as nan's or larger than one
-sines and cosines. In order to avoid that, we define here a safety distance between
-k3 and the bounds. This safety distance is going to correspond to the largest scale
-probed by SONG. Using k_min_tau0=1e-3, that corresponds to k_min=1e-8,
-it seems that setting _MIN_K3_DISTANCE_=1e-10 is ok. */
-#define _MIN_K3_DISTANCE_ 1e-10
-#define _MIN_K3_RATIO_ 100
-
-/* The following macros are used to index many arrays in the code.  The idea is that
-the (L,M) multipole is found at y[monopole_g + lm(L,M)].
-We define a similar function to index the massive hierarchy, with l_max set to 2
-since we retain only the n=0,1,2 beta-moments for baryons and cold dark matter. */
-
-/* Used to index ppt2->sources, radiation species */
-#define lm(l,m) ppt2->lm_array[l][ppr2->index_m[m]]
-#define lm_bis(l,m) ppt2->lm_array[l][ppr2->index_m[m]]
-
-/* Used to index ppt2->sources, massive species */
-#define nlm(n,l,m) ppt2->nlm_array[n][l][ppr2->index_m[m]]
-#define nlm_bis(n,l,m) ppt2->nlm_array[n][l][ppr2->index_m[m]]
-
-/* Used to index the ppw2->rotation_1 and ppw2->rotation_2 arrays */
-#define lm_quad(l,m) ppt2->lm_array_quad[l][m]
-
-/* Used to index ptr2->transfer */
-#define lm_cls(index_l,index_m) ptr2->lm_array[index_l][index_m]
+#define _SONG_VERSION_ "v1.0beta1"
 
 /* Maximum number of azimuthal numbers that can be computed. We set it so that the
 factorial of 'm' never overflows, assuming a limit of 10^30. The factorial of m is

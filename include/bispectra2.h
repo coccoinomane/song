@@ -41,7 +41,7 @@ struct bispectra_workspace_intrinsic {
   double * k_window;
 
   /* Inverse window function for the interpolation of the second-order transfer function. It is indexed as
-  pwb->k_window[index_k] where 'index_k' indexes ptr->k. Its size is ptr->k_size[ppt->index_md_scalars]. */
+  pwb->k_window[index_k] where 'index_k' indexes ptr->k. Its size is ptr->q_size. */
   double * k_window_inverse;
 
   /* Grid in the integration variable 'r'.  This is the parameter that stems from the Rayleigh expansion 

@@ -40,7 +40,6 @@
 
 
 #include "perturbations2.h"
-#include "perturbations2_macros.h"
 
 /**
  *
@@ -318,12 +317,9 @@ int perturb2_init (
     thread = omp_get_thread_num();
     #endif
 
-#ifndef VALGRIND
-    /* Some debug (somehow this line messes up Valgrind...) */
     if (ppt2->perturbations2_verbose > 1)
       printf ("     * computing sources for index_k1=%d of %d, k1=%g\n",
         index_k1, ppt2->k_size-1, ppt2->k[index_k1]);
-#endif
 
     /* Allocate the k1 level of ppt2->sources, so that it can be filled by perturb2_solve() */
     class_call_parallel (perturb2_allocate_k1_level (ppt2, index_k1),
@@ -1637,14 +1633,14 @@ int perturb2_get_k_lists (
 
     // *** Determine size of the k-array ***
 
-    /* We are going to sample the k-space on a 3D grid, with \vec{k1} + \vec{k2} = \vec{k3}. We constrain k3 to
-    have the range MAX(fabs(k1-k2), k_min) <= k3 <= MIN(k1+k2, k_max) where k_min and k_max are the limits of ppt2->k,
-    which we determined above. */
+    /* We are going to sample the k-space on a 3D grid, with \vec{k1} + \vec{k2} = \vec{k3}.
+    We constrain k3 to have the range MAX(fabs(k1-k2), k_min) <= k3 <= MIN(k1+k2, k_max) where
+    k_min and k_max are the limits of ppt2->k, which we determined above. */
 
     while (k < k_max) {
       
-      /* Note that since k_rec*ppr2->k_scalar_step_transition ~ 0.03*0.2 = 0.06, we have that the tanh
-      function is basically a step function of k-k_rec */
+      /* Note that since k_rec*ppr2->k_scalar_step_transition ~ 0.03*0.2 = 0.06, we have that
+      the tanh function is basically a step function of k-k_rec */
       double step = ppr2->k_step_super
                   + 0.5 * (tanh((k-k_rec)/k_rec/ppr2->k_step_transition)+1.)
                         * (ppr2->k_step_sub-ppr2->k_step_super);
@@ -1681,15 +1677,16 @@ int perturb2_get_k_lists (
   
       class_test(step * k_rec / ppt2->k[index_k-1] < ppr->smallest_allowed_variation,
         ppt2->error_message,
-        "k step =%e < machine precision : leads either to numerical error or infinite loop", step * k_rec);
+        "k step =%e < machine precision : leads either to numerical error or infinite loop",
+        step * k_rec);
 
       ppt2->k[index_k] = ppt2->k[index_k-1] + step * k_rec;
 
       index_k++;
     }
   
-    /* We do not want to overshoot k_max as pbs->x_max, that is the maximum argument for which the Bessel
-      functions are computed, is determined using it */
+    /* We do not want to overshoot k_max as pbs->x_max, that is the maximum argument for which
+    the Bessel functions are computed, is determined using it */
     ppt2->k[ppt2->k_size-1] = MIN (ppt2->k[ppt2->k_size-1], k_max);
   
   } // end of if(class_sources_k_sampling)
@@ -1699,8 +1696,8 @@ int perturb2_get_k_lists (
   // -                        Smart k-sampling                      -
   // ----------------------------------------------------------------
 
-  /* Adopt the same k-sampling as the one adopted in first-order CLASS, with an additional logarithmic
-  sampling for very small k's in order to capture the evolution on large scales. */
+  /* Adopt the same k-sampling as the one adopted in first-order CLASS, with an additional
+  logarithmic sampling for very small k's in order to capture the evolution on large scales. */
   
   else if (ppt2->k_sampling == smart_sources_k_sampling) {
 
@@ -1712,31 +1709,32 @@ int perturb2_get_k_lists (
       ppt2->error_message,
       "stop to avoid division by zero");
   
-    /* Comoving scale corresponding to sound horizon at recombination, usually of the order 2*pi/200 ~ 0.03 */
-    double k_rec = 2. * _PI_ / pth->rs_rec;
+    /* Comoving scale corresponding to sound horizon at recombination, usually of the
+    order 2*pi/200 ~ 0.03 */
+    double k_rec = 2 * _PI_ / pth->rs_rec;
   
-    /* The first k-mode to be sampled is determined by k_scalar_min_tau0. Should be smaller than 2 if
-    you want to compute the l=2 multipole. */
+    /* The first k-mode to be sampled is determined by k_scalar_min_tau0. Should be smaller
+    than 2 if you want to compute the l=2 multipole. */
     int index_k = 0;
     double k = ppr2->k_min_tau0 / pba->conformal_age;
     index_k = 1;
   
-    /* Choose a k_max corresponding to a wavelength on the last scattering surface seen today under an
-    angle smaller than pi/lmax: this is equivalent to k_max*tau0 > l_max */
+    /* Choose a k_max corresponding to a wavelength on the last scattering surface seen
+    today under an angle smaller than pi/lmax: this is equivalent to k_max*tau0 > l_max */
     double k_max = ppr2->k_max_tau0_over_l_max * ppt->l_scalar_max / pba->conformal_age;
 
 
     // *****   Determine size of the k-array   *****
 
     /* We are going to sample the k-space on a 3D grid, with \vec{k1} + \vec{k2} = \vec{k3}. We
-    constrain k3 to have the range MAX(fabs(k1-k2), k_min) <= k3 <= MIN(k1+k2, k_max) where k_min
-    and k_max are the limits of ppt2->k, which we determined above. */
+    constrain k3 to have the range MAX(fabs(k1-k2), k_min) <= k3 <= MIN(k1+k2, k_max) where
+    k_min and k_max are the limits of ppt2->k, which we determined above. */
 
     while (k < k_max) {
       
-      /* Linear step. The tanh function is just a smooth transition between the linear and logarithmic
-      regimes. When k_rec*ppr2->k_scalar_step_transition is small, we have that the tanh function acts
-      as a step function of argument k-k_rec */
+      /* Linear step. The tanh function is just a smooth transition between the linear and
+      logarithmic regimes. When k_rec*ppr2->k_scalar_step_transition is small, we have that
+      the tanh function acts as a step function of argument k-k_rec */
       double lin_step = ppr2->k_step_super
                   + 0.5 * (tanh((k-k_rec)/k_rec/ppr2->k_step_transition)+1.)
                         * (ppr2->k_step_sub-ppr2->k_step_super);
@@ -1749,8 +1747,8 @@ int perturb2_get_k_lists (
         "k step =%e < machine precision : leads either to numerical error or infinite loop",
         MIN(lin_step*k_rec, log_step));
   
-      /* Use the smallest between the logarithmic and linear steps. If we are considering small enough
-      scales, just use the linear step. */
+      /* Use the smallest between the logarithmic and linear steps. If we are considering
+      small enough scales, just use the linear step. */
       double k_next;
 
       if ((log_step > (lin_step*k_rec)) || (k > k_rec))
@@ -1786,8 +1784,8 @@ int perturb2_get_k_lists (
       /* Logarithmic step */
       double log_step = ppt2->k[index_k-1] * (ppr2->k_logstep_super - 1.);
   
-      /* Use the smallest between the logarithmic and linear steps. If we are considering small enough scales,
-      just use the linear step. */
+      /* Use the smallest between the logarithmic and linear steps. If we are considering
+      small enough scales, just use the linear step. */
       if ((log_step > (lin_step*k_rec)) || (ppt2->k[index_k-1] > k_rec)) {
         ppt2->k[index_k] = ppt2->k[index_k-1] + lin_step * k_rec;
         // printf("linstep = %g\n", lin_step*k_rec);
@@ -1800,8 +1798,8 @@ int perturb2_get_k_lists (
       index_k++;
     }
 
-    /* We do not want to overshoot k_max as pbs->x_max, that is the maximum argument for which the Bessel
-      functions are computed, is determined using it */
+    /* We do not want to overshoot k_max as pbs->x_max, that is the maximum argument for which
+    the Bessel functions are computed, is determined using it */
     ppt2->k[ppt2->k_size-1] = MIN (ppt2->k[ppt2->k_size-1], k_max);
   
   } // end of if(smart_sources_k_sampling)
@@ -1817,9 +1815,9 @@ int perturb2_get_k_lists (
   
   
   
-  // =============================================================================================
-  // =                                             k3 grid                                       =
-  // =============================================================================================
+  // ==================================================================================
+  // =                                     k3 grid                                    =
+  // ==================================================================================
   
   /* Initialize counter of total k-configurations */
   ppt2->count_k_configurations = 0;
@@ -1849,22 +1847,23 @@ int perturb2_get_k_lists (
       /* Remember that, given our loop choice, k2 is always smaller than k1 */
       double k2 = ppt2->k[index_k2];
       
-      /* The maximum and minimum values of k3 are obtained when the values of the cosine between
-      k1 and k2 are respectively +1 and -1. In an numerical code, this is not exactly achievable. Relying
-      on this would ultimately give rise to nan's, for example when computing the Legendre polynomials or
-      square roots (see, for instance, the definition of kx1 and kx2 in perturb2_geometrical_corner). Hence,
-      we shall never sample k3 too close to its exact minimum or maximum. */ 
+      /* The maximum and minimum values of k3 are obtained when the values of the cosine
+      between k1 and k2 are respectively +1 and -1. In an numerical code, this is not exactly
+      achievable. Relying on this would ultimately give rise to nan's, for example when
+      computing the Legendre polynomials or square roots (see, for instance, the definition of
+      kx1 and kx2 in perturb2_geometrical_corner). Hence, we shall never sample k3 too close
+      to its exact minimum or maximum. */
       double k3_min = fabs(k1 - k2) + fabs(_MIN_K3_DISTANCE_);
       double k3_max = k1 + k2 - fabs(_MIN_K3_DISTANCE_);
 
       /* ULTRA DIRTY MODIFICATION */
-      /* The differential system dies when k1=k2 and k3 is very small. These configurations are irrelevant,
-      so we set a minimum ratio between k1=k2 and k3 */
+      /* The differential system dies when k1=k2 and k3 is very small. These configurations
+      are irrelevant, so we set a minimum ratio between k1=k2 and k3 */
       k3_min = MAX (k3_min, (k1+k2)/_MIN_K3_RATIO_);
 
-      /* We take k3 in the same range as k1 and k2. Comment it out if you prefer a range that goes all the
-      way to the limits of the triangular condition. If you do so, remember to double pbs2->xx_max
-      in input2.c */
+      /* We take k3 in the same range as k1 and k2. Comment it out if you prefer a range that
+      goes all the way to the limits of the triangular condition. If you do so, remember to
+      double pbs2->xx_max in input2.c */
       k3_min = MAX (k3_min, ppt2->k[0]);
       k3_max = MIN (k3_max, ppt2->k[ppt2->k_size-1]);
       
@@ -1875,21 +1874,25 @@ int perturb2_get_k_lists (
         "found k3_min=%g>k3_max=%g for k1(%d)=%g and k2(%d)=%g",
         k3_min, k3_max, index_k1, k1, index_k2, k2);
 
+
       // ---------------------------------------------------------
       // -           Linear/logarithmic sampling for k3          -
       // ---------------------------------------------------------
 
-      /* Adopt a simple sampling with a fixed number of points for each (k1,k2) configuration. This is not efficient, as
-        low values of k1 and k2 do not need a sampling as good as the one needed for high values */
+      /* Adopt a simple sampling with a fixed number of points for each (k1,k2) configuration.
+      This is not efficient, as low values of k1 and k2 do not need a sampling as good as the
+      one needed for high values */
 
       if ((ppt2->k3_sampling == lin_k3_sampling) || (ppt2->k3_sampling == log_k3_sampling)) {
 
-        /* The size of the k3 array is the same for every (k1,k2) configuration, and is read from
-        the precision structure */
+        /* The size of the k3 array is the same for every (k1,k2) configuration, and is read
+        from the precision structure */
         ppt2->k3_size[index_k1][index_k2] = ppr2->k3_size;
-        class_alloc (ppt2->k3[index_k1][index_k2], ppr2->k3_size*sizeof(double), ppt2->error_message);
+        class_alloc (ppt2->k3[index_k1][index_k2], ppr2->k3_size*sizeof(double),
+          ppt2->error_message);
 
-        /* DISABLED: in this way you get a bad sampling of small k's also when using log sampling */
+        /* DISABLED: in this way you get a bad sampling of small k's also when using log
+        sampling */
         // /* When k1=k2 we might have k3 ~ 0, which should not be included because it gives numerical problems. In this
         //   case, we set the minimum k3 to be equal to (k1+k2)/(k3_size+1), which in the case of linear
         //   sampling from k3=0 would be the second point in the grid. */
@@ -2000,8 +2003,6 @@ int perturb2_get_k_lists (
           // /* Flag this (k1,k2) pair to have an artificial sampling */
           // ppt2->index_k3_min[index_k1][index_k2] = -1;
           /* END OF MY MODIFICATIONS */
-
-          
 
         }
         /* If we do have enough points in ppt2->k to sample 'k3', just use those points */
@@ -5112,9 +5113,9 @@ int perturb2_geometrical_corner (
 
 
 /**
-  * Simple function to fill the ppw2->info string with useful information about the wavemode
-  * that is currently being integrated
-  */
+ * Simple function to fill the ppw2->info string with useful information about the wavemode
+ * that is currently being integrated
+ */
 int perturb2_wavemode_info (
         struct precision * ppr,
         struct precision2 * ppr2,
@@ -5127,41 +5128,19 @@ int perturb2_wavemode_info (
 {
 
   /*  We shall write on ppw2->info line by line, commenting each line with the below
-    comment style. */
+  comment style. */
   char comment[2] = "#";
   char line[1024];
   char * info = ppw2->info;
   
   sprintf(info, "");
 
-  sprintf(line, "Cosmological parameters:");
-  sprintf(info, "%s%s %s\n", info, comment, line);
-
-  sprintf(line, "a_equality = %g, Omega_b = %g, Tcmb = %g, Omega_cdm = %g, Omega_lambda = %g,\
-Omega_ur = %g, Omega_r = %g, Omega_fld = %g, h = %g, tau0 = %g",
-    pba->a_eq, pba->Omega0_b, pba->T_cmb, pba->Omega0_cdm, pba->Omega0_lambda,
-    pba->Omega0_ur, pba->Omega0_g+pba->Omega0_ur, pba->Omega0_fld, pba->h, pba->conformal_age);
-  sprintf(info, "%s%s %s\n", info, comment, line);
-  
-  sprintf(line, "Omega_b = %g, Tcmb = %g, Omega_cdm = %g, omega_lambda = %g, Omega_ur = %g, Omega_fld = %g",
-    pba->Omega0_b, pba->T_cmb, pba->Omega0_cdm, pba->Omega0_lambda, pba->Omega0_ur, pba->Omega0_fld);
-  sprintf(info, "%s%s %s\n", info, comment, line);
-
-  sprintf(line, "h = %g, conformal_age = %g, a_equality = %g, k_equality = %g",
-    pba->h, pba->conformal_age, pba->a_eq, pba->k_eq);
-  sprintf(info, "%s%s %s\n", info, comment, line);
-  
-  double h = pba->h;
-  sprintf(line, "omega_b = %g, omega_cdm = %g, omega_lambda = %g, omega_ur = %g, omega_fld = %g",
-    pba->Omega0_b*h*h, pba->Omega0_cdm*h*h, pba->Omega0_lambda*h*h, pba->Omega0_ur*h*h, pba->Omega0_fld*h*h);
-  sprintf(info, "%s%s %s\n", info, comment, line);
-
   sprintf(line, "k1 = %g, k2 = %g, k = %g, cosk1k2 = %g, theta_1 = %g",
     ppw2->k1, ppw2->k2, ppw2->k, ppw2->cosk1k2, ppw2->theta_1);
   sprintf(info, "%s%s %s\n", info, comment, line);
 
-  if (ppt->gauge == newtonian) sprintf(line, "gauge = Newtonian gauge");
-  if (ppt->gauge == synchronous) sprintf(line, "gauge = synchronous gauge");
+  if (ppt->gauge == newtonian) sprintf(line, "gauge = newtonian");
+  if (ppt->gauge == synchronous) sprintf(line, "gauge = synchronous");
   sprintf(info, "%s%s %s\n", info, comment, line);
 
   return _SUCCESS_;
@@ -5241,8 +5220,8 @@ int perturb2_solve (
   ppw2->last_index_thermo=0;
   ppw2->last_index_sources=0;  
 
-
-
+  /* Initialise the counter of time steps in the differential system */
+  ppw2->n_steps = 0;
 
 
 
@@ -8766,7 +8745,10 @@ int perturb2_quadratic_sources (
  *
  * This function is never called explicitly in this module. Instead, it is passed as an
  * argument to the evolver, which calls it whenever it hits a time contained in the time
- * sampling array ppt2->tau_sampling. Since the evolver should work with functions passed
+ * sampling array ppt2->tau_sampling. Therefore, this function is called ppt2->tau_size
+ * times for each (k1,k2,k3) triplet.
+ *
+ * Since the evolver should work with functions passed
  * from various modules, the format of the arguments is a bit special:
  * - fixed parameters and workspaces are passed through the generic pointer.
  *   parameters_and_workspace.
@@ -8810,7 +8792,7 @@ int perturb2_sources (
   double k1_dot_k2 = ppw2->k1_dot_k2;
   double * k1_m = ppw2->k1_m;
   double * k2_m = ppw2->k2_m;
-  
+
   // ======================================================================================
   // =                          Interpolate needed quantities                             =
   // ======================================================================================
@@ -9936,15 +9918,23 @@ int what_if_ndf15_fails(int (*derivs)(double x,
 
 
 /**
- * This is the point where you can output the second-order transfer functions, or any other quantity you
- * are interested into.  This function is called from within the evolver at the times sampled in
- * ppt2->tau_sampling.
-*/
+ * Output to file the state of the differential system.
+ *
+ * This is the point where you can output to file or to screen the second-order transfer
+ * functions, or any other quantity you are interested into.
+ * 
+ * The transfer functions will be saved to the file ppt2->transfers_file, whose name
+ * is specified in the parameter file via the parameter transfers_filename. The
+ * qudratic sources will be saved to the file ppt2->quadsources_file, whose path is
+ * specified via the quadsources_filename parameter.
+ *
+ * Note that this function is called from within the evolver at each time step, so
+ * expect the outputted files to be large.
+ */
 int perturb2_save_early_transfers (
           double tau,
           double * y,
           double * dy,
-          int index_tau,
           void * parameters_and_workspace,
           ErrorMsg error_message
           )
@@ -9976,7 +9966,8 @@ int perturb2_save_early_transfers (
   double * k1_m = ppw2->k1_m;
   double * k2_m = ppw2->k2_m;
   
-  
+  /* Update the number of steps in the differential system */
+  ppw2->n_steps++;
   
   // ======================================================================================
   // =                          Interpolate needed quantities                             =
@@ -10428,7 +10419,7 @@ int perturb2_save_early_transfers (
   
   /* Debug of the analytical limits for m=1 and m=2 */
   // if ((ppr2->compute_m[1] == _TRUE_) && (ppr2->compute_m[2] == _TRUE_)) {
-  //   if (index_tau==0) {
+  //   if (ppw2->n_steps==1) {
   //     fprintf (stderr, "%12s %12s %12s %12s %12s %12s %12s %12s %12s %12s \n",
   //       "tau", "z", "frac_vec", "frac_ten", "rho_r/rho_m", "growth", "Fz*Hc/2", "Fz/tau/2", "Omega_m", "Omega_l");
   //   }
@@ -10486,14 +10477,14 @@ int perturb2_save_early_transfers (
   
   
   // *** Print some info to file
-  if ( (index_tau==0) && (ppt2->perturbations2_verbose > 0) ) {
-    fprintf(file_tr, "%s", ppw2->info);
-    fprintf(file_qs, "%s", ppw2->info);
+  if ((ppw2->n_steps==1) && (ppt2->perturbations2_verbose > 0)) {
+    fprintf(file_tr, "%s%s", pba->info, ppw2->info);
+    fprintf(file_qs, "%s%s", pba->info, ppw2->info);
   }
   
   // *** Time variables
   // conformal time
-  if (index_tau==0) {
+  if (ppw2->n_steps==1) {
     fprintf(file_tr, format_label, "tau", index_print_tr++);
     fprintf(file_qs, format_label, "tau", index_print_qs++);
   }
@@ -10502,7 +10493,7 @@ int perturb2_save_early_transfers (
     fprintf(file_qs, format_value, tau);
   }
   // scale factor
-  if (index_tau==0) {
+  if (ppw2->n_steps==1) {
     fprintf(file_tr, format_label, "a", index_print_tr++);
     fprintf(file_qs, format_label, "a", index_print_qs++);
   }
@@ -10511,7 +10502,7 @@ int perturb2_save_early_transfers (
     fprintf(file_qs, format_value, a);
   }
   // y = log10(a/a_eq)
-  if (index_tau==0) {
+  if (ppw2->n_steps==1) {
     fprintf(file_tr, format_label, "y", index_print_tr++);
     fprintf(file_qs, format_label, "y", index_print_qs++);
   }
@@ -10520,52 +10511,61 @@ int perturb2_save_early_transfers (
     fprintf(file_qs, format_value, Y);
   }
   
-  // *** Photon temperature sources
-  int l_max_los_t = MIN(ppr2->l_max_los_t, ppt2->l_max_debug);
+  /* Printing of sources is disabled since CLASS v2. The reason is
+  that prior to v2 this function was called when the differential
+  system reached one of the time steps in ppt2->tau_sampling, which
+  coincide to the time steps where the sources are computed. Now, 
+  this function is called at the end of all time steps in the 
+  differential system, meaning that there is now way to access
+  the sources other than calling here a modified version of
+  perturb2_sources() that does not take index_tau as an input. */
   
-  for (int l=0; l<=l_max_los_t; ++l) {
-    for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
-      int m = ppr2->m[index_m];
-      sprintf(buffer, "I_%d_%d", l, m);
-      if (index_tau==0) {
-       fprintf(file_tr, format_label, buffer, index_print_tr++);
-      }
-      else {
-       fprintf(file_tr, format_value, sources(ppt2->index_tp2_T+lm(l,m))/kappa_dot);
-      }
-    }
-  }
-  
-  // *** Photon E-mode polarisation sources
-  int l_max_los_p = MIN(ppr2->l_max_los_p, ppt2->l_max_debug);
-  
-  for (int l=2; l<=l_max_los_p; ++l) {
-    for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
-      int m = ppr2->m[index_m];
-      sprintf(buffer, "E_%d_%d", l, m);
-      if (index_tau==0) {
-       fprintf(file_tr, format_label, buffer, index_print_tr++);
-      }
-      else {
-       fprintf(file_tr, format_value, sources(ppt2->index_tp2_E+lm(l,m))/kappa_dot);
-      }
-    }
-  }
-  
-  // *** Photon B-mode polarisation sources
-  for (int l=2; l<=l_max_los_p; ++l) {
-    for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
-      int m = ppr2->m[index_m];
-      if (m==0) continue;
-      sprintf(buffer, "B_%d_%d", l, m);
-      if (index_tau==0) {
-       fprintf(file_tr, format_label, buffer, index_print_tr++);
-      }
-      else {
-       fprintf(file_tr, format_value, sources(ppt2->index_tp2_B+lm(l,m))/kappa_dot);
-      }
-    }
-  }
+  // // *** Photon temperature sources
+  // int l_max_los_t = MIN(ppr2->l_max_los_t, ppt2->l_max_debug);
+  //
+  // for (int l=0; l<=l_max_los_t; ++l) {
+  //   for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+  //     int m = ppr2->m[index_m];
+  //     sprintf(buffer, "I_%d_%d", l, m);
+  //     if (ppw2->n_steps==1) {
+  //      fprintf(file_tr, format_label, buffer, index_print_tr++);
+  //     }
+  //     else {
+  //      fprintf(file_tr, format_value, sources(ppt2->index_tp2_T+lm(l,m))/kappa_dot);
+  //     }
+  //   }
+  // }
+  //
+  // // *** Photon E-mode polarisation sources
+  // int l_max_los_p = MIN(ppr2->l_max_los_p, ppt2->l_max_debug);
+  //
+  // for (int l=2; l<=l_max_los_p; ++l) {
+  //   for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+  //     int m = ppr2->m[index_m];
+  //     sprintf(buffer, "E_%d_%d", l, m);
+  //     if (ppw2->n_steps==1) {
+  //      fprintf(file_tr, format_label, buffer, index_print_tr++);
+  //     }
+  //     else {
+  //      fprintf(file_tr, format_value, sources(ppt2->index_tp2_E+lm(l,m))/kappa_dot);
+  //     }
+  //   }
+  // }
+  //
+  // // *** Photon B-mode polarisation sources
+  // for (int l=2; l<=l_max_los_p; ++l) {
+  //   for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+  //     int m = ppr2->m[index_m];
+  //     if (m==0) continue;
+  //     sprintf(buffer, "B_%d_%d", l, m);
+  //     if (ppw2->n_steps==1) {
+  //      fprintf(file_tr, format_label, buffer, index_print_tr++);
+  //     }
+  //     else {
+  //      fprintf(file_tr, format_value, sources(ppt2->index_tp2_B+lm(l,m))/kappa_dot);
+  //     }
+  //   }
+  // }
   
   // *** Newtonian gauge metric variables  
   if (ppt->gauge == newtonian) {    
@@ -10573,7 +10573,7 @@ int perturb2_save_early_transfers (
     /* Scalar potentials */
     if (ppr2->compute_m[0] == _TRUE_) {
       // psi
-      if (index_tau==0) {
+      if (ppw2->n_steps==1) {
        fprintf(file_tr, format_label, "psi", index_print_tr++);
        fprintf(file_qs, format_label, "psi", index_print_qs++);
       }
@@ -10583,7 +10583,7 @@ int perturb2_save_early_transfers (
       }
       // psi_prime
       if (ppt2->has_isw == _TRUE_) {
-        if (index_tau==0) {
+        if (ppw2->n_steps==1) {
          fprintf(file_tr, format_label, "psi'", index_print_tr++);
          fprintf(file_qs, format_label, "psi'", index_print_qs++);
         }
@@ -10593,10 +10593,10 @@ int perturb2_save_early_transfers (
         }
       }
       // phi
-      if (index_tau==0) fprintf(file_tr, format_label, "phi", index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "phi", index_print_tr++);
       else fprintf(file_tr, format_value, phi);
       // phi_prime_poisson
-      if (index_tau==0) {
+      if (ppw2->n_steps==1) {
        fprintf(file_tr, format_label, "phi'tt", index_print_tr++);
        fprintf(file_qs, format_label, "phi'tt", index_print_qs++);
       }
@@ -10605,7 +10605,7 @@ int perturb2_save_early_transfers (
        fprintf(file_qs, format_value, pvec_quadsources[ppw2->index_qs2_phi_prime_poisson]);
       }
       // phi_prime_longitudinal
-      if (index_tau==0) {
+      if (ppw2->n_steps==1) {
        fprintf(file_tr, format_label, "phi'lg", index_print_tr++);
        fprintf(file_qs, format_label, "phi'lg", index_print_qs++);
       }
@@ -10614,13 +10614,13 @@ int perturb2_save_early_transfers (
        fprintf(file_qs, format_value, pvec_quadsources[ppw2->index_qs2_phi_prime_longitudinal]);
       }
       // psi_analytical
-      if (index_tau==0) fprintf(file_tr, format_label, "psi_an", index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "psi_an", index_print_tr++);
       else fprintf(file_tr, format_value, psi_analytical);
     }  
     /* Vector potentials */
     if (ppr2->compute_m[1] == _TRUE_) {
       // omega_m1
-      if (index_tau==0) {
+      if (ppw2->n_steps==1) {
        fprintf(file_tr, format_label, "omega_m1", index_print_tr++);
        fprintf(file_qs, format_label, "omega_m1'", index_print_qs++);
       }
@@ -10629,16 +10629,16 @@ int perturb2_save_early_transfers (
        fprintf(file_qs, format_value, pvec_quadsources[ppw2->index_qs2_omega_m1_prime]);
       }
       // omega_m1_constraint
-      if (index_tau==0) fprintf(file_tr, format_label, "omega_m1_c", index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "omega_m1_c", index_print_tr++);
       else fprintf(file_tr, format_value, omega_m1_constraint);
       // omega_m1_analytical
-      if (index_tau==0) fprintf(file_tr, format_label, "omega_m1_an", index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "omega_m1_an", index_print_tr++);
       else fprintf(file_tr, format_value, omega_m1_analytical);
     }
     /* Tensor potentials */
     if (ppr2->compute_m[2] == _TRUE_) {
       // gamma_m2
-      if (index_tau==0) {
+      if (ppw2->n_steps==1) {
        fprintf(file_tr, format_label, "gamma_m2", index_print_tr++);
        fprintf(file_qs, format_label, "gamma_m2''", index_print_qs++);
       }
@@ -10647,10 +10647,10 @@ int perturb2_save_early_transfers (
        fprintf(file_qs, format_value, pvec_quadsources[ppw2->index_qs2_gamma_m2_prime_prime]);
       }
       // gamma_m2_analytical
-      if (index_tau==0) fprintf(file_tr, format_label, "gamma_m2_an", index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "gamma_m2_an", index_print_tr++);
       else fprintf(file_tr, format_value, gamma_m2_analytical);
       // gamma_m2_prime
-      if (index_tau==0) fprintf(file_tr, format_label, "gamma_m2'", index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "gamma_m2'", index_print_tr++);
       else fprintf(file_tr, format_value, y[ppw2->pv->index_pt2_gamma_m2_prime]);
     }
   
@@ -10661,10 +10661,10 @@ int perturb2_save_early_transfers (
   if (pba->has_cdm == _TRUE_ ) {
     if (ppr2->compute_m[0] == _TRUE_) {
       // delta_cdm_analytical
-      if (index_tau==0) fprintf(file_tr, format_label, "deltacdm_an", index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "deltacdm_an", index_print_tr++);
       else fprintf(file_tr, format_value, delta_cdm_analytical);
       // v_0_cdm_analytical
-      if (index_tau==0) fprintf(file_tr, format_label, "v_0_cdm_an", index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "v_0_cdm_an", index_print_tr++);
       else fprintf(file_tr, format_value, v_0_cdm_analytical);
     }  
   }
@@ -10675,11 +10675,11 @@ int perturb2_save_early_transfers (
   
   if (ppr2->compute_m[0] == _TRUE_) {
     // I_2_0_analytical
-    if (index_tau==0) fprintf(file_tr, format_label, "I_2_0_an", index_print_tr++);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, "I_2_0_an", index_print_tr++);
     else fprintf(file_tr, format_value, I_2_0_analytical);
   
     // Adiabatic velocity
-    if (index_tau==0) fprintf(file_tr, format_label, "v_0_adiab", index_print_tr++);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, "v_0_adiab", index_print_tr++);
     else fprintf(file_tr, format_value, v_0_adiabatic);
   }  
   
@@ -10690,20 +10690,20 @@ int perturb2_save_early_transfers (
   // *** Baryon fluid limit variables
   if (ppr2->compute_m[0] == _TRUE_) {
     // delta_g_adiab
-    if (index_tau==0) fprintf(file_tr, format_label, "delta_g_ad", index_print_tr++);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, "delta_g_ad", index_print_tr++);
     else fprintf(file_tr, format_value, delta_g_adiab);
     // delta_b
-    if (index_tau==0)  fprintf(file_tr, format_label, "delta_b", index_print_tr++);
+    if (ppw2->n_steps==1)  fprintf(file_tr, format_label, "delta_b", index_print_tr++);
     else fprintf(file_tr, format_value, delta_b);
     // pressure_b 
-    if (index_tau==0)  fprintf(file_tr, format_label, "pressure_b", index_print_tr++);
+    if (ppw2->n_steps==1)  fprintf(file_tr, format_label, "pressure_b", index_print_tr++);
     else fprintf(file_tr, format_value, pressure_b);
   }
   // velocity_b[m]
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     int m = ppt2->m[index_m];
     sprintf(buffer, "vel_b_m%d", m);
-    if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
     else fprintf(file_tr, format_value,
       b(1,1,m)/3. - delta_b_1*(-k2_m[m+1]*v_b_2) - delta_b_2*(-k1_m[m+1]*v_b_1));
   }
@@ -10711,7 +10711,7 @@ int perturb2_save_early_transfers (
   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
     int m = ppr2->m[index_m];
     sprintf(buffer, "sigma_b_m%d", m);
-    if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
     else fprintf(file_tr, format_value,
       -2/15.*ppw2->b_22m[m] + 2*k1_ten_k2[m+2]*v_b_1*v_b_2);
   }  
@@ -10719,10 +10719,10 @@ int perturb2_save_early_transfers (
   if (pba->has_cdm == _TRUE_ ) {
     if (ppr2->compute_m[0] == _TRUE_) {
       // delta_cdm
-      if (index_tau==0)  fprintf(file_tr, format_label, "delta_cdm", index_print_tr++);
+      if (ppw2->n_steps==1)  fprintf(file_tr, format_label, "delta_cdm", index_print_tr++);
       else fprintf(file_tr, format_value, delta_cdm);
       // pressure_cdm 
-      if (index_tau==0)  fprintf(file_tr, format_label, "pressure_cdm", index_print_tr++);
+      if (ppw2->n_steps==1)  fprintf(file_tr, format_label, "pressure_cdm", index_print_tr++);
       else fprintf(file_tr, format_value, pressure_cdm);
     }
     // velocity_cdm[m]
@@ -10730,7 +10730,7 @@ int perturb2_save_early_transfers (
       for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
         int m = ppt2->m[index_m];
         sprintf(buffer, "vel_cdm_m%d", m);
-        if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
+        if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
         else fprintf(file_tr, format_value,
           cdm(1,1,m)/3. - delta_cdm_1*(-k2_m[m+1]*v_cdm_2) - delta_cdm_2*(-k1_m[m+1]*v_cdm_1));
       }
@@ -10739,7 +10739,7 @@ int perturb2_save_early_transfers (
     for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
       int m = ppr2->m[index_m];
       sprintf(buffer, "sigma_cdm_m%d", m);
-      if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
       else fprintf(file_tr, format_value,
         -2/15.*ppw2->cdm_22m[m] + 2*k1_ten_k2[m+2]*v_cdm_1*v_cdm_2);    
     }  
@@ -10748,17 +10748,17 @@ int perturb2_save_early_transfers (
   // *** Photon fluid limit variables
   if (ppr2->compute_m[0] == _TRUE_) {
     // delta_g
-    if (index_tau==0)  fprintf(file_tr, format_label, "delta_g", index_print_tr++);
+    if (ppw2->n_steps==1)  fprintf(file_tr, format_label, "delta_g", index_print_tr++);
     else fprintf(file_tr, format_value, delta_g);
     // pressure_g 
-    if (index_tau==0) fprintf(file_tr, format_label, "pressure_g", index_print_tr++);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, "pressure_g", index_print_tr++);
     else fprintf(file_tr, format_value, pressure_g);
   }
   // velocity_g[m]
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     int m = ppr2->m[index_m];
     sprintf(buffer, "vel_g_m%d", m);
-    if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
     else fprintf(file_tr, format_value,
       I(1,m)*0.25 - delta_g_1*(-k2_m[m+1]*v_g_2) - delta_g_2*(-k1_m[m+1]*v_g_1));
   }
@@ -10766,7 +10766,7 @@ int perturb2_save_early_transfers (
   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
     int m = ppr2->m[index_m];
     sprintf(buffer, "sigma_g_m%d", m);
-    if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
     else fprintf(file_tr, format_value, 
       -2/15.*I(2,m) + 8/3.*k1_ten_k2[m+2]*v_g_1*v_g_2);
   }
@@ -10775,17 +10775,17 @@ int perturb2_save_early_transfers (
   if (pba->has_ur == _TRUE_) {
     if (ppr2->compute_m[0] == _TRUE_) {
       // delta_ur
-      if (index_tau==0) fprintf(file_tr, format_label, "delta_ur", index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "delta_ur", index_print_tr++);
       else fprintf(file_tr, format_value, delta_ur);
       // pressure_ur 
-      if (index_tau==0) fprintf(file_tr, format_label, "pressure_ur", index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "pressure_ur", index_print_tr++);
       else fprintf(file_tr, format_value, pressure_ur);
     }  
     // velocity_ur[m]
     for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
       int m = ppr2->m[index_m];
       sprintf(buffer, "vel_ur_m%d", m);
-      if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
       else fprintf(file_tr, format_value,
         N(1,m)*0.25 - delta_ur_1*(-k2_m[m+1]*v_ur_2) - delta_ur_2*(-k1_m[m+1]*v_ur_1));
     }
@@ -10793,7 +10793,7 @@ int perturb2_save_early_transfers (
     for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
       int m = ppr2->m[index_m];
       sprintf(buffer, "sigma_ur_m%d", m);
-      if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
       else fprintf(file_tr, format_value,
         -2/15.*N(2,m) + 8/3.*k1_ten_k2[m+2]*v_ur_1*v_ur_2);
     }
@@ -10810,7 +10810,7 @@ int perturb2_save_early_transfers (
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
         int m = ppr2->m[index_m];
         sprintf(buffer, "b_%d_%d_%d", n, l, m);
-        if (index_tau==0) {
+        if (ppw2->n_steps==1) {
           fprintf(file_tr, format_label, buffer, index_print_tr++);
           fprintf(file_qs, format_label, buffer, index_print_qs++);
         }
@@ -10834,7 +10834,7 @@ int perturb2_save_early_transfers (
         for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
           int m = ppr2->m[index_m];
           sprintf(buffer, "cdm_%d_%d_%d", n, l, m);
-          if (index_tau==0) {
+          if (ppw2->n_steps==1) {
             fprintf(file_tr, format_label, buffer, index_print_tr++);
             fprintf(file_qs, format_label, buffer, index_print_qs++);
           }
@@ -10854,7 +10854,7 @@ int perturb2_save_early_transfers (
     for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
       int m = ppr2->m[index_m];
       sprintf(buffer, "I_%d_%d", l, m);
-      if (index_tau==0) {
+      if (ppw2->n_steps==1) {
        fprintf(file_tr, format_label, buffer, index_print_tr++);
        fprintf(file_qs, format_label, buffer, index_print_qs++);
       }
@@ -10875,7 +10875,7 @@ int perturb2_save_early_transfers (
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
         int m = ppr2->m[index_m];
         sprintf(buffer, "E_%d_%d", l, m);
-        if (index_tau==0) {
+        if (ppw2->n_steps==1) {
          fprintf(file_tr, format_label, buffer, index_print_tr++);
          fprintf(file_qs, format_label, buffer, index_print_qs++);
         }
@@ -10891,7 +10891,7 @@ int perturb2_save_early_transfers (
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
         int m = ppr2->m[index_m];
         sprintf(buffer, "B_%d_%d", l, m);
-        if (index_tau==0) {
+        if (ppw2->n_steps==1) {
          fprintf(file_tr, format_label, buffer, index_print_tr++);
          fprintf(file_qs, format_label, buffer, index_print_qs++);
         }
@@ -10915,7 +10915,7 @@ int perturb2_save_early_transfers (
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
         int m = ppr2->m[index_m];
         sprintf(buffer, "N_%d_%d", l, m);
-        if (index_tau==0) {
+        if (ppw2->n_steps==1) {
          fprintf(file_tr, format_label, buffer, index_print_tr++);
          fprintf(file_qs, format_label, buffer, index_print_qs++);
         }
@@ -10931,25 +10931,25 @@ int perturb2_save_early_transfers (
   
   // *** Some other random variables
   sprintf(buffer, "exp_m_kappa");
-  if (index_tau==0)
+  if (ppw2->n_steps==1)
    fprintf(file_tr, format_label, buffer, index_print_tr++);
   else
    fprintf(file_tr, format_value, pvecthermo[pth->index_th_exp_m_kappa]);
   
   sprintf(buffer, "g");
-  if (index_tau==0)
+  if (ppw2->n_steps==1)
    fprintf(file_tr, format_label, buffer, index_print_tr++);
   else
    fprintf(file_tr, format_value, pvecthermo[pth->index_th_g]);
   
   sprintf(buffer, "H");
-  if (index_tau==0)
+  if (ppw2->n_steps==1)
    fprintf(file_tr, format_label, buffer, index_print_tr++);
   else
    fprintf(file_tr, format_value, pvecback[pba->index_bg_H]);
   
   sprintf(buffer, "Hc");
-  if (index_tau==0)
+  if (ppw2->n_steps==1)
    fprintf(file_tr, format_label, buffer, index_print_tr++);
   else
    fprintf(file_tr, format_value, a*pvecback[pba->index_bg_H]);
