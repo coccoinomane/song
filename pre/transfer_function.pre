@@ -1,0 +1,40 @@
+## Precision file for SONG intended to quickly compute second-order transfer
+## functions and source functions for fixed k-values.
+##
+## For example, the following command will dump into result.dat the
+## (l,m)=(502,0) transfer function of the E-modes for (k1,k2)=(0.1,0.15) Mpc^-1:
+##
+##  ./print_transfers2 ini/intrinsic.ini pre/transfer_function.pre E_502_0 1 0 2> result.dat
+##
+## Similarly, one can save the line-of-sight sources as a function of time for
+## (k1,k2)=(0.1,0.15) Mpc^-1 and k3 something in between by running:
+##
+##  ./print_sources2 ini/intrinsic.ini pre/transfer_function.pre tau 1 0 25 2> result.dat
+## 
+## The exact values of k1, k2 and l can be changed by tweaking k_max_custom_song,
+## k_min_custom_song, l_max_scalars and l_linstep.
+
+# Consider only two l-values
+l_max_scalars = 1000
+l_linstep = 500
+l_logstep = 999999
+
+# Pick two custom k values
+sources2_k_sampling = lin
+k_min_custom_song = 0.1
+k_max_custom_song =  0.15
+k_size_custom_song = 2
+
+# We need enough points in k3 to interpolate the sources
+sources2_k3_sampling = lin
+k3_size = 100
+
+# Second-order k-sampling for the transfer functions
+q_linstep_song = 0.1
+transfer2_k3_sampling = class
+
+# Multipoles to include in the line of sight sources
+l_max_los_t = 5
+l_max_los_p = 5
+l_max_los_quadratic_t = 5
+l_max_los_quadratic_p = 5

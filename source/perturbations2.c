@@ -7668,8 +7668,6 @@ int perturb2_quadratic_sources_for_k1k2k (
 
 
 
-
-
 int perturb2_quadratic_sources (
       struct precision * ppr,
       struct precision2 * ppr2,
@@ -7958,7 +7956,6 @@ int perturb2_quadratic_sources (
     /* h'' */
     h_prime_prime_1 =  pvec_sources1[ppt->index_qs_h_prime_prime];
     h_prime_prime_2 =  pvec_sources2[ppt->index_qs_h_prime_prime];
-    
     
     /* Code the Einstein tensor for synchronous gauge, TODO! */
     
@@ -8827,6 +8824,8 @@ int perturb2_sources (
   double * k1_m = ppw2->k1_m;
   double * k2_m = ppw2->k2_m;
 
+
+
   // ======================================================================================
   // =                          Interpolate needed quantities                             =
   // ======================================================================================
@@ -8869,10 +8868,7 @@ int perturb2_sources (
   double kappa_dot = pvecthermo[pth->index_th_dkappa];
   double exp_minus_kappa = pvecthermo[pth->index_th_exp_m_kappa];
   double g = pvecthermo[pth->index_th_g];
-  
-  /* Have a look at the thermodynamics quantities */
-  // fprintf (stderr, "%13g %13g = %g\n", tau, Hc/kappa_dot);
-  
+    
   /* Interpolate quadratic sources (ppw2->pvec_quadsources). Note that,
   because we need the quadratic part of the collision term, too, we 
   use 'perturb2_quadratic_sources' rather than 'perturb2_quadratic_sources_at_tau'.
@@ -8946,9 +8942,9 @@ int perturb2_sources (
     ppt2->error_message,
     error_message);
   
-  
   /* Shortcuts for metric variables */
-  double phi=0, phi_1=0, phi_2=0, psi=0, psi_1=0, psi_2=0, phi_prime=0, psi_prime=0, phi_prime_1=0, phi_prime_2=0, psi_prime_1=0, psi_prime_2=0;
+  double phi=0, phi_1=0, phi_2=0, psi=0, psi_1=0, psi_2=0, phi_prime=0,
+    psi_prime=0, phi_prime_1=0, phi_prime_2=0, psi_prime_1=0, psi_prime_2=0;
   double phi_exp=0, psi_exp=0, phi_exp_prime=0, psi_exp_prime=0;
   double omega_m1=0, omega_m1_prime=0, gamma_m2_prime=0;
   
@@ -8994,7 +8990,6 @@ int perturb2_sources (
           ppt2->error_message,
           error_message);
 
-      
       /* Exponential potentials, which appear in the metric as
         g_00 = -e^(2*psi_exp)
         g_ij = e^(-2*phi_exp) * delta_ij
@@ -9038,9 +9033,6 @@ int perturb2_sources (
   } // end of newtonian gauge
   
 
-  
-    
-  
   
   // ====================================================================================
   // =                               Compute velocities                                 =

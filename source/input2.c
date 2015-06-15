@@ -1603,11 +1603,11 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
 
   ppr2->m_max_2nd_order=0;
 
-  ppr2->l_max_g_song=10;
-  ppr2->l_max_pol_g_song=10;
-  ppr2->l_max_ur_song=10; 
-  ppr2->l_max_g_ten_song=10;
-  ppr2->l_max_pol_g_ten_song=10;
+  ppr2->l_max_g_song=8;
+  ppr2->l_max_pol_g_song=8;
+  ppr2->l_max_ur_song=8; 
+  ppr2->l_max_g_ten_song=8;
+  ppr2->l_max_pol_g_ten_song=8;
 
   ppr2->l_max_g_quadsources=-1;
   ppr2->l_max_pol_g_quadsources=-1;
