@@ -8,7 +8,7 @@
 #ifndef __COMMON2__
 #define __COMMON2__
 
-#define _SONG_VERSION_ "v1.0beta1"
+#define _SONG_VERSION_ "v1.0-beta1"
 
 /* Maximum number of azimuthal numbers that can be computed. We set it so that the
 factorial of 'm' never overflows, assuming a limit of 10^30. The factorial of m is

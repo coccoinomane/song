@@ -157,6 +157,8 @@ int input2_init (
          )
 {
 
+  printf("Running SONG version %s\n", _SONG_VERSION_);
+
   /** Summary: */
 
   /** - define local variables */
@@ -1707,7 +1709,8 @@ int input2_free (struct precision2 * ppr2)
 
 int song_version(
       char * version
-      ) {
+      )
+{
   
   sprintf(version,"%s",_SONG_VERSION_);
   return _SUCCESS_;
