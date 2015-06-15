@@ -524,7 +524,8 @@ int transfer2_init(
     We won't need them anymore because the different k1 modes are independent. Note that
     this memory was either allocate at the beginning of the k1 loop, in this module, or
     at the beginning of the k1 loop in perturb2_init. */
-    class_call (perturb2_free_k1_level (ppt2, index_k1), ppt2->error_message, ppt2->error_message);
+    class_call (perturb2_free_k1_level (ppt2, index_k1),
+      ppt2->error_message, ppt2->error_message);
 
 
     /* Save all transfer functions for the given k1, and free the memory associated with them.

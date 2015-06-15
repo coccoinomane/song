@@ -1,6 +1,6 @@
 /** @file print_bispectra.c 
  *
- * Print to screen bispectra computed by the bispectra.c module.
+ * Print to screen the reduced bispectra computed by the bispectra.c module.
  *
  * The bispectra are stored in the bi.bispectra array which is indexed as
  * bi.bispectra [index_bt][X][Y][Z][index_l1_l2_l3].
@@ -11,11 +11,55 @@
  * examples: print_bispectra local_ttt equilateral params.ini params.pre
  *           print_bispectra orthogonal_tee squeezed_small_scale 6 params.ini params.pre
  *
- * To see a list of the different available bispectra types, run ./print_bispectra
- * with no arguments.
+ * To see a list of the different available bispectra types, look at the documentation
+ * for the bispectrum_types in explanatory.ini.
+ *
+ * The intrinsic bispectrum from second-order perturbations will be printed
+ * both with and without the temperature and redshift corrections. These four-point
+ * contributions are described in detail in sec. 6.3.1 of http://arxiv.org/abs/1405.2280
+ * and, more briefly, in the documentation of bispectra2_add_quadratic_correction(). The
+ * labelling scheme we adopt is:
+ *
+ * -# The bolometric temperature bispectrum will be labelled "bolometric_T". This is the
+ *    bispectrum that we expect to match the experimental results from, say, the Planck
+ *    experiment. With respect to eq. 6.72 http://arxiv.org/abs/1405.2280, the bolometric
+ *    temperature bispectrum is B[Theta] divided by the geometrical factor h_l1_l2_l3.
+ *
+ * -# The brightness temperature bispectrum will be labelled "brightness_T". It is given
+ *    by brightness_T = bolometric_T - T_correction and is more closely related to
+ *    what is computed internally in SONG. With respect to eq. 6.72 of
+ *    http://arxiv.org/abs/1405.2280, it is B_hat[Delta] divided by h_l1_l2_l3.
+ *
+ * -# The temperature bispectrum of the transformed delta_tilde variable, minus the
+ *    quadratic redshift correction, is labelled "delta_tilde_T". It is given by
+ *    delta_tilde_T = bolometric_T - T_correction - Z_correction. This is the bispectrum
+ *    that matched best the analytic approximation of the intrinsic bispectrum in the 
+ *    squeezed limit, which is described in Lewis 2012 (http://arxiv.org/abs/1204.5018),
+ *    Creminelli et al. 2011 (http://arxiv.org/abs/1109.1822) and Bartolo et al. 2012
+ *    (http://arxiv.org/abs/1109.2043). With respect to eq. 6.72 of
+ *    http://arxiv.org/abs/1405.2280, it is B_hat[Delta_tilde] divided by h_l1_l2_l3.
+ *
+ * -# The temperature correction will be labelled "T_correction". It is given by a
+ *    quadratic combination of C_l weighted by 3j-symbols; in absence of polarisation,
+ *    the expression for photon intensity reads
+ *      T_correction = - 3 * (C_l1*C_l2 + C_l1*C_l3 + C_l2*C_l2).
+ *    
+ * -# The redshift correction will be labelled "Z_correction". It is equal to -4/3 the 
+ *    temperature correction, so that the two contributions partially cancel when
+ *    summed. In absence of polarisation, it is given by 
+ *      Z_correction = + 4 * (C_l1*C_l2 + C_l1*C_l3 + C_l2*C_l2).
+ *
+ * -# We also include the bispectrum of the brightness delta, the momentum integrated
+ *    distribution function, and label it as "brightness_D". This is related to 
+ *    brightness_T by a simple l-dependent rescaling.
+ *
+ * All these distinctions do not apply to non-intrinisic bispectra, because in that
+ * case brightness and bolometric temperature coincide, and there is no need
+ * to introduce a delta_tilde transformation. Therefore, the bolometric_T, brightness_T
+ * and delta_tilde_T columns are expected to coincide for non-intrinsic bispectra.
  *
  * Created by Guido W. Pettinari on 11.08.2012
- * Last edited by Guido W. Pettinari on 01.06.2015
+ * Last edited by Guido W. Pettinari on 15.06.2015
  */
  
 #include "song.h"
@@ -243,13 +287,21 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
   
-  /* We want to compute the analytical approximation for the squeezed limit of
+  /* Compute the analytical approximation for the squeezed limit of
   the intrinsic bispectrum no matter what */
   bi.has_intrinsic_squeezed = _TRUE_;
   pt.has_cl_cmb_zeta = _TRUE_;
   sp.compute_cl_derivative = _TRUE_;
-  bi.has_local_squeezed = _TRUE_; /* for normalisation */
-  bi.has_quadratic_correction = _TRUE_; /* for bolometric temperature */
+
+  /* We shall use the squeezed approximation of the local bispectrum
+  as a normalisation in the squeezed limit, in order to give order
+  unity bispectra */
+  bi.has_local_squeezed = _TRUE_;
+
+  /* Compute the four point contribution to the intrinsic bispectrum
+  no matter what; this does not mean that it will be added to the intrinsic
+  bispectrum */
+  bi.has_quadratic_correction = _TRUE_;
   
   if (background_init(&pr,&ba) == _FAILURE_) {
     printf("\n\nError running background_init \n=>%s\n",ba.error_message);
@@ -321,7 +373,7 @@ int main(int argc, char **argv) {
     all the way to l_max, then execute the standard CLASS modules. Otherwise
     call the function 'compute_cls' which extends l_max to l_max + delta_l_max. */
     if (pr.extend_lensed_cls == _FALSE_) {
-  
+
       if (spectra_init(&pr,&ba,&pt,&pm,&nl,&tr,&sp) == _FAILURE_) {
         printf("\n\nError in spectra_init \n=>%s\n",sp.error_message);
         return _FAILURE_;
@@ -346,22 +398,23 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
-  /* TODO: uncomment once you have updated the bispectra2.c module */
-  // if (bispectra2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&sp,&le,&bi) == _FAILURE_) {
-  //   printf("\n\nError in bispectra2_init \n=>%s\n",bi.error_message);
-  //   return _FAILURE_;
-  // }
+  if (bispectra2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&sp,&le,&bi) == _FAILURE_) {
+    printf("\n\nError in bispectra2_init \n=>%s\n",bi.error_message);
+    return _FAILURE_;
+  }
 
   /* Uncomment to compute the Fisher matrix too */
   // if (fisher_init(&pr,&ba,&th,&pt,&bs,&tr,&pm,&sp,&le,&bi,&fi) == _FAILURE_) {
   //   printf("\n\nError in fisher_init \n=>%s\n",fi.error_message);
   //   return _FAILURE_;
   // }
-  // 
-  // if (output_init(&ba,&pt,&sp,&nl,&le,&bi,&fi,&op) == _FAILURE_) {
-  //   printf("\n\nError in output_init \n=>%s\n",op.error_message);
-  //   return _FAILURE_;
-  // }  
+
+  /* Uncomment to print output to file */
+  fi.has_fisher = _FALSE_;
+  if (output_init(&ba,&th,&pt,&pm,&tr,&sp,&nl,&le,&bi,&fi,&op) == _FAILURE_) {
+    printf("\n\nError in output_init \n=>%s\n",op.error_message);
+    return _FAILURE_;
+  }
   
   // =================================================================================
   // =                          Which bispectra to print?                            =
@@ -617,6 +670,11 @@ should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
   /* Which bispectrum are we printing? */
   fprintf(stderr, "# Showing the '%s_%s%s%s' bispectrum (index_bt=%d)\n",
     bt_label, X_label, Y_label, Z_label, index_bt);
+
+  if (bi.add_quadratic_correction == _TRUE_)
+    fprintf (stderr, "# the intrinsic bispectrum was computed WITH quadratic corrections\n");
+  else 
+    fprintf (stderr, "# the intrinsic bispectrum was computed WITHOUT quadratic corrections\n");
   
   /* Print information on what we are going to print */
   if (PRINT_TRIANGULAR == _TRUE_) {
@@ -663,32 +721,44 @@ should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
   /* Multipole L */
   fprintf (stderr, "%15s(%03d) ", "L", index_print++);
 
-  /* Reduced bispectrum of the brightness delta (momentum integrated distribution function) */
-  fprintf (stderr, "%20s(%03d) ", "brightness_D", index_print++);
+  /* Reduced bispectrum of the bolometric temperature */
+  fprintf (stderr, "%20s(%03d) ", "bolometric_T", index_print++);
 
   /* Reduced bispectrum of the brightness temperature */
   fprintf (stderr, "%20s(%03d) ", "brightness_T", index_print++);
 
-  /* Reduced bispectrum of the bolometric temperature */
-  fprintf (stderr, "%20s(%03d) ", "bolometric_T", index_print++);
+  /* Reduced bispectrum of the transformed brightness temperature delta_tilde,
+  minus the redshift quadratic correction*/
+  fprintf (stderr, "%20s(%03d) ", "delta_tilde_T", index_print++);
 
-  /* Correction needed to convert between the brightness temperature bispectrum to the bolometric temperature one
-  (bolometric = brightness + correction) */
+  /* Reduced bispectrum of the brightness delta (momentum integrated distribution function) */
+  fprintf (stderr, "%20s(%03d) ", "brightness_D", index_print++);
+
+  /* Correction needed to convert between the brightness temperature bispectrum to the
+  bolometric temperature one (bolometric_T = brightness_T + T_correction) */
   fprintf (stderr, "%20s(%03d) ", "T_correction", index_print++);
 
-  /* Bispectra with the factor used by Komatsu (see for example Fig. 4.5 of Komatsu's thesis, or Pitrou et al. 2010 in Fig. 3) */
-  fprintf (stderr, "%20s(%03d) ", "brightness_T_K", index_print++);
-  fprintf (stderr, "%20s(%03d) ", "bolometric_T_K", index_print++);
+  /* Correction needed to convert between the delta_tilde bispectrum to the brightness
+  one (brightness_T = delta_tilde_T + Z_correction) */
+  fprintf (stderr, "%20s(%03d) ", "Z_correction", index_print++);
+
+  /* Scaling factor used by Komatsu (see for example Fig. 4.5 of Komatsu's thesis, or
+  Pitrou et al. 2010 in Fig. 3) */
+  fprintf (stderr, "%20s(%03d) ", "komatsu_factor", index_print++);
   
-  /* Analytical approximation in Lewis 2012 (L2012).
-  We normalize all the quantities in these papers by -1/12 C_long * C_short */
-  if ( (PRINT_SQUEEZED_SMALL_SCALE == _TRUE_) || (PRINT_SQUEEZED_LARGE_SCALE == _TRUE_) ) {
+  /* Analytical approximation in Lewis 2012 (L2012). We normalize all the quantities
+  in these papers by the local bispectrum in the squeezed limit (basically
+  -1/12 C_long * C_short) */
+  if ((PRINT_SQUEEZED_SMALL_SCALE == _TRUE_) || (PRINT_SQUEEZED_LARGE_SCALE == _TRUE_) ) {
+
+    /* Normalized bolometric temperature reduced bispectrum */
+    fprintf (stderr, "%25s(%03d) ", "bolometric_T_norm", index_print++);
 
     /* Normalized brightness temperature reduced bispectrum */
     fprintf (stderr, "%25s(%03d) ", "brightness_T_norm", index_print++);
 
-    /* Normalized bolometric temperature reduced bispectrum */
-    fprintf (stderr, "%25s(%03d) ", "bolometric_T_norm", index_print++);
+    /* Normalized brightness temperature reduced bispectrum */
+    fprintf (stderr, "%25s(%03d) ", "delta_tilde_T_norm", index_print++);
 
     /* Sum of the eq. 2.5 and 2.6 in Lewis 2012 */
     fprintf (stderr, "%25s(%03d) ", "bolometric_T_lewis", index_print++);
@@ -830,8 +900,8 @@ should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
         int index_max_for_smallest = MIN (index_mid, bi.index_l_triangular_max[index_largest][index_mid]);
         long int index_l1_l2_l3 = bi.index_l1_l2_l3[index_largest][index_largest-index_mid][index_max_for_smallest-index_smallest];
         
-        /* Value of the bolometric temperature bispectrum in (l1,l2,l3) */
-        double bolometric_T;
+        /* Value of the bispectrum stored in bi.bispectra for the triplet (l1,l2,l3) */
+        double bisp;
 
         /* Since we computed the bispectra only for l1>=l2>=l3, we obtain the values outside that range using
         the symmetry of the bispectrum with respect to permutations of (l1,l2,l3). This approach won't work
@@ -839,30 +909,32 @@ should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
         above at the beginning of l3 loop), but in that case the values of l1,l2 and l3 in this loop are constrained
         to satisfy l1<=l2<=l3. */
              if ((l1>=l2) && (l2>=l3))
-          bolometric_T = bi.bispectra[index_bt][X][Y][Z][index_l1_l2_l3];
+          bisp = bi.bispectra[index_bt][X][Y][Z][index_l1_l2_l3];
         else if ((l1>=l3) && (l3>=l2))
-          bolometric_T = bi.bispectra[index_bt][X][Z][Y][index_l1_l2_l3];
+          bisp = bi.bispectra[index_bt][X][Z][Y][index_l1_l2_l3];
         else if ((l2>=l1) && (l1>=l3))
-          bolometric_T = bi.bispectra[index_bt][Y][X][Z][index_l1_l2_l3];
+          bisp = bi.bispectra[index_bt][Y][X][Z][index_l1_l2_l3];
         else if ((l2>=l3) && (l3>=l1))
-          bolometric_T = bi.bispectra[index_bt][Y][Z][X][index_l1_l2_l3];
+          bisp = bi.bispectra[index_bt][Y][Z][X][index_l1_l2_l3];
         else if ((l3>=l1) && (l1>=l2))
-          bolometric_T = bi.bispectra[index_bt][Z][X][Y][index_l1_l2_l3];
+          bisp = bi.bispectra[index_bt][Z][X][Y][index_l1_l2_l3];
         else if ((l3>=l2) && (l2>=l1))
-          bolometric_T = bi.bispectra[index_bt][Z][Y][X][index_l1_l2_l3];
+          bisp = bi.bispectra[index_bt][Z][Y][X][index_l1_l2_l3];
         
-                
-        /* Corrective factor to convert the BOLOMETRIC TEMPERATURE bispectrum to the BRIGHTNESS TEMPERATURE bispectrum.
-        For temperature, these are related by: BRIGHTNESS = BOLOMETRIC + 3*(Cl1*Cl2 + Cl2*Cl3 + Cl1*Cl3). See, e.g.,
-        Pitrou et al. (2010) or eq. 2.14 Nitta et al. (2009). In the general polarised case, refer to Sec. 3.1 of Fidler,
-        Pettinari et al. (2014). Note that the redshift correction appears (Sec. 3.2, ibidem) adds linearly to 
-        the temperature one with a +4 coefficient:
-        redshift_correction = +4/8. * bi.bispectra[bi.index_bt_quadratic][X][Y][Z][index_l1_l2_l3].
-
-        IMPORTANT: subtracting the temperature correction produces numerical noise if the bispectrum
-        is small, as it is the case when m!=0. This happens because in the bispectrum module we summed
-        the (big) temperature correction to the (small) bispectrum and here we are subtracting it.
-        However, this is only a visualisation issue relevant to this function that does not affect Song. */
+        /* By default, we assume that the various types of bispectra coincide. This is the case for
+        all non-intrinsic bispectra (see file documentation above) */
+        double bolometric_T = bisp;
+        double brightness_T = bisp;
+        double delta_tilde_T = bisp;
+        
+        /* Compute the four-point contributions to the intrinsic bispectrum. These are the corrective
+        factors that convert the delta_tilde bispectrum to the brightness bispectrum and the 
+        brightness temperature bispectrum to the bolometric temperature bispectrum. The former
+        is called temperature correction, the latter redshift correction. These corrections are
+        quadratic combinations of C_l weighted by 3j-symbols; in absence of polarisation, they
+        are simply proportional to (Cl1*Cl2 + Cl2*Cl3 + Cl1*Cl3). In the general polarised
+        case, refer to Sec. 3.1 of Fidler, Pettinari et al. (2014). Also see the references
+        above, plus Pitrou et al. (2010) or eq. 2.14 Nitta et al. (2009). */
 
         double quadratic_correction;
         
@@ -879,23 +951,43 @@ should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
         else if ((l3>=l2) && (l2>=l1))
           quadratic_correction = bi.bispectra[bi.index_bt_quadratic][Z][Y][X][index_l1_l2_l3];
         
-        /* The temperature and redshift corrections have the same structure (see long comment above) */
+        /* The temperature and redshift corrections have the same structure (see documented
+        bispectra2_add_quadratic_correction() or sec. 6.3.1 of http://arxiv.org/abs/1405.2280 
+        for details) */
         double temperature_correction = -3/8. * quadratic_correction;
         double redshift_correction = +4/8. * quadratic_correction; 
-        
-        /* Uncomment to subtract the temperature & redshift corrections from the bispectrum.
-        Equivalent to setting in the paramter file 'add_quadratic_correction=no' */
-        // if (bi.add_quadratic_correction == _TRUE_)
-        //   bolometric_T -= temperature_correction + redshift_correction;
-        
-        /* Value of the brightness temperature bispectrum */
-        double brightness_T = bolometric_T - temperature_correction;
 
-        /* Only for the intrinsic bispectra there is distinction between bolometric and brightness temperature.
-        We also kill the quadratic contributions when pt2.has_quadratic_sources=_FALSE_  */
-        if (((strstr(bt_label,"intrinsic")==NULL) && (strstr(bt_label,"squeezed")==NULL))
-          ||((strstr(bt_label,"intrinsic")!=NULL) && (pt2.has_quadratic_sources==_FALSE_)))
-          brightness_T = bolometric_T;
+        /* Add or subtract quadratic corrections to the intrinsic bispectrum */
+        if ((bi.has_intrinsic == _TRUE_) 
+          && (bi.bispectrum_type[index_bt] == intrinsic_bispectrum)) {
+                
+          /* If the user specifically asked for no quadratic sources, we kill all quadratic 
+          contributions to the bispectrum as well; this is equivalent to running SONG as
+          a first-order code */
+          if (pt2.has_quadratic_sources==_FALSE_)
+            continue;
+                
+          /* Compute which intrinsic bispectrum is which based on whether the quadratic corrections
+          where added in the bispectra module. For details on the differences betweeen different
+          intrinsic bispectra, refer to the file documentation above. */
+          if (bi.add_quadratic_correction == _TRUE_) {
+            bolometric_T = bisp;
+            brightness_T = bolometric_T - temperature_correction;
+            if (pt2.use_delta_tilde_in_los == _TRUE_)
+              delta_tilde_T = brightness_T - redshift_correction;
+            else
+              delta_tilde_T = brightness_T;
+          }
+          else {
+            delta_tilde_T = bisp;
+            if (pt2.use_delta_tilde_in_los == _TRUE_)
+              brightness_T = delta_tilde_T + redshift_correction;
+            else
+              brightness_T = delta_tilde_T;
+            bolometric_T = brightness_T + temperature_correction;
+          }
+
+        } // end of if (intrinsic)
           
         /* Value of the bispectrum of the brightness (momentum-integrated distribution function) */
         double brightness_temperature_factor = (2*l1+1.)*(2*l2+1.)*(2*l3+1.) * pow(2.*_PI_,3);
@@ -909,39 +1001,22 @@ should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
         /* First column will be 'l' */
         int l;
           
-        // ****  TRIANGULAR CASE  ****
         if ((PRINT_TRIANGULAR == _TRUE_) && (l1==l1_fixed) && (l2==l2_fixed)) {
-          
           l = l3;
-          
-        } // end of if(triangular)
-          
-        // ****  EQUILATERAL CASE  ****        
+        } 
         else if ((PRINT_EQUILATERAL == _TRUE_) && (l1==l2) && (l2==l3)) {
-          
           l = l3;
-          
-        } // end of if(equilateral)
-            
-        // ****  SQUEEZED_PITROU CASE  ****        
-        else if ((PRINT_SQUEEZED_PITROU == _TRUE_) && (l2==l3) && ((short_to_long_ratio*l1)==l2)) {
-          
+        }   
+        else if ((PRINT_SQUEEZED_PITROU == _TRUE_) && (l2==l3) && ((short_to_long_ratio*l1)==l2)) { 
           l = l1;
-          
-        } // end of if(squeezed_pitrou)
-          
-        // ****  SQUEEZED_SMALL_SCALE CASE  ****        
-
-        /* We choose the long wavemode to be l1, which is associated to the field X. The short wavemodes
-        will be l2 and l3, associated respectively to Y and Z */        
+        } 
         else if ((PRINT_SQUEEZED_SMALL_SCALE == _TRUE_) && (l1==l_long) && (l2==l3)) {
-            
+          /* We choose the long wavemode to be l1, which is associated to the field X.
+          The short wavemodes will be l2 and l3, associated respectively to Y and Z */        
           l = l3;
           l_short = l3;
           index_l_short = index_l3;
-          
-        } // end of if(squeezed_small_scale)
-
+        }
         /* Uncomment to print squeezed configurations where l2 and l3 are different
         (not working yet) */
         // else if ((PRINT_SQUEEZED_SMALL_SCALE == _TRUE_) && (l1==l_long)
@@ -952,33 +1027,28 @@ should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
         //   index_l_short = index_l3;
         //   
         // } // end of if(squeezed_small_scale)
-
-
-        // ****  SQUEEZED_LARGE_SCALE CASE  ****        
-        else if ((PRINT_SQUEEZED_LARGE_SCALE == _TRUE_) && (l1==l_short) && (l2==l_short)) {
-          
+        else if ((PRINT_SQUEEZED_LARGE_SCALE == _TRUE_) && (l1==l_short) && (l2==l_short)) {          
           l = l3;
           l_long = l3;
           index_l_long = index_l3;
-          
-        } // end of if(squeezed_large_scale)
-          
-        /* If nothing has to be printed, then continue */
+        } 
         else {
+          /* If nothing has to be printed, then continue */
           continue;
         }
         
         /* Coefficient adopted by Komatsu and by Pitrou et et al. 2010 in Fig. 3 */
-        double komatsu_coefficient = 1e16 * l*l * (l+1)*(l+1) / ((2*_PI_)*(2*_PI_));
+        double komatsu_factor = 1e16 * l*l * (l+1)*(l+1) / ((2*_PI_)*(2*_PI_));
           
-        fprintf(stderr, "%20d %25.7g %25.7g %25.7g %25.7g %25.7g %25.7g ",
+        fprintf(stderr, "%20d %25.7g %25.7g %25.7g %25.7g %25.7g %25.7g %25.7g ",
           l,
-          brightness_D, 
-          brightness_T, 
-          bolometric_T, 
+          bolometric_T,
+          brightness_T,
+          delta_tilde_T,
+          brightness_D,  
           temperature_correction, 
-          komatsu_coefficient*brightness_T, 
-          komatsu_coefficient*bolometric_T
+          redshift_correction, 
+          komatsu_factor
         );
                     
         // ========================================================================================================
@@ -1014,11 +1084,12 @@ should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
 
           /* We include an l-dependent normalisation factor so that the comparison between numerical and analytical 
           results won't depend on the adopted conventions for the Cl's or the primordial power spectrum.
-          By default we use the squeezed-limit of the local fnl=1 model, given by 
-          6 * cl1_Xz * (cl2_YZ + cl3_YZ), so that the amplitude of the resulting curve is close to the fnl bias.
-          However, this normalisation function crosses the zero when Y and Z are different (e.g. Cl_TE), and would
-          thus result in infinities. To avoid this, when Y is different from Z we just normalise the bispectrum
-          using 6 * cl1_Xz * (cl2_YY + cl3_ZZ). */
+          By default we use the squeezed-limit of the local fnl=1 model, given by 6 * cl1_Xz * (cl2_YZ + cl3_YZ),
+          so that the amplitude of the resulting curve is close to the fnl bias. However, this normalisation
+          function crosses the zero when Y and Z are different (e.g. Cl_TE), and would thus result in infinities.
+          To avoid this, when Y is different from Z we just normalise the bispectrum using
+          6 * cl1_Xz * (cl2_YY + cl3_ZZ). Note that the normalisation changes whether lensing=yes or no, because
+          then the C_l used to compute it will be lensed or unlensed, respectively. */
           double normalisation;
           
           /* If Y==Z, normalise using the squeezed limit of the local model with fnl=1 */
@@ -1046,21 +1117,28 @@ should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
             printf ("WARNING: normalisation=%g is small; beware of inf\n", normalisation);
           }
         
-          /* Normalized version of the brightness temperature bispectrum */
-          double brightness_T_normalized = brightness_T / normalisation;
-          
           /* Normalized version of the bolometric temperature bispectrum */
           double bolometric_T_normalized = bolometric_T / normalisation;
-          
-          /* Normalized temperature correction. Note that in this squeezed_small_scale limit, it is
-          also given by
-          -3 * cl_long*cl_short * (2 + cl_short/cl_long) / normalisation */
+        
+          /* Normalized version of the brightness temperature bispectrum */
+          double brightness_T_normalized = brightness_T / normalisation;
+
+          /* Normalized version of the transformed brightness temperature bispectrum */
+          double delta_tilde_T_normalized = delta_tilde_T / normalisation;
+                    
+          /* Normalized temperature and redshift corrections */
           double temperature_correction_normalized = temperature_correction / normalisation;
           double redshift_correction_normalized = redshift_correction / normalisation;
           
           // -----------------------------------------------------------------
           // -                         Lewis 2012                            -
           // -----------------------------------------------------------------
+
+          /* TODO: when lensing is fully included in the intrinsic bispectrum, we should be using
+          bispectra_intrinsic_squeezed_bispectrum() rather than computing the analytical approx
+          by hand. We cannot do it now, because in current SONG the intrinsic bispectrum is not
+          affected by lensing, while the analytic approximation computed in
+          bispectra_intrinsic_squeezed_bispectrum() is. */
 
           /* Here we compute the approximations in eq. 4.1 and 4.2 of Lewis 2012. This is the general
           formula that includes polarisation. With respect to Lewis' formula, i->X, j->Y, k->Z and
@@ -1098,9 +1176,10 @@ should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
           // -                 Print extra columns                 -
           // -------------------------------------------------------
           
-          fprintf(stderr, "%30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g",
-            brightness_T_normalized,
+          fprintf(stderr, "%30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g %30.7g",
             bolometric_T_normalized,
+            brightness_T_normalized,
+            delta_tilde_T_normalized,
             bolometric_T_lewis,
             bolometric_T_lewis_ricci,
             bolometric_T_lewis_redshift,
@@ -1112,7 +1191,7 @@ should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
             l*(l+1.)/(2.*_PI_)*ba.T_cmb*1e6*cl_Xz_long,
             l*(l+1.)/(2.*_PI_)*pow(ba.T_cmb*1e6,2)*cl_XX_short,
             l*(l+1.)/(2.*_PI_)*pow(ba.T_cmb*1e6,2)*cl_XX_long
-            // -5*komatsu_coefficient*(Cl1*Cl2 + Cl1*Cl3 + Cl2*Cl3)
+            // -5*komatsu_factor*(Cl1*Cl2 + Cl1*Cl3 + Cl2*Cl3)
             // -5 * cl_short/cl_zeta_short              /* Difference between lewis_ricci and analytical_cpv_no_lensing */
             );
           
@@ -1129,76 +1208,71 @@ should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
   // =                                  Free memory                                  =
   // =================================================================================
   
-  // for (i=0; i<argc_for_SONG; ++i) free (argv_for_SONG[i]);
-  // free (argv_for_SONG);
-  //
-  //
-  // if (bispectra_free(&pr,&pt,&sp,&le,&bi) == _FAILURE_) {
-  //   printf("\n\nError in bispectra_free \n=>%s\n",bi.error_message);
-  //   return _FAILURE_;
-  // }
-  //
-  // if (pt.has_cls == _TRUE_) {
-  //   if (spectra_free(&sp) == _FAILURE_) {
-  //     printf("\n\nError in spectra_free \n=>%s\n",sp.error_message);
-  //     return _FAILURE_;
-  //   }
-  // }
-  //
-  // if (primordial_free(&pm) == _FAILURE_) {
-  //   printf("\n\nError in primordial_free \n=>%s\n",pm.error_message);
-  //   return _FAILURE_;
-  // }
-  //
-  // if (transfer2_free(&pr2,&pt2,&tr2) == _FAILURE_) {
-  //   printf("\n\nError in transfer2_free \n=>%s\n",tr2.error_message);
-  //   return _FAILURE_;
-  // }
-  //
-  // if (bessel2_free(&pr,&pr2,&bs,&bs2) == _FAILURE_)  {
-  //   printf("\n\nError in bessel2_free \n=>%s\n",bs2.error_message);
-  //   return _FAILURE_;
-  // }
-  //
-  // if (bessel_free(&bs) == _FAILURE_)  {
-  //   printf("\n\nError in bessel_free \n=>%s\n",bs.error_message);
-  //   return _FAILURE_;
-  // }
-  //
-  // if (transfer_free(&tr) == _FAILURE_) {
-  //   printf("\n\nError in transfer_free \n=>%s\n",tr.error_message);
-  //   return _FAILURE_;
-  // }
-  //
-  // if (nonlinear_free(&nl) == _FAILURE_) {
-  //   printf("\n\nError in nonlinear_free \n=>%s\n",nl.error_message);
-  //   return _FAILURE_;
-  // }
-  //
-  // if (primordial_free(&pm) == _FAILURE_) {
-  //   printf("\n\nError in primordial_free \n=>%s\n",pm.error_message);
-  //   return _FAILURE_;
-  // }
-  //
-  // if (perturb2_free(&pr2,&pt2) == _FAILURE_) {
-  //   printf("\n\nError in perturb2_free \n=>%s\n",pt2.error_message);
-  //   return _FAILURE_;
-  // }
-  //
-  // if (perturb_free(&pt) == _FAILURE_) {
-  //   printf("\n\nError in perturb_free \n=>%s\n",pt.error_message);
-  //   return _FAILURE_;
-  // }
-  //
-  // if (thermodynamics_free(&th) == _FAILURE_) {
-  //   printf("\n\nError in thermodynamics_free \n=>%s\n",th.error_message);
-  //   return _FAILURE_;
-  // }
-  //
-  // if (background_free(&ba) == _FAILURE_) {
-  //   printf("\n\nError in background_free \n=>%s\n",ba.error_message);
-  //   return _FAILURE_;
-  // }
+  for (i=0; i<argc_for_SONG; ++i) free (argv_for_SONG[i]);
+  free (argv_for_SONG);
+
+
+  if (bispectra_free(&pr,&pt,&sp,&le,&bi) == _FAILURE_) {
+    printf("\n\nError in bispectra_free \n=>%s\n",bi.error_message);
+    return _FAILURE_;
+  }
+
+  if (pt.has_cls == _TRUE_) {
+    if (spectra_free(&sp) == _FAILURE_) {
+      printf("\n\nError in spectra_free \n=>%s\n",sp.error_message);
+      return _FAILURE_;
+    }
+  }
+
+  if (transfer2_free(&pr2,&pt2,&tr2) == _FAILURE_) {
+    printf("\n\nError in transfer2_free \n=>%s\n",tr2.error_message);
+    return _FAILURE_;
+  }
+
+  if (bessel2_free(&pr,&pr2,&bs,&bs2) == _FAILURE_)  {
+    printf("\n\nError in bessel2_free \n=>%s\n",bs2.error_message);
+    return _FAILURE_;
+  }
+
+  if (bessel_free(&bs) == _FAILURE_)  {
+    printf("\n\nError in bessel_free \n=>%s\n",bs.error_message);
+    return _FAILURE_;
+  }
+
+  if (transfer_free(&tr) == _FAILURE_) {
+    printf("\n\nError in transfer_free \n=>%s\n",tr.error_message);
+    return _FAILURE_;
+  }
+
+  if (nonlinear_free(&nl) == _FAILURE_) {
+    printf("\n\nError in nonlinear_free \n=>%s\n",nl.error_message);
+    return _FAILURE_;
+  }
+
+  if (primordial_free(&pm) == _FAILURE_) {
+    printf("\n\nError in primordial_free \n=>%s\n",pm.error_message);
+    return _FAILURE_;
+  }
+
+  if (perturb2_free(&pr2,&pt2) == _FAILURE_) {
+    printf("\n\nError in perturb2_free \n=>%s\n",pt2.error_message);
+    return _FAILURE_;
+  }
+
+  if (perturb_free(&pt) == _FAILURE_) {
+    printf("\n\nError in perturb_free \n=>%s\n",pt.error_message);
+    return _FAILURE_;
+  }
+
+  if (thermodynamics_free(&th) == _FAILURE_) {
+    printf("\n\nError in thermodynamics_free \n=>%s\n",th.error_message);
+    return _FAILURE_;
+  }
+
+  if (background_free(&ba) == _FAILURE_) {
+    printf("\n\nError in background_free \n=>%s\n",ba.error_message);
+    return _FAILURE_;
+  }
 
   return _SUCCESS_;
 

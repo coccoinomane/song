@@ -29,15 +29,10 @@ frac_min = 1e-3
 frac_max = 10
 
 # Bispectrum column
-bcol = "($9)"
-
-# Uncomment if $9 is the column with the bolometric temperature
-# bispectrum and $14 and $15 are the columns with the temperature
-# and redshift quadratic corrections, respectively
-# bcol = "($9-$14-$15)"
+bcol = "($11)"
 
 # Analytic approximation column
-acol = "($10)"
+acol = "($12)"
 
 
 # ==========================================

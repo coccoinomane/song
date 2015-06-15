@@ -928,8 +928,8 @@ int input2_init (
   // =                                       Bispectra                                           =
   // =============================================================================================
 
-  /* Turn off the quadratic corrections to the intrinsic bispectrum coming from
-  the bolometric temperature and from the redshift term */
+  /* Should we include the quadratic corrections to the intrinsic bispectrum coming from
+  the bolometric temperature and from the redshift term? */
   class_call(parser_read_string(pfc,"add_quadratic_correction",&string1,&flag1,errmsg),
 	     errmsg,
 	     errmsg);	

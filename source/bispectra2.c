@@ -119,7 +119,7 @@ int bispectra2_indices (
   (see comment for 'has_reduced_bispectrum' in bispectra.h) */
   if (pbi->has_intrinsic == _TRUE_)
     if (ppr2->m_max_2nd_order > 0)
-        pbi->has_reduced_bispectrum[pbi->index_bt_intrinsic] = _FALSE_; /* see comment in bispectra.h */
+        pbi->has_reduced_bispectrum[pbi->index_bt_intrinsic] = _FALSE_;
 
   return _SUCCESS_;
 
@@ -127,14 +127,14 @@ int bispectra2_indices (
 
 
 /**
- * This routine computes a table of values for all harmonic spectra C_l's,
- * given the transfer functions and primordial spectra.
  * 
- * @param ppt Input : pointer to perturbation structure
- * @param ptr Input : pointer to transfers structure
- * @param ppm Input : pointer to primordial structure
- * @param psp Input/Output: pointer to spectra structure 
- * @return the error status
+ * 
+ *
+ * 
+ * 
+ * 
+ * 
+ * 
  */
 
 int bispectra2_harmonic (
@@ -3047,10 +3047,12 @@ int bispectra2_add_quadratic_corrections (
                   
                 long int index_l1_l2_l3 = pbi->index_l1_l2_l3[index_l1][index_l1-index_l2][index_l3_max-index_l3];
               
-                /* Bolometric temperature correction (Sec. 3.2 of http://arxiv.org/abs/1401.3296) */
+                /* Bolometric temperature correction (sec. 6.3.1 of http://arxiv.org/abs/1405.2280 or
+                sec. 3.2 of http://arxiv.org/abs/1401.3296) */
                 double bolometric_correction = - 3/8. * pbi->bispectra[pbi->index_bt_quadratic][X][Y][Z][index_l1_l2_l3];
               
-                /* Redshift term correction (Sec. 3.1 of http://arxiv.org/abs/1401.3296) */
+                /* Redshift term correction (see sec. 6.3.1 of http://arxiv.org/abs/1405.2280 or
+                sec. 3.1 of http://arxiv.org/abs/1401.3296) */
                 double delta_tilde_correction = 0;
                         
                 if (ppt2->use_delta_tilde_in_los == _TRUE_)

@@ -549,7 +549,7 @@ int primordial_analytic_spectrum_init(
 
       if ((ppt->has_scalars == _TRUE_) && (index_mode == ppt->index_md_scalars)) {
 
-  // *** (V) MY MODIFICATIONS ***
+  // *** (X) MY MODIFICATIONS ***
   /* Include our custom initial conditions to avoid the below quantity to be zero */
 	if ((
 	  (ppt->has_ad == _TRUE_) && (index_ic1 == ppt->index_ic_ad) ||
