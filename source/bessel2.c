@@ -133,13 +133,18 @@ int bessel2_init(
   of polarisation mix in the line of sight integral */
   if ((ppt2->has_cmb_polarization_e == _TRUE_) || (ppt2->has_cmb_polarization_b == _TRUE_)) {
 
-    /* E->E projection function (equal to B->B) */
+    /* E->E projection function (equal to B->B). See eq. 5.103 of
+    http://arxiv.org/abs/1405.2280 */
     pbs2->has_J_EE = _TRUE_;
     pbs2->index_J_EE = index_J++;
 
-    /* B->E projection function (equal to minus E->B) */
-    pbs2->has_J_EB = _TRUE_;
-    pbs2->index_J_EB = index_J++;
+    /* B->E projection function (equal to minus E->B). See eq. 5.103 of
+    http://arxiv.org/abs/1405.2280. Since they vanish for scalar modes, we
+    compute them only when we have at least a non-scalar mode */
+    if (ppr2->m_max_2nd_order>0) {
+      pbs2->has_J_EB = _TRUE_;
+      pbs2->index_J_EB = index_J++;
+    }
   }
 
   pbs2->J_size = index_J;

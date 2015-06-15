@@ -92,7 +92,6 @@ struct transfers2 {
 
   int tt2_size;                 /* Number of requested transfer types */
 
-
   /* Array of strings that contain the labels of the various transfer types
   For example,  tt2_labels[index_tt2_T] is equal to "T_00" */
   char ** tt2_labels;
@@ -115,7 +114,10 @@ struct transfers2 {
   int m_size;        /* number of of azimuthal multipole values m[index_m] */
   int n_transfers;   /* number of possible (l,m) combinations attainable in ptr2->l and ptr2-m */
 
-
+  int n_nonzero_transfers_E;   /**< Number of nonzero transfers to be computed for photon E-polarization; this is basically
+                                    ptr2->n_transfers minus the l=0 and l=1 modes */
+  int n_nonzero_transfers_B;   /**< Number of nonzero transfers to be computed for photon B-polarization; this is basically
+                                    ptr2->n_transfers minus the l=0, l=1 and m=0 modes */
 
   // *** Correspondance between (type,l,m) and index_tt
 

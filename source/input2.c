@@ -226,7 +226,6 @@ int input2_init (
 
     if ((strstr(string1,"tCl2") != NULL) || (strstr(string1,"TCL2") != NULL)) {
       ppt->has_cl_cmb_temperature = _TRUE_;
-      ppt2->has_cmb_polarization_b = _TRUE_;
       ppt2->has_cls = _TRUE_;
       ppt2->has_perturbations2 = _TRUE_;
     }

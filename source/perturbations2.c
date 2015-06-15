@@ -741,47 +741,75 @@ int perturb2_indices_of_perturbs(
 
 
   // -------------------------------------------------------------------------
-  // -                      Photon polarization sources                      -
+  // -                       Photon polarization sources                     -
   // -------------------------------------------------------------------------
-    
-  /* We compute the source functions for both the E and B-modes, regardless of
-  which polarisation type is requested, because free streaming makes the two types
-  of polarisation mix in the line of sight integral */
+
+  /* Assign the type indices associated to linear polarisation. We decompose
+  linear polarisation in E-polarisation and B-polarisation. Both kinds of
+  polarisation have vanishing monopole (l=0) and dipole (l=1), while B-modes
+  also vanish for scalar modes (m=0). Nonetheless, we assign the indices
+  for polarisation also to these modes. The rationale is to keep the same
+  indexing strategy independently from the considered field; removing the
+  monopole and dipole type-indices for polarisation would have broken such
+  strategy. In the rest of the module we will simply set to zero the values of
+  ppt2->sources associated to the vanishing modes (monopole and dipole for E
+  and B, and scalar modes for B) */
 
   if ((ppt2->has_cmb_polarization_e == _TRUE_) || (ppt2->has_cmb_polarization_b == _TRUE_)) {
 
-    // *** E-MODES ***
     ppt2->has_source_E = _TRUE_;
     ppt2->has_cmb = _TRUE_;
  
-    /* Find the number of sources to keep for the line of sight integration */
+    /* Number of sources to keep for the line of sight integration */
     ppt2->n_sources_E = size_l_indexm (ppr2->l_max_los_p, ppt2->m, ppt2->m_size);
-
     ppt2->index_tp2_E = index_type;
     index_type += ppt2->n_sources_E;
+
+    /* Compute the number of non-vanishing E sources for debug purposes */
+    ppt2->n_nonzero_sources_E = ppt2->n_sources_E;
+    if (ppr2->compute_m[0])
+      ppt2->n_nonzero_sources_E -= 2;
+    if (ppr2->compute_m[1])
+      ppt2->n_nonzero_sources_E -= 1;
 
     /* Increment the number of CMB fields to consider */
     strcpy (ppt2->pf_labels[index_pf], "e");
     ppt2->field_parity[index_pf] = _EVEN_;
     ppt2->index_pf_e = index_pf++;
+    
+    /* Free streaming mixes the two types of polarisation (see eq. 5.101 and 5.102
+    of http://arxiv.org/abs/1405.2280) in the line of sight integral. This means that
+    to compute the E-mode transfer functions in the transfer2.c module, we will need
+    the B-mode polarisation sources as well. The exception is when only scalar modes
+    are requested, in which case there is no B-mode polarisation. */
+    if (ppr2->m_max_2nd_order!=0) { /* if at least a m!=0 mode is requested */
+
+      ppt2->has_source_B = _TRUE_;
+
+      /* Number of sources to keep for the line of sight integration */
+      ppt2->n_sources_B = size_l_indexm (ppr2->l_max_los_p, ppt2->m, ppt2->m_size);
+      ppt2->index_tp2_B = index_type;
+      index_type += ppt2->n_sources_B;
+
+      /* Compute the number of non-vanishing B sources for debug purposes */
+      ppt2->n_nonzero_sources_B = ppt2->n_sources_B;
+      if (ppr2->compute_m[0])
+        ppt2->n_nonzero_sources_B -= ppr2->l_max_los_p;
+      if (ppr2->compute_m[1])
+        ppt2->n_nonzero_sources_B -= 1;
+
+      /* Increment the number of CMB fields to consider */
+      strcpy (ppt2->pf_labels[index_pf], "b");
+      ppt2->field_parity[index_pf] = _ODD_;
+      ppt2->index_pf_b = index_pf++;
+      
+    } // end of if non-scalar modes
+  } // end of if polarisation
 
 
-    // *** B-MODES ***
-    ppt2->has_source_B = _TRUE_;
-    ppt2->has_cmb = _TRUE_;
- 
-    /* Find the number of sources to keep for the line of sight integration */
-    ppt2->n_sources_B = size_l_indexm (ppr2->l_max_los_p, ppt2->m, ppt2->m_size);
-
-    ppt2->index_tp2_B = index_type;
-    index_type += ppt2->n_sources_B;
-
-    /* Increment the number of CMB fields to consider */
-    strcpy (ppt2->pf_labels[index_pf], "b");
-    ppt2->field_parity[index_pf] = _ODD_;
-    ppt2->index_pf_b = index_pf++;
-
-  }
+  // -------------------------------------------------------------------------
+  // -                              Sum up sources                           -
+  // -------------------------------------------------------------------------
 
   /* Set the size of the sources to be stored */
   ppt2->tp2_size = index_type;
@@ -792,22 +820,22 @@ int perturb2_indices_of_perturbs(
    ppt2->error_message);
   
   if (ppt2->perturbations2_verbose > 1) {
-    printf ("     * will compute tp2_size=%d source terms ( ", ppt2->tp2_size);
+    printf ("     * will compute tp2_size=%d source terms: ", ppt2->tp2_size);
     if (ppt2->has_cmb_temperature == _TRUE_)
       printf ("T=%d ", ppt2->n_sources_T);
-    if ((ppt2->has_cmb_polarization_e == _TRUE_) || (ppt2->has_cmb_polarization_b == _TRUE_)) {
-      printf ("E=%d ", ppt2->n_sources_E);
-      printf ("B=%d ", ppt2->n_sources_B);
+    if (ppt2->has_source_E == _TRUE_) {
+      printf ("E=%d (%d non-zero) ", ppt2->n_sources_E, ppt2->n_nonzero_sources_E);
     }
-    printf (")\n");
+    if (ppt2->has_source_B == _TRUE_) {
+      printf ("B=%d (%d non-zero) ", ppt2->n_sources_B, ppt2->n_nonzero_sources_B);
+    }
+    printf ("\n");
   }  
-  
   
   /* Allocate memory for the labels of the source types */
   class_alloc (ppt2->tp2_labels, ppt2->tp2_size*sizeof(char *), ppt2->error_message);
   for (index_type=0; index_type<ppt2->tp2_size; ++index_type)
     class_alloc (ppt2->tp2_labels[index_type], 64*sizeof(char), ppt2->error_message);
-
 
   /* Allocate the first level of the ppt2->sources array */
   class_alloc (ppt2->sources, ppt2->tp2_size * sizeof(double ***), ppt2->error_message);
@@ -1009,9 +1037,9 @@ int perturb2_get_lm_lists (
   ppt2->largest_l_quad = MAX (ppt2->largest_l_quad, ppt2->largest_l + ppt2->lm_extra);
 
 
-  // ---------------------------------------------------------------------------------------
-  // -                          Fill the lm_array for ppt2->sources                        -
-  // ---------------------------------------------------------------------------------------
+  // ------------------------------------------------------------------------------------
+  // -                                   lm_array                                       -
+  // ------------------------------------------------------------------------------------
    
   /* ppt2->lm_array is used to index the relativistic (l,m) hierarchies. For example,
   y[index_monopole_g + lm_array[l][index_m]]
@@ -1030,7 +1058,8 @@ int perturb2_get_lm_lists (
     on m in this module will cycle in this way. */
     for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
 
-      ppt2->lm_array[l][index_m] = multipole2offset_l_indexm (l, ppt2->m[index_m], ppt2->m, ppt2->m_size);
+      ppt2->lm_array[l][index_m] =
+        multipole2offset_l_indexm (l, ppt2->m[index_m], ppt2->m, ppt2->m_size);
 
       /* Debug lm_array */
       // printf ("(l,m) = (%d,%d) corresponds to an offset of %d\n",
@@ -1041,9 +1070,9 @@ int perturb2_get_lm_lists (
   } // end of for (l)
 
 
-  // --------------------------------------------------------------------------------------
-  // -                         Fill the nlm_array for ppt2->sources                       -
-  // --------------------------------------------------------------------------------------
+  // ------------------------------------------------------------------------------------
+  // -                                  nlm_array                                       -
+  // ------------------------------------------------------------------------------------
   
   /* ppt2->nlm_array is used to index the massive (n,l,m) hierarchies. For example,
   y[index_monopole_cdm + lm_array[l][index_m]]
@@ -1084,9 +1113,9 @@ int perturb2_get_lm_lists (
     }
   }
 
-  // ---------------------------------------------------------------------------------------------
-  // -                       Fill the lm_array_quad for the rotation cofficients                 -
-  // ---------------------------------------------------------------------------------------------
+  // ------------------------------------------------------------------------------------
+  // -                                    lm_array_quad                                 -
+  // ------------------------------------------------------------------------------------
   
   /* Fill ppt2->lm_array_quad', used to index the (l,m) rotated multipoles that will be stored in
   ppw2->rotation_1 and ppw2->rotation_2.  Contrary to ppt2->lm_array, this array contains multipoles 
@@ -1108,9 +1137,9 @@ int perturb2_get_lm_lists (
   }
 
 
-  // ---------------------------------------------------------------------------------------------
-  // -                        Correspondence between type index and multipole                    -
-  // ---------------------------------------------------------------------------------------------
+  // ------------------------------------------------------------------------------------
+  // -                          type-multipole correspondence                           -
+  // ------------------------------------------------------------------------------------
   
   /* In the perturbation2 module a source type (index_tp2) encloses both the
   multipole (l,m) and the source type (temperature, polarization, etc). The lm_arrays we
@@ -1135,7 +1164,8 @@ int perturb2_get_lm_lists (
     int index_m = -1;
     int l_max = -1;
 
-    // *** Photon temperature ***
+    /* - Photon temperature */
+
     if ((ppt2->has_source_T==_TRUE_)
     && (index_tp >= ppt2->index_tp2_T) && (index_tp < ppt2->index_tp2_T+ppt2->n_sources_T)) {
 
@@ -1157,7 +1187,9 @@ int perturb2_get_lm_lists (
       //   ppt2->tp2_labels[index_tp], ppt2->index_monopole[index_tp]);
 
     }
-    // *** Photon E-mode polarization ***
+
+    /* Photon E-mode polarization */
+
     else if ((ppt2->has_source_E==_TRUE_)
     && (index_tp >= ppt2->index_tp2_E) && (index_tp < ppt2->index_tp2_E+ppt2->n_sources_E)) {
 
@@ -1176,7 +1208,9 @@ int perturb2_get_lm_lists (
       //   ppt2->tp2_labels[index_tp], ppt2->index_monopole[index_tp]);
 
     }
-    // *** Photon B-mode polarization ***
+
+    /* Photon B-mode polarization */
+
     else if ((ppt2->has_source_B==_TRUE_)
     && (index_tp >= ppt2->index_tp2_B) && (index_tp < ppt2->index_tp2_B+ppt2->n_sources_B)) {
 
@@ -9540,7 +9574,6 @@ int perturb2_sources (
     } // end for (l)
   } // end of E-mode sources
 
-  
   
   
   // -------------------------------------------------------------------------------

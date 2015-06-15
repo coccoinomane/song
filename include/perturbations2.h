@@ -282,19 +282,24 @@ struct perturbs2
 	short use_test_source;
 
   /* Indices running on types (temperature, polarization, lensing, ...) */
-  int index_tp2_T;                    /* Index value for photon temperature */
-  int index_tp2_E;                    /* Index value for photon E-polarization */
-  int index_tp2_B;                    /* Index value for photon B-polarization */
-  int index_tp2_g;                    /* Index value for gravitational potential */
-  int n_sources_T;                    /* Number of sources to be computed for photon temperature */
-  int n_sources_E;                    /* Number of sources to be computed for photon E-polarization */
-  int n_sources_B;                    /* Number of sources to be computed for photon B-polarization */
-  int tp2_size;                       /* Number of source types that we need to compute */
+  int index_tp2_T;                    /**< Index value for photon temperature */
+  int index_tp2_E;                    /**< Index value for photon E-polarization */
+  int index_tp2_B;                    /**< Index value for photon B-polarization */
+  int index_tp2_g;                    /**< Index value for gravitational potential */
+  int n_sources_T;                    /**< Number of sources to be computed for photon temperature */
+  int n_sources_E;                    /**< Number of sources to be computed for photon E-polarization */
+  int n_sources_B;                    /**< Number of sources to be computed for photon B-polarization */
+  int tp2_size;                       /**< Number of source types that we need to compute */
 
-  /* Array of strings that contain the labels of the various source types
-  For example,  tp2_labels[index_tp2_phi] is equal to "phi" */
+  /**< Array of strings that contain the labels of the various source types
+  For example, tp2_labels[index_tp2_phi] is equal to the string "phi" */
   char ** tp2_labels;
 
+  int n_nonzero_sources_E;   /**< Number of nonzero sources to be computed for photon E-polarization; this is basically
+                                  ppt2->n_sources_E minus the l=0 and l=1 modes */
+  int n_nonzero_sources_B;   /**< Number of nonzero sources to be computed for photon B-polarization; this is basically
+                                  ppt2->n_sources_B minus the l=0, l=1 and m=0 modes */
+  
   // ===============================================================================
   // =                                  CMB fields                                 =
   // =============================================================================== 

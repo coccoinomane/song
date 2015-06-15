@@ -464,9 +464,9 @@ int transfer2_init(
                           pbs2,
                           ptr2,
                           index_tp,
-                          interpolated_sources_in_k[index_tp],                      /* Must be already filled */
-                          ppw[thread]->sources_time_spline[index_tp],               /* Will be filled with second-order derivatives */
-                          ppw[thread]->interpolated_sources_in_time[index_tp],      /* Will be filled with interpolated values in pw->tau_grid */
+                          interpolated_sources_in_k[index_tp],                 /* Must be already filled */
+                          ppw[thread]->sources_time_spline[index_tp],          /* Will be filled with second-order derivatives */
+                          ppw[thread]->interpolated_sources_in_time[index_tp], /* Will be filled with interpolated values in pw->tau_grid */
                           ppw[thread]
                           ),
               ptr2->error_message,
@@ -876,6 +876,20 @@ int transfer2_indices_of_transfers(
   polarisation...). This is given by all the possible (l,m) combinations contained in ptr2->l
   and ppr2->m */
   ptr2->n_transfers = size_indexl_indexm (ptr2->l, ptr2->l_size_max, ppr2->m, ppr2->m_size);
+  
+  /* Number of non-vanishing E-mode transfer functions, for debug purposes */
+  ptr2->n_nonzero_transfers_E = ptr2->n_transfers;
+  if (ppr2->compute_m[0])
+    ptr2->n_nonzero_transfers_E -= 2;
+  if (ppr2->compute_m[1])
+    ptr2->n_nonzero_transfers_E -= 1;
+
+  /* Number of non-vanishing B-mode transfer functions, for debug purposes */
+  ptr2->n_nonzero_transfers_B = ptr2->n_transfers;
+  if (ppr2->compute_m[0])
+    ptr2->n_nonzero_transfers_B -= ptr2->l_size_max;
+  if (ppr2->compute_m[1])
+    ptr2->n_nonzero_transfers_B -= 1;
 
 
   /* Photon temperature transfer functions */
@@ -892,11 +906,14 @@ int transfer2_indices_of_transfers(
     index_tt += ptr2->n_transfers;    
   }
 
-  /* Photon B-mode polarisation transfer functions */
+  /* Photon B-mode polarisation transfer functions. To be computed
+  only for non scalar modes, otherwise they just vanish. */
   if (ppt2->has_cmb_polarization_b == _TRUE_) {
   
-    ptr2->index_tt2_B = index_tt;
-    index_tt += ptr2->n_transfers;
+    if (ppr2->m_max_2nd_order>0) {
+      ptr2->index_tt2_B = index_tt;
+      index_tt += ptr2->n_transfers;
+    }
         
   }
 
@@ -910,11 +927,13 @@ int transfer2_indices_of_transfers(
 
 
   if (ptr2->transfer2_verbose > 1) {
-    printf (" -> will compute tt2_size=%d transfer functions ( ", ptr2->tt2_size);
+    printf (" -> will compute tt2_size=%d transfer functions: ", ptr2->tt2_size);
     if (ppt2->has_cmb_temperature == _TRUE_) printf ("T=%d ", ptr2->n_transfers);
-    if (ppt2->has_cmb_polarization_e == _TRUE_) printf ("E=%d ", ptr2->n_transfers);
-    if (ppt2->has_cmb_polarization_b == _TRUE_) printf ("B=%d ", ptr2->n_transfers);
-    printf (")\n");
+    if (ppt2->has_cmb_polarization_e == _TRUE_) printf ("E=%d (%d non-zero) ",
+      ptr2->n_transfers, ptr2->n_nonzero_transfers_E);
+    if (ppt2->has_cmb_polarization_b == _TRUE_) printf ("B=%d (%d non-zero) ",
+      ptr2->n_transfers, ptr2->n_nonzero_transfers_B);
+    printf ("\n");
   }  
 
   
@@ -1823,7 +1842,6 @@ int transfer2_compute (
         )
 {
     
-
   /* Compute the transfer function for this set of parameters (l,m,k1,k2,k) and the type
   of transfer function given by index_tt2 */
   int transfer_type = ptr2->index_tt2_monopole[index_tt];
@@ -1831,7 +1849,7 @@ int transfer2_compute (
   /* Print some info */
   if (ptr2->transfer2_verbose > 4)
     printf("     * computing transfer function for (l,m) = (%d,%d)\n", ptr2->l[index_l], ptr2->m[index_m]);
-        
+
 
 
   // =====================================================================================
@@ -1901,26 +1919,31 @@ int transfer2_compute (
       ptr2->error_message,
       ptr2->error_message);
 
-    /* Mixing contribution (B -> E) */
-    class_call (transfer2_integrate(
-                  ppr,
-                  ppr2,
-                  ppt2,
-                  pbs,
-                  pbs2,
-                  ptr2,
-                  index_k1,
-                  index_k2,
-                  index_k,
-                  index_l,
-                  index_m,
-                  pw->interpolated_sources_in_time,
-                  pbs2->index_J_EB,   /* EB mixing projection function */
-                  ppt2->index_tp2_B,  /* B-mode source function */
-                  pw,
-                  &(mixing_contribution)),
-      ptr2->error_message,
-      ptr2->error_message);
+    /* Mixing contribution (B -> E), only for non-scalar modes */
+
+    if (ptr2->m[index_m] != 0) {
+
+      class_call (transfer2_integrate(
+                    ppr,
+                    ppr2,
+                    ppt2,
+                    pbs,
+                    pbs2,
+                    ptr2,
+                    index_k1,
+                    index_k2,
+                    index_k,
+                    index_l,
+                    index_m,
+                    pw->interpolated_sources_in_time,
+                    pbs2->index_J_EB,   /* EB mixing projection function */
+                    ppt2->index_tp2_B,  /* B-mode source function */
+                    pw,
+                    &(mixing_contribution)),
+        ptr2->error_message,
+        ptr2->error_message);
+      
+      }
       
       /* The integral is given by the sum of the E->E and B->E contributions. */
       pw->transfer = direct_contribution + mixing_contribution;
@@ -1933,65 +1956,82 @@ int transfer2_compute (
   // =                     B-mode polarisation transfer function                         =
   // =====================================================================================
   
-  else if ((ppt2->has_cmb_polarization_b==_TRUE_) && (transfer_type==ptr2->index_tt2_B)) {
+  /* We consider the B-modes only for non-scalar modes. Even if didn't do so, both the 
+  direct and mixed contributions would vanish. The direct contribution vanishes because
+  it involves the B-mode sources at m=0, which vanish. The mixed contribution vanishes
+  because the projection function vanishes for m=0 (see odd function in eq. 5.104 of
+  http://arxiv.org/abs/1405.2280) */
 
-    /* Number of multipole sources to consider */
-    pw->L_max = ppr2->l_max_los_p;
-
-    /* E-modes and B-modes mix while they propagate. There are two contributions: a
-    direct one B->B and a mixing one E->B */
-    double direct_contribution=0, mixing_contribution=0;
+  if ((ppt2->has_cmb_polarization_b==_TRUE_) && (transfer_type==ptr2->index_tt2_B)) {
   
-    /* Direct contribution (B -> B). The projection function for this contribution (J_BB)
-    is equal to the one for E->E (J_EE). */
-    class_call (transfer2_integrate(
-                  ppr,
-                  ppr2,
-                  ppt2,
-                  pbs,
-                  pbs2,
-                  ptr2,
-                  index_k1,
-                  index_k2,
-                  index_k,
-                  index_l,
-                  index_m,
-                  pw->interpolated_sources_in_time,
-                  pbs2->index_J_EE,   /* E-mode projection function (equal to B's) */
-                  ppt2->index_tp2_B,  /* B-mode source function */
-                  pw,
-                  &(direct_contribution)),
-      ptr2->error_message,
-      ptr2->error_message);
+    if (ptr2->m[index_m] == 0) {
+    
+      pw->transfer = 0;
+    
+    }
+  
+    else {
 
-    /* Mixing contribution (E->B). The projection function for this contribution (J_BE)
-    is equal to minues the one for B->E (-J_EB). */
-    class_call (transfer2_integrate(
-                  ppr,
-                  ppr2,
-                  ppt2,
-                  pbs,
-                  pbs2,
-                  ptr2,
-                  index_k1,
-                  index_k2,
-                  index_k,
-                  index_l,
-                  index_m,
-                  pw->interpolated_sources_in_time,
-                  pbs2->index_J_EB,   /* EB mixing projection function (equal to minus BE) */
-                  ppt2->index_tp2_E,  /* E-mode source function */
-                  pw,
-                  &(mixing_contribution)),
-      ptr2->error_message,
-      ptr2->error_message);
+      /* Number of multipole sources to consider */
+      pw->L_max = ppr2->l_max_los_p;
+
+      /* E-modes and B-modes mix while they propagate. There are two contributions: a
+      direct one B->B and a mixing one E->B */
+      double direct_contribution=0, mixing_contribution=0;
+  
+      /* Direct contribution (B -> B). The projection function for this contribution (J_BB)
+      is equal to the one for E->E (J_EE). */
+      class_call (transfer2_integrate(
+                    ppr,
+                    ppr2,
+                    ppt2,
+                    pbs,
+                    pbs2,
+                    ptr2,
+                    index_k1,
+                    index_k2,
+                    index_k,
+                    index_l,
+                    index_m,
+                    pw->interpolated_sources_in_time,
+                    pbs2->index_J_EE,   /* E-mode projection function (equal to B's) */
+                    ppt2->index_tp2_B,  /* B-mode source function, vanishes for m=0 */
+                    pw,
+                    &(direct_contribution)),
+        ptr2->error_message,
+        ptr2->error_message);
+
+      /* Mixing contribution (E->B). The projection function for this contribution (J_BE)
+      is equal to minues the one for B->E (-J_EB). */
+      class_call (transfer2_integrate(
+                    ppr,
+                    ppr2,
+                    ppt2,
+                    pbs,
+                    pbs2,
+                    ptr2,
+                    index_k1,
+                    index_k2,
+                    index_k,
+                    index_l,
+                    index_m,
+                    pw->interpolated_sources_in_time,
+                    pbs2->index_J_EB,   /* EB mixing projection function (equal to minus BE),
+                                           vanishes for m=0 (see eq. 5.104 of http://arxiv.org/abs/1405.2280)*/
+                    ppt2->index_tp2_E,  /* E-mode source function */
+                    pw,
+                    &(mixing_contribution)),
+        ptr2->error_message,
+        ptr2->error_message);
       
-      /* The integral is given by the sum of the B->B and E->B contributions.
-      IMPORTANT: the mixing projection function J_BE is given by -J_EB. This follows from 
-      the properties of the H matrix in appendix B of http://arxiv.org/abs/1102.1524. Hence,
-      here we multiply the mixing contribution by a minus sign. */
-      pw->transfer = direct_contribution - mixing_contribution;
+        /* The integral is given by the sum of the B->B and E->B contributions.
+        IMPORTANT: the mixing projection function J_BE is given by -J_EB. This follows from 
+        the properties of the H matrix in appendix B of http://arxiv.org/abs/1102.1524. Hence,
+        here we multiply the mixing contribution by a minus sign. */
+        pw->transfer = direct_contribution - mixing_contribution;
       
+    } // end of if m!=0
+    
   } // end of B-modes
 
 
@@ -2074,7 +2114,6 @@ int transfer2_integrate (
       double * integral
       )
 {
-
 
   /* Shortcuts */
   int l = ptr2->l[index_l];
@@ -2653,7 +2692,6 @@ int transfer2_interpolate_sources_in_time (
   int tau_size_tr = pw->tau_grid_size;
   double * tau_tr = pw->tau_grid;
   
-  
   /* Find second derivative of original sources with respect to k in view of spline interpolation */
   if (ppr2->sources_time_interpolation == cubic_interpolation) {
 
@@ -2693,12 +2731,14 @@ int transfer2_interpolate_sources_in_time (
     if (ppr2->sources_time_interpolation == linear_interpolation) {
 
       interpolated_sources_in_time[index_tau_tr] = 
-        a * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau] + b * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau+1];
+        a * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau]
+        + b * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau+1];
     }
     else if (ppr2->sources_time_interpolation == cubic_interpolation) {
 
       interpolated_sources_in_time[index_tau_tr] = 
-        a * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau] + b * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau+1]
+        a * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau]
+        + b * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau+1]
         + ((a*a*a-a) * sources_time_spline[index_tau]
         +(b*b*b-b) * sources_time_spline[index_tau+1])*h*h/6.0;
     }
