@@ -9296,7 +9296,7 @@ int perturb2_sources (
 
           /* Quadratic metric contribution from the Liouville operator. The monopole
           contribution exists only if using the standard linear potentials (cfr 4.97 and 4.100
-          of my thesis) */
+          of http://arxiv.org/abs/1405.2280) */
           if ((ppt2->has_quad_metric_in_los == _TRUE_)
           && (ppt2->use_exponential_potentials == _FALSE_))
             source += 8 * (phi_1*phi_prime_2 + phi_2*phi_prime_1);

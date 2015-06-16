@@ -1,9 +1,11 @@
-/** @file common2.h Generic libraries, parameters and functions used in SONG. */
+/** @file common2.h
+ * Include file that defines the precision structure and generic macros
+ * used in SONG.
+ */
 
 #include "common.h"
-#include "song_tools.h"      /* A bunch of functions needed by SONG */
+#include "song_tools.h"
 #include "slatec_3j_C.h"
-
 
 #ifndef __COMMON2__
 #define __COMMON2__
@@ -17,12 +19,10 @@ needed in bispectra2.c */
 
 
 /**
- * All precision parameters for the second-order part of SONG.
- *  
+ * All precision parameters for the second-order part of SONG. 
  */
 struct precision2
 {
-  
 
   /* Tolerance for the integration of the 2nd-order system.  This parameter goes
   directly into the evolver as the parameter 'rtol' */

@@ -287,20 +287,10 @@ int input2_init (
 
   class_read_double("recombination_max_to_end_ratio", ppt2->recombination_max_to_end_ratio);
 
-  class_call(parser_read_string(pfc,"custom_time_sampling_for_2nd_order_sources",
-      &(string1),&(flag1),errmsg), errmsg, errmsg); /* obsolete */
-  class_call(parser_read_string(pfc,"custom_time_sampling_song_sources",
-      &(string2),&(flag2),errmsg), errmsg, errmsg); 
-   
-  /* string2 wins over string1 */
-  flag = _TRUE_;
-  if (flag2 == _TRUE_)
-    strcpy (string, string2);
-  else if (flag1 == _TRUE_)
-    strcpy (string, string1);
-  else
-    flag = _FALSE_;
-   
+
+  class_read_string_one_of_two(pfc,
+    "custom_time_sampling_for_2nd_order_sources",
+    "custom_time_sampling_song_sources");   
   if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
     ppt2->has_custom_timesampling = _TRUE_;
 
@@ -315,22 +305,10 @@ int input2_init (
   class_read_int("custom_tau_size_2nd_order_sources", ppt2->custom_tau_size); /* obsolete */
   class_read_int("custom_tau_size_song_sources", ppt2->custom_tau_size);
 
-  class_call(parser_read_string(pfc,"custom_tau_mode_2nd_order_sources",&string1,&flag1,errmsg),
-       errmsg,
-       errmsg); /* obsolete */
-  class_call(parser_read_string(pfc,"custom_tau_mode_song_sources",&string2,&flag2,errmsg),
-       errmsg,
-       errmsg); 
-
-  /* string2 wins over string1 */
-  flag = _TRUE_;
-  if (flag2 == _TRUE_)
-    strcpy (string, string2);
-  else if (flag1 == _TRUE_)
-    strcpy (string, string1);
-  else
-    flag = _FALSE_;
-
+  class_read_string_one_of_two(pfc,
+    "custom_tau_mode_2nd_order_sources",
+    "custom_tau_mode_song_sources");
+    
   if (flag == _TRUE_) {
 
     if (((strstr(string,"lin") != NULL) || (strstr(string,"LIN") != NULL)))
@@ -537,69 +515,77 @@ int input2_init (
   // =                           Perturbations, LOS sources                        =
   // ===============================================================================
 
-  class_call(parser_read_string(pfc,"include_pure_scattering_in_los_2nd_order",
-    &(string1),&(flag1),errmsg),errmsg,errmsg);
-  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+  class_read_string_one_of_two(pfc,
+    "include_pure_scattering_in_los_2nd_order",
+    "include_pure_scattering_song");
+  if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
     ppt2->has_pure_scattering_in_los = _TRUE_;
 
-  class_call(parser_read_string(pfc,"include_photon_monopole_in_los_2nd_order",
-    &(string1),&(flag1),errmsg),errmsg,errmsg);
-  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+  class_read_string_one_of_two(pfc,
+    "include_photon_monopole_in_los_2nd_order",
+    "include_photon_monopole_song");
+  if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
     ppt2->has_photon_monopole_in_los = _TRUE_;
   
-  class_call(parser_read_string(pfc,"include_quad_scattering_in_los_2nd_order",
-    &(string1),&(flag1),errmsg),errmsg,errmsg);
-  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+  class_read_string_one_of_two(pfc,
+    "include_quad_scattering_in_los_2nd_order",
+    "include_quad_scattering_song");
+  if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
     ppt2->has_quad_scattering_in_los = _TRUE_;
 
-  /* Set metric sources (non existent for polarisation) */
-  if (ppt2->has_cmb_temperature == _TRUE_) {
+  class_read_string_one_of_two(pfc,
+    "include_metric_in_los_2nd_order",
+    "include_metric_song");
+  if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
+    ppt2->has_metric_in_los = _TRUE_;
 
-    class_call(parser_read_string(pfc,"include_metric_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
-    if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-      ppt2->has_metric_in_los = _TRUE_;
+  class_read_string_one_of_two(pfc,
+    "include_quad_metric_in_los_2nd_order",
+    "include_quad_metric_song");
+  if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
+    ppt2->has_quad_metric_in_los = _TRUE_;
 
-    class_call(parser_read_string(pfc,"include_quad_metric_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
-    if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-      ppt2->has_quad_metric_in_los = _TRUE_;
-  }
-
-  class_call(parser_read_string(pfc,"include_time_delay_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
-  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+  class_read_string_one_of_two(pfc,
+    "include_time_delay_in_los_2nd_order",
+    "include_time_delay_song");
+  if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
     ppt2->has_time_delay_in_los = _TRUE_;
 
-  class_call(parser_read_string(pfc,"include_redshift_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
-  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+  class_read_string_one_of_two(pfc,
+    "include_redshift_in_los_2nd_order",
+    "include_redshift_song");
+  if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
     ppt2->has_redshift_in_los = _TRUE_;
 
-  class_call(parser_read_string(pfc,"include_lensing_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
-  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+  class_read_string_one_of_two(pfc,
+    "include_lensing_in_los_2nd_order",
+    "include_lensing_song");
+  if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
     ppt2->has_lensing_in_los = _TRUE_;
+
+  class_read_string_one_of_two(pfc,
+    "include_sachs_wolfe_in_los_2nd_order",
+    "include_sachs_wolfe_song");
+    if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
+      ppt2->has_sw = _TRUE_;
+
+  class_read_string_one_of_two(pfc,
+    "include_integrated_sachs_wolfe_in_los_2nd_order",
+    "include_integrated_sachs_wolfe_song");
+    if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
+      ppt2->has_isw = _TRUE_;
+
+  /* Avoid counting twice the same metric effects */
+  if ((ppt2->has_sw == _TRUE_) || (ppt2->has_isw == _TRUE_))
+    ppt2->has_metric_in_los = _FALSE_;
 
   class_call(parser_read_string(pfc,"use_delta_tilde_in_los",&(string1),&(flag1),errmsg),errmsg,errmsg);
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
     ppt2->use_delta_tilde_in_los = _TRUE_;
 
-  /* Set SW and ISW metric sources (non existent for polarisation) */
-  if (ppt2->has_cmb_temperature == _TRUE_) {
-
-    class_call(parser_read_string(pfc,"include_sachs_wolfe_in_los_2nd_order",
-      &(string1),&(flag1),errmsg),errmsg,errmsg);
-    if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-      ppt2->has_sw = _TRUE_;
-
-    class_call(parser_read_string(pfc,"include_integrated_sachs_wolfe_in_los_2nd_order",
-      &(string1),&(flag1),errmsg),errmsg,errmsg);
-    if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-      ppt2->has_isw = _TRUE_;
-
-    /* Avoid counting twice the same metric effect */
-    if ((ppt2->has_sw == _TRUE_) || (ppt2->has_isw == _TRUE_))
-      ppt2->has_metric_in_los = _FALSE_;
-  }
-
   /* Should we define the SW and ISW effects as in Huang and Vernizzi 2013, i.e. using
-  the exponential form of the potentials in the metric? */
+  the exponential form of the potentials in the metric? This is required to match the
+  analytical approximation for the squeezed bispectrum. */
   class_call(parser_read_string(pfc,"use_exponential_potentials",&(string1),&(flag1),errmsg),errmsg,errmsg);
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
     ppt2->use_exponential_potentials = _TRUE_;

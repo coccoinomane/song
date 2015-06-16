@@ -6,7 +6,7 @@
 # =========================================================================
 
 # Your C compiler and library tool
-CC			 = gcc 
+CC			 = gcc
 AR       = ar rv
 
 # Optimization flags

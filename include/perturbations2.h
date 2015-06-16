@@ -245,7 +245,10 @@ struct perturbs2
   by parts of the purely second-order redshift term. */
   short has_sw;                     /**< Shall we include the g*psi Sachs-Wolfe term in the LOS sources? */
   short has_isw;                    /**< Shall we include the e^-kappa*( phi'+psi') ISW term in the LOS sources? */
-  short use_exponential_potentials; /**< Use exponential potentials in constructing the line of sight sources? (see eq. 3.21 of my thesis) */
+  short use_exponential_potentials; /**< Use exponential potentials in constructing the line of sight sources?
+                                         See eq. 3.21 of http://arxiv.org/abs/1405.2280 for the definition of the exponential
+                                         potentials. Set this flag to true if you need to match the analytical approximation
+                                         for the squeezed bispectrum.*/
   short only_early_isw;             /**< Include only the early ISW, no late ISW */
 
 

@@ -33,19 +33,13 @@ int main(int argc, char **argv) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
     return _FAILURE_;
   }
-
-  // if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&tr,&bs,&bs2,&tr2,&pm,
-  //   &sp,&nl,&le,&bi,&fi,&op,errmsg) == _FAILURE_) {
-  //   printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg);
-  //   return _FAILURE_;
-  // }
-
-  if (input2_init(pr.parameter_files_content,&pr,&pr2,&ba,&th,&pt,&pt2,&tr,&bs,&bs2,&tr2,&pm,
-  &sp,&nl,&le,&bi,&fi,&op,errmsg) == _FAILURE_) {
+  
+  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&tr,&bs,&bs2,&tr2,&pm,
+    &sp,&nl,&le,&bi,&fi,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg);
     return _FAILURE_;
   }
-  
+
   printf("~~~~~ Value of my parameters: ~~~~~\n");
 
   /* Flags */
@@ -106,13 +100,14 @@ int main(int argc, char **argv) {
   // printf("\tpt2.has_photon_monopole_in_los = %d\n", pt2.has_photon_monopole_in_los);
   // printf("\tpt2.has_quad_scattering_in_los = %d\n", pt2.has_quad_scattering_in_los);
   // printf("\tpt2.has_metric_in_los = %d*\n", pt2.has_metric_in_los);
-  // printf("\tpt2.has_quad_metric_in_los = %d*\n", pt2.has_quad_metric_in_los);
+  // printf("\tpt2.has_quad_metric_in_los = %d\n", pt2.has_quad_metric_in_los);
   // printf("\tpt2.has_time_delay_in_los = %d\n", pt2.has_time_delay_in_los);
   // printf("\tpt2.has_redshift_in_los = %d\n", pt2.has_redshift_in_los);
   // printf("\tpt2.has_lensing_in_los = %d\n", pt2.has_lensing_in_los);
   // printf("\tpt2.use_delta_tilde_in_los = %d\n", pt2.use_delta_tilde_in_los);
   // printf("\tpt2.has_sw = %d*\n", pt2.has_sw);
-  // printf("\tpt2.has_isw = %d*\n", pt2.has_isw);  
+  // printf("\tpt2.has_isw = %d*\n", pt2.has_isw);
+  // printf("\tpt2.only_early_isw = %d\n", pt2.only_early_isw);
   // printf("\tpt2.has_recombination_only = %d\n", pt2.has_recombination_only);
 
   /* Time sampling for quadratic sources */
