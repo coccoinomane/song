@@ -1,79 +1,110 @@
 #ifndef __PERTURBATIONS2__
 #define __PERTURBATIONS2__
 
+#include "perturbations2_macros.h"
 #include "perturbations.h"
 #include "common2.h"
 
 
 // ======================================================================================
-// =                                   Approximations                                   =
+// =                                  Enum structures                                   =
 // ======================================================================================
 
 /**
- * Labels that denote the different ways in which each approximation scheme is implemented
- * at second order.
+ * Implementations of the tight coupling approximation.
  */
- 
-
-/* Tight coupling approximation */
 enum tca2_method {
-  tca2_none,                        /* No TCA approximation */
-  tca2_zero                         /* Zero-order TCA approximation */
+  tca2_none,           /**< No TCA approximation */
+  tca2_zero            /**< Zero-order TCA approximation (NOT IMPLEMENTED YET) */
 };
 
-/* Radiation streaming approximation, i.e. sub-horizon solution for monopole and dipole */
+/**
+ * Implementations of the radiation streaming approximation. RSA provides a 
+ * way to track the oscillations of the photon monopole and dipole at
+ * subhorizon scales, all the way to today.
+ */
 enum rsa2_method {
-  rsa2_none,                        /* No RSA approximation */
-  rsa2_null                         /* Just set all photon multipoles to zero */
+  rsa2_none,          /**< No RSA approximation */
 };
 
-/* Ultra relativistic fluid approximation, i.e. RSA for neutrinos */
+/**
+ * Implementations of the ultra relativistic fluid approximation. RSA allows
+ * to track the oscillations of the neutrino monopole and dipole at
+ * subhorizon scales.
+ */
 enum ufa2_method {
-  ufa2_none,                         /* No UFA approximation */
-  ufa2_null                          /* Just set all UR multipoles to zero */
+  ufa2_none            /**< No UFA approximation */
 };
 
-
-/* No radiation approximation, i.e. stop evolving radiation well after equality */
+/**
+ * No radiation approximation. This is a blunt approximation where, well after
+ * matter radiation equality, we either stop evolving massless species or we
+ * approximate them with a perfect fluid.
+ */
 enum nra2_method {
-  nra2_none,                        /* No NRA approximation */
-  nra2_all,                         /* Switch off all multipoles for all relativistic species */
-  nra2_fluid                        /* Switch off l>1 multipoles for all relativistic species */
+  nra2_none,            /**< No NRA approximation */
+  nra2_all,             /**< Switch off all multipoles for all relativistic species */
+  nra2_fluid            /**< Switch off l>1 multipoles for all relativistic species */
 };
 
-/* No radiation approximation flags */
-enum nra_flags {nra_off, nra_on};
+/**
+ * On and off flags for the NRA (no radiation approximation)
+ */
+enum nra_flags {
+  nra_off,
+  nra_on
+};
 
 
-/* Which Einstein equation to use for the derivative of the Newtonian potential phi? */
+/**
+ * Which Einstein equation to use for the derivative of the Newtonian potential phi?
+ */
 enum phi_prime_equation {
-  poisson,
-  longitudinal
+  poisson,      /**< Use Poisson equation (eq 5.2 of http://arxiv.org/abs/1405.2280) */
+  longitudinal  /**< Use the longitudinal equation (eq 3.98 of http://arxiv.org/abs/1405.2280) */
 };
 
-
-/* Possible sampling methods for the ppt2->k array */
+/**
+ * Possible sampling methods for the ppt2->k array
+ */
 enum sources2_k_sampling {
-  lin_k_sampling,                  /* Linear k sampling */
-  log_k_sampling,                  /* Logarithmic k sampling */
-  class_sources_k_sampling,        /* k sampling adopted in perturb_get_k_list */
-  smart_sources_k_sampling         /* smart k-sampling, logarithmic + linear */
+  lin_k_sampling,                  /**< Linear k sampling */
+  log_k_sampling,                  /**< Logarithmic k sampling */
+  class_sources_k_sampling,        /**< k sampling adopted in perturb_get_k_list */
+  smart_sources_k_sampling         /**< smart k-sampling, logarithmic + linear */
 };
 
 
-/* Possible sampling methods for the ppt2->k3[index_k1][index_k2] array */
+/**
+ * Possible sampling methods for the ppt2->k3[index_k1][index_k2] array
+ */
 enum sources2_k3_sampling {
-  lin_k3_sampling,                  /* Linear k sampling */
-  log_k3_sampling,                  /* Logarithmic k sampling */
-  smart_k3_sampling,                /* k sampling adopted in perturb_get_k3_list */
-  theta12_k3_sampling,              /* Sampling linear in the angle between k1 and k2 */
-  theta13_k3_sampling               /* Sampling linear in the angle between k1 and k3 */
+  lin_k3_sampling,                  /**< Linear k sampling */
+  log_k3_sampling,                  /**< Logarithmic k sampling */
+  smart_k3_sampling,                /**< k sampling adopted in perturb_get_k3_list */
+  theta12_k3_sampling,              /**< Sampling linear in the angle between k1 and k2 */
+  theta13_k3_sampling               /**< Sampling linear in the angle between k1 and k3 */
 };
+
+
+// ---------------------------------------------------------------------------------
+// -                             Precision parameters                              -
+// ---------------------------------------------------------------------------------
+
+/* The differential system at second-order has to be solved for a set of three wavemodes
+(k1,k2,k3) whereby k3 has to be in the range |k1-k2|<=k3<=k1+k1. When k3 is too close
+to the boundaries, numerical instabilities might arise such as nan's or larger than one
+sines and cosines. In order to avoid that, we define here a safety distance between
+k3 and the bounds. This safety distance is going to correspond to the largest scale
+probed by SONG. Using k_min_tau0=1e-3, that corresponds to k_min=1e-8,
+it seems that setting _MIN_K3_DISTANCE_=1e-10 is ok. */
+#define _MIN_K3_DISTANCE_ 1e-10
+#define _MIN_K3_RATIO_ 100
+
 
 
 struct perturbs2
 {
-
 
   // ====================================================================================
   // =                                    Output flags                                  =
@@ -112,7 +143,7 @@ struct perturbs2
 
   /* Index pointing to the first-order initial conditions needed to solve the second order system. For the
   time being it is set to adiabatic initial conditions only. */
-  int index_ic;
+  int index_ic_first_order;
 
 
 
@@ -120,28 +151,26 @@ struct perturbs2
   // =                                Differential system                                  =
   // =======================================================================================
   
+  /* Option flags for the differential system (initialized in the input module) */
+  short has_polarization2;                  /**< Shall we evolve the photon polarization hierarchy at second-order? */  
+  short has_quadratic_sources;              /**< Shall we include the quadratic sources in the 2nd-order system at all? */  
+  short has_quadratic_liouville;            /**< Shall we include the quadratic sources in the Liouville operator? */      
+  short has_quadratic_collision;            /**< Shall we include the quadratic sources in the photon-baryon collision term? */      
+  short has_perfect_baryons;                /**< Shall we treat baryons as a pressureless perfect fluid? */
+  short has_perfect_cdm;                    /**< Shall we treat cold dark matter as a pressureless perfect fluid? */
 
-  // *** Option flags for the differential system (initialized in the input module)
-  short has_polarization2;                  /* Shall we evolve the photon polarization hierarchy at second-order? */  
-  short has_quadratic_sources;              /* Shall we include the quadratic sources in the 2nd-order system at all? */  
-  short has_quadratic_liouville;            /* Shall we include the quadratic sources in the Liouville operator? */      
-  short has_quadratic_collision;            /* Shall we include the quadratic sources in the photon-baryon collision term? */      
-  short has_perfect_baryons;                /* Shall we treat baryons as a pressureless perfect fluid? */
-  short has_perfect_cdm;                    /* Shall we treat cold dark matter as a pressureless perfect fluid? */
+  short has_perturbed_recombination_stz;    /**< Shall we use the perturbed fraction of free electrons? */
+  int perturbed_recombination_use_approx;   /**< Shall we use the approximation in eq. 3.23 of Senatore et al. 2009? */
 
-  short has_perturbed_recombination;        /* Shall we use the perturbed fraction of free electrions? */
-  int perturbed_recombination_use_approx;   /* Shall we use the approximation in eq. 3.23 of Senatore et al. 2009? */
-
-
-  /* Is it ok to evolve the system only up to recombination time?  This is _TRUE_ only if both
-  'has_lensing_in_los' and 'has_metric_in_los' are _FALSE_, i.e. if the only contribution to the
-  line-of-sight integral comes from visibility function terms.  */
+  /**< If true, all of the requested line-of-sight sources are located at recombination or
+  earlier, so that we can avoid computing them all the way to today. This is a major speed-up
+  that affects also the line-of-sight integration in the transfer2.c module */
   int has_recombination_only;
 
-  /* Variable that controls whether to use the longitudinal or Poisson equation to compute
-  the derivative of the curvature potential (phi_prime) in Newtonian gauge. */
+  /**< Which equation should we use to evolve the curvature potential phi in Newtonian gauge?
+  Current options are poisson for the time-time Einstein equation and longitudinal for the
+  time-space Einstein equation */
   enum phi_prime_equation phi_prime_eq;
-
 
   /* In order to compute the bispectrum integral, it is useful to rescale the line of sight sources
   by a 1/sin(theta_1)^m factor, where theta_1 is the angle between \vec{k1} and \vec{k3}. This
@@ -214,10 +243,13 @@ struct perturbs2
 
   /* Sachs-Wolfe (SW) and integrated Sachs-Wolfe (ISW) sources. These sources arise from the integration
   by parts of the purely second-order redshift term. */
-  short has_sw;                     /* Shall we include the g*psi Sachs-Wolfe term in the LOS sources? */
-  short has_isw;                    /* Shall we include the e^-kappa*( phi'+psi') ISW term in the LOS sources? */
-  short use_exponential_potentials; /* Use exponential potentials in constructing the line of sight sources? (see eq. 3.21 of my thesis) */
-  short only_early_isw;             /* Include only the early ISW, no late ISW */
+  short has_sw;                     /**< Shall we include the g*psi Sachs-Wolfe term in the LOS sources? */
+  short has_isw;                    /**< Shall we include the e^-kappa*( phi'+psi') ISW term in the LOS sources? */
+  short use_exponential_potentials; /**< Use exponential potentials in constructing the line of sight sources?
+                                         See eq. 3.21 of http://arxiv.org/abs/1405.2280 for the definition of the exponential
+                                         potentials. Set this flag to true if you need to match the analytical approximation
+                                         for the squeezed bispectrum.*/
+  short only_early_isw;             /**< Include only the early ISW, no late ISW */
 
 
   /* ~~~~~~~~~~~~~       INTEGRATION BY PARTS        ~~~~~~~~~~~~~~~~
@@ -251,19 +283,24 @@ struct perturbs2
 	short use_test_source;
 
   /* Indices running on types (temperature, polarization, lensing, ...) */
-  int index_tp2_T;                    /* Index value for photon temperature */
-  int index_tp2_E;                    /* Index value for photon E-polarization */
-  int index_tp2_B;                    /* Index value for photon B-polarization */
-  int index_tp2_g;                    /* Index value for gravitational potential */
-  int n_sources_T;                    /* Number of sources to be computed for photon temperature */
-  int n_sources_E;                    /* Number of sources to be computed for photon E-polarization */
-  int n_sources_B;                    /* Number of sources to be computed for photon B-polarization */
-  int tp2_size;                       /* Number of source types that we need to compute */
+  int index_tp2_T;                    /**< Index value for photon temperature */
+  int index_tp2_E;                    /**< Index value for photon E-polarization */
+  int index_tp2_B;                    /**< Index value for photon B-polarization */
+  int index_tp2_g;                    /**< Index value for gravitational potential */
+  int n_sources_T;                    /**< Number of sources to be computed for photon temperature */
+  int n_sources_E;                    /**< Number of sources to be computed for photon E-polarization */
+  int n_sources_B;                    /**< Number of sources to be computed for photon B-polarization */
+  int tp2_size;                       /**< Number of source types that we need to compute */
 
-  /* Array of strings that contain the labels of the various source types
-  For example,  tp2_labels[index_tp2_phi] is equal to "phi" */
+  /**< Array of strings that contain the labels of the various source types
+  For example, tp2_labels[index_tp2_phi] is equal to the string "phi" */
   char ** tp2_labels;
 
+  int n_nonzero_sources_E;   /**< Number of nonzero sources to be computed for photon E-polarization; this is basically
+                                  ppt2->n_sources_E minus the l=0 and l=1 modes */
+  int n_nonzero_sources_B;   /**< Number of nonzero sources to be computed for photon B-polarization; this is basically
+                                  ppt2->n_sources_B minus the l=0, l=1 and m=0 modes */
+  
   // ===============================================================================
   // =                                  CMB fields                                 =
   // =============================================================================== 
@@ -402,16 +439,21 @@ struct perturbs2
   // =                                 Time sampling                                   =
   // ===================================================================================
 
+  double * tau_sampling; /**< array with the time values where the line-of-sight sources will
+                              be computed */
+  int tau_size; /**< number of entries in tau_sampling */
 
-  /* Vector that contains the time values where the line-of-sight sources will be computed */
-  double * tau_sampling;
-  int tau_size;
+  int index_tau_end_of_recombination; /**< index in tau_sampling that marks the end of
+                                        recombination */
 
   /* Time at which the second-order system will start being evolved */
   double tau_start_evolution;
 
-  /* When does recombination ends? Used to define the last time where we sample the sources (but only
-    when the user didn't ask for metric or lensing terms in the line-of-sight sources) */
+  /* Value of g/g(tau_rec) when to stop sampling the line of sight sources, where g is the
+  visibility function. For example, if set to 100, then the last conformal time where
+  we will sample the sources will satisfy g(tau)/g(tau_rec)=100. This parameter is overridden
+  when the user asks for ISW or other late-time effects, because in that case the sampling
+  goes all the way to today */
   double recombination_max_to_end_ratio;
 
   /* Should we compute the 2nd-order sources at the times specified by the user? */
@@ -480,54 +522,39 @@ struct perturbs2
   // =                                 Debug parameters                                 =
   // ====================================================================================
 
+  ErrorMsg error_message; /**< String where to write error messages */
+  short perturbations2_verbose; /**< Flag regulating the amount of information sent to standard output (none if set to zero) */
 
-  /* String where to write error messages */
-  ErrorMsg error_message;
-
-  /* Flag regulating the amount of information sent to standard output (none if set to zero) */
-  short perturbations2_verbose;
-
-  /* Count the number of values in ppt2->sources as we fill the array */
-  long int count_allocated_sources;
-  long int count_memorised_sources;
+  long int count_allocated_sources;   /**< Number of allocated entries in ppt2->sources */
+  long int count_memorised_sources;   /**< Number of used entries of ppt2->sources */
   
-  /* Count number of k-modes for which we shall solve the differential system */
-  long int count_k_configurations;
+  long int count_k_configurations;   /**< Number of k-modes for which we shall solve the differential system */
 
-  /* Parameters related to the creation of debug files */
-  short has_debug_files;                         /* Shall we dump to file the intermediate results such as evolved transfer functions and quadratic sources? */
-
-  char transfers_filename[_FILENAMESIZE_];       /* File that will contain the early transfer functions for the different species */
-  char quadsources_filename[_FILENAMESIZE_];     /* File that will contain the quadratic sources for the different species */
-  char quadliouville_filename[_FILENAMESIZE_];   /* File that will contain the quadratic sources of the Liouville perator for the different species */
-  char quadcollision_filename[_FILENAMESIZE_];   /* File that will contain the quadratic sources of the collision term for the different species */
-
-  FILE * transfers_file;                        
-  FILE * quadsources_file;                       
-  FILE * quadliouville_file;                     
-  FILE * quadcollision_file;                     
-
-  int index_k1_debug;                /* Which k1 value should we dump to file? */
-  int index_k2_debug;                /* Which k2 value should we dump to file? */
-  int index_k3_debug;                /* Which k3 value should we dump to file? */
-  int l_max_debug;                   /* For any hierarchy, how many 'l' values should we dump to file? */
+  short has_early_transfers1_only; /**< If _TRUE_, SONG will compute only the first-order early transfer functions and
+                                        do not care about the other flags. Useful for debugging. */
+  short has_early_transfers2_only; /**< If _TRUE_, SONG will compute only the second-order early transfer functions and
+                                        do not care about the other flags. Useful for debugging. */
 
 
-  /* If _TRUE_, compute only the first-order and second-order early transfer functions, respectively, and
-  do not care about the other flags. Useful for debugging. */
-  short has_early_transfers1_only;
-  short has_early_transfers2_only;
+  /* - Parameters related to the creation of debug files */
+  short has_debug_files;        /**< Shall we dump to file the intermediate results such as evolved transfer functions and quadratic sources? */
 
+  char transfers_filename[_FILENAMESIZE_];       /**< Path to the file that will contain the early transfer functions for the different species */
+  char quadsources_filename[_FILENAMESIZE_];     /**< Path to the file that will contain the quadratic sources for the different species */
+  char quadliouville_filename[_FILENAMESIZE_];   /**< Path to the file that will contain the quadratic sources of the Liouville perator for the different species */
+  char quadcollision_filename[_FILENAMESIZE_];   /**< Path to the file that will contain the quadratic sources of the collision term for the different species */
 
+  FILE * transfers_file;         /**< File that will contain the early transfer functions for the different species */
+  FILE * quadsources_file;       /**< File that will contain the quadratic sources for the different species */ 
+  FILE * quadliouville_file;     /**< File that will contain the quadratic sources of the Liouville perator for the different species */ 
+  FILE * quadcollision_file;     /**< File that will contain the quadratic sources of the collision term for the different species */ 
 
-
-
+  int index_k1_debug;      /**< Which k1 value should we dump to file? */
+  int index_k2_debug;      /**< Which k2 value should we dump to file? */
+  int index_k3_debug;      /**< Which k3 value should we dump to file? */
+  int l_max_debug;         /**< For any hierarchy, how many 'l' values should we dump to file? */
 
 };
-
-
-
-
 
 
 
@@ -791,22 +818,25 @@ struct perturb2_workspace
 
   // **********************         Debug parameters         *************************
 
-  /* Counter that keeps track of how many times the function perturb2_derivs has been called
-    for the considered set of k1,k2,k3. */
-  int derivs_count;
+  int derivs_count;   /**< Counter to keep track of how many times the function perturb2_derivs has been called
+                           for the considered set of (k1,k2,k3). */
+
+  /** Function used to output intermediate values from the differential system.  This
+  function will be given as an argument to 'generic_evolver' and is  used only for debug
+  purposes.  By default it is set to NULL, which means that it is never called.  It is
+  called only if ppt2->has_debug_files==_TRUE_ and if the evolved wavemode corresponds
+  to the one requested through ppt2->index_k1_debug, ppt2->index_k2_debug and
+  ppt2->index_k3_debug. This function will be called for each time step in the
+  differential system. */
+  int (*print_function)(double x, double y[], double dy[], void *parameters_and_workspace, ErrorMsg error_message);
   
-  /* Function used to output intermediate values from the differential system.  This
-   function will be given as an argument to 'generic_evolver' and is  used only for debug
-   purposes.  By default it is set to NULL, which means that it is never called.  It is
-   called only if ppt2->has_debug_files==_TRUE_ and if the evolved wavemode corresponds
-   to the one requested through ppt2->index_k1_debug, ppt2->index_k2_debug and
-   ppt2->index_k3_debug. */
-  int (*print_function)(double x, double y[], double dy[], int index_x, void *parameters_and_workspace, ErrorMsg error_message);
-  
-  /* String that contains information on the wavemode that is being currently integrated.
-   such information is printed to the debug files if ppt2->perturbations2_verbose is high
-   enough */
+  /** String that contains information on the wavemode that is being currently integrated.
+  such information is printed to the debug files if ppt2->perturbations2_verbose is high
+  enough */
   char info [4096];
+
+  long int n_steps;   /**< Number of steps taken by the differential system so far for the active (k1,k2,k3) mode.
+                           Computed only if has_debug_files==_TRUE_ */
 
 };
 
@@ -969,7 +999,15 @@ struct perturb2_parameters_and_workspace {
            struct perturbs * ppt,
            struct perturbs2 * ppt2
            );
-           
+
+    int perturb2_end_of_recombination (
+          struct precision * ppr,
+          struct precision2 * ppr2,
+          struct background * pba,
+          struct thermo * pth,
+          struct perturbs * ppt,
+          struct perturbs2 * ppt2
+          );
     
     int perturb2_get_lm_lists(
          struct precision * ppr,
@@ -1149,28 +1187,18 @@ struct perturb2_parameters_and_workspace {
            double * psi_prime,
            struct perturb2_workspace * ppw2);
 
-    int perturb2_source_terms(
-           double tau,
-           double * y,
-           double * dy,
-           int index_tau,
-           void * parameters_and_workspace,
-           ErrorMsg error_message
-           );
-
     int perturb2_sources(
-      struct precision * ppr,
-      struct precision2 * ppr2,
-      struct background * pba,
-      struct perturbs * ppt,
-      struct perturbs2 * ppt2,
-      struct perturb2_workspace * ppw2
-      );
+          double tau,
+          double * y,
+          double * dy,
+          int index_tau,
+          void * parameters_and_workspace,
+          ErrorMsg error_message
+          );
 
     int perturb2_save_early_transfers(double tau,
               double * y,
               double * dy,
-              int index_tau,              
               void * parameters_and_workspace,
               ErrorMsg error_message
               );
@@ -1182,41 +1210,39 @@ struct perturb2_parameters_and_workspace {
         void * parameters_and_workspace,
         ErrorMsg error_message
         );
-
-
   
-  int what_if_ndf15_fails(int (*derivs)(double x, 
+    int what_if_ndf15_fails(int (*derivs)(double x, 
+              double * y, 
+              double * dy, 
+              void * parameters_and_workspace,
+              ErrorMsg error_message),
+            double x_ini,
+            double x_end,
             double * y, 
-            double * dy, 
-            void * parameters_and_workspace,
-            ErrorMsg error_message),
-          double x_ini,
-          double x_end,
-          double * y, 
-          int * used_in_output,
-          int y_size,
-          void * parameters_and_workspace_for_derivs,
-          double tolerance, 
-          double minimum_variation,
-          int (*evaluate_timescale)(double x, 
-            void * parameters_and_workspace,
-            double * timescale,
-            ErrorMsg error_message),
-          double timestep_over_timescale,
-          double * x_sampling,
-          int x_size,
-          int (*output)(double x,
-            double y[],
-            double dy[],
-            int index_x,
-            void * parameters_and_workspace,
-            ErrorMsg error_message),
-          int (*print_variables)(double x,
-               double y[], 
-               double dy[],
-               void * parameters_and_workspace,
-               ErrorMsg error_message),
-          ErrorMsg error_message);
+            int * used_in_output,
+            int y_size,
+            void * parameters_and_workspace_for_derivs,
+            double tolerance, 
+            double minimum_variation,
+            int (*evaluate_timescale)(double x, 
+              void * parameters_and_workspace,
+              double * timescale,
+              ErrorMsg error_message),
+            double timestep_over_timescale,
+            double * x_sampling,
+            int x_size,
+            int (*output)(double x,
+              double y[],
+              double dy[],
+              int index_x,
+              void * parameters_and_workspace,
+              ErrorMsg error_message),
+            int (*print_variables)(double x,
+                 double y[], 
+                 double dy[],
+                 void * parameters_and_workspace,
+                 ErrorMsg error_message),
+            ErrorMsg error_message);
 
     int perturb2_derivs(
            double tau,
@@ -1266,7 +1292,7 @@ struct perturb2_parameters_and_workspace {
             struct perturb2_workspace * ppw2
             );
 
-    int perturb2_quadratic_sources_at_tau_cubic_spline(
+    int perturb2_quadratic_sources_at_tau_spline(
             struct perturbs * ppt,
             struct perturbs2 * ppt2,
             double tau,

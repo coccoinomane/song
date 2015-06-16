@@ -1,6 +1,9 @@
-/** @file input2.c Documented input module for SONG.
+/** @file input2.c
  *
- * Guido W. Pettinari, 13.03.2013
+ * Input module for SONG.
+ *
+ * Created by Guido W. Pettinari on 13.03.2013
+ * Based on input.c by the CLASS team (http://class-code.net/)
  */
 
 #include "input2.h" 
@@ -20,23 +23,23 @@ int input2_init_from_arguments(
             struct thermo *pth,
             struct perturbs *ppt,
             struct perturbs2 *ppt2,
+            struct transfers *ptr,
             struct bessels * pbs,
             struct bessels2 * pbs2,
-            struct transfers *ptr,
             struct transfers2 *ptr2,
             struct primordial *ppm,
             struct spectra *psp,
-            struct bispectra *pbi,
-            struct fisher *pfi,
             struct nonlinear *pnl,
             struct lensing *ple,
+            struct bispectra *pbi,
+            struct fisher *pfi,
             struct output *pop,
             ErrorMsg errmsg
             )
 {
 
-
   /* Define local variables */
+
   struct file_content fc;
   struct file_content fc_input;
   struct file_content fc_precision;
@@ -45,12 +48,20 @@ int input2_init_from_arguments(
   char precision_file[_ARGUMENT_LENGTH_MAX_];
 
 
+  /* Initialize the file_content structures */
+  fc.size = 0;
+  fc_input.size = 0;
+  fc_precision.size = 0;
+  input_file[0]='\0';
+  precision_file[0]='\0';
+
+
   /* We parsed the names of the parameter files in input.c */
+
   strcpy (input_file, ppr->ini_filename);
   strcpy (precision_file, ppr->pre_filename);
-
-
   
+
   /* If there is an 'xxx.ini' file, read it and store its content. */
 
   if (input_file[0] != '\0')
@@ -69,11 +80,6 @@ int input2_init_from_arguments(
          errmsg);
 
 
-
-
-
-
-
   /* If one or two files were read, merge their contents in a single 'file_content' structure. */
 
   if ((input_file[0]!='\0') || (precision_file[0]!='\0'))
@@ -85,26 +91,29 @@ int input2_init_from_arguments(
   class_call(parser_free(&fc_input),errmsg,errmsg);
   class_call(parser_free(&fc_precision),errmsg,errmsg);
   
+
   /* Now, initialize all parameters given the input 'file_content' structure.  If its size
   is null, all parameters take their default values. */
 
-  class_call (input2_init(&fc,
+  class_call (input2_init(
+                &fc,
+                // ppr->input_file_content, /* TODO: why is this not working? */
                 ppr,
                 ppr2,
                 pba,
                 pth,
                 ppt,
                 ppt2,
+                ptr,
                 pbs,
                 pbs2,
-                ptr,
                 ptr2,
                 ppm,
                 psp,
-                pbi,
-                pfi,
                 pnl,
                 ple,
+                pbi,
+                pfi,
                 pop,
     errmsg),
     errmsg,
@@ -133,34 +142,36 @@ int input2_init (
          struct thermo *pth,
          struct perturbs *ppt,
          struct perturbs2 *ppt2,         
+         struct transfers *ptr,
          struct bessels * pbs,
          struct bessels2 * pbs2,
-         struct transfers *ptr,
          struct transfers2 *ptr2,
          struct primordial *ppm,
          struct spectra *psp,
-         struct bispectra *pbi,
-         struct fisher *pfi,
          struct nonlinear * pnl,
          struct lensing *ple,
+         struct bispectra *pbi,
+         struct fisher *pfi,
          struct output *pop,
          ErrorMsg errmsg
          )
 {
-          
+
+  printf("Running SONG version %s\n", _SONG_VERSION_);
+
   /** Summary: */
 
   /** - define local variables */
 
-  int flag1,flag2,flag3;
+  int flag1,flag2,flag3,flag;
   int int1;
   double param1,param2,param3;
   int entries_read;
-  int * int_pointer;
+  int * int_pointer, * int_pointer1, * int_pointer2;
   int * pointer_to_int;
   char string1[_ARGUMENT_LENGTH_MAX_];
   char string2[_ARGUMENT_LENGTH_MAX_];
-
+  char string[_ARGUMENT_LENGTH_MAX_];
   int i;
 
 
@@ -171,16 +182,16 @@ int input2_init (
                pth,
                ppt,
                ppt2,
+               ptr,
                pbs,
                pbs2,
-               ptr,
                ptr2,
                ppm,
                psp,
-               pbi,
-               pfi,
                pnl,
                ple,
+               pbi,
+               pfi,
                pop),
     errmsg,
     errmsg);
@@ -200,39 +211,38 @@ int input2_init (
 
   if (flag1 == _TRUE_) {
 
-    if ((strstr(string1,"tBisp") != NULL) || (strstr(string1,"tBispectrum") != NULL) || (strstr(string1,"tB") != NULL)) {
+    if ((strstr(string1,"tBisp") != NULL) || (strstr(string1,"TBISP") != NULL)) {
       ppt2->has_cmb_temperature = _TRUE_;  
     }
     
-    if (((strstr(string1,"pBisp") != NULL) || (strstr(string1,"pBispectrum") != NULL) || (strstr(string1,"PBISP") != NULL))
-       ||(strstr(string1,"eBisp") != NULL) || (strstr(string1,"eBispectrum") != NULL) || (strstr(string1,"EBISP") != NULL)) {
-      ppt->has_cl_cmb_temperature = _TRUE_; /* The intensity C_l's are needed for the delta_tilde transformation */
-      ppt2->has_cmb_polarization_e = _TRUE_;  
+    if (((strstr(string1,"pBisp") != NULL) || (strstr(string1,"PBISP") != NULL)) /* obsolete */
+       ||(strstr(string1,"eBisp") != NULL) || (strstr(string1,"EBISP") != NULL)) {
+      ppt->has_cl_cmb_temperature = _TRUE_;
+      ppt2->has_cmb_polarization_e = _TRUE_;
     }
 
-    if ((strstr(string1,"bBisp") != NULL) || (strstr(string1,"bBispectrum") != NULL) || (strstr(string1,"bBisp") != NULL)) {
+    if ((strstr(string1,"bBisp") != NULL) || (strstr(string1,"BBISP") != NULL)) {
       ppt->has_cl_cmb_temperature = _TRUE_;
       ppt2->has_cmb_polarization_b = _TRUE_;
     }
 
-    if ((strstr(string1,"rBisp") != NULL) || (strstr(string1,"rBispectrum") != NULL) || (strstr(string1,"rB") != NULL)) {
-      /* Second order Rayleigh is not supported (and not needed because we only compute <T^(2)R^(1)R^(1)>) */
+    if ((strstr(string1,"tCl2") != NULL) || (strstr(string1,"TCL2") != NULL)) {
+      ppt->has_cl_cmb_temperature = _TRUE_;
+      ppt2->has_cls = _TRUE_;
+      ppt2->has_perturbations2 = _TRUE_;
     }
-    
-    /* Compute only first-order transfer functions */
-    if (strstr(string1,"early_transfers1") != NULL) {
-      ppt2->has_early_transfers1_only = _TRUE_;
-      ppt2->has_perturbations2 = _TRUE_;    
-    }    
 
-    /* Compute only second-order early transfer functions */
-    if (strstr(string1,"early_transfers2") != NULL) {
+    if ((strstr(string1,"early_transfers1") != NULL) || (strstr(string1,"ET1") != NULL)) {
+      ppt2->has_early_transfers1_only = _TRUE_;
+      ppt2->has_perturbations2 = _TRUE_;
+    }
+
+    if ((strstr(string1,"early_transfers2") != NULL) || (strstr(string1,"ET2") != NULL)) {
       ppt2->has_early_transfers2_only = _TRUE_;
       ppt2->has_perturbations2 = _TRUE_;      
       ppt2->has_cls = _FALSE_;
     }
     else {
-      /* Compute only second-order transfer functions today */
       if (strstr(string1,"transfers2") != NULL) {
         ptr2->has_transfers2_only = _TRUE_;
         ppt2->has_perturbations2 = _TRUE_;
@@ -272,67 +282,69 @@ int input2_init (
   // =                           Perturbations, time sampling                           =
   // ====================================================================================
 
-
-  class_read_double("tau_start_evolution_2nd_order", ppt2->tau_start_evolution);
+  class_read_double("tau_start_evolution_2nd_order", ppt2->tau_start_evolution); /* obsolete */
+  class_read_double("tau_start_evolution_song", ppt2->tau_start_evolution);
 
   class_read_double("recombination_max_to_end_ratio", ppt2->recombination_max_to_end_ratio);
 
 
-  /* Do we need a custom time-sampling? */
-  class_call(parser_read_string(pfc,"custom_time_sampling_for_2nd_order_sources",&(string1),&(flag1),errmsg),
-      errmsg,
-      errmsg);
-   
-  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+  class_read_string_one_of_two(pfc,
+    "custom_time_sampling_for_2nd_order_sources",
+    "custom_time_sampling_song_sources");   
+  if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
     ppt2->has_custom_timesampling = _TRUE_;
 
-
-  class_read_double("custom_tau_ini_2nd_order_sources", ppt2->custom_tau_ini);
+  class_read_double("custom_tau_ini_2nd_order_sources", ppt2->custom_tau_ini); /* obsolete */
+  class_read_double("custom_tau_ini_song_sources", ppt2->custom_tau_ini);
 
   class_test (ppt2->custom_tau_ini<=0, errmsg, "please choose 'tau_ini' greater than zero.");
   
-  class_read_double("custom_tau_end_2nd_order_sources", ppt2->custom_tau_end);  
+  class_read_double("custom_tau_end_2nd_order_sources", ppt2->custom_tau_end); /* obsolete */
+  class_read_double("custom_tau_end_song_sources", ppt2->custom_tau_end);  
   
-  class_read_int("custom_tau_size_2nd_order_sources", ppt2->custom_tau_size);
+  class_read_int("custom_tau_size_2nd_order_sources", ppt2->custom_tau_size); /* obsolete */
+  class_read_int("custom_tau_size_song_sources", ppt2->custom_tau_size);
 
-  class_call(parser_read_string(pfc,"custom_tau_mode_2nd_order_sources",&string1,&flag1,errmsg),
-       errmsg,
-       errmsg); 
+  class_read_string_one_of_two(pfc,
+    "custom_tau_mode_2nd_order_sources",
+    "custom_tau_mode_song_sources");
+    
+  if (flag == _TRUE_) {
 
-  if (flag1 == _TRUE_) {
-
-    if (((strstr(string1,"lin") != NULL) || (strstr(string1,"LIN") != NULL)))
+    if (((strstr(string,"lin") != NULL) || (strstr(string,"LIN") != NULL)))
       ppt2->custom_tau_mode = lin_tau_sampling;
 
-    else if (((strstr(string1,"log") != NULL) || (strstr(string1,"LOG") != NULL)))
+    else if (((strstr(string,"log") != NULL) || (strstr(string,"LOG") != NULL)))
       ppt2->custom_tau_mode = log_tau_sampling;
-
-    else if (((strstr(string1,"class") != NULL) || (strstr(string1,"CLASS") != NULL)))
-      ppt2->custom_tau_mode = class_tau_sampling;
     
     else
       class_stop(errmsg,         
-        "You wrote: tau_mode_2nd_order_sources=%s. Could not identify any of the supported time samplings ('lin', 'log', 'class') in such input",
-        string1);
-
+        "tau_mode_2nd_order_sources=%s not supported. Choose between 'lin' and 'log'",
+        string);
   }
    
   /* Precision parameters for the time sampling */
-  class_read_double("perturb_sampling_stepsize_for_2nd_order", ppr2->perturb_sampling_stepsize_2nd_order);
-  class_read_double("start_small_k_at_tau_c_over_tau_h_2nd_order", ppr2->start_small_k_at_tau_c_over_tau_h_2nd_order);
-  class_read_double("start_large_k_at_tau_h_over_tau_k_2nd_order", ppr2->start_large_k_at_tau_h_over_tau_k_2nd_order);
-  
+  class_read_double("perturb_sampling_stepsize_for_2nd_order",
+    ppr2->perturb_sampling_stepsize_song); /* obsolete */
+  class_read_double("start_small_k_at_tau_c_over_tau_h_2nd_order",
+    ppr2->start_small_k_at_tau_c_over_tau_h_song); /* obsolete */
+  class_read_double("start_large_k_at_tau_h_over_tau_k_2nd_order",
+    ppr2->start_large_k_at_tau_h_over_tau_k_song); /* obsolete */
 
+  class_read_double("perturb_sampling_stepsize_song",
+    ppr2->perturb_sampling_stepsize_song);
+  class_read_double("start_small_k_at_tau_c_over_tau_h_song",
+    ppr2->start_small_k_at_tau_c_over_tau_h_song);
+  class_read_double("start_large_k_at_tau_h_over_tau_k_song",
+    ppr2->start_large_k_at_tau_h_over_tau_k_song);
+  
 
   // ===========================================================================
   // =                        Perturbations, k-sampling                        =
   // ===========================================================================
 
+  /* - k1 and k2 sampling of the sources */
 
-  // ******        Sources k1-k2 sampling       *******
-
-
-  /* Parse the method to use */
   class_call(parser_read_string(pfc,"sources2_k_sampling",&string1,&flag1,errmsg),
        errmsg,
        errmsg);
@@ -353,33 +365,44 @@ int input2_init (
       
     else
       class_stop(errmsg,
-        "Could not recognize the value given for the 'sources2_k_sampling' option. Choose between 'lin', 'log' or 'smart'.", "");
-
+        "sources2_k_sampling=%s not supported. Choose between 'lin', 'log', 'class' and 'smart'.",
+        string1);
   }
 
   /* Parameters for the smart k1-k2 sampling */
-  class_read_double("k_scalar_min_tau0_2nd_order",ppr2->k_scalar_min_tau0_2nd_order);
-  class_read_double("k_scalar_max_tau0_over_l_max_2nd_order",ppr2->k_scalar_max_tau0_over_l_max_2nd_order);
-  class_read_double("k_scalar_step_sub_2nd_order",ppr2->k_scalar_step_sub_2nd_order);
-  class_read_double("k_scalar_linstep_super_2nd_order",ppr2->k_scalar_linstep_super_2nd_order);
-  class_read_double("k_scalar_logstep_super_2nd_order",ppr2->k_scalar_logstep_super_2nd_order);
-  class_read_double("k_scalar_step_transition_2nd_order",ppr2->k_scalar_step_transition_2nd_order);
 
-  class_test (ppr2->k_scalar_logstep_super_2nd_order <= 1,
+  class_read_double("k_scalar_min_tau0_2nd_order",ppr2->k_min_tau0); /* obsolete */
+  class_read_double("k_scalar_max_tau0_over_l_max_2nd_order",ppr2->k_max_tau0_over_l_max); /* obsolete */
+  class_read_double("k_scalar_step_sub_2nd_order",ppr2->k_step_sub); /* obsolete */
+  class_read_double("k_scalar_linstep_super_2nd_order",ppr2->k_step_super); /* obsolete */
+  class_read_double("k_linstep_super_2nd_order",ppr2->k_step_super); /* obsolete */
+  class_read_double("k_scalar_logstep_super_2nd_order",ppr2->k_logstep_super); /* obsolete */
+  class_read_double("k_scalar_step_transition_2nd_order",ppr2->k_step_transition); /* obsolete */
+
+  class_read_double("k_min_tau0_song",ppr2->k_min_tau0);
+  class_read_double("k_max_tau0_over_l_max_song",ppr2->k_max_tau0_over_l_max);
+  class_read_double("k_step_sub_song",ppr2->k_step_sub);
+  class_read_double("k_step_super_song",ppr2->k_step_super);
+  class_read_double("k_logstep_super_song",ppr2->k_logstep_super);
+  class_read_double("k_step_transition_song",ppr2->k_step_transition);
+
+  class_test (ppr2->k_logstep_super <= 1,
     ppr2->error_message,
-    "a logarithmic step must be larger than 1");
+    "logarithmic step must be larger than 1");
     
-
   /* Parameters for the custom lin/log sampling */
-  class_read_double("k_min_scalars", ppr2->k_min_scalars);
-  class_read_double("k_max_scalars", ppr2->k_max_scalars);
-  class_read_int("k_size_scalars", ppr2->k_size_scalars);
+
+  class_read_double("k_min_scalars", ppr2->k_min_custom); /* obsolete */
+  class_read_double("k_max_scalars", ppr2->k_max_custom); /* obsolete */
+  class_read_int("k_size_scalars", ppr2->k_size_custom); /* obsolete */
+
+  class_read_double("k_min_custom_song", ppr2->k_min_custom);
+  class_read_double("k_max_custom_song", ppr2->k_max_custom);
+  class_read_int("k_size_custom_song", ppr2->k_size_custom);
 
 
+  /* - k3 sampling of the sources */
 
-  // ******        Sources k3 sampling       *******
-
-  /* Parse the method for the k3 sampling */
   class_call(parser_read_string(pfc,"sources2_k3_sampling",&string1,&flag1,errmsg),
        errmsg,
        errmsg);
@@ -403,8 +426,8 @@ int input2_init (
       
     else
       class_stop(errmsg,
-        "Could not recognize the value given for the 'sources2_k3_sampling' option. Choose between 'lin', 'log', 'smart', 'theta_12', 'theta_13'.", "");
-
+        "sources2_k3_sampling=%s not supported. Choose between 'lin', 'log', 'smart', 'theta_12', 'theta_13'",
+        string1);
   }
   
   /* Minimum number of grid points for any (k1,k2) pair, used when 'k3_sampling' is set to smart */
@@ -414,80 +437,58 @@ int input2_init (
   class_read_int("k3_size", ppr2->k3_size);
 
 
-
-
-
-
   // ====================================================================================
   // =                        Perturbations, differential system                        =
   // ====================================================================================
 
-  // *** Set ppt2->has_quadratic_sources
   class_call(parser_read_string(pfc,"quadratic_sources",&(string1),&(flag1),errmsg),errmsg,errmsg);
-            
   if ((flag1 == _TRUE_) && (strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL))
     ppt2->has_quadratic_sources = _FALSE_;
 
-
-  // *** Set ppt2->has_quadratic_liouville
   class_call(parser_read_string(pfc,"quadratic_liouville",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
   if ((flag1 == _TRUE_) && (strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL))
     ppt2->has_quadratic_liouville = _FALSE_;    
 
-
-  // *** Set ppt2->has_quadratic_collision
   class_call(parser_read_string(pfc,"quadratic_collision",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
   if ((flag1 == _TRUE_) && (strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL))
     ppt2->has_quadratic_collision = _FALSE_;    
 
-  /* Set quadliouville and quadcollision to _FALSE_ if the user asked for no quadratic sources */
   if (ppt2->has_quadratic_sources == _FALSE_) {
     ppt2->has_quadratic_liouville = _FALSE_;
     ppt2->has_quadratic_collision = _FALSE_;
   }
 
-  // *** Set ppt->polarization and ppt2->has_polarization2
   class_call(parser_read_string(pfc,"polarization_second_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
-     
-  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL))) {
-    ppt2->has_polarization2 = _TRUE_;
+  if ((flag1 == _TRUE_) && (strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL)) {
+    ppt2->has_polarization2 = _FALSE_;
   }
 
-  /* This fires up if the used did not specify a value for 'polarization_second_order', which by
-  default is true. */
   if (ppt2->has_polarization2 == _TRUE_)
     ppt->has_polarization2 = _TRUE_;
   
-
-  // *** Set ppt2->has_perfect_baryons
   class_call(parser_read_string(pfc,"perfect_baryons",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
   if ((flag1 == _TRUE_) && (strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL)) {
     ppt2->has_perfect_baryons = _FALSE_;
   }
 
-
-  // *** Set ppt2->has_perfect_cdm
   class_call(parser_read_string(pfc,"perfect_cdm",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
   if ((flag1 == _TRUE_) && (strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL)) {
     ppt2->has_perfect_cdm = _FALSE_;
   }
+
+  class_read_double("tol_perturb_integration_2nd_order",ppr2->tol_perturb_integration_song); /* obsolete */
+  class_read_double("tol_perturb_integration_song",ppr2->tol_perturb_integration_song);
+
 
   // ====================================================================================
   // =                      Perturbations, perturbed recombination                      =
   // ====================================================================================
 
-
-  // *** Set ppt->has_perturbed_recombination
-  class_call(parser_read_string(pfc,"perturbed_recombination",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
+  class_call(parser_read_string(pfc,"perturbed_recombination_song",&(string1),&(flag1),errmsg),errmsg,errmsg);
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL))) {
-    pth->has_perturbed_recombination = _TRUE_;
-    ppt->has_perturbed_recombination = _TRUE_;
-    ppt2->has_perturbed_recombination = _TRUE_;
+    pth->has_perturbed_recombination_stz = _TRUE_;
+    ppt->has_perturbed_recombination_stz = _TRUE_;
+    ppt2->has_perturbed_recombination_stz = _TRUE_;
     pth->compute_xe_derivatives = _TRUE_; /* Debug purposes */
   }
 
@@ -498,14 +499,15 @@ int input2_init (
   class_call(parser_read_string(pfc,"perturbed_recombination_use_approx",&(string1),&(flag1),errmsg),errmsg,errmsg);
 
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL))) {
+
     ppt2->perturbed_recombination_use_approx = _TRUE_;
     
     /* To use the analytical approximation, we only need the derivatives of the background ionization fraction X_e */
-    if (pth->has_perturbed_recombination == _TRUE_)
+    if (pth->has_perturbed_recombination_stz == _TRUE_)
       pth->compute_xe_derivatives = _TRUE_;
       
-    pth->has_perturbed_recombination = _FALSE_;
-    ppt->has_perturbed_recombination = _FALSE_;
+    pth->has_perturbed_recombination_stz = _FALSE_;
+    ppt->has_perturbed_recombination_stz = _FALSE_;
   }
   
 
@@ -513,115 +515,95 @@ int input2_init (
   // =                           Perturbations, LOS sources                        =
   // ===============================================================================
 
-
-  // *** Set ppt2->has_pure_scattering_in_los
-  class_call(parser_read_string(pfc,"include_pure_scattering_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
-  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+  class_read_string_one_of_two(pfc,
+    "include_pure_scattering_in_los_2nd_order",
+    "include_pure_scattering_song");
+  if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
     ppt2->has_pure_scattering_in_los = _TRUE_;
 
-  // *** Set ppt2->has_photon_monopole_in_los
-  class_call(parser_read_string(pfc,"include_photon_monopole_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
-  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+  class_read_string_one_of_two(pfc,
+    "include_photon_monopole_in_los_2nd_order",
+    "include_photon_monopole_song");
+  if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
     ppt2->has_photon_monopole_in_los = _TRUE_;
   
-  // *** Set ppt2->has_quad_scattering_in_los
-  class_call(parser_read_string(pfc,"include_quad_scattering_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
-  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+  class_read_string_one_of_two(pfc,
+    "include_quad_scattering_in_los_2nd_order",
+    "include_quad_scattering_song");
+  if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
     ppt2->has_quad_scattering_in_los = _TRUE_;
 
-  /* Metric sources exist only for temperature */
-  if (ppt2->has_cmb_temperature == _TRUE_) {
+  class_read_string_one_of_two(pfc,
+    "include_metric_in_los_2nd_order",
+    "include_metric_song");
+  if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
+    ppt2->has_metric_in_los = _TRUE_;
 
-    // *** Set ppt2->has_metric_in_los
-    class_call(parser_read_string(pfc,"include_metric_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
+  class_read_string_one_of_two(pfc,
+    "include_quad_metric_in_los_2nd_order",
+    "include_quad_metric_song");
+  if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
+    ppt2->has_quad_metric_in_los = _TRUE_;
 
-    if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-      ppt2->has_metric_in_los = _TRUE_;
-
-    // *** Set ppt2->has_quad_metric_in_los
-    class_call(parser_read_string(pfc,"include_quad_metric_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
-    if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-      ppt2->has_quad_metric_in_los = _TRUE_;
-  }
-
-  // *** Set ppt2->has_time_delay_in_los
-  class_call(parser_read_string(pfc,"include_time_delay_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
-  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+  class_read_string_one_of_two(pfc,
+    "include_time_delay_in_los_2nd_order",
+    "include_time_delay_song");
+  if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
     ppt2->has_time_delay_in_los = _TRUE_;
 
-  // *** Set ppt2->has_redshift_in_los
-  class_call(parser_read_string(pfc,"include_redshift_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
-  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+  class_read_string_one_of_two(pfc,
+    "include_redshift_in_los_2nd_order",
+    "include_redshift_song");
+  if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
     ppt2->has_redshift_in_los = _TRUE_;
 
-  // *** Set ppt2->has_lensing_in_los
-  class_call(parser_read_string(pfc,"include_lensing_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
-  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+  class_read_string_one_of_two(pfc,
+    "include_lensing_in_los_2nd_order",
+    "include_lensing_song");
+  if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
     ppt2->has_lensing_in_los = _TRUE_;
 
-  // *** Set ppt2->use_delta_tilde_in_los
-  class_call(parser_read_string(pfc,"use_delta_tilde_in_los",&(string1),&(flag1),errmsg),errmsg,errmsg);
+  class_read_string_one_of_two(pfc,
+    "include_sachs_wolfe_in_los_2nd_order",
+    "include_sachs_wolfe_song");
+    if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
+      ppt2->has_sw = _TRUE_;
 
+  class_read_string_one_of_two(pfc,
+    "include_integrated_sachs_wolfe_in_los_2nd_order",
+    "include_integrated_sachs_wolfe_song");
+    if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
+      ppt2->has_isw = _TRUE_;
+
+  /* Avoid counting twice the same metric effects */
+  if ((ppt2->has_sw == _TRUE_) || (ppt2->has_isw == _TRUE_))
+    ppt2->has_metric_in_los = _FALSE_;
+
+  class_call(parser_read_string(pfc,"use_delta_tilde_in_los",&(string1),&(flag1),errmsg),errmsg,errmsg);
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
     ppt2->use_delta_tilde_in_los = _TRUE_;
 
-  /* Metric sources exist only for temperature */
-  if (ppt2->has_cmb_temperature == _TRUE_) {
-
-    // *** Set ppt2->has_sw
-    class_call(parser_read_string(pfc,"include_sachs_wolfe_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
-    if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-      ppt2->has_sw = _TRUE_;
-
-    // *** Set ppt2->has_isw
-    class_call(parser_read_string(pfc,"include_integrated_sachs_wolfe_in_los_2nd_order",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
-    if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-      ppt2->has_isw = _TRUE_;
-
-    /* Avoid counting twice the same metric effect */
-    if ((ppt2->has_sw == _TRUE_) || (ppt2->has_isw == _TRUE_))
-      ppt2->has_metric_in_los = _FALSE_;
-  }
-
-  /* If effects that are not peaked at recombination are included, we need to extend the integration range up to today */
-  if ((ppt2->has_metric_in_los == _FALSE_) && (ppt2->has_isw == _FALSE_)
-      && (ppt2->has_quad_metric_in_los == _FALSE_) && (ppt2->has_time_delay_in_los == _FALSE_)
-      && (ppt2->has_redshift_in_los == _FALSE_) && (ppt2->has_lensing_in_los == _FALSE_))
-    ppt2->has_recombination_only = _TRUE_;
-
   /* Should we define the SW and ISW effects as in Huang and Vernizzi 2013, i.e. using
-  the exponential form of the potentials in the metric? */
+  the exponential form of the potentials in the metric? This is required to match the
+  analytical approximation for the squeezed bispectrum. */
   class_call(parser_read_string(pfc,"use_exponential_potentials",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
     ppt2->use_exponential_potentials = _TRUE_;
   
-  /* Should we include only the early ISW effect? */
+  /* Should we include only the early part of the ISW effect? */
   if (ppt2->has_isw == _TRUE_) {
-    
-    // *** Set ppt2->has_sw
     class_call(parser_read_string(pfc,"only_early_isw",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
-    if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL))) {
-
+    if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
       ppt2->only_early_isw = _TRUE_;
-
-      /* Unless other late time effects are included, stop integrating just after recombination */
-      if ((ppt2->has_metric_in_los == _FALSE_)
-          && (ppt2->has_quad_metric_in_los == _FALSE_) && (ppt2->has_time_delay_in_los == _FALSE_)
-          && (ppt2->has_redshift_in_los == _FALSE_) && (ppt2->has_lensing_in_los == _FALSE_))
-        ppt2->has_recombination_only = _TRUE_;
-    }
   }
+
+  /* If effects that are not peaked at recombination are included, extend the integration
+  range up to today */
+  if ((ppt2->has_metric_in_los == _FALSE_)
+   && ((ppt2->has_isw == _FALSE_) || (ppt2->only_early_isw == _TRUE_))
+   && (ppt2->has_quad_metric_in_los == _FALSE_) && (ppt2->has_time_delay_in_los == _FALSE_)
+   && (ppt2->has_redshift_in_los == _FALSE_) && (ppt2->has_lensing_in_los == _FALSE_))
+    ppt2->has_recombination_only = _TRUE_;
 
   /* Doesn't make sense not to have polarisation, if you want to compute polarisation */
   class_test ((ppt2->has_polarization2 == _FALSE_) &&
@@ -636,138 +618,148 @@ int input2_init (
 		
 	/* This option should be last. If true, compute only the test source term */
   class_call(parser_read_string(pfc,"use_test_source",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL))) {
-
     ppt2->use_test_source = _TRUE_;
     ppt2->has_sw = _FALSE_;
     ppt2->has_isw = _FALSE_;
 		ppt2->has_recombination_only = _TRUE_;	
-		
 	}
-
-
-
-
 
 
   // ====================================================================================
   // =                        Perturbations, initial conditions                         =
   // ====================================================================================
 
-
   /* Only adiabatic or vanishing initial conditions are supported so far */
-
   class_call(parser_read_string(pfc,"ic_2nd_order",&string1,&flag1,errmsg),
+    errmsg,
+    errmsg); /* obsolete */
+  class_call(parser_read_string(pfc,"ic_song",&string1,&flag1,errmsg),
     errmsg,
     errmsg);
 
   if (flag1 == _TRUE_) {
 
-    /* if no initial conditions are specified, the default is has_ad=_TRUE_; 
-       but if they are specified we should reset has_ad to _FALSE_ before reading */
+    /* If no initial conditions are specified, the default is has_ad=_TRUE_; 
+    but if they are specified we should reset has_ad to _FALSE_ before reading */
     ppt2->has_ad=_FALSE_;
 
     if ((strcmp(string1,"ad") == 0) || (strcmp(string1,"AD") == 0))
       ppt2->has_ad=_TRUE_; 
 
-    if ((strstr(string1,"ad_first_order") != NULL) || (strstr(string1,"AD_1ST") != NULL) || (strstr(string1,"ad1") != NULL))
+    if ((strstr(string1,"ad_first_order") != NULL) || (strstr(string1,"AD_1ST") != NULL)
+      || (strstr(string1,"ad1") != NULL))
       ppt2->has_ad_first_order=_TRUE_; 
 
-    if ((strstr(string1,"zero") != NULL) || (strstr(string1,"AD_ZERO") != NULL))
+    if ((strstr(string1,"zero") != NULL) || (strstr(string1,"ZERO") != NULL))
       ppt2->has_zero_ic=_TRUE_; 
 
     if (strstr(string1,"unphysical") != NULL)
       ppt2->has_unphysical_ic=_TRUE_; 
       
-    class_test(ppt2->has_ad==_FALSE_ && ppt2->has_ad_first_order==_FALSE_ && ppt2->has_zero_ic==_FALSE_ && ppt2->has_unphysical_ic==_FALSE_,
+    class_test(ppt2->has_ad==_FALSE_ && ppt2->has_ad_first_order==_FALSE_
+      && ppt2->has_zero_ic==_FALSE_ && ppt2->has_unphysical_ic==_FALSE_,
       errmsg,         
-      "You wrote: ic_2nd_order=%s. Could not identify any of the supported initial conditions ('ad', 'ad_first_order', 'zero', 'unphysical') in such input",string1);
-
+      "ic_2nd_order=%s not supported. Choose between 'ad', 'ad_first_order', 'zero', 'unphysical'",
+      string1);
   }
 
-  /* What is the value of the primordial non-Gaussianity of the local type? */
   class_read_double("primordial_local_fnl_phi", ppt2->primordial_local_fnl_phi);
 
-
-
-
-
-
-  // *** Set ppt2->match_final_time_los
   class_call(parser_read_string(pfc,"match_final_time_los",&(string1),&(flag1),errmsg),errmsg,errmsg);
-
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
     ppt2->match_final_time_los = _TRUE_;
-
 
 
   // ====================================================================================
   // =                           Perturbations, approximations                          =
   // ====================================================================================
-  
 
-  /* Tight coupling.  Note that, as opposite to the 1st order case, we read the approximation settings
+  /* Tight coupling.  Note that, contrary to the 1st order case, we read the approximation settings
   directly into the ppt2 structure rather than in the precision one.  We do so in order to keep all
   2nd-order related quantities in the same structure */
-  class_read_int("tight_coupling_approximation_2nd_order", ppt2->tight_coupling_approximation);
-  class_read_double("tight_coupling_trigger_tau_c_over_tau_h_2nd_order", ppt2->tight_coupling_trigger_tau_c_over_tau_h);
-  class_read_double("tight_coupling_trigger_tau_c_over_tau_k_2nd_order", ppt2->tight_coupling_trigger_tau_c_over_tau_k);
+  class_read_int("tight_coupling_approximation_2nd_order",
+    ppt2->tight_coupling_approximation); /* obsolete */
+  class_read_double("tight_coupling_trigger_tau_c_over_tau_h_2nd_order",  
+    ppt2->tight_coupling_trigger_tau_c_over_tau_h); /* obsolete */
+  class_read_double("tight_coupling_trigger_tau_c_over_tau_k_2nd_order",
+    ppt2->tight_coupling_trigger_tau_c_over_tau_k); /* obsolete */
 
+  class_read_int("tight_coupling_approximation_song",
+    ppt2->tight_coupling_approximation);
+  class_read_double("tight_coupling_trigger_tau_c_over_tau_h_song",  
+    ppt2->tight_coupling_trigger_tau_c_over_tau_h);
+  class_read_double("tight_coupling_trigger_tau_c_over_tau_k_song",
+    ppt2->tight_coupling_trigger_tau_c_over_tau_k);
 
   /* Radiation streaming */
-  class_read_int("radiation_streaming_approximation_2nd_order", ppt2->radiation_streaming_approximation);
-  class_read_double("radiation_streaming_trigger_tau_over_tau_k_2nd_order", ppt2->radiation_streaming_trigger_tau_over_tau_k);
+  class_read_int("radiation_streaming_approximation_2nd_order",
+    ppt2->radiation_streaming_approximation); /* obsolete */
+  class_read_double("radiation_streaming_trigger_tau_over_tau_k_2nd_order",
+   ppt2->radiation_streaming_trigger_tau_over_tau_k); /* obsolete */
 
-  class_read_int("ur_fluid_approximation_2nd_order", ppt2->ur_fluid_approximation);
-  class_read_double("ur_fluid_trigger_tau_over_tau_k_2nd_order", ppt2->ur_fluid_trigger_tau_over_tau_k);
+  class_read_int("radiation_streaming_approximation_song",
+    ppt2->radiation_streaming_approximation);
+  class_read_double("radiation_streaming_trigger_tau_over_tau_k_song",
+   ppt2->radiation_streaming_trigger_tau_over_tau_k);
+
+  /* Ultra relativistic fluid approximation */
+  class_read_int("ur_fluid_approximation_2nd_order",
+    ppt2->ur_fluid_approximation); /* obsolete */
+  class_read_double("ur_fluid_trigger_tau_over_tau_k_2nd_order",
+    ppt2->ur_fluid_trigger_tau_over_tau_k); /* obsolete */
+
+  class_read_int("ur_fluid_approximation_song",
+    ppt2->ur_fluid_approximation);
+  class_read_double("ur_fluid_trigger_tau_over_tau_k_song",
+    ppt2->ur_fluid_trigger_tau_over_tau_k);
 
   /* No radiation approximation */
-  class_read_int("no_radiation_approximation_2nd_order", ppt2->no_radiation_approximation);
-  class_read_double("no_radiation_approximation_rho_m_over_rho_r_2nd_order", ppt2->no_radiation_approximation_rho_m_over_rho_r);
+  class_read_int("no_radiation_approximation_2nd_order",
+  ppt2->no_radiation_approximation); /* obsolete */
+  class_read_double("no_radiation_approximation_rho_m_over_rho_r_2nd_order",
+    ppt2->no_radiation_approximation_rho_m_over_rho_r); /* obsolete */
 
-  class_test(ppt2->ur_fluid_trigger_tau_over_tau_k == ppt2->radiation_streaming_trigger_tau_over_tau_k,
-    errmsg,
-    "please choose different values for precision parameters ur_fluid_trigger_tau_over_tau_k and radiation_streaming_trigger_tau_over_tau_k, in order to avoid switching two approximation schemes at the same time");
+  class_read_int("no_radiation_approximation_song",
+  ppt2->no_radiation_approximation);
+  class_read_double("no_radiation_approximation_rho_m_over_rho_r_song",
+    ppt2->no_radiation_approximation_rho_m_over_rho_r);
 
-
+  class_test(ppt2->ur_fluid_trigger_tau_over_tau_k==ppt2->radiation_streaming_trigger_tau_over_tau_k, errmsg,
+    "please choose different values for precision parameters ur_fluid_trigger_tau_over_tau_k_song and radiation_streaming_trigger_tau_over_tau_k_song, in order to avoid switching two approximation schemes at the same time");
 
 
   // ====================================================================================
   // =                        Perturbations, gauges & equations                         =
   // ====================================================================================
 
-  class_call( parser_read_string(pfc,
-                "phi_prime_equation",
-                &(string1),
-                &(flag1),
-                errmsg),
-    errmsg,
-    errmsg);
+  class_call(parser_read_string(pfc,"phi_prime_equation",&(string1),&(flag1),errmsg),
+    errmsg,errmsg);
      
   if (flag1 == _TRUE_) {
   
     if ( (strcmp(string1,"poisson") == 0) || (strcmp(string1,"POISSON") == 0)||
-         (strcmp(string1,"Poisson") == 0) || (strcmp(string1,"P") == 0) || (strcmp(string1,"p") == 0) ) {
+         (strcmp(string1,"Poisson") == 0) || (strcmp(string1,"P") == 0) ||
+         (strcmp(string1,"p") == 0) ) {
       ppt2->phi_prime_eq = poisson;
     }
     else if ( (strcmp(string1,"longitudinal") == 0) || (strcmp(string1,"LONGITUDINAL") == 0)||
-         (strcmp(string1,"Longitudinal") == 0) || (strcmp(string1,"L") == 0) || (strcmp(string1,"l") == 0) ) {
+              (strcmp(string1,"Longitudinal") == 0) || (strcmp(string1,"L") == 0) ||
+              (strcmp(string1,"l") == 0) ) {
       ppt2->phi_prime_eq = longitudinal;
     }
     else {
-      class_stop (errmsg, "unrecognized parameter '%s' for the field 'phi_prime_equation'", string1);
+      class_stop (errmsg, "phi_prime_equation=%s not supported, choose between poisson and longitudinal",
+      string1);
     }
   }
   
-  /*  Set the ppt2->lm_extra parameter according to the gauge */
+  /* Set the ppt2->lm_extra parameter according to the gauge */
   if (ppt->gauge == 0)
     ppt2->lm_extra = 1;
 
   else if (ppt->gauge == 1)
     ppt2->lm_extra = 3;       
-  
-  
   
 
   // ================================================================================
@@ -776,67 +768,38 @@ int input2_init (
 
   class_read_int("perturbations2_verbose",ppt2->perturbations2_verbose);
 
-  // *** Set ppt2->has_debug_files  (should be before the filenames are read)
-  class_call(parser_read_string(pfc,
-       "dump_debug_files",&(string1),&(flag1),errmsg),errmsg,errmsg);
-            
+  class_call(parser_read_string(pfc,"dump_debug_files",&(string1),&(flag1),errmsg),errmsg,errmsg);
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
     ppt2->has_debug_files = _TRUE_;
 
-
   if (ppt2->has_debug_files == _TRUE_) {
 
-    /* Where to store the evolved transfer functions (optional, used only if in debug mode) */
-    class_call(parser_read_string(pfc,
-         "transfers_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);  
-    
-    if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_)) {
+    class_call(parser_read_string(pfc,"transfers_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);  
+    if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_))
       strcpy(ppt2->transfers_filename, string1);
-    }
     class_open(ppt2->transfers_file,ppt2->transfers_filename,"w",errmsg);
 
-    /* Where to store the quadratic sources (optional, used only if in debug mode) */
-    class_call(parser_read_string(pfc,"quadsources_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);  
-    
-    if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_)) {
+    class_call(parser_read_string(pfc,"quadsources_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);      
+    if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_))
       strcpy(ppt2->quadsources_filename, string1);
-    }
     class_open(ppt2->quadsources_file,ppt2->quadsources_filename,"w",errmsg);
 
-    /* Where to store the quadratic part of the liouville operator (optional, used only if in debug mode) */
     class_call(parser_read_string(pfc,"quadliouville_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);  
-    
-    if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_)) {
+    if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_))
       strcpy(ppt2->quadliouville_filename, string1);
-    }
     class_open(ppt2->quadliouville_file,ppt2->quadliouville_filename,"w",errmsg);
 
-
-    /* Where to store the quadratic part of the collision term (optional, used only if in debug mode) */
-    class_call(parser_read_string(pfc,"quadcollision_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);  
-    
-    if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_)) {
+    class_call(parser_read_string(pfc,"quadcollision_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);      
+    if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_))
       strcpy(ppt2->quadcollision_filename, string1);
-    }
     class_open(ppt2->quadcollision_file,ppt2->quadcollision_filename,"w",errmsg);
 
-    /* Set which wavemode to print to file (optional, used only if in debug mode) */
-    class_read_int("index_k1_debug",
-      ppt2->index_k1_debug);
-
-    class_read_int("index_k2_debug",
-      ppt2->index_k2_debug);
-
-    class_read_int("index_k3_debug",
-      ppt2->index_k3_debug);
-
-    /* Set how many angular modes to print to file (optional, used only if in debug mode) */
-    class_read_int("l_max_debug",
-      ppt2->l_max_debug);
+    class_read_int("index_k1_debug", ppt2->index_k1_debug);
+    class_read_int("index_k2_debug", ppt2->index_k2_debug);
+    class_read_int("index_k3_debug", ppt2->index_k3_debug);
+    class_read_int("l_max_debug", ppt2->l_max_debug);
   
   } // end of if has_debug_files
-
-
 
 
   // =================================================================================
@@ -849,29 +812,20 @@ int input2_init (
   if (ppt2->has_bispectra) 
     pbs2->extend_l1_using_m = _TRUE_;
 
-  /* Minimum x treshold for the spherical Bessels with j_l1(x).  These are the
-    Bessels that are summed to obtain J_Llm */
-  class_read_double("bessel_j_cut_2nd_order", ppr2->bessel_j_cut_2nd_order);
+  /* Minimum x treshold for the spherical Bessels with j_l1(x). These are the
+  Bessels that are summed to obtain J_Llm */
+  class_read_double("bessel_j_cut_2nd_order", ppr2->bessel_j_cut_song); /* obsolete */
+  class_read_double("bessel_j_cut_song", ppr2->bessel_j_cut_song);
 
   /* Minimum treshold for the functions J_Llm(x).  These are obtained as a
-    weighted sum of spherical Bessels j_l1(x) with |L-l| <= l1 <= L+l */
-  class_read_double("bessel_J_cut_2nd_order", ppr2->bessel_J_cut_2nd_order);
+  weighted sum of spherical Bessels j_l1(x) with |L-l| <= l1 <= L+l */
+  class_read_double("bessel_J_cut_2nd_order", ppr2->bessel_J_cut_song); /* obsolete */
+  class_read_double("bessel_J_cut_song", ppr2->bessel_J_cut_song);
 
   /* Linear step dx where we are going to sample the j_l1(x) and J_Llm(x) */
-  class_read_double("bessel_x_step_2nd_order", ppr2->bessel_x_step_2nd_order);
-
-  /* Tolerance for the integration of the 2nd-order system.  This parameter goes
-    directly into the evolver as the parameter 'rtol' */
-  class_read_double("tol_perturb_integration_2nd_order",ppr2->tol_perturb_integration_2nd_order);
-
-
-
-
-
-
-
-
-
+  class_read_double("bessel_x_step_2nd_order", ppr2->bessel_x_step_song); /* obsolete */
+  class_read_double("bessel_x_step_song", ppr2->bessel_x_step_song);
+  
 
   // =========================================================================================
   // =                                  Transfer functions                                   =
@@ -879,29 +833,62 @@ int input2_init (
 
   class_read_int("transfer2_verbose", ptr2->transfer2_verbose);
 
-  // ******        Tranfer function k-sampling       *******
+  /* - k sampling */
   class_call(parser_read_string(pfc,"transfer2_k_sampling",&string1,&flag1,errmsg),
+       errmsg,
+       errmsg); /* obsolete */
+  class_call(parser_read_string(pfc,"transfer2_k3_sampling",&string1,&flag1,errmsg),
        errmsg,
        errmsg);
 
   if (flag1 == _TRUE_) {
 
     if (strstr(string1,"bessel") != NULL)
-      ptr2->k_sampling = bessel_k_sampling;
+      ptr2->k_sampling = bessel_k3_sampling;
 
     else if ((strstr(string1,"class") != NULL) || (strstr(string1,"smart") != NULL))
-      ptr2->k_sampling = class_transfer2_k_sampling;
+      ptr2->k_sampling = class_transfer2_k3_sampling;
     
     else
       class_stop(errmsg,
-        "Could not recognize the value given for the 'transfer2_k_sampling' option. Choose between 'bessel' or 'class'.", "");
+        "transfer2_k3_sampling=%s not supported, choose between 'bessel', 'smart' and 'class'.", string1);
   }
 
-  /* If "class", choose the density of the k3-sampling for the transfer functions */
-  class_read_double("k_step_trans_scalars_2nd_order", ppr2->k_step_trans_scalars_2nd_order);
+  /* If 'transfer2_k3_sampling=class', choose the density of the k3-sampling for the transfer functions */
+  class_read_double("k_step_trans_scalars_2nd_order", ppr2->q_linstep_song); /* obsolete */
+  class_read_double("q_linstep_song",ppr2->q_linstep_song);
 
+  /* Older versions of SONG used the parameter 'k_step_trans_scalars_2nd_order' instead of
+  'q_linstep_song' to specify the frequency of the k-sampling for the second-order transfer
+  functions. The change is not only in name but in substance, because the two parameters
+  have a different definition:
+    q_linstep / k_step_trans_scalars = (tau0-tau_rec)/pth->rs_rec ~ 95.
+  Here we apply the corrective factor, hoping that the user will update his parameter file
+  with q_linstep. For more detail, please refer to the comment in transfer.c on top of the
+  definition of q_period.*/
 
-  // ******        Tranfer function tau-sampling       *******
+  class_call(parser_read_double(pfc,"k_step_trans_scalars_2nd_order",&param1,&flag1,errmsg),
+    errmsg,
+    errmsg);
+
+  if (flag1==_TRUE_) {
+
+    ppr2->old_run = _TRUE_;
+  
+    /* The estimate (tau0-tau_rec)/pth->rs_rec ~ 95 is not exact, so there will be
+    a slight difference between the old and the new k-sampling.  For this reason,
+    we modify the parameter only if not loading from disk an older run, because
+    in that case any difference in the k-sampling will result in errors. */
+    if (ppr->load_run == _FALSE_) {
+        double ratio = 95;
+        ppr2->q_linstep_song = param1 * ratio;
+        printf ("\nOBSOLETE PARAMETER: changed k_step_trans_scalars_2nd_order=%g to q_linstep_song=%g (ratio=%g).\n\n",
+          param1, ppr2->q_linstep_song, ratio);
+    }
+  }
+  
+
+  /* - time sampling */
   class_call(parser_read_string(pfc,"transfer2_tau_sampling",&string1,&flag1,errmsg),
        errmsg,
        errmsg);
@@ -916,27 +903,24 @@ int input2_init (
     
     else
       class_stop(errmsg,
-        "Could not recognize the value given for the 'transfer2_tau_sampling' option. Choose between 'bessel' or 'smart'.", "");
-
+        "transfer2_tau_sampling=%s not supported, choose between 'bessel', 'smart' or 'custom'.", string1);
   }
 
-  /* If "custom", choose the density of the tau-sampling for the transfer functions */
-  class_read_double("tau_step_trans_2nd_order", ppr2->tau_step_trans_2nd_order);
-
-
-
+  /* If 'transfer2_tau_sampling=custom', choose the density of the tau-sampling for the transfer functions */
+  class_read_double("tau_step_trans_2nd_order", ppr2->tau_step_trans_song); /* obsolete */
+  class_read_double("tau_step_trans_song", ppr2->tau_step_trans_song);
   
 
   // =============================================================================================
   // =                                       Bispectra                                           =
   // =============================================================================================
 
-  /* Turn off the quadratic corrections to the intrinsic bispectrum coming from
-  the bolometric temperature and from the redshift term */
+  /* Should we include the quadratic corrections to the intrinsic bispectrum coming from
+  the bolometric temperature and from the redshift term? */
   class_call(parser_read_string(pfc,"add_quadratic_correction",&string1,&flag1,errmsg),
 	     errmsg,
 	     errmsg);	
-     
+
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL))) {
     pbi->add_quadratic_correction = _FALSE_;
   }
@@ -958,7 +942,7 @@ int input2_init (
   class_call(parser_read_string(pfc,"store_sources",&(string1),&(flag1),errmsg),
       errmsg,
       errmsg);
-   
+      
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
     ppr2->store_sources_to_disk = _TRUE_;
 
@@ -1000,10 +984,10 @@ int input2_init (
 
   /* Create/open the status file. The 'a+' mode means that if the file does not exist it will be created,
   but if it exist it won't be erased (append mode) */
-  if (ppr2->store_sources_to_disk == _TRUE_) {
-    // sprintf(ppt2->sources_status_path, "%s/sources_status_file.txt", ppr->data_dir);
-    // class_open(ppt2->sources_status_file, ppt2->sources_status_path, "a+", errmsg);
-  }
+  // if (ppr2->store_sources_to_disk == _TRUE_) {
+  //   sprintf(ppt2->sources_status_path, "%s/sources_status_file.txt", ppr->data_dir);
+  //   class_open(ppt2->sources_status_file, ppt2->sources_status_path, "a+", errmsg);
+  // }
 
   class_test ((ppr2->store_sources_to_disk == _TRUE_) && (ppr2->load_sources_from_disk == _TRUE_),
     errmsg,
@@ -1018,7 +1002,7 @@ int input2_init (
   class_call(parser_read_string(pfc,"store_transfers",&(string1),&(flag1),errmsg),
       errmsg,
       errmsg);
-
+      
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
     ppr2->store_transfers_to_disk = _TRUE_;
 
@@ -1060,10 +1044,10 @@ int input2_init (
 
   /* Create/open the status file. The 'a+' mode means that if the file does not exist it will be created,
   but if it exist it won't be erased (append mode) */
-  if (ppr2->store_transfers_to_disk == _TRUE_) {
-    // sprintf(ptr2->transfers_status_path, "%s/transfers_status_file.txt", ppr->data_dir);
-    // class_open(ptr2->transfers_status_file, ptr2->transfers_status_path, "a+", errmsg);
-  }
+  // if (ppr2->store_transfers_to_disk == _TRUE_) {
+  //   sprintf(ptr2->transfers_status_path, "%s/transfers_status_file.txt", ppr->data_dir);
+  //   class_open(ptr2->transfers_status_file, ptr2->transfers_status_path, "a+", errmsg);
+  // }
 
   class_test ((ppr2->store_transfers_to_disk == _TRUE_) && (ppr2->load_transfers_from_disk == _TRUE_),
     errmsg,
@@ -1073,9 +1057,6 @@ int input2_init (
   // =============================================================================================
   // =                                  Interpolation techniques                                 =
   // =============================================================================================
-
-
-  // ****   Interpolation of 2nd-order sources   ****
   
   class_call(parser_read_string(pfc,"sources_time_interpolation",&string1,&flag1,errmsg),
        errmsg,
@@ -1092,11 +1073,10 @@ int input2_init (
     
     else
       class_stop (errmsg,         
-        "You wrote: sources_time_interpolation=%s. Could not identify any of the supported interpolation techniques ('linear', 'cubic') in such input",
+        "sources_time_interpolation=%s not supported, choose between 'linear', 'cubic' and 'spline'",
         string1);
 
   }
-
 
   class_call(parser_read_string(pfc,"sources_k3_interpolation",&string1,&flag1,errmsg),
        errmsg,
@@ -1113,70 +1093,67 @@ int input2_init (
     
     else
       class_stop(errmsg,         
-        "You wrote: sources_k3_interpolation=%s. Could not identify any of the supported interpolation techniques ('linear', 'cubic') in such input",
+        "sources_k3_interpolation=%s not supported, choose between 'linear', 'cubic' and 'spline'",
         string1);
-
   }
-
-
-
 
 
   // =========================================================================================
   // =                                   Angular scales                                      =
   // =========================================================================================
 
-  // *** Read l_max for the Boltzmann hierarchies
-  class_read_int("l_max_g_2nd_order", ppr2->l_max_g_2nd_order);
-  class_read_int("l_max_pol_g_2nd_order", ppr2->l_max_pol_g_2nd_order);    
-  class_read_int("l_max_ur_2nd_order", ppr2->l_max_ur_2nd_order);        
-  class_read_int("l_max_g_ten_2nd_order", ppr2->l_max_g_ten_2nd_order);       
-  class_read_int("l_max_pol_g_ten_2nd_order", ppr2->l_max_pol_g_ten_2nd_order);            
+  /* Rear l_max for the Boltzmann hierarchies */
+  class_read_int("l_max_g_2nd_order", ppr2->l_max_g_song); /* obsolete */
+  class_read_int("l_max_pol_g_2nd_order", ppr2->l_max_pol_g_song); /* obsolete */
+  class_read_int("l_max_ur_2nd_order", ppr2->l_max_ur_song);   /* obsolete */
+  class_read_int("l_max_g_ten_2nd_order", ppr2->l_max_g_ten_song); /* obsolete */
+  class_read_int("l_max_pol_g_ten_2nd_order", ppr2->l_max_pol_g_ten_song); /* obsolete */
+  
+  class_read_int("l_max_g_song", ppr2->l_max_g_song);
+  class_read_int("l_max_pol_g_song", ppr2->l_max_pol_g_song);    
+  class_read_int("l_max_ur_song", ppr2->l_max_ur_song);        
+  class_read_int("l_max_g_ten_song", ppr2->l_max_g_ten_song);       
+  class_read_int("l_max_pol_g_ten_song", ppr2->l_max_pol_g_ten_song);            
 
-  // *** Read l_max for the quadratic sources
-
-  /* If the user specified a negative value for one of them, set it to the corresponding
-  l_max_2nd_order (see above). Also make sure that each of them is not larger than the
-  corresponding l_max_2nd_order. The following lines MUST go below the definitions of
-  l_max_g_2nd_order, etc. */
-
+  /* Read l_max for the quadratic sources in the Boltzmann hierarchies. If the user specified
+  a negative value for one of them, set it to the corresponding l_max_XXX_song (see above).
+  Also make sure that each of them is not larger than the corresponding l_max_XXX_song. The
+  following lines must go below the definitions of l_max_g_song, etc. */
   class_read_int("l_max_g_quadsources", ppr2->l_max_g_quadsources);
-  if ((ppr2->l_max_g_quadsources<0) || (ppr2->l_max_g_quadsources>ppr2->l_max_g_2nd_order))
-    ppr2->l_max_g_quadsources = ppr2->l_max_g_2nd_order;
+  if ((ppr2->l_max_g_quadsources<0) || (ppr2->l_max_g_quadsources>ppr2->l_max_g_song))
+    ppr2->l_max_g_quadsources = ppr2->l_max_g_song;
 
   class_read_int("l_max_pol_g_quadsources", ppr2->l_max_pol_g_quadsources);
-  if ((ppr2->l_max_pol_g_quadsources<0) || (ppr2->l_max_pol_g_quadsources>ppr2->l_max_pol_g_2nd_order))
-    ppr2->l_max_pol_g_quadsources = ppr2->l_max_pol_g_2nd_order;
+  if ((ppr2->l_max_pol_g_quadsources<0) || (ppr2->l_max_pol_g_quadsources>ppr2->l_max_pol_g_song))
+    ppr2->l_max_pol_g_quadsources = ppr2->l_max_pol_g_song;
 
   class_read_int("l_max_ur_quadsources", ppr2->l_max_ur_quadsources);
-  if ((ppr2->l_max_ur_quadsources<0) || (ppr2->l_max_ur_quadsources>ppr2->l_max_ur_2nd_order))
-    ppr2->l_max_ur_quadsources = ppr2->l_max_ur_2nd_order;
+  if ((ppr2->l_max_ur_quadsources<0) || (ppr2->l_max_ur_quadsources>ppr2->l_max_ur_song))
+    ppr2->l_max_ur_quadsources = ppr2->l_max_ur_song;
 
   class_read_int("l_max_g_ten_quadsources", ppr2->l_max_g_ten_quadsources);
-  if ((ppr2->l_max_g_ten_quadsources<0) || (ppr2->l_max_g_ten_quadsources>ppr2->l_max_g_ten_2nd_order))
-    ppr2->l_max_g_ten_quadsources = ppr2->l_max_g_ten_2nd_order;
+  if ((ppr2->l_max_g_ten_quadsources<0) || (ppr2->l_max_g_ten_quadsources>ppr2->l_max_g_ten_song))
+    ppr2->l_max_g_ten_quadsources = ppr2->l_max_g_ten_song;
 
   class_read_int("l_max_pol_g_ten_quadsources", ppr2->l_max_pol_g_ten_quadsources);
-  if ((ppr2->l_max_pol_g_ten_quadsources<0) || (ppr2->l_max_pol_g_ten_quadsources>ppr2->l_max_pol_g_ten_2nd_order))
-    ppr2->l_max_pol_g_ten_quadsources = ppr2->l_max_pol_g_ten_2nd_order;
+  if ((ppr2->l_max_pol_g_ten_quadsources<0) || (ppr2->l_max_pol_g_ten_quadsources>ppr2->l_max_pol_g_ten_song))
+    ppr2->l_max_pol_g_ten_quadsources = ppr2->l_max_pol_g_ten_song;
 
-  // *** Read l_max for the line of sight integration
-  class_read_int("l_max_T_los", ppr2->l_max_los_t); /* obsolete, use l_max_los_t */
-  class_read_int("l_max_E_los", ppr2->l_max_los_p); /* obsolete, use l_max_los_p */
-  class_read_int("l_max_B_los", ppr2->l_max_los_p); /* obsolete, use l_max_los_p */
+  /* Read l_max for the line of sight integration */
+  class_read_int("l_max_T_los", ppr2->l_max_los_t); /* obsolete */
+  class_read_int("l_max_E_los", ppr2->l_max_los_p); /* obsolete */
+  class_read_int("l_max_B_los", ppr2->l_max_los_p); /* obsolete */
   class_read_int("l_max_los_t", ppr2->l_max_los_t);
   class_read_int("l_max_los_p", ppr2->l_max_los_p);
 
-
-  // *** Same as above, but for the quadratic terms
-  class_read_int("l_max_T_quadratic_los", ppr2->l_max_los_quadratic_t); /* obsolete, use l_max_los_quadratic_t */
-  class_read_int("l_max_E_quadratic_los", ppr2->l_max_los_quadratic_p); /* obsolete, use l_max_los_quadratic_p */
-  class_read_int("l_max_B_quadratic_los", ppr2->l_max_los_quadratic_p); /* obsolete, use l_max_los_quadratic_p */
+  /* Same as above, but for the quadratic terms */
+  class_read_int("l_max_T_quadratic_los", ppr2->l_max_los_quadratic_t); /* obsolete */
+  class_read_int("l_max_E_quadratic_los", ppr2->l_max_los_quadratic_p); /* obsolete */
+  class_read_int("l_max_B_quadratic_los", ppr2->l_max_los_quadratic_p); /* obsolete */
   class_read_int("l_max_los_quadratic_t", ppr2->l_max_los_quadratic_t);
   class_read_int("l_max_los_quadratic_p", ppr2->l_max_los_quadratic_p);
 
-
-  // *** Compute the maximum l_max for the line of sight integration  
+  /* Compute the maximum l_max for the line of sight integration */
   ppr2->l_max_los = 0;
   ppr2->l_max_los_quadratic = 0;
   
@@ -1190,37 +1167,52 @@ int input2_init (
     ppr2->l_max_los_quadratic = MAX (ppr2->l_max_los_quadratic, ppr2->l_max_los_quadratic_p);
   }
 
+
   // =======================================================================================
   // =                                 Azimuthal modes                                     =
   // =======================================================================================
 
   /* Read the list of requested azimuthal 'm' values. They must be given in ascending order. */
+
   class_call (parser_read_list_of_integers (
-                pfc,
-                "modes_2nd_order",
-                &(ppr2->m_size),
-                &(int_pointer),
-                &flag1,
-                errmsg),
+    pfc,"modes_2nd_order",&(ppr2->m_size),&(int_pointer1),&flag1, errmsg),
+    errmsg,
+    errmsg); /* obsolete */
+
+  class_call (parser_read_list_of_integers (
+    pfc,"modes_song",&(ppr2->m_size),&(int_pointer2),&flag2, errmsg),
     errmsg,
     errmsg);
     
-  if (flag1 == _TRUE_) {
+  /* string2 wins over string1 */
+  flag = _TRUE_;
+  if (flag2 == _TRUE_)
+    int_pointer = int_pointer2;
+  else if (flag1 == _TRUE_)
+    int_pointer = int_pointer1;
+  else
+    flag = _FALSE_;
+
+  if (flag == _TRUE_) {
     for (i=0; i < ppr2->m_size; ++i)
       ppr2->m[i] = int_pointer[i];
-    free (int_pointer);
   }
 
-  /* Maximum 'm' that will be computed */
-  ppr2->m_max_2nd_order = ppr2->m[ppr2->m_size-1];
-  
+  if (flag1 == _TRUE_)
+    free (int_pointer1);
+  else if (flag2 == _TRUE_)
+    free (int_pointer2);
+
   /* Check that the m-list is strictly ascending */
   for (i=0; i < (ppr2->m_size-1); ++i)
     class_test (ppr2->m[i] >= ppr2->m[i+1],
       errmsg,
       "the m-list provided  in 'modes_2nd_order' is not strictly ascending");
 
-  /* Check that the m's positive */
+  /* Maximum 'm' that will be computed */
+  ppr2->m_max_2nd_order = ppr2->m[ppr2->m_size-1];
+  
+  /* Check that the m's are positive */
   class_test (ppr2->m[0] < 0,
     errmsg,
     "the m-list provided in 'modes_2nd_order' has negative numbers in it");
@@ -1230,6 +1222,59 @@ int input2_init (
     errmsg,
     "the maximum value of the azimuthal number 'm' cannot exceed %d, please choose 'modes_2nd_order' accordingly",
     _MAX_NUM_AZIMUTHAL_);
+
+  /* Find out the index in ppr2->m corresponding to a given m. */
+	for(int m=0; m<=ppr2->m_max_2nd_order; ++m) {
+
+		ppr2->index_m[m] = -1;
+
+		for (int index_m=0; index_m<ppr2->m_size; ++index_m)
+			if (m==ppr2->m[index_m]) ppr2->index_m[m] = index_m;
+	}
+
+	/* Build a logical array to check whether a given m is in m_vec.
+  First, intialise it to _FALSE_. */
+	for(int m=0; m<_MAX_NUM_AZIMUTHAL_; ++m)
+    ppr2->compute_m[m] = _FALSE_;
+
+	for(int m=0; m<=ppr2->m_max_2nd_order; ++m)
+		for (int index_m=0; index_m<ppr2->m_size; ++index_m)
+			if (m==ppr2->m[index_m]) ppr2->compute_m[m] = _TRUE_;
+
+  /* Set the scalar, vector, tensor flags */
+  ppt2->has_scalars = ppr2->compute_m[0];
+  ppt2->has_vectors = ppr2->compute_m[1];
+  ppt2->has_tensors = ppr2->compute_m[2];
+
+  /* The largest l where the Bessel functions will be needed. The first term (pbs->l_max) is the
+  maximum multipole we shall compute the bispectra in. The second term represent the additional
+  l's where we need to the Bessel functions in order to compute the projection functions
+  (ppr2->l_max_los) and the bispectrum integral (ppr2->m_max_2nd_order). This line must be after
+  setting ppr2->l_max_los. */
+  int l_max = pbs->l_max + MAX (ppr2->l_max_los, ppr2->m_max_2nd_order);
+
+  /* Determine for each l (starting from 0) the position of its maximum m in ppr2->m. The resulting
+  array ppr2->index_m_max will be used throughout the code to cycle through the m's allowed for a given l. */
+  class_alloc (ppr2->index_m_max, (l_max+1)*sizeof(int), ppr2->error_message);
+  for (int l=0; l<=l_max; ++l) {
+   
+    /* Ignore the l's that are smaller than the smallest m. It is important that the value here is -1
+    because (i) a cycle starting from 0 won't start and (ii) a size is computed as index_max+1, hence
+    -1 means 0 size */
+    if (l < ppr2->m[0]) {
+      ppr2->index_m_max[l] = -1;
+      continue;
+    }
+    
+    /* Cycle till you find the largest possible m for this l */
+    int index_m = ppr2->m_size-1;
+    while (ppr2->m[index_m] > l) index_m--;
+    ppr2->index_m_max[l] = index_m;
+    
+    /* Some debug */
+    // printf ("for l=%d, the maximum allowed m in ppr2->m is m=%d\n",
+    //   l, ppr2->m[ppr2->index_m_max[l]]);
+  }
 
   /* For certain bispectrum types, the 3j-symbol (l1,l2,l3)(0,0,0) does not appear explicitly
   in the bispectrum formula and therefore it cannot be pulled out analytically. This is the
@@ -1264,65 +1309,8 @@ int input2_init (
       errmsg,
       "careful, your choice of parity is wrong!");
   }
-
-  /* Find out the index in ppr2->m corresponding to a given m. */
-	for(int m=0; m<=ppr2->m_max_2nd_order; ++m) {
-
-		ppr2->index_m[m] = -1;
-
-		for (int index_m=0; index_m<ppr2->m_size; ++index_m)
-			if (m==ppr2->m[index_m]) ppr2->index_m[m] = index_m;
-	}
-
-	/* Build a logical array to check whether a given m is in m_vec.
-  First, intialise it to _FALSE_. */
-	for(int m=0; m<_MAX_NUM_AZIMUTHAL_; ++m)
-    ppr2->compute_m[m] = _FALSE_;
-
-	for(int m=0; m<=ppr2->m_max_2nd_order; ++m)
-		for (int index_m=0; index_m<ppr2->m_size; ++index_m)
-			if (m==ppr2->m[index_m]) ppr2->compute_m[m] = _TRUE_;
-
-  /* Set the scalar, vector, tensor flags */
-  ppt2->has_scalars = ppr2->compute_m[0];
-  ppt2->has_vectors = ppr2->compute_m[1];
-  ppt2->has_tensors = ppr2->compute_m[2];
-
-  // *** Determine what m's are allowed for a given l 
   
-  /* The largest l's we will ever use in the code. The first term (pbs->l_max) is the maximum multipole
-  we shall compute the bispectra in. The second term represent the additional l's where we need to
-  the Bessel functions in order to compute the projection functions (ppr2->l_max_los) and the bispectrum
-  integral (ppr2->m_max_2nd_order). 
-  Must be after setting ppr2->l_max_los. */
-  class_test (pbs->l_max==0., errmsg, "pbs->l_max=0; this happens when ppt->has_cls is set to _FALSE_ in input.c. If you asked for 'output=early_transfers2', make sure to also include an observable, e.g. use 'output=early_transfers2,tBisp' instead.");
-  int l_max = pbs->l_max + MAX (ppr2->l_max_los, ppr2->m_max_2nd_order);
-  class_alloc (ppr2->index_m_max, (l_max+1)*sizeof(int), ppr2->error_message);
-
-  /* Determine for each l (starting from 0) the position of its maximum m in ppr2->m. The resulting
-  array ppr2->index_m_max will be used throughout the code to cycle through the m's allowed for a given l. */
-  for (int l=0; l<=l_max; ++l) {
-   
-    /* Ignore the l's that are smaller than the smallest m. It is important that the value here is -1
-    because (i) a cycle starting from 0 won't start and (ii) a size is computed as index_max+1, hence
-    -1 means 0 size */
-    if (l < ppr2->m[0]) {
-      ppr2->index_m_max[l] = -1;
-      continue;
-    }
-    
-    /* Cycle till you find the largest possible m for this l */
-    int index_m = ppr2->m_size-1;
-    while (ppr2->m[index_m] > l) index_m--;
-    ppr2->index_m_max[l] = index_m;
-    
-    /* Some debug */
-    // printf ("for l=%d, the maximum allowed m in ppr2->m is m=%d\n",
-    //   l, ppr2->m[ppr2->index_m_max[l]]);
-    
-  }
-
-
+  
   // ==============================================================================
   // =                          Quadratic sources rescaling                       =
   // ==============================================================================
@@ -1331,89 +1319,53 @@ int input2_init (
   affect the m>0 transfer functions. It is needed to compute the intrinsic bispectrum, so by default
   it is active. See the header file perturbations2.h for details on the rescaling. */
   ppt2->rescale_quadsources = _TRUE_;
-
-  /* Uncomment if you want the m=0 sources to be computed without the rescaling, when they are
-  the only requested sources. */
-  // if (ppr2->m_max_2nd_order == 0)
-  //   ppt2->rescale_quadsources = _TRUE_;
   
   /* Uncomment if you want the output functions to output non-rescaled functions */
   if ((ppt2->has_early_transfers2_only == _TRUE_) || (ptr2->has_transfers2_only == _TRUE_))
     ppt2->rescale_quadsources = _FALSE_;
 
+  /* Uncomment if you want the m=0 sources to be computed without the rescaling, when they are
+  the only requested sources. */
+  // if (ppr2->m_max_2nd_order == 0)
+  //   ppt2->rescale_quadsources = _TRUE_;
 
   
   // =============================================================================================
   // =                               Stuff that needs to be at the end                           =
   // =============================================================================================
 
-  // -----------------------------------------------
-  // -             Update pbs->x_max               -
-  // -----------------------------------------------
+  // -------------------------------------------------------
+  // -                 Compute pbs2->xx_max                -
+  // -------------------------------------------------------
 
-  /* Determine maximum k-value needed in the line of sight integration at second-order. This is
-  needed to determine the maximum sampling of the Bessel functions. */
-  double k_max;
-  double tau0_inf = 8000.;
-  double tau0_sup = 15000.;
-  
-  if ((ppt2->k_sampling == class_sources_k_sampling) || (ppt2->k_sampling == smart_sources_k_sampling))
-    /* Automatic k-sampling */
-    k_max = ppr2->k_scalar_max_tau0_over_l_max_2nd_order * ppt->l_scalar_max / tau0_inf;
-  else
-    /* Manual k-sampling */
-    k_max = ppr2->k_max_scalars;
+  /* Determine pbs2->xx_max, the upper limit of the x-domain of the projection functions
+  J_Llm(x). These appear in the second-order line-of-sight integral with x = k*(tau0-tau),
+  therefore we set pbs2->xx_max = k_max*tau0, where tau0 is the conformal age of the
+  Universe */
+  pbs2->xx_max = ppr2->k_max_tau0_over_l_max * ppt->l_scalar_max;
 
-  /* Maximum argument for the Bessel functions in the line of sight integration.  For the time being, we do
-  set x_max  here, even if we shouldn't as tau0 cannot be accessed by this module.  This is why we define
-  a superior limit for tau0. */
-  double x_max = MAX (pbs->x_max, k_max * MAX(tau0_sup, pbi->r_max));
-  
+  /* Accomodate for the case where the k-sampling is set manually (usually for
+  debug purposes) */
+  if ((ppt2->k_sampling == lin_k_sampling) || (ppt2->k_sampling == log_k_sampling)) {
+    double tau0_guess = 18000;
+    pbs2->xx_max = ppr2->k_max_custom * tau0_guess;
+  }
 
-  /* We could have done this way, but then it is not obvious how to include the r_max in the
-  class_sources_k_sampling case */
-  // /* Determine maximum argument for the Bessel functions in the line of sight integration. */
-  // double x_max;
-  // 
-  // if (ppt2->k_sampling == class_sources_k_sampling)
-  //   /* At second order, we include a 2 factor in x_max, because ppr2->k_scalar_max_tau0_over_l_max_2nd_order is used
-  //     to build the grid in k1 and k2, while the maximum k-value needed will be k = k1+k2 (when cosk1k2 = 1)  */
-  //   x_max = 2 * ppr2->k_scalar_max_tau0_over_l_max_2nd_order * ppt->l_scalar_max;
-  // else
-  //   /* When we specify the k-range manually, also x_max should be set by hand to be k_max * tau0.  For the time
-  //     being, we do set x_max here, even if we shouldn't as tau0 cannot be accessed by this module.  This is why
-  //     we define a superior limit for tau0.  Note that we also include a 2 factor in x_max, because k_max_scalars
-  //     refers to k1 and k2, while the maximum k-value needed will be k = k1+k2 (when cosk1k2 = 1). */
-  //   x_max = 2 * ppr2->k_max_scalars * MAX(tau0_sup, pbi->r_max);
+  /* Copy the step size in xx to the bessel2 structure */
+  pbs2->xx_step = ppr2->bessel_x_step_song;
 
+  /* Extend pbs2->xx_max to avoid potential out-of-bounds errors in the interpolation
+  of J_Llm(x) */
+  pbs2->xx_max += pbs2->xx_step;
+  pbs2->xx_max *= 1.05;
 
-  /* Set the actual limit for x_max */
-  // printf("# Temporary message: Setting pbs->x_max from %g to %g\n",
-  //   ((int)(pbs->x_max * 1.1 / pbs->x_step)+1)*pbs->x_step,
-  //   ((int)(x_max * 1.1 / pbs->x_step)+1)*pbs->x_step);
-  
-  pbs->x_max = ((int)(x_max * 1.1 / pbs->x_step)+1)*pbs->x_step;
+  /* Extend the domain of the Bessel functions j_l(x) computed in bessel.c (pbs->x_max) to
+  match the domain of the projection functions J_Llm(x) computed in bessel2.c (pbs2->xx_max).
+  The reason is that the computation of J_Llm(x) requires j_l(x). */
+  pbs->x_max = MAX (pbs->x_max, pbs2->xx_max);
 
-
-  /* Find the maximum x for which we shall compute J_Llm(x) and j_l1(x),
-  needed to compute the LOS integral and the spectra at second order. */
-
-  /* In CLASS, the maximum values are determined in the following way:
-   - l_max is determined by the params.ini parameters l_scalar_max, l_tensor_max, delta_l_max
-   - k_max_cl is determined by k_scalar_max_tau0_over_l_max, given that tau0 is fixed for a given cosmology
-   - x_max is determined by l_max and k_scalar_max_tau0_over_l_max, since the latter is just x_max*l_max.
-   
-   In SONG, for the time being, we choose not to change neither l_max or k_max.  However this can only
-   work if you change your get_k_list in perturbations2.c to be equal to the k_list in perturbations.c     */
-
-  /* Note that pbs->x_max should be larger/equal than pbs->xx_max, as we shall interpolate the Bessels
-  with bessels_at_x in the bispectra module, with x that can be as large as conformal_age * k_max */
-
-  pbs2->xx_max = pbs->x_max;
-  pbs2->xx_step = ppr2->bessel_x_step_2nd_order;
-  
-  /* pbs2->L_max is used to determine the maximum value of L for which we should compute the
-  projection functions in the second-order Bessel module. To explain the inclusion of
+  /* Determine the maximum value of L for which we should compute the projection functions
+  J_Llm(x) in the second-order Bessel module. To explain the inclusion of
   ppr2->m_max_2nd_order, refer to the first long comment in bessel2_get_l1_list. */
   pbs2->L_max = MAX (ppr2->l_max_los, ppr2->m_max_2nd_order);
 
@@ -1424,16 +1376,6 @@ int input2_init (
 
 /** 
  * All default parameter values (for input parameters)
- *
- * @param pba Input : pointer to background structure 
- * @param pth Input : pointer to thermodynamics structure 
- * @param ppt Input : pointer to perturbation structure
- * @param pbs Input : pointer to bessels structure
- * @param ptr Input : pointer to transfer structure 
- * @param ppm Input : pointer to primordial structure 
- * @param psp Input : pointer to spectra structure
- * @param pop Input : pointer to output structure
- * @return the error status
  */
 
 int input2_default_params (
@@ -1441,16 +1383,16 @@ int input2_default_params (
        struct thermo *pth,
        struct perturbs *ppt,
        struct perturbs2 *ppt2,       
+       struct transfers *ptr,
        struct bessels * pbs,
        struct bessels2 * pbs2,
-       struct transfers *ptr,
        struct transfers2 *ptr2,     
        struct primordial *ppm,
        struct spectra *psp,
-       struct bispectra *pbi,
-       struct fisher *pfi,
        struct nonlinear * pnl,
        struct lensing *ple,
+       struct bispectra *pbi,
+       struct fisher *pfi,
        struct output *pop
        ) {
 
@@ -1459,10 +1401,10 @@ int input2_default_params (
   // =                   perturbed recombination                  =
   // ==============================================================
 
-  pth->has_perturbed_recombination = _FALSE_;
+  pth->has_perturbed_recombination_stz = _FALSE_;
   pth->perturbed_recombination_turnx = 36;
-  ppt->has_perturbed_recombination = _FALSE_;
-  ppt2->has_perturbed_recombination = _FALSE_;
+  ppt->has_perturbed_recombination_stz = _FALSE_;
+  ppt2->has_perturbed_recombination_stz = _FALSE_;
   ppt2->perturbed_recombination_use_approx = _FALSE_;
   
 
@@ -1475,7 +1417,8 @@ int input2_default_params (
   // =                     perturb2 structure                  =
   // ===========================================================
   
-  // *** Flags
+  /* - Flags */
+  
   ppt2->perturbations2_verbose = 0;
   ppt2->has_perturbations2 = _FALSE_;
   ppt2->has_polarization2  = _TRUE_;
@@ -1522,17 +1465,17 @@ int input2_default_params (
   ppt2->has_early_transfers2_only = _FALSE_;
   ppt2->has_early_transfers1_only = _FALSE_;
   
-  // *** Initial conditions
+
+  /* - Initial conditions */
+
   ppt2->has_ad = _TRUE_;      
   ppt2->has_zero_ic = _FALSE_;
   ppt2->has_ad_first_order = _FALSE_;
   ppt2->has_unphysical_ic = _FALSE_;
   ppt2->primordial_local_fnl_phi = 0;
+  
 
-
-
-
-  // *** Approximations at second order
+  /* - Approximations at second order */
 
   ppt2->tight_coupling_approximation = tca2_none;
   ppt2->tight_coupling_trigger_tau_c_over_tau_h = 0.015;
@@ -1548,11 +1491,13 @@ int input2_default_params (
   ppt2->no_radiation_approximation_rho_m_over_rho_r = 100;
 
 
-  // *** Choose equations
+  /* - Choose equation for the time potential */
+
   ppt2->phi_prime_eq = poisson;
 
 
-  // *** Time sampling
+  /* - Time sampling */
+
   ppt2->tau_start_evolution = 1;
 
   ppt2->recombination_max_to_end_ratio = 1000;
@@ -1564,13 +1509,15 @@ int input2_default_params (
   ppt2->custom_tau_mode = lin_tau_sampling;
 
   ppt2->match_final_time_los = _FALSE_;
+
   
-  // *** K sampling
+  /* k sampling */
   ppt2->k_sampling = smart_sources_k_sampling;
+
   ppt2->k3_sampling = smart_k3_sampling;
 
 
-  // *** Technical parameters
+  /* technical parameters */
 
   ppt2->has_debug_files = _FALSE_;
   strcpy(ppt2->transfers_filename,"output/transfers2.txt");
@@ -1584,7 +1531,6 @@ int input2_default_params (
   ppt2->l_max_debug = 5;
   
 
-  
   // =============================================================
   // =                     bessel2 structure                     =
   // =============================================================
@@ -1596,7 +1542,7 @@ int input2_default_params (
   // =                     transfer2 structure                  =
   // ============================================================
   ptr2->transfer2_verbose = 0;
-  ptr2->k_sampling = class_transfer2_k_sampling;
+  ptr2->k_sampling = class_transfer2_k3_sampling;
   ptr2->tau_sampling = custom_transfer2_tau_sampling;
 
 
@@ -1636,9 +1582,7 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   // =                              Tolerance                          =
   // ===================================================================
 
-  ppr2->tol_perturb_integration_2nd_order=1.e-5;
-
-
+  ppr2->tol_perturb_integration_song=1e-4;
 
 
   // ==================================================================
@@ -1647,11 +1591,11 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
 
   ppr2->m_max_2nd_order=0;
 
-  ppr2->l_max_g_2nd_order=10;
-  ppr2->l_max_pol_g_2nd_order=10;
-  ppr2->l_max_ur_2nd_order=10; 
-  ppr2->l_max_g_ten_2nd_order=10;
-  ppr2->l_max_pol_g_ten_2nd_order=10;
+  ppr2->l_max_g_song=8;
+  ppr2->l_max_pol_g_song=8;
+  ppr2->l_max_ur_song=8; 
+  ppr2->l_max_g_ten_song=8;
+  ppr2->l_max_pol_g_ten_song=8;
 
   ppr2->l_max_g_quadsources=-1;
   ppr2->l_max_pol_g_quadsources=-1;
@@ -1671,9 +1615,9 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   // =                            Time samplings                          =
   // ======================================================================
 
-  ppr2->perturb_sampling_stepsize_2nd_order = 0.4;
-  ppr2->start_small_k_at_tau_c_over_tau_h_2nd_order = 0.0015;  /* decrease to start earlier in time */
-  ppr2->start_large_k_at_tau_h_over_tau_k_2nd_order = 0.07;    /* decrease to start earlier in time */
+  ppr2->perturb_sampling_stepsize_song = 0.4;
+  ppr2->start_small_k_at_tau_c_over_tau_h_song = 0.0015;  /* decrease to start earlier in time */
+  ppr2->start_large_k_at_tau_h_over_tau_k_song = 0.07;    /* decrease to start earlier in time */
 
 
 
@@ -1682,23 +1626,23 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   // =====================================================================
 
   /* CLASS smart sampling */
-  ppr2->k_scalar_min_tau0_2nd_order = 1.;
-  ppr2->k_scalar_max_tau0_over_l_max_2nd_order = 2.;
-  ppr2->k_scalar_step_sub_2nd_order = 0.05;
-  ppr2->k_scalar_linstep_super_2nd_order = 0.0025;
-  ppr2->k_scalar_logstep_super_2nd_order = 1.2;
-  ppr2->k_scalar_step_transition_2nd_order = 0.2;
+  ppr2->k_min_tau0 = 1.;
+  ppr2->k_max_tau0_over_l_max = 2.;
+  ppr2->k_step_sub = 0.05;
+  ppr2->k_step_super = 0.0025;
+  ppr2->k_logstep_super = 1.2;
+  ppr2->k_step_transition = 0.2;
 
-  /* Transfer function k-sampling (used only if ptr2->k_sampling == class_transfer2_k_sampling) */
-  ppr2->k_step_trans_scalars_2nd_order = 0.004;
+  /* Transfer function k-sampling (used only if ptr2->k_sampling == class_transfer2_k3_sampling) */
+  ppr2->q_linstep_song = 0.45;
 
   /* Transfer function tau-sampling (used only if ptr2->tau_sampling == custom_transfer2_tau_sampling) */
-  ppr2->tau_step_trans_2nd_order = 4;
+  ppr2->tau_step_trans_song = 4;
   
   /* Scalars */
-  ppr2->k_min_scalars = 1e-4;
-  ppr2->k_max_scalars = 0.1;  
-  ppr2->k_size_scalars = 10;
+  ppr2->k_min_custom = 1e-4;
+  ppr2->k_max_custom = 0.1;  
+  ppr2->k_size_custom = 10;
 
   /* k-triangular */
   ppr2->k3_size_min = 5;
@@ -1708,9 +1652,9 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   // ====================================================================
   // =                           Bessel functions                       =
   // ====================================================================
-  ppr2->bessel_j_cut_2nd_order = 1e-12;
-  ppr2->bessel_J_cut_2nd_order = 1e-6;
-  ppr2->bessel_x_step_2nd_order = 0.3;
+  ppr2->bessel_j_cut_song = 1e-12;
+  ppr2->bessel_J_cut_song = 1e-6;
+  ppr2->bessel_x_step_song = 0.3;
 
 
 
@@ -1726,6 +1670,7 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   // =                                  Technical stuff                            =
   // ===============================================================================
 
+  ppr2->old_run = _FALSE_;
   ppr2->store_sources_to_disk = _FALSE_;
   ppr2->load_sources_from_disk = _FALSE_;
   ppr2->store_transfers_to_disk = _FALSE_;
@@ -1736,7 +1681,7 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
 }
 
 
-int precision2_free (struct precision2 * ppr2)
+int input2_free (struct precision2 * ppr2)
 {
   
   free(ppr2->index_m_max);
@@ -1750,7 +1695,8 @@ int precision2_free (struct precision2 * ppr2)
 
 int song_version(
       char * version
-      ) {
+      )
+{
   
   sprintf(version,"%s",_SONG_VERSION_);
   return _SUCCESS_;

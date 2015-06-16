@@ -1,15 +1,38 @@
+#ifndef __PERTURBATIONS2_MACROS__
+#define __PERTURBATIONS2_MACROS__
+
 // ------------------------------------------------------------------------------------
 // -                          Shortcuts for 2nd-order moments                         -
 // ------------------------------------------------------------------------------------
 
-/* Shortcut to access the ppt2->sources array. It must be used only if the workspace ppw2 is
-defined, and after the functions perturb2_geometrical_corner and perturb2_get_k_lists have
-been called. */
+/**
+ * Shortcut to access the ppt2->sources array. It can be used only when ppw2 is
+ * defined and after the functions perturb2_geometrical_corner() and
+ * perturb2_get_k_lists() have been called
+ */
 #define sources(index_type) ppt2->sources[(index_type)]\
                             [ppw2->index_k1]\
                             [ppw2->index_k2]\
                             [index_tau*ppt2->k3_size[ppw2->index_k1][ppw2->index_k2] + ppw2->index_k3]
 
+
+/* The following macros are used to index many arrays in the code.  The idea is that
+the (L,M) multipole is found at y[monopole_g + lm(L,M)].
+We define a similar function to index the massive hierarchy, with l_max set to 2
+since we retain only the n=0,1,2 beta-moments for baryons and cold dark matter. */
+
+/* Macro used to index the first level of ppt2->sources and of the y and dy
+arrays, for massless species. For example, the (L,M) multipole of the photon
+hierarchy is found at source[monopole_g + lm(L,M)] and y[monopole_g + lm(L,M)]. */
+#define lm(l,m) ppt2->lm_array[l][ppr2->index_m[m]]
+
+/* Same as lm(l,m), but for massive species. Note that the first argument
+cannot exceed l_max=2 because we retain only the n=0,1,2 beta-moments for
+baryons and cold dark matter. */
+#define nlm(n,l,m) ppt2->nlm_array[n][l][ppr2->index_m[m]]
+
+/* Used to index the ppw2->rotation_1 and ppw2->rotation_2 arrays */
+#define lm_quad(l,m) ppt2->lm_array_quad[l][m]
 
 /* Define the photon temperature multipoles. Note that we set them to zero by default when
 the no-radiation approximation is switched on. */
@@ -89,7 +112,7 @@ with the z-axis. The E-modes are set to be different from zero only if polarizat
 requested.  We have no need for the B-modes because they vanish at 1st order.
 
 IMPORTANT: These macros can be used whenever a pvec_sources1 vector exists. This happens
-either after a call to with perturb_quadsources_at_tau_for_all_types (as in perturb_source_term
+either after a call to with perturb_song_sources_at_tau (as in perturb_source_term
 or perturb2_save_early_transfers) or when pvec_sources1 and pvec_sources2 directly access the
 quadratic sources stored in ppt->quadsources (as in perturb2_quadratic_sources). */
 #define I_1_tilde(l) ( l < 0 ? 0 : pvec_sources1[ppt->index_qs_monopole_g + l] )
@@ -160,12 +183,6 @@ ppt2->c_minus are used */
 #define k_zero_12(l,m)  ppw2->k_zero_product_12[lm(l,m)]  
 #define k_zero_21(l,m)  ppw2->k_zero_product_21[lm(l,m)]  
 #define k_zero_11(l,m)  ppw2->k_zero_product_11[lm(l,m)]  
-#define k_zero_22(l,m)  ppw2->k_zero_product_22[lm(l,m)]  
-  
-  
+#define k_zero_22(l,m)  ppw2->k_zero_product_22[lm(l,m)]
 
-
-
-
-
-
+#endif

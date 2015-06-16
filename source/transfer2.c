@@ -1,54 +1,79 @@
-/** @file transfer2.c Transfer module for second-order perturbations
+/** @file transfer2.c
  *
- * Guido W. Pettinari, 04.06.2012    
- * Based on transfer.c by Julien Lesgourgues
+ * Module to compute and store today's value of the second-order transfer
+ * functions.
  *
+ * The computation consists of solving the line of sight integral, a convolution
+ * in conformal time of the line of sight sources with the Bessel projection functions
+ * (computed in perturbations2.c and bessel2.c, respectively). This line of sight formalism
+ * allows us to infer the current value of the transfer functions today without having to
+ * evolve them all the way to today.
+ *
+ * Every passage of the computation is documented in the source code. For
+ * a more detailed explanation of the physics behind this module,
+ * please refer to chapter 5 of my thesis (http://arxiv.org/abs/1405.2280).
+ *
+ * The main output of this module, the second-order transfer functions evaluated
+ * today, is stored in the ptr2->transfer array. These are used to compute 
+ * the intrinsic bispectrum in bispectra2.c. See chapter 6 of my thesis
+ * (link above) for details on the bispectrum computation.
+ *
+ * The main functions that can be called externally are:
+ * -# transfer2_init() to run the module; requires background_init(), thermodynamics_init()
+ *    and perturb2_init().
+ * -# transfer2_free() to free all the memory associated to the module.
+ * 
+ * If the user specified 'store_transfers_to_disk=yes', the module will save the 
+ * transfer functions to disk after computing them, and then free the associated 
+ * memory. To reload them from disk, use transfer2_load_transfers_from_disk().
+ * To free again the memory associated to the sources, call
+ * transfer2_free_type_level().
+ * 
+ * Created by Guido W. Pettinari on 04.06.2012 based on transfer.c by the CLASS
+ * team (http://class-code.net/).
+ * Last modified by Guido W. Pettinari on 04.06.2015.
  */
 
 #include "transfer2.h"
 
 
-/* In order to access the sources for the line of sight integration, we define a preprocessor macro
-that takes as arguments the type (tp2) index, the time index, and the cosine index.
-NOTE: I moved this from transfer2_interpolate_sources_in_k to here in order to keep the macros
-all in one place. */
-#define sources(INDEX_TAU,INDEX_K_TRIANGULAR) \
-  ppt2->sources[index_tp2]\
-               [index_k1]\
-               [index_k2]\
-               [(INDEX_TAU)*k_pt_size + (INDEX_K_TRIANGULAR)]
-
-
-
 /**
- * This routine initializes the transfers structure, (in particular,
- * computes table of transfer functions \f$ \Delta_l^{X} (k) \f$)
+ * Fill all the fields in the transfers2 structure, especially the ptr2->transfer
+ * array.
+ * 
+ * This function calls the other transfer2_XXX functions in the order needed to 
+ * solve the line of sight integral at second order. In the process, it fills the
+ * ptr2 structure so that it can be used in the subsequent modules
+ * (spectra2.c, bispectra2.c ...).
  *
- * Main steps: 
+ * Before calling this function, make sure that background_init(),
+ * thermodynamics_init() and perturb2_init() have already been executed.
+ * 
+ * Details on the physics and on the adopted method can be found in my thesis
+ * (http://arxiv.org/abs/1405.2280) in chapter 5. The code itself is
+ * extensively documented and hopefully will give you further insight.
  *
- * - initialize all indices in the transfers structure
- *   and allocate all its arrays using transfer2_indices_of_transfers().
+ * In detail, this function does:
  *
- * - for all requested modes (scalar, vector, tensor),
- *   initial conditions and types (temperature, polarization, lensing,
- *   etc), compute the transfer function \f$ \Delta_l^{X} (k) \f$
- *   following the following steps:
- &
- * -# interpolate sources \f$ S(k, \tau) \f$ to get them at the right 
- *    values of k using transfer2_interpolate_sources_in_k()
+ * -# Based on the line of sight sources computed in the perturbations2.c module,
+ *    determine which transfer functions need to be computed and their k3-sampling via
+ *    transfer2_indices_of_transfers().
  *
- * -# for each l, compute the transfer function by convolving the 
- *    sources with the Bessel functions using transfer2_compute_for_each_l()
- *    (this step is parallelized). Store result in the transfer table 
- *    transfer[index_mode][((index_ic * ptr2->tt2_size[index_mode] + index_tt) * ptr2->l_size[index_mode] + index_l) * ptr2->k_size[index_mode] + index_k]
+ * -# Allocate one workspace per thread to store temporary values related
+ *    to the line of sight integration.
  *
- * @param ppr Input : pointer to precision structure 
- * @param pba Input : pointer to background structure 
- * @param pth Input : pointer to thermodynamics structure 
- * @param ppt Input : pointer to perturbation structure
- * @param pbs Input : pointer to bessels structure
- * @param ptr Output: pointer to initialized transfers structure
- * @return the error status
+ * -# For each combination of k1 and k2, interpolate the line of sight sources at the 
+ *    k3 values determined above, using transfer2_interpolate_sources_in_k().
+ * 
+ * -# For each combination of k1, k2 and k3, determine the best integration grid in
+ *    time using transfer2_get_time_grid(), and interpolate the line of sight sources
+ *    in such grid using transfer2_interpolate_sources_in_time().
+ *
+ * -# For each combination of k1, k2, k3 and type index, solve the line of sight
+ *    integral using transfer2_compute(); this will fill the ptr2->transfer array.
+ *
+ * -# Free the workspaces and, if requested, store to disk the content of ptr2->transfer
+ *    and free the array.
  */
 
 int transfer2_init(
@@ -79,7 +104,7 @@ int transfer2_init(
 
     ptr2->has_cls = _FALSE_;
     if (ptr2->transfer2_verbose > 0)
-      printf("No harmonic space transfer functions to compute. Second-order transfer module skipped.\n");
+      printf("Second-order transfer module skipped.\n");
 
     return _SUCCESS_;
 
@@ -91,8 +116,8 @@ int transfer2_init(
     printf("Computing second-order transfer functions\n");
 
   /* Get conformal age, recombination time and comoving sound horizon at recombination
-    from background / thermodynamics structures (only place where these structures
-    are used in this module) */
+  from background / thermodynamics structures (only place where these structures
+  are used in this module) */
   ptr2->tau0 = pba->conformal_age;
   ptr2->tau_rec = pth->tau_rec;
   ptr2->rs_rec = pth->rs_rec;
@@ -104,7 +129,7 @@ int transfer2_init(
   // ===================================================================================
 
   /* Initialize all indices in the transfers structure and allocate all its arrays. This
-  function also calls transfer2_get_lm_lists that fills ptr2->l, and transfer2_get_k3_size
+  function also calls transfer2_get_lm_lists() that fills ptr2->l, and transfer2_get_k3_sizes()
   that finds for all (k1,k2) pairs the allowed k3 range. */
   class_call (transfer2_indices_of_transfers (ppr,ppr2,ppt2,pbs,pbs2,ptr,ptr2),
     ptr2->error_message,
@@ -131,7 +156,7 @@ int transfer2_init(
   if (ppr2->load_transfers_from_disk == _TRUE_) {
     
     if (ptr2->transfer2_verbose > 0)
-      printf(" -> leaving transfer2 module without having computed the transfer functions, which will be read from disk\n");
+      printf(" -> leaving transfer2 module; transfer functions will be read from disk\n");
     
     return _SUCCESS_;
   }
@@ -171,7 +196,7 @@ int transfer2_init(
 
   else if (ptr2->tau_sampling == custom_transfer2_tau_sampling) {
     double k_max = ptr2->k_max_k1k2[ppt2->k_size-1][ppt2->k_size-1];
-    double tau_step_min = ppr2->tau_step_trans_2nd_order/k_max;
+    double tau_step_min = ppr2->tau_step_trans_song/k_max;
     double tau_max = ppt2->tau_sampling[ppt2->tau_size-1];
     tau_size_max = ppt2->tau_size + tau_max/tau_step_min + 1;
   }
@@ -305,39 +330,32 @@ int transfer2_init(
       // -                    Interpolate sources in k3                      -
       // ---------------------------------------------------------------------      
 
+      /* Find the grid in k3 for the current (k1,k2) pair */
       int last_used_index_pt;
+      double * k_grid_temp;
+      class_alloc(k_grid_temp, ptr2->k3_size_max*sizeof(double), ptr2->error_message);
 
-      /* We call transfer2_get_k3_list in a parallel region for simplicity, but this
-      is not really needeed, as its output depends only on k1 and k2, while the
-      parallel loop is on k. */
-      abort = _FALSE_;    
-      #pragma omp parallel private (thread)
-      {
+      class_call_parallel (transfer2_get_k3_list(
+                    ppr,
+                    ppr2,
+                    ppt2,
+                    pbs,
+                    pbs2,
+                    ptr2,
+                    index_k1,
+                    index_k2,
+                    k_grid_temp,  /* output */
+                    &last_used_index_pt
+                    ),
+        ptr2->error_message,
+        ptr2->error_message);
 
-        #ifdef _OPENMP
-        thread = omp_get_thread_num();
-        #endif
-
-        class_call_parallel (transfer2_get_k3_list(
-                      ppr,
-                      ppr2,
-                      ppt2,
-                      pbs,
-                      pbs2,
-                      ptr2,
-                      index_k1,
-                      index_k2,
-                      ppw[thread]->k_grid,  /* output */
-                      &last_used_index_pt
-                      ),
-          ptr2->error_message,
-          ptr2->error_message);
-
-        #pragma omp flush(abort)
-
-      } if (abort == _TRUE_) return _FAILURE_;
+      /* Copy the k3 grid in the pwb workspace. We do so in a parallel region because
+      we have as many pwb[thread] workspaces as the number of threads */
+      for (int thread=0; thread < number_of_threads; ++thread)
+        for (int index_k=0; index_k < ptr2->k_size_k1k2[index_k1][index_k2]; ++index_k)
+          ppw[thread]->k_grid[index_k] = k_grid_temp[index_k];
       
-
       /* Print some information */
       if (ptr2->transfer2_verbose > 3)
         printf("     * (k1,k2)=(%.3g,%.3g): the k3-grid comprises sources+transfer+left+right=%d+%d+%d+%d points from %g to %g\n",
@@ -348,6 +366,8 @@ int transfer2_init(
           ptr2->k_size_k1k2[index_k1][index_k2] - ptr2->k_physical_size_k1k2[index_k1][index_k2] - ptr2->k_physical_start_k1k2[index_k1][index_k2],
           ppw[thread]->k_grid[0], ppw[thread]->k_grid[ptr2->k_size_k1k2[index_k1][index_k2]-1]);
 
+      free (k_grid_temp);
+      
 
       // -----------------------------------------------------------------------
       // -                      Interpolate sources in k                       -
@@ -444,9 +464,9 @@ int transfer2_init(
                           pbs2,
                           ptr2,
                           index_tp,
-                          interpolated_sources_in_k[index_tp],                      /* Must be already filled */
-                          ppw[thread]->sources_time_spline[index_tp],               /* Will be filled with second-order derivatives */
-                          ppw[thread]->interpolated_sources_in_time[index_tp],      /* Will be filled with interpolated values in pw->tau_grid */
+                          interpolated_sources_in_k[index_tp],                 /* Must be already filled */
+                          ppw[thread]->sources_time_spline[index_tp],          /* Will be filled with second-order derivatives */
+                          ppw[thread]->interpolated_sources_in_time[index_tp], /* Will be filled with interpolated values in pw->tau_grid */
                           ppw[thread]
                           ),
               ptr2->error_message,
@@ -454,8 +474,6 @@ int transfer2_init(
       
           } // end of for (index_tp)
 
-
-          // *****    Loop over transfer type   *****
           
           for (int index_tt = 0; index_tt < ptr2->tt2_size; index_tt++) {
 
@@ -506,7 +524,8 @@ int transfer2_init(
     We won't need them anymore because the different k1 modes are independent. Note that
     this memory was either allocate at the beginning of the k1 loop, in this module, or
     at the beginning of the k1 loop in perturb2_init. */
-    class_call (perturb2_free_k1_level (ppt2, index_k1), ppt2->error_message, ppt2->error_message);
+    class_call (perturb2_free_k1_level (ppt2, index_k1),
+      ppt2->error_message, ppt2->error_message);
 
 
     /* Save all transfer functions for the given k1, and free the memory associated with them.
@@ -575,7 +594,146 @@ int transfer2_init(
 }
 
 
+/**
+ * Allocate the type level of the transfer functions array.
+ *
+ * Allocate the transfer type (tt) level of the array that will contain the second-order
+ * transfer functions: ptr2->transfer[index_tt][index_k1][index_k2][index_k].
+ *
+ * This function makes space for the transfer functions; it is called before loading
+ * them from disk in transfer2_load_transfers_from_disk(). It relies on values that are
+ * computed by transfer2_indices_of_perturbs() and transfer2_get_k3_sizes(), so make
+ * sure to call them beforehand.
+ *
+ */
+int transfer2_allocate_type_level(
+     struct perturbs2 * ppt2,
+     struct transfers2 * ptr2,
+     int index_tt
+     )
+{
 
+  long int count=0;
+  int k1_size = ppt2->k_size;
+
+  class_alloc(
+    ptr2->transfer[index_tt],
+    k1_size * sizeof(double **),
+    ptr2->error_message);
+
+  for (int index_k1=0; index_k1<k1_size; ++index_k1) {
+
+    /* Allocate k2 level.  Note that, as for ppt2->sources, the size of this level is smaller
+    than ppt2->k_size, and it depends on k1.  The reason is that we only need to compute
+    the transfer functions for those k2's that are smaller than k1 (our equations are symmetrised
+    wrt to k1<->k2) */
+    int k2_size = index_k1 + 1;
+  
+    class_alloc(
+      ptr2->transfer[index_tt][index_k1],
+      k2_size * sizeof(double *),
+      ptr2->error_message);
+  
+    for (int index_k2=0; index_k2<=index_k1; ++index_k2) {
+
+      /* Allocate k level. Note that we are using ptr2->k_size here instead of ppt2->k_size.  The
+      reason is that ptr2->k is sampled much more finely than ppt2->k in order to catch the wild
+      oscillation of the Bessel functions in k.  Furthermore, we only allocate memory for the k's
+      that are compatible with the values of k1 and k2, i.e. we impose fabs(cosk1k2) <= 1.  See
+      transfer2_get_k3_sizes() for further details. */
+      class_alloc(
+        ptr2->transfer[index_tt][index_k1][index_k2],
+        ptr2->k_size_k1k2[index_k1][index_k2] * sizeof(double),
+        ptr2->error_message);
+
+      #pragma omp atomic
+      ptr2->count_allocated_transfers += ptr2->k_size_k1k2[index_k1][index_k2];
+      count += ptr2->k_size_k1k2[index_k1][index_k2];
+
+    } // end of for(index_k2)
+  } // end of for(index_k1)
+  
+  /* Print some debug information on memory consumption */
+  if (ptr2->transfer2_verbose > 2) {
+    printf("     * allocated ~ %.2f MB in ptr2->transfer (%ld doubles) for index_tt=%d; it's size is now ~ %.3g MB;\n",
+      count*sizeof(double)/1e6, count, index_tt, ptr2->count_allocated_transfers*sizeof(double)/1e6);
+  }
+
+  return _SUCCESS_;
+
+}
+
+
+/**
+ * Load the transfer functions from disk for a given transfer type.
+ *
+ * The transfer functions will be read from the file given in ptr2->transfers_paths[index_type]
+ * and stored in the array ptr2->transfer. Before running this function, make sure to
+ * allocate the corresponding type level of ptr2->transfer using transfer2_allocate_type_level().
+ *
+ * This function is used in the bispectra2.c module.
+ */
+int transfer2_load_transfers_from_disk(
+        struct perturbs2 * ppt2,
+        struct transfers2 * ptr2,
+        int index_tt
+        )
+{
+
+  /* Running indexes */
+  int index_k1, index_k2;
+
+  /* Allocate memory to keep the transfer functions */
+  class_call (transfer2_allocate_type_level(ppt2, ptr2, index_tt),
+    ptr2->error_message, ptr2->error_message);
+
+  /* Print some debug */
+  if (ptr2->transfer2_verbose > 2)
+    printf("     * transfer2_load_transfers_from_disk: reading results for index_tt=%d from '%s' ...",
+      index_tt, ptr2->transfers_paths[index_tt]);
+  
+  /* Open file for reading */
+  class_open (ptr2->transfers_files[index_tt], ptr2->transfers_paths[index_tt], "rb", ptr2->error_message);
+  
+  /* Two loops follow to read the file */
+  for (index_k1 = 0; index_k1 < ppt2->k_size; ++index_k1) {
+  
+    for (index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
+  
+      int n_to_read = ptr2->k_size_k1k2[index_k1][index_k2];
+  
+      /* Some debug */
+      // printf ("reading %d entries for index_tt=%d, index_k1=%d, index_k2=%d\n", n_to_read, index_tt, index_k1, index_k2);
+  
+      /* Read a chunk with all the k-values for this set of (type,k1,k2) */
+      int n_read = fread(
+              ptr2->transfer[index_tt][index_k1][index_k2],
+              sizeof(double),
+              n_to_read,
+              ptr2->transfers_files[index_tt]);
+  
+      class_test(n_read != n_to_read,
+        ptr2->error_message,
+        "Could not read in '%s' file, read %d entries but expected %d (index_tt=%d,index_k1=%d,index_k2=%d)",
+          ptr2->transfers_paths[index_tt], n_read, n_to_read, index_tt, index_k1, index_k2);
+  
+      /* Update the counter for the values stored in ptr2->transfers */
+      #pragma omp atomic
+      ptr2->count_memorised_transfers += ptr2->k_size_k1k2[index_k1][index_k2];
+  
+    } // end of for(index_k2)
+    
+  } // end of for(index_k1)
+  
+  /* Close file */
+  fclose(ptr2->transfers_files[index_tt]);
+
+  if (ptr2->transfer2_verbose > 2)
+    printf ("Done.\n");
+
+  return _SUCCESS_; 
+  
+}
 
 
 /**
@@ -583,11 +741,7 @@ int transfer2_init(
  *
  * To be called at the end of each run, only when no further calls to
  * transfer_functions_at_k() are needed.
- *
- * @param ptr Input: pointer to transfers structure (which fields must be freed)
- * @return the error status
- */
- 
+ */ 
 int transfer2_free(
       struct precision2 * ppr2,
       struct perturbs2 * ppt2,
@@ -663,23 +817,31 @@ int transfer2_free(
 }
 
 
-
 /**
- * This routine defines all indices and allocates all tables 
- * in the transfers structure 
  *
- * Compute list of (k, l) values, allocate and fill corresponding
- * arrays in the transfers structure. Allocate the array of transfer
- * function tables.
+ * Initialize indices and arrays in the second-order transfer functions structure.
  *
- * @param ppr Input : pointer to precision structure 
- * @param ppt Input : pointer to perturbation structure
- * @param pbs Input : pointer to bessels structure
- * @param ptr Input/Output: pointer to transfer structure
- * @param rs_rec  Input : comoving distance to recombination
- * @return the error status
+ * In detail, this function does:
+ *
+ *  -# Computes the list of multipoles where to compute the transfer functions via
+ *     transfer2_get_l_list().    
+ *
+ *  -# Determine which transfer functions to compute based on the previous modules, and
+ *     assign them the ptr2->index_tt2_XXX indices.
+ *
+ *  -# Define the indexing strategy of the transfer functions array (ptr2->transfer)
+ *     and establish a correspondence between line of sight sources and transfer 
+ *     functions, via transfer2_get_lm_lists().
+ *
+ *  -# In transfer2_get_k3_sizes(), fill the array ptr2->k_size_k1k2 which, for each
+ *     (k1,k2) pair, determines the size of the k3 grid of the transfer functions, based
+ *     on the triangular condition.
+ *
+ *  -# Allocate the type level of the transfer array, ptr2->transfer[index_tt].
+ *
+ *  -# Open the files where we will store the transfer functions at the end of the computation.
+ *
  */
-
 int transfer2_indices_of_transfers(
           struct precision * ppr,
           struct precision2 * ppr2,
@@ -714,6 +876,20 @@ int transfer2_indices_of_transfers(
   polarisation...). This is given by all the possible (l,m) combinations contained in ptr2->l
   and ppr2->m */
   ptr2->n_transfers = size_indexl_indexm (ptr2->l, ptr2->l_size_max, ppr2->m, ppr2->m_size);
+  
+  /* Number of non-vanishing E-mode transfer functions, for debug purposes */
+  ptr2->n_nonzero_transfers_E = ptr2->n_transfers;
+  if (ppr2->compute_m[0])
+    ptr2->n_nonzero_transfers_E -= 2;
+  if (ppr2->compute_m[1])
+    ptr2->n_nonzero_transfers_E -= 1;
+
+  /* Number of non-vanishing B-mode transfer functions, for debug purposes */
+  ptr2->n_nonzero_transfers_B = ptr2->n_transfers;
+  if (ppr2->compute_m[0])
+    ptr2->n_nonzero_transfers_B -= ptr2->l_size_max;
+  if (ppr2->compute_m[1])
+    ptr2->n_nonzero_transfers_B -= 1;
 
 
   /* Photon temperature transfer functions */
@@ -730,11 +906,14 @@ int transfer2_indices_of_transfers(
     index_tt += ptr2->n_transfers;    
   }
 
-  /* Photon B-mode polarisation transfer functions */
+  /* Photon B-mode polarisation transfer functions. To be computed
+  only for non scalar modes, otherwise they just vanish. */
   if (ppt2->has_cmb_polarization_b == _TRUE_) {
   
-    ptr2->index_tt2_B = index_tt;
-    index_tt += ptr2->n_transfers;
+    if (ppr2->m_max_2nd_order>0) {
+      ptr2->index_tt2_B = index_tt;
+      index_tt += ptr2->n_transfers;
+    }
         
   }
 
@@ -748,11 +927,13 @@ int transfer2_indices_of_transfers(
 
 
   if (ptr2->transfer2_verbose > 1) {
-    printf (" -> will compute tt2_size=%d transfer functions ( ", ptr2->tt2_size);
+    printf (" -> will compute tt2_size=%d transfer functions: ", ptr2->tt2_size);
     if (ppt2->has_cmb_temperature == _TRUE_) printf ("T=%d ", ptr2->n_transfers);
-    if (ppt2->has_cmb_polarization_e == _TRUE_) printf ("E=%d ", ptr2->n_transfers);
-    if (ppt2->has_cmb_polarization_b == _TRUE_) printf ("B=%d ", ptr2->n_transfers);
-    printf (")\n");
+    if (ppt2->has_cmb_polarization_e == _TRUE_) printf ("E=%d (%d non-zero) ",
+      ptr2->n_transfers, ptr2->n_nonzero_transfers_E);
+    if (ppt2->has_cmb_polarization_b == _TRUE_) printf ("B=%d (%d non-zero) ",
+      ptr2->n_transfers, ptr2->n_nonzero_transfers_B);
+    printf ("\n");
   }  
 
   
@@ -769,9 +950,6 @@ int transfer2_indices_of_transfers(
                 ptr2),
     ptr2->error_message,
     ptr2->error_message);
-
-
-
 
 
 
@@ -792,11 +970,9 @@ int transfer2_indices_of_transfers(
 
 
 
-
   // =======================================================================================
   // =                      Allocate first levels of ptr2->transfer                        =
   // =======================================================================================
-
   
   /* ptr2->transfer has five levels that should be indexed in the following way:
         ptr2->transfer [index_tt]
@@ -805,8 +981,6 @@ int transfer2_indices_of_transfers(
                        [index_k]
     Important: as in ppt2->sources, index_k2 goes from 0 to ppt2->k_size-index_k1.  */
 
-  int index_k1, index_k2;
-  
   /* Counter to keep track of the memory usage of ptr2->transfer */
   ptr2->count_memorised_transfers = 0;
   ptr2->count_allocated_transfers = 0;
@@ -981,8 +1155,6 @@ int transfer2_get_lm_lists (
 
 
 
-
-
   // ======================================================================================
   // =                          Transfers - Sources correspondence                        =
   // ======================================================================================
@@ -1104,8 +1276,29 @@ int transfer2_get_lm_lists (
 
 
 
-
-
+/**
+ * For a given (k1,k2) pair, find the size of the corresponding k3 grid.
+ *
+ * At second order, the transfer functions are sampled in a 3D Fourier space (k1,k2,k3).
+ * The k3 direction is special because in the line of sight integral (see eq. 5.95 of
+ * http://arxiv.org/abs/1405.2280) it is convolved with a high frequency projection function
+ * J_Llm(k3*tau). Therefore, the k3 direction requires a special sampling that can catch the
+ * oscillations of J_Llm. Here we find the size of such sampling for a given (k1,k2) pair and
+ * store it in the array ptr2->k_size_k1k2[index_k1][index_k2].
+ * 
+ * Extrapolation: to solve the bispectrum integral (eq. 6.36) it is useful to extrapolate
+ * the transfer functions in the k3 direction beyond their physical limits, that is, beyond
+ * k3_min = |k1-k2| and k3_max = k1+k2. The reason is purely numerical: eventually, the
+ * contributions from the extrapolated regions will cancel. The extrapolation has the purpose
+ * of stabilizing an problematic integration.
+ *
+ * The following arrays are filled in this function:
+ *  - ptr2->k_min_k1k2[index_k1][index_k2]
+ *  - ptr2->k_max_k1k2[index_k1][index_k2]
+ *  - ptr2->k_size_k1k2[index_k1][index_k2]
+ *  - ptr2->k_physical_start_k1k2[index_k1][index_k2]
+ *  - ptr2->k_physical_size_k1k2[index_k1][index_k2]
+ */
 int transfer2_get_k3_size (
       struct precision * ppr,
       struct precision2 * ppr2,
@@ -1134,7 +1327,6 @@ int transfer2_get_k3_size (
   //   printf ("(k_max_pt, k1+k2 ) = (%g,%g)\n", k_max_pt, ppt2->k[index_k1]+ppt2->k[index_k2]);
   //   
   // }
-
 
   /* By default, for the transfer functions we take the same k-limits used for the sources */
   double k_min_tr = k_min_pt;
@@ -1198,25 +1390,27 @@ int transfer2_get_k3_size (
   one can think of using a less dense k-grid */
   double k_step_max;
 
-  if (ptr2->k_sampling == bessel_k_sampling) {
+  if (ptr2->k_sampling == bessel_k3_sampling) {
     /* We require the maximum step between two points to be determined by the sampling of the projection
     functions J. The argument of J is x=k*(tau0-tau) and is linearly sampled in x. Hence, the maximum
     step in k is given by the x/tau0. */
     k_step_max = pbs2->xx_step/ptr2->tau0;
   }
-  else if (ptr2->k_sampling == class_transfer2_k_sampling) {
-    /* rs_rec is the comoving sound horizon at recombination, tipically ~250 Mpc */
-    k_step_max = 2.*_PI_/ptr2->rs_rec*ppr2->k_step_trans_scalars_2nd_order;
-  }
+  else if (ptr2->k_sampling == class_transfer2_k3_sampling) {
 
-  int index_k_pt;
-  int index_k_tr;
+    k_step_max = 2.*_PI_/(ptr2->tau0-ptr2->tau_rec)*ppr2->q_linstep_song;
+    
+    /* Old style sampling */
+    if ((ppr->load_run == _TRUE_) && (ppr2->old_run == _TRUE_))
+      k_step_max = 2.*_PI_/ptr2->rs_rec*ppr2->q_linstep_song;
+  }
 
   // *** Count the number of necessary values
 
   /* First point */
-  index_k_pt = 0;
-  index_k_tr = 0;
+  
+  int index_k_pt = 0;
+  int index_k_tr = 0;  
   double k = k_min_tr;
   index_k_tr++;
 
@@ -1234,6 +1428,7 @@ int transfer2_get_k3_size (
       ptr2->error_message,
       "stopping to avoid segmentation fault, step=%g", first_physical_step);
 
+    /* Take a linear step in the extrapolation regime */
     while (k < k_min_pt) {
       k += MIN (k_step_max, n*first_physical_step);
       index_k_tr++;
@@ -1312,13 +1507,13 @@ to do linear interpolation.\n",
 
 
 
-
-
-
 /**
- * Due to the triangular condition on the wavevectors (k3 = k1 + k2), the integration range
- * will depend on the given (k1,k2) pair. The size of k3_grid is contained in
- * ptr2->k_size_k1k2[index_k1][index_k2].
+ * For a given (k1,k2) pair, find the size of the corresponding k3 grid.
+ * 
+ * This function relies on transfer2_get_k3_sizes() being called beforehand to compute
+ * the array ptr2->k_size_k1k2[index_k1][index_k2].
+ *
+ * Please refer to the documentation of transfer2_get_k3_size() for further detail.
  */
 int transfer2_get_k3_list (
       struct precision * ppr,
@@ -1329,7 +1524,8 @@ int transfer2_get_k3_list (
       struct transfers2 * ptr2,
       int index_k1,
       int index_k2,
-      double * k3,
+      double * k3, /**< output, array of size ptr2->k_size_k1k2[index_k1][index_k2] with
+                      the k3 sampling of the transfer function in (k1,k2) */
       int * last_used_index_pt
       )
 {
@@ -1343,7 +1539,8 @@ int transfer2_get_k3_list (
   double k_min_pt = ppt2->k3[index_k1][index_k2][0];
   double k_max_pt = ppt2->k3[index_k1][index_k2][k_pt_size-1];
 
-  /* We assume that the limits for the current k3-grid were already computed in transfer2_get_k3_size */
+  /* We assume that the limits for the current k3-grid were already computed in
+  transfer2_get_k3_sizes() */
   int k_tr_size = ptr2->k_size_k1k2[index_k1][index_k2];
   double k_min_tr = ptr2->k_min_k1k2[index_k1][index_k2];
   double k_max_tr = ptr2->k_max_k1k2[index_k1][index_k2];
@@ -1353,23 +1550,25 @@ int transfer2_get_k3_list (
   one can think of using a less dense k-grid */
   double k_step_max;
 
-  if (ptr2->k_sampling == bessel_k_sampling) {
+  if (ptr2->k_sampling == bessel_k3_sampling) {
     /* We require the maximum step between two points to be determined by the sampling of the projection
     functions J. The argument of J is x=k*(tau0-tau) and is linearly sampled in x. Hence, the maximum
     step in k is given by the x/tau0. */
     k_step_max = pbs2->xx_step/ptr2->tau0;
   }
-  else if (ptr2->k_sampling == class_transfer2_k_sampling) {
-    /* rs_rec is the comoving sound horizon at recombination, tipically ~250 Mpc */
-    k_step_max = 2.*_PI_/ptr2->rs_rec*ppr2->k_step_trans_scalars_2nd_order;
-  }
+  else if (ptr2->k_sampling == class_transfer2_k3_sampling) {
 
+    k_step_max = 2.*_PI_/(ptr2->tau0-ptr2->tau_rec)*ppr2->q_linstep_song;
+    
+    /* Old style sampling */
+    if ((ppr->load_run == _TRUE_) && (ppr2->old_run == _TRUE_))
+      k_step_max = 2.*_PI_/ptr2->rs_rec*ppr2->q_linstep_song;
+  }
 
   /* - first point */
 
   int index_k_pt = 0;
   int index_k_tr = 0;
-
   double k = k_min_tr;
   k3[0] = k_min_tr;
   index_k_tr++;
@@ -1399,7 +1598,8 @@ int transfer2_get_k3_list (
   
   index_k_pt++;
 
-  /* Points taken from perturbation2 module if the step is small enough */
+  /* Take the next point from the sources sampling (ppt->k3) if the step is small enough.
+  This assumes that ppt->k3 is a growing array. */
   while ((index_k_pt < k_pt_size) && ((ppt2->k3[index_k1][index_k2][index_k_pt] - k) < k_step_max)) {
       k = ppt2->k3[index_k1][index_k2][index_k_pt];
       k3[index_k_tr] = k;
@@ -1410,16 +1610,16 @@ int transfer2_get_k3_list (
   *last_used_index_pt = index_k_pt;
 
   /* Make sure that we do not introduce a jump in the extrapolation */
-  double last_triangular_step = ppt2->k3[index_k1][index_k2][k_pt_size-1] - ppt2->k3[index_k1][index_k2][k_pt_size-2];
+  double last_triangular_step = ppt2->k3[index_k1][index_k2][k_pt_size-1] 
+    - ppt2->k3[index_k1][index_k2][k_pt_size-2];
 
-  /* Then, points spaced linearily with step k_step_max. Note that when using k3-extrapolation, we add points beyond the
-  physical limit dictated by the triangular condition. */
+  /* Then, points spaced linearily with step k_step_max. Note that when using k3-extrapolation,
+  we add points beyond the physical limit dictated by the triangular condition. */
   while ((index_k_tr < k_tr_size) && (k < k_max_tr)) {
     k += MIN (k_step_max, n*last_triangular_step);
     k3[index_k_tr] = k;
     index_k_tr++;
   }
-
 
   /* Consistency check on the maximum value of k3 */
   class_test (k3[k_tr_size-1] > k_max_tr,
@@ -1427,36 +1627,38 @@ int transfer2_get_k3_list (
     "bug in k list calculation, k_max_transfers2=%.17f is larger than k_max_tr=%.17f, should never happen. This can happen for a race condition.",
     k3[k_tr_size-1], k_max_tr);
 
-
   /* Some debug */
-  // int index_k1_debug = 4;
-  // int index_k2_debug = 3;
-  // 
+  // int index_k1_debug = 0;
+  // int index_k2_debug = 0;
+  //
   // if ((index_k1==index_k1_debug) && (index_k2==index_k2_debug)) {
-  //   
+  //
   //   fprintf (stderr, "# ~~~~ (index_k1,index_k2)=(%d,%d), (k1,k2)=(%g,%g), k_tr_size=%d ~~~~~\n",
   //     index_k1, index_k2, ppt2->k[index_k1], ppt2->k[index_k2], ptr2->k_size_k1k2[index_k1][index_k2]);
-  // 
+  //
   //   int first_k_phys = ptr2->k_physical_start_k1k2[index_k1][index_k2];
   //   int last_k_phys = ptr2->k_physical_start_k1k2[index_k1][index_k2] + ptr2->k_physical_size_k1k2[index_k1][index_k2] - 1;
-  //   
+  //
   //   fprintf (stderr, "# ~~~~  K-SAMPLING OF SOURCES (k1=%g, k2=%g, %d k's in [%g,%g], of which used: %d) ~~~~~\n",
   //     ppt2->k[index_k1], ppt2->k[index_k2], k_pt_size, k_min_pt, k_max_pt, *last_used_index_pt);
   //   for (index_k_pt=0; index_k_pt < k_pt_size; ++index_k_pt)
   //     fprintf(stderr, "# %12d %26.17f\n", index_k_pt, ppt2->k3[index_k1][index_k2][index_k_pt]);
-  //   
-  //   fprintf (stderr, "# ~~~~  LEFT-EXTRAPOLATION (%d k's in (%g,%g)) ~~~~~\n", first_k_phys, k3[0], k3[first_k_phys]);
+  //
+  //   fprintf (stderr, "# ~~~~  LEFT-EXTRAPOLATION (%d k's in (%g,%g)) ~~~~~\n",
+  //     first_k_phys, k3[0], k3[first_k_phys]);
   //   for (index_k_tr=0; index_k_tr < first_k_phys; ++index_k_tr)
   //     fprintf(stderr, "# %12d %26.17f\n", index_k_tr, k3[index_k_tr]);
-  //   
-  //   fprintf (stderr, "# ~~~~  PHYSICAL K's (%d k's in [%g,%g]) ~~~~~\n", last_k_phys-first_k_phys+1, k3[first_k_phys], k3[last_k_phys]);
+  //
+  //   fprintf (stderr, "# ~~~~  PHYSICAL K's (%d k's in [%g,%g]) ~~~~~\n",
+  //     last_k_phys-first_k_phys+1, k3[first_k_phys], k3[last_k_phys]);
   //   for (index_k_tr=first_k_phys; index_k_tr < last_k_phys+1; ++index_k_tr)
   //     fprintf(stderr, "# %12d %26.17f\n", index_k_tr, k3[index_k_tr]);
-  //   
-  //   fprintf (stderr, "# ~~~~  RIGHT-EXTRAPOLATION (%d k's in (%g,%g)) ~~~~~\n", k_tr_size-last_k_phys-1, k3[last_k_phys], k3[k_tr_size-1]);
+  //
+  //   fprintf (stderr, "# ~~~~  RIGHT-EXTRAPOLATION (%d k's in (%g,%g)) ~~~~~\n",
+  //     k_tr_size-last_k_phys-1, k3[last_k_phys], k3[k_tr_size-1]);
   //   for (index_k_tr=last_k_phys+1; index_k_tr < k_tr_size; ++index_k_tr)
   //     fprintf(stderr, "# %12d %26.17f\n", index_k_tr, k3[index_k_tr]);
-  // 
+  //
   // } // end of debug
 
   /* Check that the computed k3-grid always satisfies the triangular condition in the physical regime */
@@ -1479,7 +1681,6 @@ int transfer2_get_k3_list (
       "bug in k list calculation, k3-grid is not strictly ascending: k[%d]=%g > k[%d]=%g.",
       index_k3, index_k3+1, k3[index_k3], k3[index_k3 + 1]);
 
-
   return _SUCCESS_;
 
 } // end of transfer2_get_k3_list
@@ -1487,23 +1688,16 @@ int transfer2_get_k3_list (
 
 
 
-
-
-
 /**
- * This routine defines the number and values of wavenumbers k for
- * each mode (different in perturbation module and transfer module:
- * here we impose an upper bound on the linear step. So, typically,
- * for small k, the sampling is identical to that in the perturbation
- * module, while at high k it is denser and source functions are
- * interpolated).
+ * Find the size of the k3 grid for all possible (k1,k2) pairs.
  *
- * @param ppr     Input : pointer to precision structure
- * @param ppt     Input : pointer to perturbation structure
- * @param ptr     Input/Output : pointer to transfers structure containing k's
- * @return the error status
+ * This function allocates the arrays in the transfer2 structure indexed by
+ * index_k1 and index_k2, and fills them calling transfer2_get_k3_size() in a loop.
+ * It also computes ptr2->k3_size_max, which is later used to allocate several
+ * arrays.
+ * 
+ * Please refer to the documentation of transfer2_get_k3_size() for further details.
  */
-
 int transfer2_get_k3_sizes (
       struct precision * ppr,
       struct precision2 * ppr2,
@@ -1511,25 +1705,21 @@ int transfer2_get_k3_sizes (
       struct bessels * pbs,
       struct bessels2 * pbs2,
       struct transfers * ptr,
-      struct transfers2 * ptr2     /* Out, will write on ptr2->k_size */
+      struct transfers2 * ptr2
       )
 {
-
-
-  int index_k1, index_k2;
 
   /* Check that the sources were computed for enough k3-values. Because the transfer2.c module relies
   on the linear interpolation of the source on the k3 grid, it does not make sense to proceed further
   if less than 2 points were computed. */
-  for(index_k1=0; index_k1<ppt2->k_size; ++index_k1)
-    for(index_k2=0; index_k2<index_k1+1; ++index_k2)
+  for(int index_k1=0; index_k1<ppt2->k_size; ++index_k1)
+    for(int index_k2=0; index_k2<index_k1+1; ++index_k2)
       class_test (
         ((ppt2->k3_size[index_k1][index_k2] < 2) && (ppr2->sources_k3_interpolation==linear_interpolation))
         || ((ppt2->k3_size[index_k1][index_k2] < 4) && (ppr2->sources_k3_interpolation==cubic_interpolation)),
         ptr2->error_message,
         "index_k1=%d, index_k2=%d: cannot do interpolation in k3 with just k3_size=%d values. Increase k3_size.",
         index_k1, index_k2, ppt2->k3_size[index_k1][index_k2]);
-
   
   /* The k3-dependence of the second-order transfer function T(k1,k2,k3) sets the frequency
   of oscillation of the Bessel function in the line-of-sight integral. This means that T(k1,k2,k3)
@@ -1546,9 +1736,8 @@ int transfer2_get_k3_sizes (
   class_alloc(ptr2->k_physical_size_k1k2, k1_size*sizeof(int *), ptr2->error_message);
   class_alloc(ptr2->k_min_k1k2, k1_size*sizeof(double *), ptr2->error_message);
   class_alloc(ptr2->k_max_k1k2, k1_size*sizeof(double *), ptr2->error_message);
-  
 
-  for(index_k1=0; index_k1<k1_size; ++index_k1) {
+  for(int index_k1=0; index_k1<k1_size; ++index_k1) {
   
     double k1 = ppt2->k[index_k1];
   
@@ -1562,7 +1751,7 @@ int transfer2_get_k3_sizes (
     class_alloc(ptr2->k_max_k1k2[index_k1], k2_size*sizeof(double), ptr2->error_message);
   
     /* Fill k_size_k1k2, k_min and k_max */
-    for(index_k2=0; index_k2<=index_k1; ++index_k2) {
+    for(int index_k2=0; index_k2<=index_k1; ++index_k2) {
   
       double k2 = ppt2->k[index_k2];
 
@@ -1588,8 +1777,8 @@ int transfer2_get_k3_sizes (
   long int k_size_sum = 0;
   long int k1_k2_pairs = 0;
 
-  for (index_k1 = 0; index_k1 < ppt2->k_size; ++index_k1) {
-    for (index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
+  for (int index_k1 = 0; index_k1 < ppt2->k_size; ++index_k1) {
+    for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
       ptr2->k3_size_max = MAX (ptr2->k3_size_max, ptr2->k_size_k1k2[index_k1][index_k2]);
       k_size_sum += ptr2->k_size_k1k2[index_k1][index_k2];
       k1_k2_pairs++;
@@ -1653,7 +1842,6 @@ int transfer2_compute (
         )
 {
     
-
   /* Compute the transfer function for this set of parameters (l,m,k1,k2,k) and the type
   of transfer function given by index_tt2 */
   int transfer_type = ptr2->index_tt2_monopole[index_tt];
@@ -1661,7 +1849,7 @@ int transfer2_compute (
   /* Print some info */
   if (ptr2->transfer2_verbose > 4)
     printf("     * computing transfer function for (l,m) = (%d,%d)\n", ptr2->l[index_l], ptr2->m[index_m]);
-        
+
 
 
   // =====================================================================================
@@ -1731,26 +1919,31 @@ int transfer2_compute (
       ptr2->error_message,
       ptr2->error_message);
 
-    /* Mixing contribution (B -> E) */
-    class_call (transfer2_integrate(
-                  ppr,
-                  ppr2,
-                  ppt2,
-                  pbs,
-                  pbs2,
-                  ptr2,
-                  index_k1,
-                  index_k2,
-                  index_k,
-                  index_l,
-                  index_m,
-                  pw->interpolated_sources_in_time,
-                  pbs2->index_J_EB,   /* EB mixing projection function */
-                  ppt2->index_tp2_B,  /* B-mode source function */
-                  pw,
-                  &(mixing_contribution)),
-      ptr2->error_message,
-      ptr2->error_message);
+    /* Mixing contribution (B -> E), only for non-scalar modes */
+
+    if (ptr2->m[index_m] != 0) {
+
+      class_call (transfer2_integrate(
+                    ppr,
+                    ppr2,
+                    ppt2,
+                    pbs,
+                    pbs2,
+                    ptr2,
+                    index_k1,
+                    index_k2,
+                    index_k,
+                    index_l,
+                    index_m,
+                    pw->interpolated_sources_in_time,
+                    pbs2->index_J_EB,   /* EB mixing projection function */
+                    ppt2->index_tp2_B,  /* B-mode source function */
+                    pw,
+                    &(mixing_contribution)),
+        ptr2->error_message,
+        ptr2->error_message);
+      
+      }
       
       /* The integral is given by the sum of the E->E and B->E contributions. */
       pw->transfer = direct_contribution + mixing_contribution;
@@ -1763,92 +1956,109 @@ int transfer2_compute (
   // =                     B-mode polarisation transfer function                         =
   // =====================================================================================
   
-  else if ((ppt2->has_cmb_polarization_b==_TRUE_) && (transfer_type==ptr2->index_tt2_B)) {
+  /* We consider the B-modes only for non-scalar modes. Even if didn't do so, both the 
+  direct and mixed contributions would vanish. The direct contribution vanishes because
+  it involves the B-mode sources at m=0, which vanish. The mixed contribution vanishes
+  because the projection function vanishes for m=0 (see odd function in eq. 5.104 of
+  http://arxiv.org/abs/1405.2280) */
 
-    /* Number of multipole sources to consider */
-    pw->L_max = ppr2->l_max_los_p;
-
-    /* E-modes and B-modes mix while they propagate. There are two contributions: a
-    direct one B->B and a mixing one E->B */
-    double direct_contribution=0, mixing_contribution=0;
+  if ((ppt2->has_cmb_polarization_b==_TRUE_) && (transfer_type==ptr2->index_tt2_B)) {
   
-    /* Direct contribution (B -> B). The projection function for this contribution (J_BB)
-    is equal to the one for E->E (J_EE). */
-    class_call (transfer2_integrate(
-                  ppr,
-                  ppr2,
-                  ppt2,
-                  pbs,
-                  pbs2,
-                  ptr2,
-                  index_k1,
-                  index_k2,
-                  index_k,
-                  index_l,
-                  index_m,
-                  pw->interpolated_sources_in_time,
-                  pbs2->index_J_EE,   /* E-mode projection function (equal to B's) */
-                  ppt2->index_tp2_B,  /* B-mode source function */
-                  pw,
-                  &(direct_contribution)),
-      ptr2->error_message,
-      ptr2->error_message);
+    if (ptr2->m[index_m] == 0) {
+    
+      pw->transfer = 0;
+    
+    }
+  
+    else {
 
-    /* Mixing contribution (E->B). The projection function for this contribution (J_BE)
-    is equal to minues the one for B->E (-J_EB). */
-    class_call (transfer2_integrate(
-                  ppr,
-                  ppr2,
-                  ppt2,
-                  pbs,
-                  pbs2,
-                  ptr2,
-                  index_k1,
-                  index_k2,
-                  index_k,
-                  index_l,
-                  index_m,
-                  pw->interpolated_sources_in_time,
-                  pbs2->index_J_EB,   /* EB mixing projection function (equal to minus BE) */
-                  ppt2->index_tp2_E,  /* E-mode source function */
-                  pw,
-                  &(mixing_contribution)),
-      ptr2->error_message,
-      ptr2->error_message);
+      /* Number of multipole sources to consider */
+      pw->L_max = ppr2->l_max_los_p;
+
+      /* E-modes and B-modes mix while they propagate. There are two contributions: a
+      direct one B->B and a mixing one E->B */
+      double direct_contribution=0, mixing_contribution=0;
+  
+      /* Direct contribution (B -> B). The projection function for this contribution (J_BB)
+      is equal to the one for E->E (J_EE). */
+      class_call (transfer2_integrate(
+                    ppr,
+                    ppr2,
+                    ppt2,
+                    pbs,
+                    pbs2,
+                    ptr2,
+                    index_k1,
+                    index_k2,
+                    index_k,
+                    index_l,
+                    index_m,
+                    pw->interpolated_sources_in_time,
+                    pbs2->index_J_EE,   /* E-mode projection function (equal to B's) */
+                    ppt2->index_tp2_B,  /* B-mode source function, vanishes for m=0 */
+                    pw,
+                    &(direct_contribution)),
+        ptr2->error_message,
+        ptr2->error_message);
+
+      /* Mixing contribution (E->B). The projection function for this contribution (J_BE)
+      is equal to minues the one for B->E (-J_EB). */
+      class_call (transfer2_integrate(
+                    ppr,
+                    ppr2,
+                    ppt2,
+                    pbs,
+                    pbs2,
+                    ptr2,
+                    index_k1,
+                    index_k2,
+                    index_k,
+                    index_l,
+                    index_m,
+                    pw->interpolated_sources_in_time,
+                    pbs2->index_J_EB,   /* EB mixing projection function (equal to minus BE),
+                                           vanishes for m=0 (see eq. 5.104 of http://arxiv.org/abs/1405.2280)*/
+                    ppt2->index_tp2_E,  /* E-mode source function */
+                    pw,
+                    &(mixing_contribution)),
+        ptr2->error_message,
+        ptr2->error_message);
       
-      /* The integral is given by the sum of the B->B and E->B contributions.
-      IMPORTANT: the mixing projection function J_BE is given by -J_EB. This follows from 
-      the properties of the H matrix in appendix B of http://arxiv.org/abs/1102.1524. Hence,
-      here we multiply the mixing contribution by a minus sign. */
-      pw->transfer = direct_contribution - mixing_contribution;
+        /* The integral is given by the sum of the B->B and E->B contributions.
+        IMPORTANT: the mixing projection function J_BE is given by -J_EB. This follows from 
+        the properties of the H matrix in appendix B of http://arxiv.org/abs/1102.1524. Hence,
+        here we multiply the mixing contribution by a minus sign. */
+        pw->transfer = direct_contribution - mixing_contribution;
       
+    } // end of if m!=0
+    
   } // end of B-modes
-
-
-
-
 
 
   // ====================================================
   // =           Rescale transfer functions             =
   // ====================================================
 
-  /*   This is the best place to apply several factors on our second-order transfer functions.
+  /**
+   * This is the best place to apply several factors on our second-order transfer functions.
    *
-   *   The second-order transfer functions that we just computed are the (l,m) spherical harmonic expansion of the
-   * momentum-integrated distribution function (aka brightness). However, the first-order transfer functions
-   * outputted by CLASS are the Legendre multipoles T_l(k,tau0), which are related to the spherical harmonic
-   * counterpart by a (2l+1) factor: T_l0(k,tau0) = (2l+1) * T_l(k,tau0).  Here, we divide our second-order
-   * transfer functions by a (2l+1) factor in order to match the first-order definition.
+   * The second-order transfer functions that we just computed are the (l,m) spherical harmonic
+   * expansion of the momentum-integrated distribution function (aka brightness). However, the
+   * first-order transfer functions outputted by CLASS are the Legendre multipoles T_l(k,tau0),
+   * which are related to the spherical harmonic  counterpart by a (2l+1) factor:
+   * T_l0(k,tau0) = (2l+1) * T_l(k,tau0).  Here, we divide our second-order transfer functions
+   * by a (2l+1) factor in order to match the first-order definition.
    *
-   *   We also divide our second-order transfer functions by an overall 4 factor, in order to convert our brightness
-   * multipoles into brightness TEMPERATURE multipoles: Theta_brightness = Delta/4 (see, for instance, sec. 4.1 of
-   * Pitrou et al. 2010). In the bispectra module, we shall further transfrom this brightness temperature into
-   * a bolometric temperature by adding an integrated correction which is quadratic at first-order.
+   * We also divide our second-order transfer functions by an overall 4 factor, in order to
+   * convert our brightness multipoles into brightness TEMPERATURE multipoles:
+   * Theta_brightness = Delta/4 (see sec. 4.1 of http://arxiv.org/abs/1405.2280, especially
+   * eq. 4.69, or sec. 4.1 of Pitrou et al. 2010). In the bispectra module, we shall further
+   * transfrom this brightness temperature into a bolometric temperature by adding an integrated
+   * correction which is quadratic at first-order.
    *   
-   *   Finally, we divide the transfer function by a factor 2. The reason is that we defined our perturbations as
-   * X ~ X^(1) + X^(2)/2, but to compute the bispectrum we need the full second-order part, that is:
-   * < X^(2)/2  X^(1)  X^(1) >
+   * Finally, we divide the transfer function by a factor 2. The reason is that we defined
+   * our perturbations as X ~ X^(1) + X^(2)/2, but to compute the bispectrum we need the
+   * full second-order part, that is < X^(2)/2  X^(1)  X^(1) >
    */     
           
   /* Brightness -> Brightness temperature */
@@ -1877,17 +2087,9 @@ int transfer2_compute (
   ++ptr2->count_memorised_transfers;
 
 
-
   return _SUCCESS_;
 
 }
-
-
-
-
-
-
-
 
 
 
@@ -1913,7 +2115,6 @@ int transfer2_integrate (
       )
 {
 
-
   /* Shortcuts */
   int l = ptr2->l[index_l];
   int m = ptr2->m[index_m];
@@ -1923,21 +2124,19 @@ int transfer2_integrate (
   *integral = 0;
 
 
-
   // =====================================================================================
   // =                            Check integration bounds                               =
   // =====================================================================================
 
-
   /* Check that we computed enough of the J's. As pbs2->xx_max is proportional to l_max,
   this is basically a test on whether we are computing enough l's for the chosen
-  k-grid.  If we chose to use tr2->k to be sampled as pbs2->xx/tau0, with the option
-  transfer2_k_sampling = bessels, this test will always succeed as pbs2->xx_max is
-  by construction larger than pw->k*ptr2->tau0_minus_tau[0]. */
+  k-grid. If we chose to use ptr2->k to be sampled as pbs2->xx/tau0, with the option
+  ptr2->k_sampling=bessels, this test will always succeed as pbs2->xx_max is by construction
+  larger than pw->k*ptr2->tau0_minus_tau[0]. */
   class_test (k*pw->tau0_minus_tau[0] > pbs2->xx_max,
               ptr2->error_message,
               "not enough J's.  Increase l_max to %g or decrease k_max to %.3g.",
-              ceil(k*pw->tau0_minus_tau[0]/ppr->k_scalar_max_tau0_over_l_max),
+              ceil(k*pw->tau0_minus_tau[0]/ppr->k_max_tau0_over_l_max),
               pbs2->xx_max/pw->tau0_minus_tau[0]);
   
   /* Minimum value of x=k*(tau0-tau) above which the J_Llm(x) start to be non-negligible.  This
@@ -1965,9 +2164,6 @@ int transfer2_integrate (
     return _SUCCESS_;
   }
       
-  
-  
-  
   /* We now want to see how much overlap there is between the sources and the projection functions.
   We define an 'index_tau_max' as the time-index of the sources after which the J's become
   negligible.  If 'index_tau_max' is close to zero, then the J's are almost always negligible
@@ -1981,51 +2177,41 @@ int transfer2_integrate (
     printf("     \\ adjusted integration range from tau=[%g,%g] to tau=[%g,%g]\n",
       pw->tau_grid[0], pw->tau_grid[pw->tau_grid_size-1], pw->tau_grid[0], pw->tau_grid[index_tau_max]);
   
-  
     
   
   // =====================================================================================
   // =                             Perform the integration                               =
   // =====================================================================================
   
-  /* We perform the line of sight integration starting from the initial time where the sources are sampled
-  (that is ppt2->tau_sampling[0]) up to pw->tau_grid[index_tau_max] (see above for details).
-  We implement the integration following the positive direction of time, which is the negative direction
-  of x=k(tau0-tau) */
+  /* We perform the line of sight integration starting from the initial time where the
+  sources are sampled (that is ppt2->tau_sampling[0]) up to pw->tau_grid[index_tau_max]
+  (see above for details). We implement the integration following the positive direction
+  of time, which is the negative direction of x=k(tau0-tau) */
   
-  /* We shall integrate over time */
-  int index_tau;
-  
-  /* The integrand function is the sum over L of the sources S_Lm(tau) with the projection functions
-  J_Llm(k(tau0-tau)) */
-  int index_L;
-  
-  /* Contribution of each time-step to the final integral, which will be stored in *transfer */
-  double integrand=0;
-
-
-  
-  /* We do not include the last point as we are cycling through integration intervals rather than through grid points */
-  for (index_tau=0; index_tau<index_tau_max; ++index_tau) {
+  /* Loop over time. We do not include the last point as we are cycling through integration
+  intervals rather than through grid points */
+  for (int index_tau=0; index_tau<index_tau_max; ++index_tau) {
   
     /* Value of x at the required time */
     double x = k * pw->tau0_minus_tau[index_tau];
       
-    /* Position at the left of x in the array pbs2->xx where we sampled the J (assumes pbs2->xx starts from zero) */
+    /* Position at the left of x in the array pbs2->xx where we sampled the J (assumes
+    pbs2->xx starts from zero) */
     int index_x = (int)(x/pbs2->xx_step);
   
     /* Interpolation weight of the left point for J(x) */
     double a_J = (pbs2->xx[index_x+1] - x)/pbs2->xx_step;
     
-    /* We shall increment 'integrand' with the sum over L of J_Llm*S_Lm */
-    integrand = 0;
+    /* The integrand function is the sum over L of the product between the source
+    S_Lm(tau) and the projection functions J_Llm(k(tau0-tau)).*/
+    double integrand = 0;
 
   
     // **********    Sum over L    ***********
 
     /* The upper limit for L is controlled by the various ppr2->l_max_los_xxx, which is O(few)
     when considering scattering sources only */
-    for(index_L=0; index_L<=pw->L_max; ++index_L) {
+    for(int index_L=0; index_L<=pw->L_max; ++index_L) {
   
       /* The 3j symbols in the definition of J force the azimuthal number 'm' to be smaller than L */
       int L = pbs2->L[index_L];
@@ -2090,34 +2276,37 @@ int transfer2_integrate (
       /* Increment the sum between J_Llm and S_Lm */
       integrand += J_Llm * source_Lm;
   
-      /* Some debug */
+      /* Some debug - print the transfer functions to screen */
       // if ((index_tau == 50) && (pw->index_k1==1) && (pw->index_k2==1)) {
-      // 
+      //
       //   int index_xmin_J = pbs2->index_xmin_J[index_J][index_L][index_l][index_m];
-      //   double x_left = pbs2->xx[index_x-index_xmin_J];    // pbs2->x_min_J[index_J][index_L][index_l][index_m] + pbs->x_step*index_x;
-      //   double x_right = pbs2->xx[index_x-index_xmin_J+1]; // pbs2->x_min_J[index_J][index_L][index_l][index_m] + pbs->x_step*(index_x+1);
-      // 
+      //   double x_left = pbs2->xx[index_x-index_xmin_J];
+      //   double x_right = pbs2->xx[index_x-index_xmin_J+1];
+      //
       //   if ((L == 2) && (l==4) && (m==0)) {
       //     if (x_left > -1) {
-      //       // double J_Llm_linear = a_J*J_Llm_left + (1-a_J)*J_Llm_right;
-      //       // fprintf(stderr, "%.17f %.17f %.17f %.17f %.17f\n", x, J_Llm, J_Llm_linear, J_Llm_left, J_Llm_right);
-      //       // fprintf(stderr, "JL(%d,%d,%d,x=%10.6g[%d]) = %10.6g\n", L, l, m, x_left, index_x-index_xmin_J, J_Llm_left);
-      //       // fprintf(stderr, "J(%d,%d,%d,x=%10.6g) = %10.6g\n", L, l, m, x, J_Llm);
-      //       // fprintf(stderr, "JR(%d,%d,%d,x=%10.6g[%d]) = %10.6g\n", L, l, m, x_right, index_x-index_xmin_J+1, J_Llm_right);
-      //       // fprintf(stderr, "\n");
+      //       double J_Llm_linear = a_J*J_Llm_left + (1-a_J)*J_Llm_right;
+      //       fprintf(stderr, "%.17f %.17f %.17f %.17f %.17f\n",
+      //         x, J_Llm, J_Llm_linear, J_Llm_left, J_Llm_right);
+      //       fprintf(stderr, "JL(%d,%d,%d,x=%10.6g[%d]) = %10.6g\n",
+      //         L, l, m, x_left, index_x-index_xmin_J, J_Llm_left);
+      //       fprintf(stderr, "J(%d,%d,%d,x=%10.6g) = %10.6g\n",
+      //         L, l, m, x, J_Llm);
+      //       fprintf(stderr, "JR(%d,%d,%d,x=%10.6g[%d]) = %10.6g\n",
+      //         L, l, m, x_right, index_x-index_xmin_J+1, J_Llm_right);
+      //       fprintf(stderr, "\n");
       //     }
       //   }
       // }
-      
-    } // end of for(index_L)
-        
-    /* Some debug - print the integrand function for a given set of (l,m,k1,k2,k) */
-    // if ( (l==100) && (m==0) ) {
-    //   if ( (pw->index_k1==0) && (pw->index_k2==1) && (pw->index_k==2500) ) {
-    //     fprintf (stderr, "%15f %15f\n", ptr2->tau0_minus_tau[index_tau], integrand);
-    //   }
-    // }
-    
+
+      /* Some debug - print the integrand function for a given set of (l,m,k1,k2,k) */
+      // if ( (l==100) && (m==0) ) {
+      //   if ( (pw->index_k1==0) && (pw->index_k2==1) && (pw->index_k==2500) ) {
+      //     fprintf (stderr, "%15f %15f\n", ptr2->tau0_minus_tau[index_tau], integrand);
+      //   }
+      // }
+
+    } // end of for(index_L)    
     
     /* Increment the result with the contribution from the considered time-step */
     *integral += integrand * pw->delta_tau[index_tau];
@@ -2127,10 +2316,14 @@ int transfer2_integrate (
     //   printf("transfer = %g\n", *integral);
   
   } // end of for(index_tau)
-  
-  
+    
   /* Correct for factor 1/2 from the trapezoidal rule */
   *integral *= 0.5;
+  
+  /* Test for nans */
+  class_test (isnan(*integral),
+    ptr2->error_message,
+    "found nan in second-order transfer function");
 
   return _SUCCESS_;
 }
@@ -2195,7 +2388,7 @@ int transfer2_get_time_grid(
     tau_step_max = pbs2->xx_step/k;
   }
   else if (ptr2->tau_sampling == custom_transfer2_tau_sampling) {
-    tau_step_max = ppr2->tau_step_trans_2nd_order/k;
+    tau_step_max = ppr2->tau_step_trans_song/k;
   }
   
   class_test (tau_step_max == 0,
@@ -2443,10 +2636,11 @@ int transfer2_interpolate_sources_in_k(
   // =======================================================
 
   /* Extrapolate the source functions in the non-physical regime to stabilize the bispectrum integral */
-  /* TODO: for m!=0, taking the first and last physical points is equivalent to taking a value which is
+  /* For m!=0, taking the first and last physical points is equivalent to taking a value which is
   equal to zero because there sin(theta_1)=sin(theta_2)=0. Hence we end up not extrapolating anything.
-  We should fix this by analytically including a 1/sin(theta)^m factor in the perturbations2 module in 
-  all the sources, so that the amplitude at the borders of the k3 range is non-vanishing */
+  We have fixed this by analytically including a 1/sin(theta)^m factor in the perturbations2.c module in 
+  all the sources, so that the amplitude at the borders of the k3 range is non-vanishing. This is also 
+  the factor needed to perform the bispetrum integration, ter */
     
   if (ppr->bispectra_k3_extrapolation != no_k3_extrapolation) {
     
@@ -2498,7 +2692,6 @@ int transfer2_interpolate_sources_in_time (
   int tau_size_tr = pw->tau_grid_size;
   double * tau_tr = pw->tau_grid;
   
-  
   /* Find second derivative of original sources with respect to k in view of spline interpolation */
   if (ppr2->sources_time_interpolation == cubic_interpolation) {
 
@@ -2538,12 +2731,14 @@ int transfer2_interpolate_sources_in_time (
     if (ppr2->sources_time_interpolation == linear_interpolation) {
 
       interpolated_sources_in_time[index_tau_tr] = 
-        a * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau] + b * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau+1];
+        a * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau]
+        + b * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau+1];
     }
     else if (ppr2->sources_time_interpolation == cubic_interpolation) {
 
       interpolated_sources_in_time[index_tau_tr] = 
-        a * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau] + b * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau+1]
+        a * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau]
+        + b * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau+1]
         + ((a*a*a-a) * sources_time_spline[index_tau]
         +(b*b*b-b) * sources_time_spline[index_tau+1])*h*h/6.0;
     }
@@ -2590,86 +2785,11 @@ int transfer2_interpolate_sources_in_time (
 
 
 
-
-
-
 /**
-  * Load the transfer functions from disk for a given transfer type. The transfer functions will be read from the file
-  * given in ptr2->transfers_paths[index_tt].
-  *
-  * This function is used in the spectra2.c module.
-  *
-  */
-int transfer2_load_transfers_from_disk(
-        struct perturbs2 * ppt2,
-        struct transfers2 * ptr2,
-        int index_tt
-        )
-{
-
-  /* Running indexes */
-  int index_k1, index_k2;
-
-  /* Allocate memory to keep the transfer functions */
-  class_call (transfer2_allocate_type_level(ppt2, ptr2, index_tt),
-    ptr2->error_message, ptr2->error_message);
-
-  /* Print some debug */
-  if (ptr2->transfer2_verbose > 2)
-    printf("     * transfer2_load_transfers_from_disk: reading results for index_tt=%d from '%s' ...",
-      index_tt, ptr2->transfers_paths[index_tt]);
-  
-  /* Open file for reading */
-  class_open (ptr2->transfers_files[index_tt], ptr2->transfers_paths[index_tt], "rb", ptr2->error_message);
-  
-  /* Two loops follow to read the file */
-  for (index_k1 = 0; index_k1 < ppt2->k_size; ++index_k1) {
-  
-    for (index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
-  
-      int n_to_read = ptr2->k_size_k1k2[index_k1][index_k2];
-  
-      /* Some debug */
-      // printf ("reading %d entries for index_tt=%d, index_k1=%d, index_k2=%d\n", n_to_read, index_tt, index_k1, index_k2);
-  
-      /* Read a chunk with all the k-values for this set of (type,k1,k2) */
-      int n_read = fread(
-              ptr2->transfer[index_tt][index_k1][index_k2],
-              sizeof(double),
-              n_to_read,
-              ptr2->transfers_files[index_tt]);
-  
-      class_test(n_read != n_to_read,
-        ptr2->error_message,
-        "Could not read in '%s' file, read %d entries but expected %d (index_tt=%d,index_k1=%d,index_k2=%d)",
-          ptr2->transfers_paths[index_tt], n_read, n_to_read, index_tt, index_k1, index_k2);
-  
-      /* Update the counter for the values stored in ptr2->transfers */
-      #pragma omp atomic
-      ptr2->count_memorised_transfers += ptr2->k_size_k1k2[index_k1][index_k2];
-  
-    } // end of for(index_k2)
-    
-  } // end of for(index_k1)
-  
-  /* Close file */
-  fclose(ptr2->transfers_files[index_tt]);
-
-  if (ptr2->transfer2_verbose > 2)
-    printf ("Done.\n");
-
-  return _SUCCESS_; 
-  
-}
-
-
-
-
-
-/**
-  * Save the transfer functions to disk for a given transfer type. The file were the transfer functions will be saved
-  * is given by ptr2->transfers_paths[index_tt].
-  */
+ * Save the transfer functions to disk for a given transfer type.
+ * 
+ * The transfer functions will be saved to the file in ptr2->transfers_paths[index_tt].
+ */
 int transfer2_store_transfers_to_disk(
         struct perturbs2 * ppt2,
         struct transfers2 * ptr2,
@@ -2725,13 +2845,13 @@ int transfer2_store_transfers_to_disk(
   
   
   
-
 /**
-  * Allocate the k1 level of the array ptr2->transfer[index_type][index_k1][index_k2][index_k].
-  * This function must be called after the functions transfer2_indices_of_perturbs and 
-  * transfer2_get_k3_size.
-  *
-  */
+ * Allocate the k1 level of the transfer functions array.
+ *
+ * This function relies on values that are computed by transfer2_indices_of_perturbs()
+ * and transfer2_get_k3_sizes(), so make sure to call them beforehand.
+ *
+ */
 int transfer2_allocate_k1_level(
      struct perturbs2 * ppt2,
      struct transfers2 * ptr2,
@@ -2741,13 +2861,13 @@ int transfer2_allocate_k1_level(
 
   /* Issue an error if ptr2->transfers[index_k1] has already been allocated */
   class_test (ptr2->has_allocated_transfers[index_k1] == _TRUE_,
-              ptr2->error_message,
-              "the index_k1=%d level of ptr2->transfers is already allocated, stop to prevent error", index_k1);
+    ptr2->error_message,
+    "the index_k1=%d level of ptr2->transfers is already allocated, stop to prevent error",
+    index_k1);
 
-  int index_k2, index_tt;
   long int count=0;
 
-  for(index_tt=0; index_tt<ptr2->tt2_size; ++index_tt) {
+  for(int index_tt=0; index_tt<ptr2->tt2_size; ++index_tt) {
 
     int k1_size = ppt2->k_size;
 
@@ -2762,13 +2882,13 @@ int transfer2_allocate_k1_level(
       k2_size * sizeof(double *),
       ptr2->error_message);
   
-    for(index_k2=0; index_k2<=index_k1; ++index_k2) {      
+    for(int index_k2=0; index_k2<=index_k1; ++index_k2) {      
 
       /* Allocate k level. Note that we are using ptr2->k_size here instead of ppt2->k_size.  The
         reason is that ptr2->k is sampled much more finely than ppt2->k in order to catch the wild
         oscillation of the Bessel functions in k.  Furthermore, we only allocate memory for the k's
         that are compatible with the values of k1 and k2, i.e. we impose fabs(cosk1k2) <= 1.  See
-        transfer2_get_k3_size for further details. */
+        transfer2_get_k3_size() for further details. */
       class_alloc(
         ptr2->transfer[index_tt][index_k1][index_k2],
         ptr2->k_size_k1k2[index_k1][index_k2] * sizeof(double),
@@ -2783,85 +2903,12 @@ int transfer2_allocate_k1_level(
   
   /* Print some debug information on memory consumption */
   if (ptr2->transfer2_verbose > 2) {
-
     printf("     * allocated ~ %.2f MB in ptr2->transfer (%ld doubles) for index_k1=%d; its size is now ~ %.3g MB;\n",
       count*sizeof(double)/1e6, count, index_k1, ptr2->count_allocated_transfers*sizeof(double)/1e6);
-
   }
-
 
   /* We succesfully allocated the k1 level of ptr2->transfer */
   ptr2->has_allocated_transfers[index_k1] = _TRUE_;
-
-  return _SUCCESS_;
-
-}
-
-
-
-/**
-  * Allocate the transfer type (tt) level of the array ptr2->transfer[index_tt][index_k1][index_k2][index_k].
-  * This function must be called after the functions transfer2_indices_of_perturbs and
-  * transfer2_get_k3_sizes.
-  *
-  */
-int transfer2_allocate_type_level(
-     struct perturbs2 * ppt2,
-     struct transfers2 * ptr2,
-     int index_tt
-     )
-{
-
-  int index_k1, index_k2;
-  long int count=0;
-
-  /* Allocate k1 level */
-  int k1_size = ppt2->k_size;
-
-  class_alloc(
-    ptr2->transfer[index_tt],
-    k1_size * sizeof(double **),
-    ptr2->error_message);
-
-  for (index_k1=0; index_k1<k1_size; ++index_k1) {
-
-    /* Allocate k2 level.  Note that, as for ppt2->sources, the size of this level is smaller
-    than ppt2->k_size, and it depends on k1.  The reason is that we only need to compute
-    the transfer functions for those k2's that are smaller than k1 (our equations are symmetrised
-    wrt to k1<->k2) */
-    int k2_size = index_k1 + 1;
-  
-    class_alloc(
-      ptr2->transfer[index_tt][index_k1],
-      k2_size * sizeof(double *),
-      ptr2->error_message);
-  
-    for (index_k2=0; index_k2<=index_k1; ++index_k2) {
-
-      /* Allocate k level. Note that we are using ptr2->k_size here instead of ppt2->k_size.  The
-      reason is that ptr2->k is sampled much more finely than ppt2->k in order to catch the wild
-      oscillation of the Bessel functions in k.  Furthermore, we only allocate memory for the k's
-      that are compatible with the values of k1 and k2, i.e. we impose fabs(cosk1k2) <= 1.  See
-      transfer2_get_k3_sizes for further details. */
-      class_alloc(
-        ptr2->transfer[index_tt][index_k1][index_k2],
-        ptr2->k_size_k1k2[index_k1][index_k2] * sizeof(double),
-        ptr2->error_message);
-
-      #pragma omp atomic
-      ptr2->count_allocated_transfers += ptr2->k_size_k1k2[index_k1][index_k2];
-      count += ptr2->k_size_k1k2[index_k1][index_k2];
-
-    } // end of for(index_k2)
-  } // end of for(index_k1)
-  
-  /* Print some debug information on memory consumption */
-  if (ptr2->transfer2_verbose > 2) {
-
-    printf("     * allocated ~ %.2f MB in ptr2->transfer (%ld doubles) for index_tt=%d; it's size is now ~ %.3g MB;\n",
-      count*sizeof(double)/1e6, count, index_tt, ptr2->count_allocated_transfers*sizeof(double)/1e6);
-
-  }
 
   return _SUCCESS_;
 
@@ -2929,13 +2976,8 @@ int transfer2_free_k1_level(
       count*sizeof(double)/1e6, count, index_k1);
 
   /* We succesfully freed the k1 level of ptr2->transfer */
-  ptr2->has_allocated_transfers[index_k1] == _FALSE_;
+  ptr2->has_allocated_transfers[index_k1] = _FALSE_;
 
   return _SUCCESS_;
 
 }
-
-
-
-#undef sources
-

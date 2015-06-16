@@ -1,22 +1,26 @@
-/** @file bispectra.c documented spectra module for second-order perturbations
+/** @file bispectra2.c
  *
- * Guido W Pettinari, 19.07.2012
+ * Module to compute and store the intrinsic bispectra of the CMB using
+ * the second-order transfer functions computed in transfer2.c.
+ *
+ * Created by Guido W Pettinari on 19.07.2012.
+ * Last modified by Guido W Pettianri on 09.06.2015
  */
 
 #include "bispectra2.h"
 
 
 /**
- * This routine initializes the spectra structure (in particular, 
- * computes table of anisotropy and Fourier spectra \f$ C_l^{X}, P(k), ... \f$)
+ *
+ *
  * 
- * @param ppr Input : pointer to precision structure
- * @param pba Input : pointer to background structure (will provide H, Omega_m at redshift of interest)
- * @param ppt Input : pointer to perturbation structure
- * @param ptr Input : pointer to transfer structure
- * @param ppm Input : pointer to primordial structure
- * @param psp Output: pointer to initialized spectra structure
- * @return the error status
+ *
+ *
+ *
+ *
+ *
+ *
+ *
  */
 
 int bispectra2_init (
@@ -48,6 +52,7 @@ int bispectra2_init (
     return _SUCCESS_;
   }
   
+
   
   // =====================================================================================
   // =                                    Preparations                                   =
@@ -62,6 +67,7 @@ int bispectra2_init (
     pbi->error_message);
 
 
+
   // =====================================================================================
   // =                                 Compute bispectra                                 =
   // =====================================================================================
@@ -69,6 +75,21 @@ int bispectra2_init (
   class_call (bispectra2_harmonic (ppr,ppr2,pba,ppt,ppt2,pbs,pbs2,ptr,ptr2,ppm,psp,pbi),
     pbi->error_message,
     pbi->error_message);
+
+
+
+  // ====================================================================================
+  // =                              Save bispectra to disk                              =
+  // ====================================================================================
+  
+  if (ppr->store_bispectra_to_disk == _TRUE_)
+    for (int index_bt = 0; index_bt < pbi->bt_size; ++index_bt)
+      if (pbi->bispectrum_type[index_bt] == intrinsic_bispectrum)
+        class_call (bispectra_store_to_disk (
+                      pbi,
+                      index_bt),
+          pbi->error_message,
+          pbi->error_message);
 
 
   return _SUCCESS_;
@@ -98,7 +119,7 @@ int bispectra2_indices (
   (see comment for 'has_reduced_bispectrum' in bispectra.h) */
   if (pbi->has_intrinsic == _TRUE_)
     if (ppr2->m_max_2nd_order > 0)
-        pbi->has_reduced_bispectrum[pbi->index_bt_intrinsic] = _FALSE_; /* see comment in bispectra.h */
+        pbi->has_reduced_bispectrum[pbi->index_bt_intrinsic] = _FALSE_;
 
   return _SUCCESS_;
 
@@ -106,14 +127,14 @@ int bispectra2_indices (
 
 
 /**
- * This routine computes a table of values for all harmonic spectra C_l's,
- * given the transfer functions and primordial spectra.
  * 
- * @param ppt Input : pointer to perturbation structure
- * @param ptr Input : pointer to transfers structure
- * @param ppm Input : pointer to primordial structure
- * @param psp Input/Output: pointer to spectra structure 
- * @return the error status
+ * 
+ *
+ * 
+ * 
+ * 
+ * 
+ * 
  */
 
 int bispectra2_harmonic (
@@ -217,19 +238,51 @@ int bispectra2_harmonic (
       pbi->count_memorised_for_bispectra*sizeof(double)/1e6, pbi->count_memorised_for_bispectra);
 
   
-  // ============================================================================================
-  // =                                   Save bispectra to disk                                 =
-  // ============================================================================================
   
-  if (ppr->store_bispectra_to_disk == _TRUE_)
-    for (int index_bt = 0; index_bt < pbi->bt_size; ++index_bt)
-      if (pbi->bispectrum_type[index_bt] == intrinsic_bispectrum)
-        class_call (bispectra_save_to_disk (
-                      pbi,
-                      index_bt),
-          pbi->error_message,
-          pbi->error_message);
-  
+  // ============================================================================
+  // =                      Check bispectra against nan's                       =
+  // ============================================================================
+
+  for (int index_bt = 0; index_bt < pbi->bt_size; ++index_bt) {
+
+    /* We have not computed the intrinsic bispectra yet, so we skip them */
+    if (pbi->bispectrum_type[index_bt] != intrinsic_bispectrum)
+      continue;
+
+    for (int X = 0; X < pbi->bf_size; ++X) {
+      for (int Y = 0; Y < pbi->bf_size; ++Y) {
+        for (int Z = 0; Z < pbi->bf_size; ++Z) {
+    
+          #pragma omp parallel for
+          for (int index_l1 = 0; index_l1 < pbi->l_size; ++index_l1) {
+            for (int index_l2 = 0; index_l2 <= index_l1; ++index_l2) {
+     
+              /* Determine the limits for l3, which come from the triangular inequality
+              |l1-l2| <= l3 <= l1+l2 */
+              int index_l3_min = pbi->index_l_triangular_min[index_l1][index_l2];
+              int index_l3_max = MIN (index_l2, pbi->index_l_triangular_max[index_l1][index_l2]);
+     
+              for (int index_l3=index_l3_min; index_l3<=index_l3_max; ++index_l3) {
+
+                /* Index of the current (l1,l2,l3) configuration */
+                long int index_l1_l2_l3 = pbi->index_l1_l2_l3[index_l1][index_l1-index_l2][index_l3_max-index_l3];
+          
+                double bispectrum = pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3];
+   
+                /* Check for nan's and crazy values. A value is crazy when it is much larger than
+                the characteristic scale for a bispectrum, A_s*A_s~1e-20 */   
+                if ((isnan(bispectrum)) || (fabs(bispectrum)>1))
+                  printf ("@@@ WARNING: b(%d,%d,%d) = %g for bispectrum '%s_%s'.\n",
+                  pbi->l[index_l1], pbi->l[index_l2], pbi->l[index_l3], bispectrum,
+                  pbi->bt_labels[index_bt], pbi->bfff_labels[X][Y][Z]);
+
+              } // end of for(index_l3)
+            } // end of for(index_l2)
+          } // end of for(index_l1)
+        } // end of for(X)
+      } // end of for(Y)
+    } // end of for(Z)
+  } // end of for(index_bt)  
   
   return _SUCCESS_;
 
@@ -784,9 +837,9 @@ int bispectra2_intrinsic_workspace_init (
   it always appears in the argument of a Bessel function multiplying a wavemode, just as it was for conformal
   time in the line-of-sight integral.  This is the only place in the module where the background structure
   is accessed. */
-  pwb->r_min = pbi->r_min;
-  pwb->r_max = pbi->r_max;
-  pwb->r_size = pbi->r_size;
+  pwb->r_min = ppr->r_min;
+  pwb->r_max = ppr->r_max;
+  pwb->r_size = ppr->r_size;
   
   /* We decide to sample r linearly */
   class_alloc (pwb->r, pwb->r_size*sizeof(double), pbi->error_message);
@@ -813,7 +866,9 @@ int bispectra2_intrinsic_workspace_init (
   // -                           Grid in k1 and k2                         -
   // -----------------------------------------------------------------------
 
-  /* In the second-order transfer functions T(k1,k2,k), k1 and k2 are the smooth directions */
+  /* The k1 and k2 directions of the transfer function T(k1,k2,k) are smoother
+  than the k direction, and are sampled using the same sampling of the line of 
+  sight sources, that is ppt2->k */
   pwb->k_smooth_grid = ppt2->k;
   pwb->k_smooth_size = ppt2->k_size;
   
@@ -824,7 +879,7 @@ int bispectra2_intrinsic_workspace_init (
   // ========================================================================================
 
   /* Determine the window function for the interpolation of second-order transfer function
-  in ptr->k1 and ptr->k2 */
+  in k1 and k2 */
   
   /* Window function will have pbi->k_smooth_size elements */
   class_alloc (pwb->k_window, pwb->k_smooth_size*sizeof(double), pbi->error_message);
@@ -837,12 +892,12 @@ int bispectra2_intrinsic_workspace_init (
     pwb->k_window[index_k] = 1./pow(k,2);
   }
 
-  /* Inverse window function will have ptr->k_size[ppt->index_md_scalars] elements */
-  class_alloc (pwb->k_window_inverse, ptr->k_size[ppt->index_md_scalars]*sizeof(double), pbi->error_message);
+  /* Inverse window function will have ptr->q_size elements */
+  class_alloc (pwb->k_window_inverse, ptr->q_size*sizeof(double), pbi->error_message);
 
-  for (int index_k=0; index_k < ptr->k_size[ppt->index_md_scalars]; ++index_k) {
+  for (int index_k=0; index_k < ptr->q_size; ++index_k) {
 
-    double k = ptr->k[ppt->index_md_scalars][index_k];
+    double k = ptr->q[index_k];
     double pk = pbi->pk[index_k];
 
     pwb->k_window_inverse[index_k] = pow(k,2);
@@ -868,7 +923,6 @@ int bispectra2_intrinsic_workspace_init (
   /* We need a k3_grid per thread because it varies with k1 and k2 due to the triangular condition */
   class_alloc (pwb->k3_grid, number_of_threads*sizeof(double*), pbi->error_message);
   class_alloc (pwb->delta_k3, number_of_threads*sizeof(double*), pbi->error_message);
-  class_alloc (pwb->T_rescaling_factor, number_of_threads*sizeof(double*), pbi->error_message);
   class_alloc (pwb->integral_splines, number_of_threads*sizeof(double*), pbi->error_message);
   class_alloc (pwb->interpolated_integral, number_of_threads*sizeof(double*), pbi->error_message);
   class_alloc (pwb->f, number_of_threads*sizeof(double*), pbi->error_message);
@@ -886,12 +940,11 @@ int bispectra2_intrinsic_workspace_init (
       number of k-values for the best sampled (k1,k2) wavemode in the transfer2 module */
     class_calloc_parallel(pwb->k3_grid[thread], ptr2->k3_size_max, sizeof(double), pbi->error_message);
     class_calloc_parallel(pwb->delta_k3[thread], ptr2->k3_size_max, sizeof(double), pbi->error_message);
-    class_calloc_parallel(pwb->T_rescaling_factor[thread], ptr2->k3_size_max, sizeof(double), pbi->error_message);
   
   
     /* Allocate memory for the interpolation arrays (used only for the k2 and k3 integrations) */
-    class_calloc_parallel (pwb->integral_splines[thread], ptr->k_size[ppt->index_md_scalars], sizeof(double), pbi->error_message);
-    class_calloc_parallel (pwb->interpolated_integral[thread], ptr->k_size[ppt->index_md_scalars], sizeof(double), pbi->error_message);
+    class_calloc_parallel (pwb->integral_splines[thread], ptr->q_size, sizeof(double), pbi->error_message);
+    class_calloc_parallel (pwb->interpolated_integral[thread], ptr->q_size, sizeof(double), pbi->error_message);
     class_calloc_parallel (pwb->f[thread], pwb->k_smooth_size, sizeof(double), pbi->error_message);
   
   } // end of parallel region
@@ -1026,7 +1079,6 @@ int bispectra2_intrinsic_workspace_free(
   
     free(pwb->k3_grid[thread]);
     free(pwb->delta_k3[thread]);
-    free(pwb->T_rescaling_factor[thread]);
     free(pwb->integral_splines[thread]);
     free(pwb->interpolated_integral[thread]);
     free(pwb->f[thread]);
@@ -1035,7 +1087,6 @@ int bispectra2_intrinsic_workspace_free(
   
   free(pwb->k3_grid);
   free(pwb->delta_k3);
-  free(pwb->T_rescaling_factor);
   free(pwb->integral_splines);
   free(pwb->interpolated_integral);
   free(pwb->f);
@@ -1208,7 +1259,8 @@ int bispectra2_intrinsic_integrate_over_k3 (
           double k2 = pwb->k_smooth_grid[index_k2]; 
 
           if (pbi->bispectra_verbose > 4)
-            printf ("      \\ computing (index_k1,index_k2)=(%4d,%4d), (k1,k2)=(%g,%g)\n", index_k1, index_k2, k1, k2);
+            printf ("      \\ computing (index_k1,index_k2)=(%4d,%4d), (k1,k2)=(%g,%g)\n",
+              index_k1, index_k2, k1, k2);
   
           // ===================================================
           // =            Fix the integration domain           =
@@ -1248,14 +1300,18 @@ int bispectra2_intrinsic_integrate_over_k3 (
             
           pwb->delta_k3[thread][k3_size-1] = pwb->k3_grid[thread][k3_size-1] - pwb->k3_grid[thread][k3_size-2];
 
+#ifdef DEBUG
           /* Let's be super cautious */
           for (int index_k3=0; index_k3<k3_size; ++index_k3)
             class_test_parallel (pwb->delta_k3[thread][index_k3] < 0,
               pbi->error_message,
               "something went terribly wrong, negative trapezoidal measure for index_k1=%d, index_k2=%d :-/",
               index_k1, index_k2);
+#endif // DEBUG
 
-          /* Define the pointer to the second-order transfer function as a function of k3. */
+          /* Define the pointer to the second-order transfer function as a function of k3.
+          Note that this transfer function has already been rescaled according to eq. 6.26
+          of http://arxiv.org/abs/1405.2280 in the perturbations.c module.  */
           double * transfer = ptr2->transfer[index_tt2_k3 + lm_cls(index_l3,index_M3)]
                               [index_k1]
                               [index_k2];
@@ -1269,26 +1325,28 @@ int bispectra2_intrinsic_integrate_over_k3 (
           
             /* It is important to note that the used Bessel here has order L3 rather than l3 */
             class_call_parallel (bessel2_convolution (
-                                   ppr,
-                                   pbs2,
-                                   pwb->k3_grid[thread],
-                                   pwb->delta_k3[thread],
-                                   k3_size,
-                                   transfer,
-                                   NULL,
-                                   index_L3,
-                                   pwb->r[index_r],
-                                   &(pwb->integral_over_k3[index_l3][index_r][index_k1][index_k2]),
-                                   pbi->error_message
-                                   ),
+                ppr,
+                pbs2,
+                pwb->k3_grid[thread],
+                pwb->delta_k3[thread],
+                k3_size,
+                transfer,
+                NULL,
+                index_L3,
+                pwb->r[index_r],
+                &(pwb->integral_over_k3[index_l3][index_r][index_k1][index_k2]),
+                pbi->error_message
+                ),
               pbi->error_message,
               pbi->error_message);
 
-            /* Check when 'm' is odd and k1=k2 then T(k1,k2,k3) is small with respect to 1 (which is
-            the same as assuming that the bispectrum is small with respect to A_s*A_s). */
-            /* TODO: It is a good idea to have this check, but here probably it's not the best place.
-            Maybe we can move the check in the perturbations module. There, the order of the perturbations
-            is O(1) hence we could just use _SMALL_ as an absolute epsilon. */
+#ifdef DEBUG
+            /* Check that when 'm' is odd and k1=k2, then T(k1,k2,k3) is small with respect to
+            1 (which is the same as assuming that the bispectrum is small with respect to
+            A_s*A_s). */
+            /* TODO: It is a good idea to have this check also in the perturbations2 module.
+            There, the order of the perturbations is O(1) hence we could just use _SMALL_ as
+            an absolute epsilon. */
             if ((index_k1==index_k2) && (pwb->abs_M3%2!=0)) {
               double characteristic_scale = ppm->A_s*ppm->A_s;
               double epsilon = 1e-4*characteristic_scale;
@@ -1298,14 +1356,15 @@ int bispectra2_intrinsic_integrate_over_k3 (
                 "k1=k2, m odd, but bispectrum=%20.12g is larger than the characteristic scale (%20.12g). Problem?",
                 pwb->integral_over_k3[index_l3][index_r][index_k1][index_k2], epsilon);
             }
+#endif // DEBUG
 
-            /* Include the M3-dependent coefficient coming from the rescaling of the transfer function.
-            Note that this is always equal to 1 for m=0. */
+            /* Include the M3-dependent coefficient coming from the rescaling of the transfer
+            function. Note that this is always equal to 1 for m=0. */
             if (pwb->abs_M3!=0)
               pwb->integral_over_k3[index_l3][index_r][index_k1][index_k2] *= pwb->M3_coefficient[index_M3];
 
-            /* Multiply the result by the factor 2 coming from the fact that in the bispectrum formula
-            the second-order transfer functions appears as
+            /* Multiply the result by the factor 2 coming from the fact that in the bispectrum
+            formula the second-order transfer functions appears as
             T(\vec{k1},\vec{k2},\vec{3}) + T(\vec{k2},\vec{k1},\vec{3}) */
             pwb->integral_over_k3[index_l3][index_r][index_k1][index_k2] *= 2;
 
@@ -1352,7 +1411,8 @@ int bispectra2_intrinsic_integrate_over_k3 (
 
   
     /* Free the memory associated with the second order transfer function for this (l,m) */
-    if ((ppr2->load_transfers_from_disk == _TRUE_) || (ppr2->store_transfers_to_disk == _TRUE_)) {
+    if ((ppr2->load_transfers_from_disk == _TRUE_)
+      || (ppr2->store_transfers_to_disk == _TRUE_)) {
       class_call (transfer2_free_type_level (
                     ppt2,
                     ptr2,
@@ -1366,10 +1426,12 @@ int bispectra2_intrinsic_integrate_over_k3 (
   if (pbi->bispectra_verbose > 2)
     printf("     * memorised ~ %.3g MB (%ld doubles) for the k3-integral array (<k3_size>=%g)\n",
       pwb->count_memorised_for_integral_over_k3*sizeof(double)/1e6,
-      pwb->count_memorised_for_integral_over_k3, average_k3_grid_size/pwb->count_memorised_for_integral_over_k3);
+      pwb->count_memorised_for_integral_over_k3,
+      average_k3_grid_size/pwb->count_memorised_for_integral_over_k3);
 
   /* Check that we correctly filled the array */
-  class_test (pwb->count_memorised_for_integral_over_k3 != pwb->count_allocated_for_integral_over_k3,
+  class_test (
+    pwb->count_memorised_for_integral_over_k3 != pwb->count_allocated_for_integral_over_k3,
     pbi->error_message,
     "there is a mismatch between allocated (%ld) and used (%ld) space!",
     pwb->count_allocated_for_integral_over_k3, pwb->count_memorised_for_integral_over_k3);
@@ -1407,23 +1469,28 @@ int bispectra2_interpolate_over_k2 (
   /* Shortcuts */
   int k_pt_size = pwb->k_smooth_size;
   double * k_pt = pwb->k_smooth_grid;
-  int k_tr_size = ptr->k_size[ppt->index_md_scalars];
-  double * k_tr = ptr->k[ppt->index_md_scalars];
+  int k_tr_size = ptr->q_size;
+  double * k_tr = ptr->q;
 
-  /* So far, we always assumed that k1>=k2 because the transfer function has the following symmetry:
-  T (\vec{k1},\vec{k_2},\vec{k_3}) = (-1)^m * T (\vec{k_2},\vec{k_1},\vec{k_3}). The (-1)^m factor
-  comes from the fact that one can exchange \vec{k_1} and \vec{k_2} by performing a rotation around
-  \vec{k} of pi radians. This is equivalent to a factor of exp(i*pi*m) = (-1)^m, and also implies
-  that T_lm (\vec{k_1},\vec{k_2},\vec{k_3}) = 0 when m is odd and \vec{k_1}=\vec{k_2}.
+  /* So far, we always assumed that k1>=k2 because the transfer function has the
+  following symmetry:
+      T (\vec{k1},\vec{k_2},\vec{k_3}) = (-1)^m * T (\vec{k_2},\vec{k_1},\vec{k_3}).
+  The (-1)^m factor comes from the fact that one can exchange \vec{k_1} and \vec{k_2} by
+  performing a rotation around \vec{k} of pi radians. This is equivalent to a factor of
+  exp(i*pi*m) = (-1)^m, and also implies that T_lm (\vec{k_1},\vec{k_2},\vec{k_3})=0 when
+  m is odd and \vec{k_1}=\vec{k_2}.
     
-  Now we need to interpolate the k2 dependence of the transfer function, hence we build a temporary
-  array where f(index_k1, index_k2) = (-1)^m * integral_over_k3(index_k2, index_k1) when
-  index_k1 < index_k2.
+  Now we need to interpolate the k2 dependence of the transfer function, hence we build a
+  temporary array where
+      f(index_k1, index_k2) = (-1)^m * integral_over_k3(index_k2, index_k1)
+  when index_k1 < index_k2.
   
   We also include a (k1/k2)^m factor that mimicks the rescaling of the transfer function
   under the exchange \vec{k_1}<->\vec{k_2}. This follows from the fact that
-  k1*sin(theta_1) = k2*sin(theta_2), which implies that
-  T_rescaled(\vec{k2},\vec{k1},\vec{k3}) = T_rescaled(\vec{k1},\vec{k2},\vec{k3}) * (k1/k2)^m */
+      k1*sin(theta_1) = k2*sin(theta_2),
+  which implies that
+      T_rescaled(\vec{k2},\vec{k1},\vec{k3})
+      = T_rescaled(\vec{k1},\vec{k2},\vec{k3})*(k1/k2)^m */
 
   for (int index_k2=0; index_k2 < k_pt_size; ++index_k2) {
 
@@ -1444,7 +1511,7 @@ int bispectra2_interpolate_over_k2 (
                   k_pt,
                   k_pt_size,
                   f,
-                  1,  /* How many columns to consider */
+                  1,  /* how many columns to consider */
                   integral_splines,
                   _SPLINE_EST_DERIV_,
                   pbi->error_message),
@@ -1487,6 +1554,12 @@ int bispectra2_interpolate_over_k2 (
     /* Revert the effect of the window function */
     interpolated_integral[index_k_tr] *= pwb->k_window_inverse[index_k_tr];
 
+    /* Test for nans */
+    class_test (isnan(interpolated_integral[index_k_tr]),
+      pbi->error_message,
+      "k2 interpolation yielded a nan for index_r=%d, index_k1=%d, index_l3=%d",
+      index_r, index_k1, index_l3);
+
   } // end of for (index_k_tr)
 
 
@@ -1524,11 +1597,6 @@ int bispectra2_interpolate_over_k2 (
 
 
 
-
-
-
-
-
 int bispectra2_intrinsic_integrate_over_k2 (
     struct precision * ppr,
     struct precision2 * ppr2,
@@ -1546,8 +1614,8 @@ int bispectra2_intrinsic_integrate_over_k2 (
 {
 
   /* Integration grid */
-  int k_tr_size = ptr->k_size[ppt->index_md_scalars];
-  double * k_tr = ptr->k[ppt->index_md_scalars];
+  int k_tr_size = ptr->q_size;
+  double * k_tr = ptr->q;
 
   /* Parallelization variables */
   int thread = 0;
@@ -1682,9 +1750,9 @@ int bispectra2_intrinsic_integrate_over_k2 (
           //     // if (index_r==83) /* 14000 for 250r13to16 */
           //     if (index_r==49) /* 14005.1 for 100r135to145 */
           //       if ((pbi->l[index_l3]==200) && (pwb->abs_M3==1))
-          //         for (index_k2=0; index_k2 < ptr->k_size[ppt->index_md_scalars]; ++index_k2)
+          //         for (index_k2=0; index_k2 < ptr->q_size; ++index_k2)
           //           fprintf (stderr, "%17.7g %17.7g\n",
-          //             ptr->k[ppt->index_md_scalars][index_k2],
+          //             ptr->q[index_k2],
           //             pwb->interpolated_integral[thread][index_k2]/pbi->pk[index_k2]);
 
           for (int index_l2 = 0; index_l2 < pbi->l_size; ++index_l2) {  
@@ -1790,8 +1858,8 @@ int bispectra2_interpolate_over_k1 (
   /* Shortcuts */
   int k_pt_size = pwb->k_smooth_size;
   double * k_pt = pwb->k_smooth_grid;
-  int k_tr_size = ptr->k_size[ppt->index_md_scalars];
-  double * k_tr = ptr->k[ppt->index_md_scalars];
+  int k_tr_size = ptr->q_size;
+  double * k_tr = ptr->q;
   
   /* Define the function to be interpolated, and multiply it by a window function */
   for (int index_k1=0; index_k1 < k_pt_size; ++index_k1) {
@@ -1848,6 +1916,12 @@ int bispectra2_interpolate_over_k1 (
 
     /* Revert the effect of the window function */
     interpolated_integral[index_k_tr] *= pwb->k_window_inverse[index_k_tr];
+
+    /* Test for nans */
+    class_test (isnan(interpolated_integral[index_k_tr]),
+      pbi->error_message,
+      "k1 interpolation yielded a nan for index_r=%d, index_l3=%d, index_l2=%d",
+      index_r, index_l3, index_l2);
 
   } // end of for (index_k_tr)
 
@@ -1910,8 +1984,8 @@ int bispectra2_intrinsic_integrate_over_k1 (
 {
 
   /* Integration grid */
-  int k_tr_size = ptr->k_size[ppt->index_md_scalars];
-  double * k_tr = ptr->k[ppt->index_md_scalars];
+  int k_tr_size = ptr->q_size;
+  double * k_tr = ptr->q;
 
   /* Parallelization variables */
   int thread = 0;
@@ -2072,6 +2146,7 @@ int bispectra2_intrinsic_integrate_over_k1 (
             for the extended l-range that is necessary to compute the m!=0 bispectra. */
             int index_L1 = pbs2->index_l1[L1];
 
+#ifdef DEBUG
             /* Paranoid android */
             class_test_parallel ((ppr2->m_max_2nd_order==0) && (l1!=L1),
               pbi->error_message,
@@ -2080,6 +2155,7 @@ int bispectra2_intrinsic_integrate_over_k1 (
             class_test_parallel (pbs2->l1[index_L1]!=L1,
               pbi->error_message,
               "error in the indexing of pbs2->l1. Is the pbs2->extend_l1_using_m parameter true?");
+#endif // DEBUG
 
             /* Define the pointer to the first-order transfer functions as a function of k */
             double * transfer = &(ptr->transfer [ppt->index_md_scalars]
@@ -2477,10 +2553,10 @@ int bispectra2_intrinsic_geometrical_factors (
     if (abs_M3 != 0) {
       
       if (pwb->bispectrum_parity == _EVEN_)
-        SUMMED_FACTOR_l3_L3_M3 = FACTOR_l3_L3_M3 + alternating_sign(offset_L3)*FACTOR_l3_L3_M3;
+        SUMMED_FACTOR_l3_L3_M3 = FACTOR_l3_L3_M3 + ALTERNATING_SIGN(offset_L3)*FACTOR_l3_L3_M3;
 
       else
-        SUMMED_FACTOR_l3_L3_M3 = FACTOR_l3_L3_M3 - alternating_sign(offset_L3)*FACTOR_l3_L3_M3;
+        SUMMED_FACTOR_l3_L3_M3 = FACTOR_l3_L3_M3 - ALTERNATING_SIGN(offset_L3)*FACTOR_l3_L3_M3;
 
     } // end of if(M3!=0)
   
@@ -2752,7 +2828,7 @@ int bispectra2_intrinsic_geometrical_factors (
 
             #pragma omp atomic
             result[index_l3][index_l2][index_l1-index_l1_min]
-              += alternating_sign(exponent/2) * prefactor * geometry * integral;
+              += ALTERNATING_SIGN(exponent/2) * prefactor * geometry * integral;
 
           }
           /* We treat m=0 as a special case because in this way we can define the reduced
@@ -2776,10 +2852,10 @@ int bispectra2_intrinsic_geometrical_factors (
             /* Full formula, with the (l1,l2,l3) 3j-symbol factored out numerically */
             double bispectrum = 0;
             if (is_even_configuration)
-              bispectrum = alternating_sign(exponent/2) * prefactor * geometry * integral;          
+              bispectrum = ALTERNATING_SIGN(exponent/2) * prefactor * geometry * integral;          
 
             if (fabs(bispectrum) > _MINUSCULE_)
-              class_test_parallel (fabs(1-bispectrum_for_m0/bispectrum) > ppr->smallest_allowed_variation,
+              class_test_parallel (fabs(1-bispectrum_for_m0/bispectrum) > _SMALL_,
                 pbi->error_message,
                 "error in the geometrical factor, m=0 not recovered (%g != %g) for b_%d_%d_%d.",
                 bispectrum_for_m0, bispectrum, l2, l3, l1);
@@ -2789,7 +2865,7 @@ int bispectra2_intrinsic_geometrical_factors (
 
           #pragma omp atomic
           result[index_l3][index_l2][index_l1-index_l1_min]
-            += alternating_sign(exponent/2) * prefactor * geometry * integral;
+            += ALTERNATING_SIGN(exponent/2) * prefactor * geometry * integral;
           
         } // end of if odd parity
 
@@ -2803,7 +2879,7 @@ int bispectra2_intrinsic_geometrical_factors (
         //     #pragma omp critical
         //     fprintf (stderr, "(l1,l2,l3 | L1,L3)=(%3d,%3d,%3d | %3d,%3d): geometry=%10g, integral=%10g\n",
         //       l1,l2,l3,L1,L3,
-        //       alternating_sign(exponent/2) * geometry_prefactor * geometry,
+        //       ALTERNATING_SIGN(exponent/2) * geometry_prefactor * geometry,
         //       integral_prefactor*integral);
         // 
         //   }
@@ -2814,11 +2890,11 @@ int bispectra2_intrinsic_geometrical_factors (
         //   ppr2->m[index_M3],L3,L1,l1,l2,l3,offset_L3,offset_L1);
         // printf ("\tresult=%g,prefactor=%g, integral=%g, geometry=%g, product=%g\n",
         //   result[index_l3][index_l2][index_l1-index_l1_min],
-        //   alternating_sign(exponent/2)*prefactor, integral, geometry,
-        //   alternating_sign(exponent/2)*alternating_sign(exponent)*integral*geometry);
+        //   ALTERNATING_SIGN(exponent/2)*prefactor, integral, geometry,
+        //   ALTERNATING_SIGN(exponent/2)*ALTERNATING_SIGN(exponent)*integral*geometry);
         
         /* Mathematica batch debug */
-        // double val = alternating_sign(exponent/2)*geometry;
+        // double val = ALTERNATING_SIGN(exponent/2)*geometry;
         // if ((abs_M3==2) && (offset_L3==4)) {
         //   if (val==0) {
         //     fprintf (stderr, "Abs[g[%d,%d,%d,%d,%d,%d]] == 0,\n",
@@ -2826,7 +2902,7 @@ int bispectra2_intrinsic_geometrical_factors (
         //   }
         //   else {
         //     fprintf (stderr, "Abs[1-g[%d,%d,%d,%d,%d,%d]/((%g)*10^(%f))],\n",
-        //       abs_M3,L3,L1,l1,l2,l3,sign(val),log10(fabs(val)));
+        //       abs_M3,L3,L1,l1,l2,l3,SIGN(val),log10(fabs(val)));
         //   }
         // }
 
@@ -2903,15 +2979,27 @@ int bispectra2_intrinsic_geometrical_factors (
 
 
 /**
- * Add to the intrinsic bispectrum with the quadratic correction intended to:
- * 1) Turn the brightness temperature to the bolometric one (Sec. 3.2 of http://arxiv.org/abs/1401.3296).
- * 2) Absorb the redshift term of Boltzmann equation (Sec. 3.1 of http://arxiv.org/abs/1401.3296). 
- * The two contributions partially cancel. The loop will run only for the intrinsic bispectra, as for
- * the primary ones there is no difference between brightness and bolometric temperature, and the
- * redshift term is only first order.
+ * Add to the intrinsic bispectrum a quadratic term in C_l to account for various
+ * corrections.
  * 
- * If you would rather ignore these corrections, set the flag 'add_quadratic_corrections = no' or 
- * 'quadratic_sources = no' in the parameter file.
+ * In detail, the quadratic term we add here is intended to:
+ *
+ * -# Turn the brightness temperature bispectrum, which we have computed so far, into the
+ * bolometric temperature bispectrum. For details on this transformation, see sec. 6.3.1
+ * of http://arxiv.org/abs/1405.2280 or sec. 3.2 of http://arxiv.org/abs/1401.3296).
+ *
+ * -# Compensate the delta_tilde transformation that we introduced in the perturbations2.c
+ * module in order to absorb the redshift term of the Boltzmann equation. For details, see
+ * sec. 6.3.1 of http://arxiv.org/abs/1405.2280 and sec. 3.1 of http://arxiv.org/abs/1401.3296.
+ *
+ * The two contributions partially cancel. The loop will run only for the intrinsic bispectra,
+ * because for any other bispectrum computed by SONG there is no difference between brightness
+ * and bolometric temperature, and there is no need to absorb the (linear) redshift term.
+ * 
+ * If you would rather ignore these corrections, set the flag 'add_quadratic_correction = no' or 
+ * 'quadratic_sources = no' in the parameter file. Note that the latter will also turn off all
+ * quadratic sources in the perturbations2.c module, effectively turning SONG in a first-order
+ * code.
  */
 int bispectra2_add_quadratic_corrections (
     struct precision * ppr,
@@ -2929,8 +3017,9 @@ int bispectra2_add_quadratic_corrections (
     )
 {
 
-   /* We assume that when the quadratic sources are not included (ppt2->has_quadratic_sources==_FALSE), the
-   user is trying to run SONG as a first-order one, and hence we turn off the quadratic corrections. */
+   /* We assume that when the quadratic sources are not considered at all
+  (ppt2->has_quadratic_sources==_FALSE), then the user is trying to run SONG as a
+  first-order code, and we turn off the quadratic corrections. */
   if ((pbi->add_quadratic_correction == _FALSE_) || (ppt2->has_quadratic_sources == _FALSE_))
     return _SUCCESS_;
 
@@ -2958,10 +3047,12 @@ int bispectra2_add_quadratic_corrections (
                   
                 long int index_l1_l2_l3 = pbi->index_l1_l2_l3[index_l1][index_l1-index_l2][index_l3_max-index_l3];
               
-                /* Bolometric temperature correction (Sec. 3.2 of http://arxiv.org/abs/1401.3296) */
+                /* Bolometric temperature correction (sec. 6.3.1 of http://arxiv.org/abs/1405.2280 or
+                sec. 3.2 of http://arxiv.org/abs/1401.3296) */
                 double bolometric_correction = - 3/8. * pbi->bispectra[pbi->index_bt_quadratic][X][Y][Z][index_l1_l2_l3];
               
-                /* Redshift term correction (Sec. 3.1 of http://arxiv.org/abs/1401.3296) */
+                /* Redshift term correction (see sec. 6.3.1 of http://arxiv.org/abs/1405.2280 or
+                sec. 3.1 of http://arxiv.org/abs/1401.3296) */
                 double delta_tilde_correction = 0;
                         
                 if (ppt2->use_delta_tilde_in_los == _TRUE_)
@@ -2970,10 +3061,11 @@ int bispectra2_add_quadratic_corrections (
                 /* Add the correction */
                 pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3] += bolometric_correction + delta_tilde_correction;
             
-                /* Check against nan's */
-                if (isnan(pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3]))
-                  printf ("\n### WARNING ###\nb(%d,%d,%d) = %g!!!\n\n",
-                  pbi->l[index_l1], pbi->l[index_l2], pbi->l[index_l3], pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3]);
+                /* Debug - check against nan's */
+                // if (isnan(pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3]))
+                //   printf ("\n### WARNING ###\nb(%d,%d,%d) = %g!!!\n\n",
+                //   pbi->l[index_l1], pbi->l[index_l2], pbi->l[index_l3],
+                //   pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3]);
 
               } // end of for(index_l3)
             } // end of for(index_l2)

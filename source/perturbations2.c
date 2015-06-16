@@ -1,6 +1,85 @@
-#include "perturbations2.h"
-#include "perturbations2_macros.h"
+/** @file perturbations2.c
+ *
+ * Module to compute the cosmological perturbations at second
+ * order and build the line of sight sources.
+ *
+ * The computation involves solving the Einstein-Boltzmann system of
+ * coupled differential equations at second order in the cosmological
+ * perturbations. Every passage is documented in the source code. For
+ * a more detailed explanation of the physics behind this module,
+ * please refer to chapter 3 and 4 of my thesis (http://arxiv.org/abs/1405.2280).
+ * For details on the methodology, the evolver used (ndf15) and the
+ * differential system, please look at chapter 5 in general and sec 5.3
+ * in particular.
+ *
+ * Once their evolution is known, the perturbations are used to build
+ * the line-of-sight sources for the photon temperature and polarisation
+ * (and other observables), just as it is done at first order in CLASS.
+ * These sources are the main output of the module and will be later
+ * integrated in the transfer2.c module to obtain today's value of the 
+ * second-order transfer functions. See sec 5.5 of my thesis (link above)
+ * for details on this line-of-sight integration. The transfer functions
+ * are the main ingredient to predict observables such as the CMB bispectrum
+ * (chapter 6) that can be then compared with experiment results.
+ *
+ * The main functions that can be called externally are:
+ * -# perturb2_init() to run the module; requires background_init() and
+ *    thermodynamics_init()
+ * -# perturb2_free() to free all the memory associated to the module.
+ * 
+ * If the user specified 'store_sources_to_disk=yes', the module will save the 
+ * line-of-sight sources to disk after computing them, and then free the associated 
+ * memory. To reload them from disk, use perturb2_load_sources_from_disk().
+ * To free again the memory associated to the sources, call
+ * perturb2_free_k1_level().
+ *
+ * Created by Guido W. Pettinari on 01.01.2011 based on perturbations.c by the
+ * CLASS team (http://class-code.net/).
+ * Last modified by Guido W. Pettinari on 04.06.2015.
+ */
 
+
+#include "perturbations2.h"
+
+/**
+ *
+ * Fill all the fields in the perturbs2 structure, especially the ppt2->sources
+ * array.
+ * 
+ * This function calls the other perturb2_XXX functions in the order needed to 
+ * solve the Boltzmann-Einstein system of equations at second order (BES2) in the
+ * cosmological perturbations. In the process, it also runs perturb_init()
+ * to compute the first-order perturbations required to solve the second-order system,
+ * and it fills the ppt2 structure so that it can be used in the subsequent modules
+ * (transfer2.c, bispectra2.c, ...).
+ *
+ * Before calling this function, make sure that background_init() and
+ * thermodynamics_init() have already been executed. 
+ * 
+ * Details on the physics and on the adopted method can be found in my thesis
+ * (http://arxiv.org/abs/1405.2280), chapters 3 to 5. The code itself is
+ * extensively documented and hopefully will give you further insight.
+ *
+ * In detail, this function does:
+ *
+ * -# Determine which line of sight sources need to be computed and their
+ *    k-sampling via perturb2_indices_of_perturbs().
+ *
+ * -# Determine the time sampling for the sources via the function
+ *    perturb2_timesampling_for_sources().
+ *
+ * -# Solve the system at first order via perturb_init().
+ *
+ * -# Allocate one workspace per thread to store temporary values related
+ *    to the second-order system.
+ *
+ * -# Solve the Boltzmann-Einstein system at second order in Fourier space
+ *    for all the desired (k1,k2,k3) configurations via perturb2_solve().
+ *    In the process, build and store the line of sight sources in ppt2->sources.
+ *
+ * -# If requested, store to disk the content of ppt2->sources and free the array.
+ * 
+ */
 int perturb2_init (
      struct precision * ppr,
      struct precision2 * ppr2,
@@ -23,18 +102,12 @@ int perturb2_init (
     printf("Computing second-order perturbations\n");
 
 
-  // ===============================================================================================
-  // =                                   Indices and samplings                                     =
-  // ===============================================================================================
+  // =======================================================================================
+  // =                               Indices and samplings                                 =
+  // =======================================================================================
 
-  /* Initialize all indices and arrays in the ppt2 structure.
-    In detail, this function does the following:
-     - assigns tp2 indices
-     - call perturb2_get_k_lists, that allocates and fills ppt2->k_size, ppt2->k3_size
-     - fill ppt2->k, ppt2->k3[index_k1,index_k2]
-     - set ppt->k = ppt2->k
-     - fill the lm_arrays used to index the Boltzmann hierarchies 
-  */
+  /** - determine which sources need to be computed and their k-sampling */
+
   class_call (perturb2_indices_of_perturbs(
                 ppr,
                 ppr2,
@@ -46,13 +119,8 @@ int perturb2_init (
   ppt2->error_message);
 
 
-  /* The following function will:
-    
-      - define the common time sampling for all sources in ppt2->tau_sampling
-      - define the time sampling for the first-order quadratic sources in ppt->tau_sampling_quadsources
-      - allocate the k1, k2, k3 and tau levels of ppt2->sources
-      
-  */
+  /** - determine the time sampling for the sources */
+  
   class_call (perturb2_timesampling_for_sources (
                 ppr,
                 ppr2,
@@ -64,18 +132,24 @@ int perturb2_init (
     ppt2->error_message);
 
 
+  // =====================================================================================
+  // =                              Solve 1st-order system                               =
+  // =====================================================================================
 
+  /** - Run the first-order perturbations module in order to:
+  
+    - Compute and store in ppt->quadsources the perturbations needed to solve the
+      2nd-order system.
+    
+    - Compute and store in ppt->sources the line-of-sight sources needed to compute
+      the first-order transfer functions (not the C_l's).
 
-  // ===============================================================================================
-  // =                                  Solve 1st-order system                                     =
-  // ===============================================================================================
+    SONG overrides the functions that are normally called to determine the wavemode
+    (ppt->k) and time sampling (ppt->tau_sampling_quadsources) in perturb_init(),
+    that is, perturb_timesampling_for_sources() and perturb_get_k_list(). Instead,
+    SONG determines the two domains with two functions of its own, that is
+    perturb2_get_k_lists() and perturb2_timesampling_for_sources(). */
 
-  /* We now compute the 1st-order perturbations in order to (i) fill ppt->quadsources with the 1st-order quantities
-  needed to compute the quadratic sources to the 2nd-order equations, and (ii) fill ppt->sources with the line-
-  of-sight sources needed to compute the first-order transfer functions and Cl's.
-
-  Note that the k-sampling for the first order sources (ppt->k) is determined by perturb2_get_k_lists;
-  the time sampling (ppt->tau_sampling_quadsources) is determined by perturb2_timesampling_for_sources */
   class_call (perturb_init (
                 ppr,
                 pba,
@@ -83,13 +157,9 @@ int perturb2_init (
                 ppt),
     ppt->error_message, ppt2->error_message);
   
-  /* For the time being, we assume that 1st-order adiabatic initial conditions were computed.
-  In the future, this should be set in input.c and should depend on the ic_2nd_order option */
-  ppt2->index_ic = ppt->index_ic_ad;
-
 
   /* If the user asked to output only the 1st-order transfer functions needed by the second-order module,
-    then we stop here. */
+  then we stop here. */
   if (ppt2->has_early_transfers1_only == _TRUE_) {
 
     if (ppt2->perturbations2_verbose > 0)
@@ -103,10 +173,11 @@ int perturb2_init (
   // -                    Adjust 1st-order time sampling                 -
   // ---------------------------------------------------------------------
   
-  /* The first-order time-sampling for the line-of-sight sources in CLASS goes all the way to today.  At
-  second-order, we might be interested in recombination effects only, and thus limit the 2nd-order
-  sampling to a smaller range. As we want to consider the same effects at first and second order, we adapt
-  the end time of the first-order time sampling (ppt->tau_sampling) to the second-order one (ppt2->tau_sampling) */
+  /* The first-order time-sampling for the line-of-sight sources in CLASS goes all
+  the way to today.  At second-order, we might be interested in recombination effects
+  only, and thus set an upper limit on the time sampling. Since we want to consider
+  the same effects at first and second order, we adapt the end time of the first-order
+  time sampling (ppt->tau_sampling) to the second-order one (ppt2->tau_sampling) */
   
   if (ppt2->match_final_time_los == _TRUE_) {
 
@@ -137,7 +208,7 @@ int perturb2_init (
 
 
 
-  /* Print some info on the screen */
+  /* Print some info to screen */
   if (ppt2->perturbations2_verbose > 0) {
     printf(" -> computing %s2nd-order sources ",
       ppt2->rescale_quadsources == _TRUE_ ? "RESCALED " : "");
@@ -160,18 +231,15 @@ int perturb2_init (
   if (ppr2->load_sources_from_disk == _TRUE_) {
     
     if (ppt2->perturbations2_verbose > 0)
-      printf(" -> leaving perturbs2 module without having computed the line-of-sight sources, which will be read from disk\n");
+      printf(" -> leaving perturbs2 module; line-of-sight sources will be read from disk\n");
     
     return _SUCCESS_;
   }
 
 
-
-
-
-  // ===============================================================================================
-  // =                                     Allocate workspace                                      =
-  // ===============================================================================================
+  // ========================================================================================
+  // =                                 Allocate workspace                                   =
+  // ========================================================================================
 
   /* Number of available omp threads (remains always one if no openmp) */
   int number_of_threads = 1;
@@ -181,7 +249,6 @@ int perturb2_init (
 
   /* Flag for error management inside parallel regions */
   int abort;
-
   
   /* Find number of threads */
   #ifdef _OPENMP
@@ -235,9 +302,9 @@ int perturb2_init (
   if (abort == _TRUE_) return _FAILURE_;
   
 
-  // ======================================================================================================
-  // =                                  Solve 2nd-order differential system                               =
-  // ======================================================================================================
+  // ===========================================================================================
+  // =                           Solve 2nd-order differential system                           =
+  // ===========================================================================================
 
   /* Beginning of parallel region */
   abort = _FALSE_;    
@@ -250,21 +317,19 @@ int perturb2_init (
     thread = omp_get_thread_num();
     #endif
 
-    /* Some debug */
     if (ppt2->perturbations2_verbose > 1)
       printf ("     * computing sources for index_k1=%d of %d, k1=%g\n",
         index_k1, ppt2->k_size-1, ppt2->k[index_k1]);
 
-    /* Allocate the k1 level of
-    ppt2->sources[index_type][index_k1][index_k2][index_tau*k3_size + index_k],
-    which will contain the results of the computations made in this module.  */
+    /* Allocate the k1 level of ppt2->sources, so that it can be filled by perturb2_solve() */
     class_call_parallel (perturb2_allocate_k1_level (ppt2, index_k1),
       ppt2->error_message, ppt2->error_message);
 
     /* IMPORTANT: we are assuming that the quadratic sources are given in a form symmetric
     under exchange of k1 and k2.  Hence, we shall solve the system only for those k2 that
-    are equal to or larger than k1, which means that the cycle on k2 will be starting
-    from index_k1.*/
+    are equal to or larger than k1, which means that the cycle on k2 will stop when
+    index_k2 = index_k1. */
+      
     for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
 
       for (int index_k3 = 0; index_k3 < ppt2->k3_size[index_k1][index_k2]; ++index_k3) {
@@ -351,6 +416,168 @@ int perturb2_init (
 
 
 
+/**
+ * Allocate the k1 level of the array for the second-order line of sight sources (ppt2->sources).
+ *
+ * This function makes space for the line of sight sources functions; it is called before loading
+ * them from disk in perturb2_load_sources_from_disk(). It can only be called after
+ * perturb2_indices_of_perturbs(), perturb2_timesampling_for_sources(), perturb2_get_k_lists().
+ *
+ */
+int perturb2_allocate_k1_level(
+     struct perturbs2 * ppt2, /*<< pointer to perturbs2 structure */
+     int index_k1             /*<< index in ppt2->k that we want to load the sources for  */
+     // int index_m
+     )
+{
+
+  /* Issue an error if ppt2->sources[index_k1] has already been allocated */
+  class_test (ppt2->has_allocated_sources[index_k1] == _TRUE_,
+    ppt2->error_message,
+    "the index_k1=%d level of ppt2->sources is already allocated, stop to prevent error",
+    index_k1);
+
+  long int count=0;
+  
+  for (int index_type = 0; index_type < ppt2->tp2_size; index_type++) {
+
+    /* Allocate only the level corresponding to the considered 'm' mode */
+    // if (ppt2->corresponding_index_m[index_type] != index_m) continue;
+
+    /* Allocate k2 level.  Note that the size of this level is smaller than ppt2->k_size,
+    and depends on k1.  The reason is that we shall solve the system only for those k2's
+    that are smaller than k1 (our equations are symmetrised wrt to k1<->k2) */
+
+    class_alloc (
+      ppt2->sources[index_type][index_k1],
+      (index_k1+1) * sizeof(double *),
+      ppt2->error_message);
+
+    for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
+
+      /* Allocate k3-tau level. Use calloc as we rely on the array to be initialised to zero. */
+      class_calloc (
+        ppt2->sources[index_type][index_k1][index_k2],
+        ppt2->tau_size*ppt2->k3_size[index_k1][index_k2],
+        sizeof(double),
+        ppt2->error_message);
+    
+      #pragma omp atomic
+      ppt2->count_allocated_sources += ppt2->tau_size*ppt2->k3_size[index_k1][index_k2];
+      count += ppt2->tau_size*ppt2->k3_size[index_k1][index_k2];
+
+    } // end of for (index_k2)
+  } // end of for (index_type)
+
+  /* Print some debug information on memory consumption */
+  if (ppt2->perturbations2_verbose > 2)
+    printf(" -> allocated ~ %.3g MB (%ld doubles) for index_k1=%d; the size of ppt2->sources so far is ~ %.3g MB;\n",
+      count*sizeof(double)/1e6, count, index_k1, ppt2->count_allocated_sources*sizeof(double)/1e6);
+
+  /* We succesfully allocated the k1 level of ppt2->sources */
+  ppt2->has_allocated_sources[index_k1] = _TRUE_;
+
+  return _SUCCESS_;
+
+}
+
+
+/**
+ * Load the line of sight sources from disk for a given k1 value.
+ *
+ * The sources will be read from the file given in ppt2->sources_paths[index_k1] and stored
+ * in the array ppt2->sources. Before running this function, make sure to allocate the
+ * corresponding k1 level of ppt2->sources using perturb2_allocate_k1_level().
+ *
+ * This function is used in the transfer2.c module.
+ */
+int perturb2_load_sources_from_disk(
+        struct perturbs2 * ppt2,
+        int index_k1
+        )
+{
+ 
+  /* Allocate memory to keep the line-of-sight sources */
+  class_call (perturb2_allocate_k1_level(ppt2, index_k1), ppt2->error_message, ppt2->error_message);
+  
+  /* Open file for reading */
+  class_open (ppt2->sources_files[index_k1], ppt2->sources_paths[index_k1], "rb", ppt2->error_message);
+
+  /* Print some debug */
+  if (ppt2->perturbations2_verbose > 2)
+    printf("     * reading line-of-sight source for index_k1=%d from '%s' ... \n", index_k1, ppt2->sources_paths[index_k1]);
+  
+  for (int index_type = 0; index_type < ppt2->tp2_size; ++index_type) {
+  
+    for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
+
+      int k3_size = ppt2->k3_size[index_k1][index_k2];
+
+        int n_to_read = ppt2->tau_size*k3_size;
+
+        int n_read = fread(
+              ppt2->sources[index_type][index_k1][index_k2],
+              sizeof(double),
+              n_to_read,
+              ppt2->sources_files[index_k1]);
+
+        /* Read a chunk with all the time values for this set of (type,k1,k2,k3) */
+        class_test( n_read != n_to_read,
+          ppt2->error_message,
+          "Could not read in '%s' file, read %d entries but expected %d",
+          ppt2->sources_paths[index_k1], n_read, n_to_read);
+
+        /* Update the counter for the values stored in ppt2->sources */
+        #pragma omp atomic
+        ppt2->count_memorised_sources += n_to_read;
+
+    } // end of for (index_k2)
+    
+  } // end of for (index_type)
+  
+  /* Close file */
+  fclose(ppt2->sources_files[index_k1]);
+  
+  // if (ppt2->perturbations2_verbose > 2)
+  //   printf ("Done.\n");
+
+  return _SUCCESS_; 
+  
+}
+
+
+
+/**
+ * Free the k1 level of the sources array ppt2->sources.
+ */
+int perturb2_free_k1_level(
+     struct perturbs2 * ppt2,
+     int index_k1
+     )
+{
+
+  /* Issue an error if ppt2->sources[index_k1] has already been freed */
+  class_test (ppt2->has_allocated_sources[index_k1] == _FALSE_,
+    ppt2->error_message,
+    "the index_k1=%d level of ppt2->sources is already free, stop to prevent error", index_k1);
+
+  int k1_size = ppt2->k_size;
+
+  for (int index_type = 0; index_type < ppt2->tp2_size; index_type++) {
+    for (int index_k2 = 0; index_k2 <= index_k1; index_k2++)
+        free(ppt2->sources[index_type][index_k1][index_k2]);
+  
+    free(ppt2->sources[index_type][index_k1]);
+  
+  } // end of for (index_type)
+
+
+  /* We succesfully freed the k1 level of ppt2->sources */
+  ppt2->has_allocated_sources[index_k1] = _FALSE_;
+
+  return _SUCCESS_;
+
+}
 
 
 
@@ -359,9 +586,26 @@ int perturb2_init (
 
 
 
+/**
+ *
+ * Initialize indices and arrays in the second-order perturbations structure.
+ *
+ * In detail, this function does:
+ *
+ *  -# Determine what source terms need to be computed and assign them the ppt2->index_tp2_XXX indices.
+ *
+ *  -# Allocate and fill the second-order k-sampling arrays (ppt2->k and ppt2->k3[index_k1,index_k2])
+ *     by calling perturb2_get_k_lists().
+ *
+ *  -# Set the first-order k-sampling to match the second-order one (ppt->k = ppt2->k).
+ *
+ *  -# Fill the multipole arrays (ppt2->lm_array, ppt2->lm_array_quad, ...) used to index the Boltzmann
+ *     hierarchies, by calling the perturb2_get_lm_lists().
+ *
+ *  -# Open the files where we will store the line of sight sources at the end of the computation.
+ *
+ */
 
-
-/* Here we set the indices and arrays associated to the system of equations at second perturbative order. */
 int perturb2_indices_of_perturbs(
         struct precision * ppr,
         struct precision2 * ppr2,
@@ -372,7 +616,7 @@ int perturb2_indices_of_perturbs(
         )
 {
 
-  
+
   // ==========================================================================
   // =                           Consistency Checks                           =
   // ==========================================================================
@@ -382,12 +626,19 @@ int perturb2_indices_of_perturbs(
     (ppt2->has_cmb_temperature == _FALSE_) &&
     (ppt2->has_cmb_polarization_e == _FALSE_) &&
     (ppt2->has_cmb_polarization_b == _FALSE_),
-    ppt2->error_message, "please specify a probe");
+    ppt2->error_message, "please specify at least an output");
 
   /* Synchronous gauge not supported yet */
   class_test (ppt->gauge == synchronous,
     ppt2->error_message,
     "synchronous gauge is not supported at second order yet");
+
+  /* Curvature at second order not supported yet. You can comment the following check
+  and use a curved first order on a flat second order, but the results would obviously be
+  inconsistent. */
+  class_test (pba->sgnK != 0,
+    ppt2->error_message,
+    "curved universe not supported at second order");
 
   /* E-modes and B-modes start from l=2 */
   class_test (
@@ -398,40 +649,38 @@ int perturb2_indices_of_perturbs(
   /* Check that the m-list is within bounds */
   class_test (
     (ppr2->m_max_2nd_order > ppr2->l_max_los) ||
-    (ppr2->m_max_2nd_order > ppr2->l_max_g_2nd_order) ||
-    (ppr2->m_max_2nd_order > ppr2->l_max_pol_g_2nd_order) ||
-    (ppr2->m_max_2nd_order > ppr2->l_max_ur_2nd_order),
+    (ppr2->m_max_2nd_order > ppr2->l_max_g_song) ||
+    (ppr2->m_max_2nd_order > ppr2->l_max_pol_g_song) ||
+    (ppr2->m_max_2nd_order > ppr2->l_max_ur_song),
     ppt2->error_message, "all entries in modes_2nd_order should be between 0 and l_max.");
 
   /* Make sure that we compute enough first-order multipoles to solve the second-order system
   (must be below the initialisation of ppt2->lm_extra). */
-  class_test ((ppr2->l_max_g_2nd_order+ppt2->lm_extra) > ppr->l_max_g,
+  class_test ((ppr2->l_max_g_song+ppt2->lm_extra) > ppr->l_max_g,
     ppt2->error_message,
-    "insufficient number of first-order multipoles. Please set 'l_max_g_2nd_order' smaller or equal than 'l_max_g + %d'", ppt2->lm_extra);
+    "insufficient number of first-order multipoles. Please set 'l_max_g_song' smaller or equal than 'l_max_g + %d'", ppt2->lm_extra);
 
   if (ppt2->has_polarization2 == _TRUE_)
-    class_test ((ppr2->l_max_pol_g_2nd_order+ppt2->lm_extra) > ppr->l_max_pol_g,
+    class_test ((ppr2->l_max_pol_g_song+ppt2->lm_extra) > ppr->l_max_pol_g,
       ppt2->error_message,
-      "insufficient number of first-order multipoles. Please set 'l_max_pol_g_2nd_order' smaller or equal than 'l_max_pol_g + %d'", ppt2->lm_extra);
+      "insufficient number of first-order multipoles. Please set 'l_max_pol_g_song' smaller or equal than 'l_max_pol_g + %d'", ppt2->lm_extra);
     
   if (pba->Omega0_ur != 0)
-    class_test ((ppr2->l_max_ur_2nd_order+ppt2->lm_extra) > ppr->l_max_ur,
+    class_test ((ppr2->l_max_ur_song+ppt2->lm_extra) > ppr->l_max_ur,
       ppt2->error_message,
-      "insufficient number of first-order multipoles. Please set 'l_max_ur_2nd_order' smaller or equal than 'l_max_ur + %d'", ppt2->lm_extra);
-
+      "insufficient number of first-order multipoles. Please set 'l_max_ur_song' smaller or equal than 'l_max_ur + %d'", ppt2->lm_extra);
 
   /* Make sure that the number of sources kept in the line of sight integration is smaller than the number of
   evolved 2nd-order multipoles */
   if (ppt2->has_cmb_temperature)
-    class_test (ppr2->l_max_los_t > ppr2->l_max_g_2nd_order,
+    class_test (ppr2->l_max_los_t > ppr2->l_max_g_song,
       ppt2->error_message,
       "you chose to compute more line-of-sight sources than evolved multipoles at first order. Make sure that l_max_los_t is smaller or equal than l_max_g.");
 
   if ((ppt2->has_cmb_polarization_e == _TRUE_) || (ppt2->has_cmb_polarization_b == _TRUE_))
-    class_test (ppr2->l_max_los_p > ppr2->l_max_pol_g_2nd_order,
+    class_test (ppr2->l_max_los_p > ppr2->l_max_pol_g_song,
       ppt2->error_message,
-      "you chose to compute more line-of-sight sources than evolved multipoles at first order. Make sure that l_max_los_p is smaller or equal than l_max_pol_g_2nd_order.");
-
+      "you chose to compute more line-of-sight sources than evolved multipoles at first order. Make sure that l_max_los_p is smaller or equal than l_max_pol_g_song.");
 
   /* Make sure that the number of quadratic sources kept in the line of sight integration is smaller than the number of
   available 1st-order multipoles */
@@ -446,12 +695,9 @@ int perturb2_indices_of_perturbs(
       "you chose to compute more line-of-sight quadratic sources than evolved multipoles at first order. Make sure that l_max_los_quadratic_p is smaller or equal than l_max_pol_g.");
 
 
-
-
   // ======================================================================================
   // =                              What sources to compute?                              =
   // ======================================================================================
-
 
   /* Allocate and fill the m-array, which contains the azimuthal moments to evolve.  We just copy
   it from the precision structure. */
@@ -495,47 +741,75 @@ int perturb2_indices_of_perturbs(
 
 
   // -------------------------------------------------------------------------
-  // -                      Photon polarization sources                      -
+  // -                       Photon polarization sources                     -
   // -------------------------------------------------------------------------
-    
-  /* We compute the source functions for both the E and B-modes, regardless of
-  which polarisation type is requested, because free streaming makes the two types
-  of polarisation mix in the line of sight integral */
+
+  /* Assign the type indices associated to linear polarisation. We decompose
+  linear polarisation in E-polarisation and B-polarisation. Both kinds of
+  polarisation have vanishing monopole (l=0) and dipole (l=1), while B-modes
+  also vanish for scalar modes (m=0). Nonetheless, we assign the indices
+  for polarisation also to these modes. The rationale is to keep the same
+  indexing strategy independently from the considered field; removing the
+  monopole and dipole type-indices for polarisation would have broken such
+  strategy. In the rest of the module we will simply set to zero the values of
+  ppt2->sources associated to the vanishing modes (monopole and dipole for E
+  and B, and scalar modes for B) */
 
   if ((ppt2->has_cmb_polarization_e == _TRUE_) || (ppt2->has_cmb_polarization_b == _TRUE_)) {
 
-    // *** E-MODES ***
     ppt2->has_source_E = _TRUE_;
     ppt2->has_cmb = _TRUE_;
  
-    /* Find the number of sources to keep for the line of sight integration */
+    /* Number of sources to keep for the line of sight integration */
     ppt2->n_sources_E = size_l_indexm (ppr2->l_max_los_p, ppt2->m, ppt2->m_size);
-
     ppt2->index_tp2_E = index_type;
     index_type += ppt2->n_sources_E;
+
+    /* Compute the number of non-vanishing E sources for debug purposes */
+    ppt2->n_nonzero_sources_E = ppt2->n_sources_E;
+    if (ppr2->compute_m[0])
+      ppt2->n_nonzero_sources_E -= 2;
+    if (ppr2->compute_m[1])
+      ppt2->n_nonzero_sources_E -= 1;
 
     /* Increment the number of CMB fields to consider */
     strcpy (ppt2->pf_labels[index_pf], "e");
     ppt2->field_parity[index_pf] = _EVEN_;
     ppt2->index_pf_e = index_pf++;
+    
+    /* Free streaming mixes the two types of polarisation (see eq. 5.101 and 5.102
+    of http://arxiv.org/abs/1405.2280) in the line of sight integral. This means that
+    to compute the E-mode transfer functions in the transfer2.c module, we will need
+    the B-mode polarisation sources as well. The exception is when only scalar modes
+    are requested, in which case there is no B-mode polarisation. */
+    if (ppr2->m_max_2nd_order!=0) { /* if at least a m!=0 mode is requested */
+
+      ppt2->has_source_B = _TRUE_;
+
+      /* Number of sources to keep for the line of sight integration */
+      ppt2->n_sources_B = size_l_indexm (ppr2->l_max_los_p, ppt2->m, ppt2->m_size);
+      ppt2->index_tp2_B = index_type;
+      index_type += ppt2->n_sources_B;
+
+      /* Compute the number of non-vanishing B sources for debug purposes */
+      ppt2->n_nonzero_sources_B = ppt2->n_sources_B;
+      if (ppr2->compute_m[0])
+        ppt2->n_nonzero_sources_B -= ppr2->l_max_los_p;
+      if (ppr2->compute_m[1])
+        ppt2->n_nonzero_sources_B -= 1;
+
+      /* Increment the number of CMB fields to consider */
+      strcpy (ppt2->pf_labels[index_pf], "b");
+      ppt2->field_parity[index_pf] = _ODD_;
+      ppt2->index_pf_b = index_pf++;
+      
+    } // end of if non-scalar modes
+  } // end of if polarisation
 
 
-    // *** B-MODES ***
-    ppt2->has_source_B = _TRUE_;
-    ppt2->has_cmb = _TRUE_;
- 
-    /* Find the number of sources to keep for the line of sight integration */
-    ppt2->n_sources_B = size_l_indexm (ppr2->l_max_los_p, ppt2->m, ppt2->m_size);
-
-    ppt2->index_tp2_B = index_type;
-    index_type += ppt2->n_sources_B;
-
-    /* Increment the number of CMB fields to consider */
-    strcpy (ppt2->pf_labels[index_pf], "b");
-    ppt2->field_parity[index_pf] = _ODD_;
-    ppt2->index_pf_b = index_pf++;
-
-  }
+  // -------------------------------------------------------------------------
+  // -                              Sum up sources                           -
+  // -------------------------------------------------------------------------
 
   /* Set the size of the sources to be stored */
   ppt2->tp2_size = index_type;
@@ -546,26 +820,41 @@ int perturb2_indices_of_perturbs(
    ppt2->error_message);
   
   if (ppt2->perturbations2_verbose > 1) {
-    printf ("     * will compute tp2_size=%d source terms ( ", ppt2->tp2_size);
+    printf ("     * will compute tp2_size=%d source terms: ", ppt2->tp2_size);
     if (ppt2->has_cmb_temperature == _TRUE_)
       printf ("T=%d ", ppt2->n_sources_T);
-    if ((ppt2->has_cmb_polarization_e == _TRUE_) || (ppt2->has_cmb_polarization_b == _TRUE_)) {
-      printf ("E=%d ", ppt2->n_sources_E);
-      printf ("B=%d ", ppt2->n_sources_B);
+    if (ppt2->has_source_E == _TRUE_) {
+      printf ("E=%d (%d non-zero) ", ppt2->n_sources_E, ppt2->n_nonzero_sources_E);
     }
-    printf (")\n");
+    if (ppt2->has_source_B == _TRUE_) {
+      printf ("B=%d (%d non-zero) ", ppt2->n_sources_B, ppt2->n_nonzero_sources_B);
+    }
+    printf ("\n");
   }  
-  
   
   /* Allocate memory for the labels of the source types */
   class_alloc (ppt2->tp2_labels, ppt2->tp2_size*sizeof(char *), ppt2->error_message);
   for (index_type=0; index_type<ppt2->tp2_size; ++index_type)
     class_alloc (ppt2->tp2_labels[index_type], 64*sizeof(char), ppt2->error_message);
 
-
   /* Allocate the first level of the ppt2->sources array */
   class_alloc (ppt2->sources, ppt2->tp2_size * sizeof(double ***), ppt2->error_message);
 
+
+  // --------------------------------------------------------------------
+  // -                          Initial conditions                      -
+  // --------------------------------------------------------------------
+  
+  /* SONG supports only adiabatic initial conditions. You can skip the following
+  test but you risk to obtain unconsistent results. */
+
+  class_test (ppt->has_ad == _FALSE_,
+    ppt2->error_message,
+    "SONG only supports adiabatic initial conditions; make sure ic=ad in parameter file");
+
+  ppt2->index_ic_first_order = ppt->index_ic_ad;
+
+  
 
 
   // ==============================================================================
@@ -651,18 +940,29 @@ int perturb2_indices_of_perturbs(
 
 
 /**
- * This function will allocate and fill the following fields:
- *   ppt2->m
- *   ppr2->index_m_max
- *   ppt2->largest_l
- *   ppt2->largest_l_quad
- *   ppt2->index_monopole
- *   ppt2->corresponding_l
- *   ppt2->corresponding_index_m
- *   ppt2->lm_array
- *   ppt2->lm_array_quad
- *   ppt2->nlm_array
- *   ppt2->c_minus, c_plus, etc.
+ * Compute quantities related to the spherical harmonics projection of the
+ * perturbations.
+ *
+ * In detail, this function does:
+ *
+ * -# Compute quantities arrays needed to index the (l,m) level of ppt->sources:
+ *    - ppt2->m
+ *    - ppt2->largest_l
+ *    - ppt2->largest_l_quad
+ *    - ppt2->index_monopole
+ *    - ppt2->corresponding_l
+ *    - ppt2->corresponding_index_m
+ *    - ppt2->lm_array
+ *    - ppt2->lm_array_quad
+ *    - ppt2->nlm_array
+ *
+ * -# Compute the coupling coefficients required to build the Boltzmann equations:
+ *    - ppt2->c_minus
+ *    - ppt2->c_plus
+ *    - ppt2->d_minus
+ *    - ppt2->d_plus
+ *    - ppt2->d_zero
+ *    - ppt2->coupling_coefficients
  */
 
 int perturb2_get_lm_lists (
@@ -717,15 +1017,15 @@ int perturb2_get_lm_lists (
 
   /* Obtain the maximum 'l' that we need to index in this module. We assume the first-order
   hierarchy is always longer than the second-order one. */
-  ppt2->largest_l = ppr2->l_max_g_2nd_order;
+  ppt2->largest_l = ppr2->l_max_g_song;
   ppt2->largest_l_quad = ppr->l_max_g;
   
   if (pba->has_ur == _TRUE_) {
-    ppt2->largest_l      = MAX(ppt2->largest_l, ppr2->l_max_ur_2nd_order);
+    ppt2->largest_l      = MAX(ppt2->largest_l, ppr2->l_max_ur_song);
     ppt2->largest_l_quad = MAX(ppt2->largest_l_quad, ppr->l_max_ur);
   }
   if (ppt2->has_polarization2 == _TRUE_) {
-    ppt2->largest_l      = MAX(ppt2->largest_l, ppr2->l_max_pol_g_2nd_order);
+    ppt2->largest_l      = MAX(ppt2->largest_l, ppr2->l_max_pol_g_song);
     ppt2->largest_l_quad = MAX(ppt2->largest_l_quad, ppr->l_max_pol_g);
   }
 
@@ -737,9 +1037,9 @@ int perturb2_get_lm_lists (
   ppt2->largest_l_quad = MAX (ppt2->largest_l_quad, ppt2->largest_l + ppt2->lm_extra);
 
 
-  // ---------------------------------------------------------------------------------------
-  // -                          Fill the lm_array for ppt2->sources                        -
-  // ---------------------------------------------------------------------------------------
+  // ------------------------------------------------------------------------------------
+  // -                                   lm_array                                       -
+  // ------------------------------------------------------------------------------------
    
   /* ppt2->lm_array is used to index the relativistic (l,m) hierarchies. For example,
   y[index_monopole_g + lm_array[l][index_m]]
@@ -755,10 +1055,11 @@ int perturb2_get_lm_lists (
                   ppt2->error_message);
 
     /* We enter the loop only if index_m_max >= 0. This is important because all the loops
-      on m in this module will cycle in this way. */
+    on m in this module will cycle in this way. */
     for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
 
-      ppt2->lm_array[l][index_m] = multipole2offset_l_indexm (l, ppt2->m[index_m], ppt2->m, ppt2->m_size);
+      ppt2->lm_array[l][index_m] =
+        multipole2offset_l_indexm (l, ppt2->m[index_m], ppt2->m, ppt2->m_size);
 
       /* Debug lm_array */
       // printf ("(l,m) = (%d,%d) corresponds to an offset of %d\n",
@@ -769,9 +1070,9 @@ int perturb2_get_lm_lists (
   } // end of for (l)
 
 
-  // --------------------------------------------------------------------------------------
-  // -                         Fill the nlm_array for ppt2->sources                       -
-  // --------------------------------------------------------------------------------------
+  // ------------------------------------------------------------------------------------
+  // -                                  nlm_array                                       -
+  // ------------------------------------------------------------------------------------
   
   /* ppt2->nlm_array is used to index the massive (n,l,m) hierarchies. For example,
   y[index_monopole_cdm + lm_array[l][index_m]]
@@ -812,9 +1113,9 @@ int perturb2_get_lm_lists (
     }
   }
 
-  // ---------------------------------------------------------------------------------------------
-  // -                       Fill the lm_array_quad for the rotation cofficients                 -
-  // ---------------------------------------------------------------------------------------------
+  // ------------------------------------------------------------------------------------
+  // -                                    lm_array_quad                                 -
+  // ------------------------------------------------------------------------------------
   
   /* Fill ppt2->lm_array_quad', used to index the (l,m) rotated multipoles that will be stored in
   ppw2->rotation_1 and ppw2->rotation_2.  Contrary to ppt2->lm_array, this array contains multipoles 
@@ -836,9 +1137,9 @@ int perturb2_get_lm_lists (
   }
 
 
-  // ---------------------------------------------------------------------------------------------
-  // -                        Correspondence between type index and multipole                    -
-  // ---------------------------------------------------------------------------------------------
+  // ------------------------------------------------------------------------------------
+  // -                          type-multipole correspondence                           -
+  // ------------------------------------------------------------------------------------
   
   /* In the perturbation2 module a source type (index_tp2) encloses both the
   multipole (l,m) and the source type (temperature, polarization, etc). The lm_arrays we
@@ -863,7 +1164,8 @@ int perturb2_get_lm_lists (
     int index_m = -1;
     int l_max = -1;
 
-    // *** Photon temperature ***
+    /* - Photon temperature */
+
     if ((ppt2->has_source_T==_TRUE_)
     && (index_tp >= ppt2->index_tp2_T) && (index_tp < ppt2->index_tp2_T+ppt2->n_sources_T)) {
 
@@ -885,7 +1187,9 @@ int perturb2_get_lm_lists (
       //   ppt2->tp2_labels[index_tp], ppt2->index_monopole[index_tp]);
 
     }
-    // *** Photon E-mode polarization ***
+
+    /* Photon E-mode polarization */
+
     else if ((ppt2->has_source_E==_TRUE_)
     && (index_tp >= ppt2->index_tp2_E) && (index_tp < ppt2->index_tp2_E+ppt2->n_sources_E)) {
 
@@ -904,7 +1208,9 @@ int perturb2_get_lm_lists (
       //   ppt2->tp2_labels[index_tp], ppt2->index_monopole[index_tp]);
 
     }
-    // *** Photon B-mode polarization ***
+
+    /* Photon B-mode polarization */
+
     else if ((ppt2->has_source_B==_TRUE_)
     && (index_tp >= ppt2->index_tp2_B) && (index_tp < ppt2->index_tp2_B+ppt2->n_sources_B)) {
 
@@ -1204,9 +1510,9 @@ int perturb2_get_lm_lists (
             /* For even-parity fields, the sign-factor is i^L. For sign-parity ones, it is i^(L-1).
             In both cases, the exponent is even (see above), so that the sign-factor is real-valued */
             if (ppt2->field_parity[index_pf] == _EVEN_)
-              sign = alternating_sign (abs(L)/2);
+              sign = ALTERNATING_SIGN (abs(L)/2);
             else
-              sign = alternating_sign (abs(L-1)/2);
+              sign = ALTERNATING_SIGN (abs(L-1)/2);
 
             for (int index_m3=0; index_m3 <= ppr2->index_m_max[l3]; ++index_m3) {
 
@@ -1252,20 +1558,34 @@ int perturb2_get_lm_lists (
 
 
 
-
-
-
-
-
-
-
-
-
 /**
- * Determine the (k1,k2,k3) grid where the 2nd-order system of equations will be solved.
- * The following fields will be written:
- *   ppt2->k, ppt2->k_size, ppt2->k3, ppt2->k3_size, 
- *   ppt->k, ppt->k_size, ppt->k_size_cl
+ * Determine the Fourier grid in (k1,k2,k3) that will be used to sample the line of
+ * sight sources.
+ * 
+ * At second order, the perturbations depend on three Fourier wavemodes rather than one,
+ * due to mode coupling. As a result, we need to solve the Boltzmann-Einstein system on a
+ * 3D grid in (k1,k2,k3).
+ *
+ * Here we define the (k1,k2,k3) grid using an optimised algorithm way; for an average
+ * precision run, the final list will consist of about 10^6 triplets (compare to the about
+ * 400 values of k at first order).
+ *
+ * The algorithm we use is described in sec. 5.3.2 of http://arxiv.org/abs/1405.2280; more
+ * detail on mode coupling is in sec 3.5.2.
+ *
+ * This function will write the following fields in the ppt2 structure:
+ *  - ppt2->k
+ *  - ppt2->k_size
+ *  - ppt2->k3
+ *  - ppt2->k3_size
+ *
+ * and the following ones in the ppt structure:
+ *  - ppt->k
+ *  - ppt->k_size
+ *  - ppt->k_size_cl
+ *  - ppt->k_size_cmb
+ *  - ppt->k_min
+ *  - ppt->k_max
  */
 int perturb2_get_k_lists (
           struct precision * ppr,
@@ -1282,18 +1602,17 @@ int perturb2_get_k_lists (
   // =                              Determine grid for k1 and k2                                =
   // ============================================================================================
   
-  
   // --------------------------------------------------------
   // -                 Logarithmic k-sampling               -
   // --------------------------------------------------------
 
   if (ppt2->k_sampling == log_k_sampling) {
 
-    ppt2->k_size = ppr2->k_size_scalars;
+    ppt2->k_size = ppr2->k_size_custom;
       
     class_alloc (ppt2->k, ppt2->k_size*sizeof(double), ppt2->error_message);
       
-    class_call (log_space (ppt2->k, ppr2->k_min_scalars, ppr2->k_max_scalars, ppr2->k_size_scalars),
+    class_call (log_space (ppt2->k, ppr2->k_min_custom, ppr2->k_max_custom, ppr2->k_size_custom),
       ppt2->error_message, ppt2->error_message);
 
   } // end of log sampling
@@ -1305,11 +1624,11 @@ int perturb2_get_k_lists (
 
   else if (ppt2->k_sampling == lin_k_sampling) {
 
-    ppt2->k_size = ppr2->k_size_scalars;
+    ppt2->k_size = ppr2->k_size_custom;
       
     class_alloc (ppt2->k, ppt2->k_size*sizeof(double), ppt2->error_message);
       
-    class_call (lin_space (ppt2->k, ppr2->k_min_scalars, ppr2->k_max_scalars, ppr2->k_size_scalars),
+    class_call (lin_space (ppt2->k, ppr2->k_min_custom, ppr2->k_max_custom, ppr2->k_size_custom),
       ppt2->error_message, ppt2->error_message);
 
   } // end of lin sampling
@@ -1323,7 +1642,7 @@ int perturb2_get_k_lists (
   
   else if (ppt2->k_sampling == class_sources_k_sampling) {
 
-    class_test(ppr2->k_scalar_step_transition_2nd_order == 0.,
+    class_test(ppr2->k_step_transition == 0.,
       ppt2->error_message,
       "stop to avoid division by zero");
     
@@ -1337,28 +1656,28 @@ int perturb2_get_k_lists (
     /* The first k-mode to be sampled is determined by k_scalar_min_tau0. Should be smaller than 2 if you want
       to compute the l=2 multipole. */
     int index_k = 0;
-    double k = ppr2->k_scalar_min_tau0_2nd_order / pba->conformal_age;
+    double k = ppr2->k_min_tau0 / pba->conformal_age;
     index_k = 1;
   
     /* Choose a k_max corresponding to a wavelength on the last scattering surface seen today under an
     angle smaller than pi/lmax: this is equivalent to k_max*tau0 > l_max */
-    double k_max = ppr2->k_scalar_max_tau0_over_l_max_2nd_order * ppt->l_scalar_max / pba->conformal_age;
+    double k_max = ppr2->k_max_tau0_over_l_max * ppt->l_scalar_max / pba->conformal_age;
 
 
 
     // *** Determine size of the k-array ***
 
-    /* We are going to sample the k-space on a 3D grid, with \vec{k1} + \vec{k2} = \vec{k3}. We constrain k3 to
-    have the range MAX(fabs(k1-k2), k_min) <= k3 <= MIN(k1+k2, k_max) where k_min and k_max are the limits of ppt2->k,
-    which we determined above. */
+    /* We are going to sample the k-space on a 3D grid, with \vec{k1} + \vec{k2} = \vec{k3}.
+    We constrain k3 to have the range MAX(fabs(k1-k2), k_min) <= k3 <= MIN(k1+k2, k_max) where
+    k_min and k_max are the limits of ppt2->k, which we determined above. */
 
     while (k < k_max) {
       
-      /* Note that since k_rec*ppr2->k_scalar_step_transition ~ 0.03*0.2 = 0.06, we have that the tanh
-      function is basically a step function of k-k_rec */
-      double step = ppr2->k_scalar_linstep_super_2nd_order
-                  + 0.5 * (tanh((k-k_rec)/k_rec/ppr2->k_scalar_step_transition_2nd_order)+1.)
-                        * (ppr2->k_scalar_step_sub_2nd_order-ppr2->k_scalar_linstep_super_2nd_order);
+      /* Note that since k_rec*ppr2->k_scalar_step_transition ~ 0.03*0.2 = 0.06, we have that
+      the tanh function is basically a step function of k-k_rec */
+      double step = ppr2->k_step_super
+                  + 0.5 * (tanh((k-k_rec)/k_rec/ppr2->k_step_transition)+1.)
+                        * (ppr2->k_step_sub-ppr2->k_step_super);
   
       class_test(step * k_rec / k < ppr->smallest_allowed_variation,
         ppt2->error_message,
@@ -1380,27 +1699,28 @@ int perturb2_get_k_lists (
   
     index_k = 0;
     
-    ppt2->k[index_k] = ppr2->k_scalar_min_tau0_2nd_order/pba->conformal_age;
+    ppt2->k[index_k] = ppr2->k_min_tau0/pba->conformal_age;
   
     index_k++;
   
     while (index_k < ppt2->k_size) {
 
-      double step = ppr2->k_scalar_linstep_super_2nd_order  
-           + 0.5 * (tanh((ppt2->k[index_k-1]-k_rec)/k_rec/ppr2->k_scalar_step_transition_2nd_order)+1.)
-                 * (ppr2->k_scalar_step_sub_2nd_order-ppr2->k_scalar_linstep_super_2nd_order);
+      double step = ppr2->k_step_super  
+           + 0.5 * (tanh((ppt2->k[index_k-1]-k_rec)/k_rec/ppr2->k_step_transition)+1.)
+                 * (ppr2->k_step_sub-ppr2->k_step_super);
   
       class_test(step * k_rec / ppt2->k[index_k-1] < ppr->smallest_allowed_variation,
         ppt2->error_message,
-        "k step =%e < machine precision : leads either to numerical error or infinite loop", step * k_rec);
+        "k step =%e < machine precision : leads either to numerical error or infinite loop",
+        step * k_rec);
 
       ppt2->k[index_k] = ppt2->k[index_k-1] + step * k_rec;
 
       index_k++;
     }
   
-    /* We do not want to overshoot k_max as pbs->x_max, that is the maximum argument for which the Bessel
-      functions are computed, is determined using it */
+    /* We do not want to overshoot k_max as pbs->x_max, that is the maximum argument for which
+    the Bessel functions are computed, is determined using it */
     ppt2->k[ppt2->k_size-1] = MIN (ppt2->k[ppt2->k_size-1], k_max);
   
   } // end of if(class_sources_k_sampling)
@@ -1410,12 +1730,12 @@ int perturb2_get_k_lists (
   // -                        Smart k-sampling                      -
   // ----------------------------------------------------------------
 
-  /* Adopt the same k-sampling as the one adopted in first-order CLASS, with an additional logarithmic
-  sampling for very small k's in order to capture the evolution on large scales. */
+  /* Adopt the same k-sampling as the one adopted in first-order CLASS, with an additional
+  logarithmic sampling for very small k's in order to capture the evolution on large scales. */
   
   else if (ppt2->k_sampling == smart_sources_k_sampling) {
 
-    class_test(ppr2->k_scalar_step_transition_2nd_order == 0.,
+    class_test(ppr2->k_step_transition == 0.,
       ppt2->error_message,
       "stop to avoid division by zero");
     
@@ -1423,51 +1743,52 @@ int perturb2_get_k_lists (
       ppt2->error_message,
       "stop to avoid division by zero");
   
-    /* Comoving scale corresponding to sound horizon at recombination, usually of the order 2*pi/200 ~ 0.03 */
-    double k_rec = 2. * _PI_ / pth->rs_rec;
+    /* Comoving scale corresponding to sound horizon at recombination, usually of the
+    order 2*pi/200 ~ 0.03 */
+    double k_rec = 2 * _PI_ / pth->rs_rec;
   
-    /* The first k-mode to be sampled is determined by k_scalar_min_tau0. Should be smaller than 2 if
-    you want to compute the l=2 multipole. */
+    /* The first k-mode to be sampled is determined by k_scalar_min_tau0. Should be smaller
+    than 2 if you want to compute the l=2 multipole. */
     int index_k = 0;
-    double k = ppr2->k_scalar_min_tau0_2nd_order / pba->conformal_age;
+    double k = ppr2->k_min_tau0 / pba->conformal_age;
     index_k = 1;
   
-    /* Choose a k_max corresponding to a wavelength on the last scattering surface seen today under an
-    angle smaller than pi/lmax: this is equivalent to k_max*tau0 > l_max */
-    double k_max = ppr2->k_scalar_max_tau0_over_l_max_2nd_order * ppt->l_scalar_max / pba->conformal_age;
+    /* Choose a k_max corresponding to a wavelength on the last scattering surface seen
+    today under an angle smaller than pi/lmax: this is equivalent to k_max*tau0 > l_max */
+    double k_max = ppr2->k_max_tau0_over_l_max * ppt->l_scalar_max / pba->conformal_age;
 
 
     // *****   Determine size of the k-array   *****
 
     /* We are going to sample the k-space on a 3D grid, with \vec{k1} + \vec{k2} = \vec{k3}. We
-    constrain k3 to have the range MAX(fabs(k1-k2), k_min) <= k3 <= MIN(k1+k2, k_max) where k_min
-    and k_max are the limits of ppt2->k, which we determined above. */
+    constrain k3 to have the range MAX(fabs(k1-k2), k_min) <= k3 <= MIN(k1+k2, k_max) where
+    k_min and k_max are the limits of ppt2->k, which we determined above. */
 
     while (k < k_max) {
       
-      /* Linear step. The tanh function is just a smooth transition between the linear and logarithmic
-      regimes. When k_rec*ppr2->k_scalar_step_transition is small, we have that the tanh function acts
-      as a step function of argument k-k_rec */
-      double lin_step = ppr2->k_scalar_linstep_super_2nd_order
-                  + 0.5 * (tanh((k-k_rec)/k_rec/ppr2->k_scalar_step_transition_2nd_order)+1.)
-                        * (ppr2->k_scalar_step_sub_2nd_order-ppr2->k_scalar_linstep_super_2nd_order);
+      /* Linear step. The tanh function is just a smooth transition between the linear and
+      logarithmic regimes. When k_rec*ppr2->k_scalar_step_transition is small, we have that
+      the tanh function acts as a step function of argument k-k_rec */
+      double lin_step = ppr2->k_step_super
+                  + 0.5 * (tanh((k-k_rec)/k_rec/ppr2->k_step_transition)+1.)
+                        * (ppr2->k_step_sub-ppr2->k_step_super);
   
       /* Logarithmic step */
-      double log_step = k * (ppr2->k_scalar_logstep_super_2nd_order - 1.);
+      double log_step = k * (ppr2->k_logstep_super - 1.);
   
       class_test(MIN(lin_step*k_rec, log_step) / k < ppr->smallest_allowed_variation,
         ppt2->error_message,
         "k step =%e < machine precision : leads either to numerical error or infinite loop",
         MIN(lin_step*k_rec, log_step));
   
-      /* Use the smallest between the logarithmic and linear steps. If we are considering small enough
-      scales, just use the linear step. */
+      /* Use the smallest between the logarithmic and linear steps. If we are considering
+      small enough scales, just use the linear step. */
       double k_next;
 
       if ((log_step > (lin_step*k_rec)) || (k > k_rec))
         k_next = k + lin_step * k_rec;
       else
-        k_next = k * ppr2->k_scalar_logstep_super_2nd_order;
+        k_next = k * ppr2->k_logstep_super;
           
       index_k++;
       k = k_next;
@@ -1483,36 +1804,36 @@ int perturb2_get_k_lists (
   
     index_k = 0;
     
-    ppt2->k[index_k] = ppr2->k_scalar_min_tau0_2nd_order/pba->conformal_age;
+    ppt2->k[index_k] = ppr2->k_min_tau0/pba->conformal_age;
   
     index_k++;
   
     while (index_k < ppt2->k_size) {
 
       /* Linear step */
-      double lin_step = ppr2->k_scalar_linstep_super_2nd_order  
-           + 0.5 * (tanh((ppt2->k[index_k-1]-k_rec)/k_rec/ppr2->k_scalar_step_transition_2nd_order)+1.)
-                 * (ppr2->k_scalar_step_sub_2nd_order-ppr2->k_scalar_linstep_super_2nd_order);
+      double lin_step = ppr2->k_step_super  
+           + 0.5 * (tanh((ppt2->k[index_k-1]-k_rec)/k_rec/ppr2->k_step_transition)+1.)
+                 * (ppr2->k_step_sub-ppr2->k_step_super);
   
       /* Logarithmic step */
-      double log_step = ppt2->k[index_k-1] * (ppr2->k_scalar_logstep_super_2nd_order - 1.);
+      double log_step = ppt2->k[index_k-1] * (ppr2->k_logstep_super - 1.);
   
-      /* Use the smallest between the logarithmic and linear steps. If we are considering small enough scales,
-      just use the linear step. */
+      /* Use the smallest between the logarithmic and linear steps. If we are considering
+      small enough scales, just use the linear step. */
       if ((log_step > (lin_step*k_rec)) || (ppt2->k[index_k-1] > k_rec)) {
         ppt2->k[index_k] = ppt2->k[index_k-1] + lin_step * k_rec;
         // printf("linstep = %g\n", lin_step*k_rec);
       }
       else {
-        ppt2->k[index_k] = ppt2->k[index_k-1] * ppr2->k_scalar_logstep_super_2nd_order;
+        ppt2->k[index_k] = ppt2->k[index_k-1] * ppr2->k_logstep_super;
         // printf("logstep = %g\n", ppt2->k[index_k] - ppt2->k[index_k-1]);
       }
       
       index_k++;
     }
 
-    /* We do not want to overshoot k_max as pbs->x_max, that is the maximum argument for which the Bessel
-      functions are computed, is determined using it */
+    /* We do not want to overshoot k_max as pbs->x_max, that is the maximum argument for which
+    the Bessel functions are computed, is determined using it */
     ppt2->k[ppt2->k_size-1] = MIN (ppt2->k[ppt2->k_size-1], k_max);
   
   } // end of if(smart_sources_k_sampling)
@@ -1528,9 +1849,9 @@ int perturb2_get_k_lists (
   
   
   
-  // =============================================================================================
-  // =                                             k3 grid                                       =
-  // =============================================================================================
+  // ==================================================================================
+  // =                                     k3 grid                                    =
+  // ==================================================================================
   
   /* Initialize counter of total k-configurations */
   ppt2->count_k_configurations = 0;
@@ -1560,22 +1881,23 @@ int perturb2_get_k_lists (
       /* Remember that, given our loop choice, k2 is always smaller than k1 */
       double k2 = ppt2->k[index_k2];
       
-      /* The maximum and minimum values of k3 are obtained when the values of the cosine between
-      k1 and k2 are respectively +1 and -1. In an numerical code, this is not exactly achievable. Relying
-      on this would ultimately give rise to nan's, for example when computing the Legendre polynomials or
-      square roots (see, for instance, the definition of kx1 and kx2 in perturb2_geometrical_corner). Hence,
-      we shall never sample k3 too close to its exact minimum or maximum. */ 
+      /* The maximum and minimum values of k3 are obtained when the values of the cosine
+      between k1 and k2 are respectively +1 and -1. In an numerical code, this is not exactly
+      achievable. Relying on this would ultimately give rise to nan's, for example when
+      computing the Legendre polynomials or square roots (see, for instance, the definition of
+      kx1 and kx2 in perturb2_geometrical_corner). Hence, we shall never sample k3 too close
+      to its exact minimum or maximum. */
       double k3_min = fabs(k1 - k2) + fabs(_MIN_K3_DISTANCE_);
       double k3_max = k1 + k2 - fabs(_MIN_K3_DISTANCE_);
 
       /* ULTRA DIRTY MODIFICATION */
-      /* The differential system dies when k1=k2 and k3 is very small. These configurations are irrelevant,
-      so we set a minimum ratio between k1=k2 and k3 */
+      /* The differential system dies when k1=k2 and k3 is very small. These configurations
+      are irrelevant, so we set a minimum ratio between k1=k2 and k3 */
       k3_min = MAX (k3_min, (k1+k2)/_MIN_K3_RATIO_);
 
-      /* We take k3 in the same range as k1 and k2. Comment it out if you prefer a range that goes all the
-      way to the limits of the triangular condition. If you do so, remember to double pbs2->xx_max
-      in input2.c */
+      /* We take k3 in the same range as k1 and k2. Comment it out if you prefer a range that
+      goes all the way to the limits of the triangular condition. If you do so, remember to
+      double pbs2->xx_max in input2.c */
       k3_min = MAX (k3_min, ppt2->k[0]);
       k3_max = MIN (k3_max, ppt2->k[ppt2->k_size-1]);
       
@@ -1586,21 +1908,25 @@ int perturb2_get_k_lists (
         "found k3_min=%g>k3_max=%g for k1(%d)=%g and k2(%d)=%g",
         k3_min, k3_max, index_k1, k1, index_k2, k2);
 
+
       // ---------------------------------------------------------
       // -           Linear/logarithmic sampling for k3          -
       // ---------------------------------------------------------
 
-      /* Adopt a simple sampling with a fixed number of points for each (k1,k2) configuration. This is not efficient, as
-        low values of k1 and k2 do not need a sampling as good as the one needed for high values */
+      /* Adopt a simple sampling with a fixed number of points for each (k1,k2) configuration.
+      This is not efficient, as low values of k1 and k2 do not need a sampling as good as the
+      one needed for high values */
 
       if ((ppt2->k3_sampling == lin_k3_sampling) || (ppt2->k3_sampling == log_k3_sampling)) {
 
-        /* The size of the k3 array is the same for every (k1,k2) configuration, and is read from
-        the precision structure */
+        /* The size of the k3 array is the same for every (k1,k2) configuration, and is read
+        from the precision structure */
         ppt2->k3_size[index_k1][index_k2] = ppr2->k3_size;
-        class_alloc (ppt2->k3[index_k1][index_k2], ppr2->k3_size*sizeof(double), ppt2->error_message);
+        class_alloc (ppt2->k3[index_k1][index_k2], ppr2->k3_size*sizeof(double),
+          ppt2->error_message);
 
-        /* DISABLED: in this way you get a bad sampling of small k's also when using log sampling */
+        /* DISABLED: in this way you get a bad sampling of small k's also when using log
+        sampling */
         // /* When k1=k2 we might have k3 ~ 0, which should not be included because it gives numerical problems. In this
         //   case, we set the minimum k3 to be equal to (k1+k2)/(k3_size+1), which in the case of linear
         //   sampling from k3=0 would be the second point in the grid. */
@@ -1712,8 +2038,6 @@ int perturb2_get_k_lists (
           // ppt2->index_k3_min[index_k1][index_k2] = -1;
           /* END OF MY MODIFICATIONS */
 
-          
-
         }
         /* If we do have enough points in ppt2->k to sample 'k3', just use those points */
         else {
@@ -1777,25 +2101,48 @@ int perturb2_get_k_lists (
 
 
 
-
-
-
-
   // ==============================================================================================
   // =                                    First-order k-grid                                      =
   // ==============================================================================================
 
-  /* The 1st-order system must be solved for the k-values needed at second-order */
-  class_alloc (ppt->k_size, sizeof(int *), ppt2->error_message);
-  ppt->k_size[0] = ppt2->k_size;
+  /* The 1st-order system must be solved for the k-values needed at second-order. Here we set
+  all the relevant k-arrays in the first-order perturbation module to match the k-sampling
+  contained in ppt2->k. */
+  
+  int md_size = 1; /* only scalars at first supported so fare */
+  int index_md_scalars = 0; /* only scalars at first supported so fare */
+  
+  class_alloc (ppt->k_size, md_size*sizeof(int *), ppt2->error_message);
+  class_alloc (ppt->k_size_cl, md_size*sizeof(int *), ppt2->error_message);
+  class_alloc (ppt->k_size_cmb, md_size*sizeof(int *), ppt2->error_message);
+  class_alloc (ppt->k, md_size*sizeof(double *), ppt2->error_message);
+  
+  for (int index_md=0; index_md < md_size; ++index_md) {
 
-  class_alloc (ppt->k_size_cl, sizeof(int *), ppt2->error_message);
-  ppt->k_size_cl[0] = ppt2->k_size;
+    ppt->k_size[index_md] = ppt2->k_size;
+    ppt->k_size_cl[index_md] = ppt2->k_size;
+    ppt->k_size_cmb[index_md] = ppt2->k_size;
 
-  class_alloc (ppt->k, sizeof(double *), ppt2->error_message);
-  class_alloc (ppt->k[0], ppt->k_size[0]*sizeof(double), ppt2->error_message);
-  for (int index_k=0; index_k < ppt2->k_size; ++index_k)
-    ppt->k[0][index_k] = ppt2->k[index_k];
+    class_alloc (ppt->k[index_md], ppt->k_size[index_md]*sizeof(double), ppt2->error_message);
+    for (int index_k=0; index_k < ppt2->k_size; ++index_k)
+      ppt->k[index_md][index_k] = ppt2->k[index_k];
+  }
+  
+  /* Determine k_min and k_max. The following block is copied from perturbations.c */
+  ppt->k_min = _HUGE_;
+  ppt->k_max = 0.;
+    if (ppt->has_scalars == _TRUE_) {
+    ppt->k_min = MIN(ppt->k_min,ppt->k[index_md_scalars][0]);
+    ppt->k_max = MAX(ppt->k_max,ppt->k[index_md_scalars][ppt->k_size[index_md_scalars]-1]);
+  }
+  if (ppt->has_vectors == _TRUE_) {
+    ppt->k_min = MIN(ppt->k_min,ppt->k[ppt->index_md_vectors][0]);
+    ppt->k_max = MAX(ppt->k_max,ppt->k[ppt->index_md_vectors][ppt->k_size[ppt->index_md_vectors]-1]);
+  }
+  if (ppt->has_tensors == _TRUE_) {
+    ppt->k_min = MIN(ppt->k_min,ppt->k[ppt->index_md_tensors][0]);
+    ppt->k_max = MAX(ppt->k_max,ppt->k[ppt->index_md_tensors][ppt->k_size[ppt->index_md_tensors]-1]);
+  }
 
   /* Some debug - print first-order k-sampling */
   // for (index_k=0; index_k < ppt->k_size[ppt->index_md_scalars]; ++index_k) {
@@ -1808,15 +2155,22 @@ int perturb2_get_k_lists (
 
 
 
-
-
-
-
-
 /**
- * Define time-sampling for the source terms.
- * Here allocate and fill ppt2->tau_sampling, and we allocate ppt2->sources.
+ *
+ * Define the time sampling for the source terms; tau stands for conformal time.
+ *
+ * In detail, this function does:
+ *  
+ *  -# Define the time sampling for the line of sight sources in ppt2->tau_sampling.
+ *
+ *  -# Define the time sampling for the quadratic sources in ppt->tau_sampling_quadsources,
+ *     so that it can be later passed to the first-order perturbations.c module.
+ *
+ *  -# Allocate the (k1, k2, k3, tau) levels of ppt2->sources.
+ *
+ *  TODO: streamline code, using realloc like CLASS.
  */
+
 int perturb2_timesampling_for_sources (
              struct precision * ppr,
              struct precision2 * ppr2,
@@ -1862,8 +2216,6 @@ int perturb2_timesampling_for_sources (
   } // end of if (has_custom_timesampling)
 
 
-
-
   // ==================================================================
   // =                Standard 2nd-order time sampling                =
   // ==================================================================
@@ -1872,6 +2224,7 @@ int perturb2_timesampling_for_sources (
   metric or lensing terms in the line-of-sight integral, which are important all the way up to today.  
   We use the same time-sampling technique as in standard CLASS, who is optimized to sample the visibility
   function and the late ISW regime. For details, please refer to the function perturb_timesampling_for_sources. */
+  
   else {
 
 
@@ -1979,12 +2332,11 @@ int perturb2_timesampling_for_sources (
     /* The next sampling point is determined by the lowest of two timescales: the time variation of the
     visibility function, and the acceleration parameter.  Schematically:
       
-      next sampling point = previous + ppr2->perturb_sampling_stepsize_2nd_order * timescale_source, where:
+      next sampling point = previous + ppr2->perturb_sampling_stepsize_song * timescale_source, where:
 
       timescale_source1 = g/g_dot
       timescale_source2 = 1/sqrt |2*a_dot_dot/a - Hc^2|
-      timescale_source = 1 / (1/timescale_source1 + 1/timescale_source2)
-    */
+      timescale_source = 1 / (1/timescale_source1 + 1/timescale_source2) */
 
     double tau = tau_ini;
 
@@ -2027,12 +2379,12 @@ int perturb2_timesampling_for_sources (
       /* Compute inverse rate */
       timescale_source = 1./timescale_source;
 
-      class_test(fabs(ppr2->perturb_sampling_stepsize_2nd_order*timescale_source/tau) < ppr->smallest_allowed_variation,
+      class_test(fabs(ppr2->perturb_sampling_stepsize_song*timescale_source/tau) < ppr->smallest_allowed_variation,
         ppt2->error_message,
         "integration step =%e < machine precision : leads either to numerical error or infinite loop",
-        ppr2->perturb_sampling_stepsize_2nd_order*timescale_source);
+        ppr2->perturb_sampling_stepsize_song*timescale_source);
 
-      tau = tau + ppr2->perturb_sampling_stepsize_2nd_order * timescale_source; 
+      tau = tau + ppr2->perturb_sampling_stepsize_song * timescale_source; 
       counter++;
 
     }
@@ -2092,11 +2444,11 @@ int perturb2_timesampling_for_sources (
       /* Compute inverse rate */
       timescale_source = 1./timescale_source;
 
-      class_test(fabs(ppr2->perturb_sampling_stepsize_2nd_order*timescale_source/tau) < ppr->smallest_allowed_variation,
+      class_test(fabs(ppr2->perturb_sampling_stepsize_song*timescale_source/tau) < ppr->smallest_allowed_variation,
            ppt2->error_message,
-           "integration step =%e < machine precision : leads either to numerical error or infinite loop", ppr2->perturb_sampling_stepsize_2nd_order*timescale_source);
+           "integration step =%e < machine precision : leads either to numerical error or infinite loop", ppr2->perturb_sampling_stepsize_song*timescale_source);
 
-      tau = tau + ppr2->perturb_sampling_stepsize_2nd_order*timescale_source; 
+      tau = tau + ppr2->perturb_sampling_stepsize_song*timescale_source; 
       counter++;
       ppt2->tau_sampling[counter] = tau;
 
@@ -2113,122 +2465,46 @@ int perturb2_timesampling_for_sources (
     /* If we are only interested into the scattering sources of the line-of-sight integral, then
     we can stop integrating the  system just after recombination.  In this case, we cut
     the standard time-sampling at some suitable time, which we define as the time when the
-    visibility function is 'ppt2->visibility_max_to_end_ratio' times smaller than its maximum
+    visibility function is 'ppt2->recombination_max_to_end_ratio' times smaller than its maximum
     value. */
-
-    // ==================================================================
-    // =          Recombination only 2nd-order time sampling            =
-    // ==================================================================
-
-    if (ppt2->has_recombination_only == _TRUE_) {
-
-      // ***  Find maximum value of the visibiliy function  ****
-        
-      /* Redshift and conformal time where the visibility function 'g' peaks */
-      double tau_rec;
-      double z_max = pth->z_rec;
-      class_call (background_tau_of_z (pba, z_max, &tau_rec), pba->error_message, ppt2->error_message);
-
-      /* Interpolate background quantities */
-      class_call (background_at_tau(
-                    pba,
-                    tau_rec, 
-                    pba->normal_info, 
-                    pba->inter_normal, 
-                    &dump, 
-                    pvecback),
-        pba->error_message,
-        ppt2->error_message);
-
-
-      /* Interpolate thermodynamics quantities */
-      class_call (thermodynamics_at_z(
-                    pba,
-                    pth,
-                    z_max,
-                    pth->inter_normal,
-                    &dump,
-                    pvecback,
-                    pvecthermo),
-       pth->error_message,
-       ppt2->error_message);
-
-      /* Maximum of the visibility function */
-      double g_max = pvecthermo[pth->index_th_g];
-    
-      /* Value of the visibility function when recombination ends */
-      double g_end = g_max/ppt2->recombination_max_to_end_ratio;
-
-
-      // *** Find time index corresponding to the maximum ***
-
-      int index_tau = 0;
-
-      for (index_tau=0; index_tau < ppt2->tau_size; ++index_tau) {
-
-        /* We want to find a time after recombination, not before */
-        if (ppt2->tau_sampling[index_tau] < tau_rec)
-          continue;
-
-        /* Interpolate background quantities */
-        class_call (background_at_tau(
-                      pba,
-                      ppt2->tau_sampling[index_tau], 
-                      pba->normal_info, 
-                      pba->inter_normal, 
-                      &dump, 
-                      pvecback),
-          pba->error_message,
-          ppt2->error_message);
-
-        double a = pvecback[pba->index_bg_a];
-
-        /* Interpolate thermodynamics quantities */
-        class_call (thermodynamics_at_z(
-                      pba,
-                      pth,
-                      1./a-1.,  /* redshift z=1/a-1 */
-                      pth->inter_normal,
-                      &dump,
-                      pvecback,
-                      pvecthermo),
-          pth->error_message,
-          ppt2->error_message);
-      
-        /* If we reached the time where the visibility function is smaller than g_end, we decide
-          that recombination is over and resize the time-sampling vector accordingly */
-        if (pvecthermo[pth->index_th_g] <= g_end) {
-
-          ppt2->tau_size = index_tau + 1;
-          break;
-        }
-
-      } // end of for (index_tau)
-
-
-      /* Some debug */
-      // printf("z_rec = %g\n", pth->z_rec);
-      // printf("tau_rec = %g\n", tau_rec);
-      // printf("g_max = %g\n", g_max);
-      // printf("g_end = %g\n", g_end);
-
-    } // end of if (ppt2->has_recombination_only==_TRUE_)
-
 
   } // end of if (has_custom_timesampling == _FALSE_)
 
 
 
+  // =================================================================================
+  // =                                 Recombination                                 =
+  // =================================================================================
+
+  /* Find the time when recombination ends, and store the corresponding time index
+  into ppt2->index_tau_end_of_recombination */
+
+  class_call (perturb2_end_of_recombination (
+                ppr,
+                ppr2,
+                pba,
+                pth,
+                ppt,
+                ppt2),
+    ppt2->error_message,
+    ppt2->error_message);
   
 
+  /* If all of the requested line-of-sight sources are located at recombination or
+  earlier, cut the time-sampling vector so that sources at later times are not
+  computed. */
+
+  if (ppt2->has_recombination_only == _TRUE_) {
+    ppt2->tau_size = ppt2->index_tau_end_of_recombination;
+  }
 
 
 
-  // ***************              Allocate ppt2->sources         *****************
+  // =======================================================================================
+  // =                               Allocate sources array                                =
+  // =======================================================================================
 
   /* Loop over types, k1, k2, and k3.  For each combination of them, allocate the tau level. */
-
-  int index_type, index_k1, index_k2, index_k3;
 
   if(ppt2->perturbations2_verbose > 2)
     printf(" -> allocating memory for the sources array\n");
@@ -2238,7 +2514,7 @@ int perturb2_timesampling_for_sources (
   ppt2->count_allocated_sources = 0;
   
   /* Allocate k1 level.  The further levels (k2, k3 and time) will be allocated when needed */
-  for (index_type = 0; index_type < ppt2->tp2_size; index_type++)
+  for (int index_type = 0; index_type < ppt2->tp2_size; index_type++)
     class_alloc (ppt2->sources[index_type], ppt2->k_size * sizeof(double **), ppt2->error_message);
   
   /* Allocate and initialize the logical array that keeps track of the memory state of ppt2->sources */
@@ -2287,14 +2563,15 @@ int perturb2_timesampling_for_sources (
     // ******      Determine size of ppt->tau_sampling_quadsources     *******
 
     /* Determine how many sample points we need for the quadratic sources, based on the parameter
-      ppr->perturb_sampling_stepsize_quadsources. */
+    ppr->perturb_sampling_stepsize_quadsources. */
 
     /* We start sampling the quadratic sources at the time when we start to evolve the second-order
-      system.  */
+    system.  */
     class_test (ppt2->tau_start_evolution == 0,
       ppt2->error_message,
-      "a variable starting integration time is not supported yet.  To implement it, you should first\
-determine a starting integration time for the first-order system, maybe by using the bisection technique applied to k_min");
+      "a variable starting integration time is not supported yet. To implement it,\
+you should first determine a starting integration time for the first-order system,\
+maybe by using the bisection technique applied to k_min");
 
     double tau_ini_quadsources = MIN (ppt2->tau_sampling[0], ppt2->tau_start_evolution);
   
@@ -2466,7 +2743,7 @@ determine a starting integration time for the first-order system, maybe by using
     double k3_max = ppt2->k3[ppt2->k_size-1][ppt2->k_size-1][k3_max_size-1];
     printf("     * sources k3 sampling for k1=k2=max: %d times in the range (%g,%g)\n",
       k3_max_size, k3_min, k3_max);
-    printf("     * we shall solve the second-order differential system %d (%.2g million) times\n",
+    printf("     * we shall solve the second-order differential system %ld (%.2g million) times\n",
       ppt2->count_k_configurations, (double)ppt2->count_k_configurations/1e6);
 
     
@@ -2518,15 +2795,155 @@ determine a starting integration time for the first-order system, maybe by using
 }
 
 
+/**
+ * Find the conformal time where recombination is effectively over, based on 
+ * the parameter ppt2->recombination_max_to_end_ratio.
+ * 
+ * In order to match some analytical limits, or for debug purposes, it is useful
+ * to constrain some physical effects to the time of recombination. For example,
+ * we might want to consider the integrated Sachs-Wolfe effect only up to
+ * the end recombination (early ISW effect), in order to separate it from the
+ * contribution from dark energy (late ISW effect). By doing so, we obtain a 
+ * better match with the analytical approximation for the squeezed intrinsic
+ * bispectrum (see http://arxiv.org/abs/1109.1822, http://arxiv.org/abs/1204.5018,
+ * http://arxiv.org/abs/1109.2043). 
+ *
+ * Note however that separating early and late-time effects might bring in some
+ * unphysical effects, such as gauge dependences, especially at second order.
+ *
+ * We set the end of recombination as the time where the visibility function is
+ * ppt2->recombination_max_to_end_ratio times smaller than its maximum value,
+ * and store the corresponding index in ppt2->tau_sampling in the field
+ * ppt2->index_tau_end_of_recombination.
+ */
+int perturb2_end_of_recombination (
+             struct precision * ppr,
+             struct precision2 * ppr2,
+             struct background * pba,
+             struct thermo * pth,
+             struct perturbs * ppt,
+             struct perturbs2 * ppt2
+             )
+{
+
+  /* Temporary arrays used to store background and thermodynamics quantities */
+  double *pvecback, *pvecthermo;
+  class_alloc (pvecback, pba->bg_size*sizeof(double), ppt2->error_message);
+  class_alloc (pvecthermo, pth->th_size*sizeof(double), ppt2->error_message);
+  int dump;
+
+  /* Extract from the thermodynamics module the redshift and conformal time where
+  the visibility function 'g' peaks */
+  double tau_rec;
+  double z_max = pth->z_rec;
+  class_call (background_tau_of_z (pba, z_max, &tau_rec),
+    pba->error_message, ppt2->error_message);
+
+  /* Interpolate background quantities at z_max */
+  class_call (background_at_tau(
+                pba,
+                tau_rec, 
+                pba->normal_info, 
+                pba->inter_normal, 
+                &dump, 
+                pvecback),
+    pba->error_message,
+    ppt2->error_message);
+
+  /* Interpolate thermodynamics quantities at z_max */
+  class_call (thermodynamics_at_z(
+                pba,
+                pth,
+                z_max,
+                pth->inter_normal,
+                &dump,
+                pvecback,
+                pvecthermo),
+   pth->error_message,
+   ppt2->error_message);
+
+  /* Maximum of the visibility function */
+  double g_max = pvecthermo[pth->index_th_g];
+
+  /* Value of the visibility function when recombination ends */
+  double g_end = g_max/ppt2->recombination_max_to_end_ratio;
+
+
+  /* Now, find the time index in the sources sampling corresponding to
+  the peak of recombination by looping over ppt2->tau_sampling */
+  for (int index_tau=0; index_tau < ppt2->tau_size; ++index_tau) {
+
+    /* We want to find a time after recombination, not before */
+    if (ppt2->tau_sampling[index_tau] < tau_rec)
+      continue;
+
+    /* Interpolate background quantities */
+    class_call (background_at_tau(
+                  pba,
+                  ppt2->tau_sampling[index_tau], 
+                  pba->normal_info, 
+                  pba->inter_normal, 
+                  &dump, 
+                  pvecback),
+      pba->error_message,
+      ppt2->error_message);
+
+    double a = pvecback[pba->index_bg_a];
+
+    /* Interpolate thermodynamics quantities */
+    class_call (thermodynamics_at_z(
+                  pba,
+                  pth,
+                  1./a-1.,
+                  pth->inter_normal,
+                  &dump,
+                  pvecback,
+                  pvecthermo),
+      pth->error_message,
+      ppt2->error_message);
+  
+    /* If we reached the time where the visibility function is smaller than g_end, then
+    recombination is over */
+    if (pvecthermo[pth->index_th_g] <= g_end) {
+
+      ppt2->index_tau_end_of_recombination = index_tau + 1;
+      break;
+    }
+
+  } // end of for (index_tau)
+  
+  if (ppt2->perturbations2_verbose > 1)
+    printf ("     * recombination ends at tau=%g, index_tau=%d\n",
+      ppt2->tau_sampling[ppt2->index_tau_end_of_recombination-1],
+      ppt2->index_tau_end_of_recombination-1);
+  
+  free (pvecback);
+  free (pvecthermo);
+
+  /* Debug */
+  // printf("z_rec = %g\n", pth->z_rec);
+  // printf("tau_rec = %g\n", tau_rec);
+  // printf("g_max = %g\n", g_max);
+  // printf("g_end = %g\n", g_end);
+ 
+  return _SUCCESS_; 
+  
+}
+
 
 /**
-  * As in the 1st-order case, initial_conditions is called inside the vector_init function,
-  * which is in the innermost cycle on the k-modes (k1,k2,k3).  This function is called
-  * as many times as the points in the grid (k1, k2, k3). 
-  * IMPORTANT:  you should not set shear_g here, not even to zero!  At this stage, if the tca
-  * approx is on, then index_pt_shear_g = 0 which means that setting it will overwrite
-  * delta_g!
-  */
+ * Compute initial conditions for the second-order system.
+ * 
+ * This function is called once for each k-triplet (k1,k2,k3) by perturb2_vector_init(),
+ * which in turn is called by perturb2_solve(); it fills the ppw2->pv->y array. It is
+ * assumed here that all values have been set previously to zero, only non-zero values are set
+ * here.
+ *
+ * Important: mind which approximations are turned on when this function is called.
+ * Usually, the tight-coupling approximation is turned on at early times, meaning that any
+ * attempt to overwrite quantities that are not evolved if tca=on will result in a
+ * segmentation fault or, even worse, in unpredictable behaviour.
+ */
 int perturb2_initial_conditions (
              struct precision * ppr,
              struct precision2 * ppr2,
@@ -2538,7 +2955,6 @@ int perturb2_initial_conditions (
              struct perturb2_workspace * ppw2
              )
 {
-
 
   /* Shortcuts */
   double * y = ppw2->pv->y;
@@ -2617,11 +3033,11 @@ int perturb2_initial_conditions (
   }
 
   // *** Interpolate first-order quantities (ppw2->psources_1)
-  class_call (perturb_quadsources_at_tau_for_all_types (
+  class_call (perturb_song_sources_at_tau (
                 ppr,
                 ppt,
                 ppt->index_md_scalars,
-                ppt2->index_ic,
+                ppt2->index_ic_first_order,
                 ppw2->index_k1,
                 tau,
                 ppt->inter_normal,
@@ -2631,11 +3047,11 @@ int perturb2_initial_conditions (
     ppt2->error_message);
 
   // *** Interpolate first-order quantities (ppw2->psources_2)  
-  class_call (perturb_quadsources_at_tau_for_all_types (
+  class_call (perturb_song_sources_at_tau (
                 ppr,
                 ppt,
                 ppt->index_md_scalars,
-                ppt2->index_ic,
+                ppt2->index_ic_first_order,
                 ppw2->index_k2,
                 tau,
                 ppt->inter_normal,
@@ -2721,9 +3137,6 @@ int perturb2_initial_conditions (
 
 
 
-
-
-
   // ========================================================
   // =            First-order initial conditions            =
   // ========================================================
@@ -2798,7 +3211,6 @@ int perturb2_initial_conditions (
     }
 
   }
-
 
 
 
@@ -3077,9 +3489,9 @@ int perturb2_workspace_init (
 {
 
   /* Maximum value for the angular scale */
-  ppw2->l_max_g = ppr2->l_max_g_2nd_order;
-  ppw2->l_max_pol_g = ppr2->l_max_pol_g_2nd_order;
-  ppw2->l_max_ur = ppr2->l_max_ur_2nd_order;
+  ppw2->l_max_g = ppr2->l_max_g_song;
+  ppw2->l_max_pol_g = ppr2->l_max_pol_g_song;
+  ppw2->l_max_ur = ppr2->l_max_ur_song;
 
   
   // ============================================================================================
@@ -4249,7 +4661,7 @@ int perturb2_approximations (
   *          As an effect, all our equations are real-valued (see also last paragraph of sec. 4.2 of Pitrou 
   *          et al. 2010).
   *          
-  * This function is called early on in perturb2_solve.
+  * This function is called early on in perturb2_solve().
   * 
   */ 
 int perturb2_geometrical_corner (
@@ -4265,8 +4677,6 @@ int perturb2_geometrical_corner (
         struct perturb2_workspace * ppw2
         )
 {
-
-  int index_m;
 
   // =================================================================================
   // =                                 Compute angles                                =
@@ -4325,28 +4735,21 @@ int perturb2_geometrical_corner (
   class_test (sink2k < 0, ppt2->error_message,
     "mode (%g,%g,%g,%g), sink2k = %.17g is too small\n",
     k1, k2, k, cosk1k2, sink2k);
-
-
   
 
   // ==========================================================================================
   // =                             Compute rotation coefficients                              =
   // ==========================================================================================
 
-
   /* Compute the factors needed to rotate our first-order results from perturbations.c.
   These factors depend on the lm multipole of the first-order perturbation through a
   spherical harmonic of order lm, which becomes a simple Legendre polynomial once we
   make the assumption that phi_1=0 and phi_2=pi (which implies also ky1=-ky2=0).
   For more details, see BFK 2011, eq. A.6,  or PUB 2010 eq. A.37. */
-  int l, m, m2;
-
    
-  // *** Fill the rotation arrays
-   
-  for (l=0; l<=ppt2->largest_l_quad; ++l) {
+  for (int l=0; l<=ppt2->largest_l_quad; ++l) {
     
-    for (m=0; m<=l; ++m) {
+    for (int m=0; m<=l; ++m) {
 
       /* The rotation coefficients for the first-order quantities are defined as
       sqrt(4pi/(2l+1)) Y_lm(theta,phi)
@@ -4364,23 +4767,26 @@ int perturb2_geometrical_corner (
       arising from the identity exp(i*m*pi) = (-1)^m. */
       if (ppt2->rescale_quadsources == _FALSE_) { 
         ppw2->rotation_1[lm_quad(l,m)] = plegendre_lm(l,m,cosk1k);
-        ppw2->rotation_2[lm_quad(l,m)] = alternating_sign(m) * plegendre_lm(l,m,cosk2k);
-        ppw2->rotation_1_minus[lm_quad(l,m)] = alternating_sign(m) * ppw2->rotation_1[lm_quad(l,m)];
-        ppw2->rotation_2_minus[lm_quad(l,m)] = alternating_sign(m) * ppw2->rotation_2[lm_quad(l,m)];
+        ppw2->rotation_2[lm_quad(l,m)] = ALTERNATING_SIGN(m) * plegendre_lm(l,m,cosk2k);
+        ppw2->rotation_1_minus[lm_quad(l,m)] = ALTERNATING_SIGN(m) * ppw2->rotation_1[lm_quad(l,m)];
+        ppw2->rotation_2_minus[lm_quad(l,m)] = ALTERNATING_SIGN(m) * ppw2->rotation_2[lm_quad(l,m)];
       }
       /* Divide the rotation coefficients by a factor sin(theta_k1)^m, if asked. This is the same as 
       rescaling the transfer functions by the same factor. The pow(k1/k2) factors come from the fact
       that sin(theta_k2) = k1/k2 sin(theta_k1). Note that for m<0, we multiply the 
       coefficients by sin(theta_1)^|m|.
       We do so because in order to compute the bispectrum of the CMB we need the function
-      T_lm / Y_mm(k1) which is proportional to T_lm / sin(theta_k1)^|m|. Because of the presence
-      of the absolute value, |m|, the rescaling that we perform here corresponds to Y_mm only for
-      m>=0. This is not a problem because we need the transfer functions for m>=0 in any case.  */
+      T_lm / Y_mm(k1) which is proportional to T_lm / sin(theta_k1)^|m| (see sec. 6.2.1.2 of
+      http://arxiv.org/abs/1405.2280). Because of the presence of the absolute value, |m|, the
+      rescaling that we perform here corresponds to Y_mm only for m>=0. This is not a problem because
+      we need the transfer functions for m>=0 in any case. */
       else {
         ppw2->rotation_1[lm_quad(l,m)] = plegendre_lm_rescaled(l,m,cosk1k);
-        ppw2->rotation_2[lm_quad(l,m)] = (alternating_sign(m) * plegendre_lm_rescaled(l,m,cosk2k)) * pow(k1/k2,m);
+        ppw2->rotation_2[lm_quad(l,m)] =
+          (ALTERNATING_SIGN(m) * plegendre_lm_rescaled(l,m,cosk2k)) * pow(k1/k2,m);
         ppw2->rotation_1_minus[lm_quad(l,m)] = plegendre_lm_rescaled(l,-m,cosk1k);
-        ppw2->rotation_2_minus[lm_quad(l,m)] = (alternating_sign(m) * plegendre_lm_rescaled(l,-m,cosk2k)) * pow(k1/k2,-m);
+        ppw2->rotation_2_minus[lm_quad(l,m)] =
+          (ALTERNATING_SIGN(m) * plegendre_lm_rescaled(l,-m,cosk2k)) * pow(k1/k2,-m);
       }
       
       /* Check that the rotation coefficients for positive and negative m's coincide for m=0 */
@@ -4403,16 +4809,17 @@ int perturb2_geometrical_corner (
       /* Debug the values of the rotation coefficients */
       if (ppt2->perturbations2_verbose > 4) {
         if ((index_k1==14) && (index_k2==12) && (index_k3==4)) {
-          printf("Rotation coefficients at (l,m)=(%3d,%3d), with lm_quad(l,m)=%3d: ", l, m, lm_quad(l,m));
-          printf("rot1 = %+10.4g(%+10.4g),  ", ppw2->rotation_1[lm_quad(l,m)], ppw2->rotation_1_minus[lm_quad(l,m)]);
-          printf("rot2 = %+10.4g(%+10.4g)\n" , ppw2->rotation_2[lm_quad(l,m)], ppw2->rotation_2_minus[lm_quad(l,m)]);
+          printf("Rotation coefficients at (l,m)=(%3d,%3d), with lm_quad(l,m)=%3d: ",
+            l, m, lm_quad(l,m));
+          printf("rot1 = %+10.4g(%+10.4g),  ",
+            ppw2->rotation_1[lm_quad(l,m)], ppw2->rotation_1_minus[lm_quad(l,m)]);
+          printf("rot2 = %+10.4g(%+10.4g)\n" ,
+            ppw2->rotation_2[lm_quad(l,m)], ppw2->rotation_2_minus[lm_quad(l,m)]);
         }
       }
  
     }  // end of cycle on 'm'
   } // end of cycle on 'l'
-
-  
   
   
   // ==================================================================================
@@ -4464,8 +4871,6 @@ int perturb2_geometrical_corner (
   ppw2->k2_ten_k2[+2 +2] = sqrt_2/sqrt_3 * k2_P1*k2_P1;                 // m =  2
 
 
-
-
   // ==========================================================================================
   // =                             Store coupling coefficients                                =
   // ==========================================================================================
@@ -4481,8 +4886,8 @@ int perturb2_geometrical_corner (
   f_{lm}(\vec{k}) = \sqrt(4\pi/(2l+1)) Y_{lm}(\vec{k}) \tilde{f}(k) ,
   where \tilde{f}(k) is f as computed with \vec{k} aligned with the zenith. */
 
-  for (l=0; l<=ppt2->largest_l; ++l) {
-    for (index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+  for (int l=0; l<=ppt2->largest_l; ++l) {
+    for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
 
       int m = ppt2->m[index_m];
 
@@ -4507,7 +4912,7 @@ int perturb2_geometrical_corner (
         
       /* Fill the products by summing over m2 */
       
-      for (m2=-1; m2<=1; ++m2) {
+      for (int m2=-1; m2<=1; ++m2) {
 
         int m1 = m-m2;
 
@@ -4597,7 +5002,7 @@ int perturb2_geometrical_corner (
   /* TODO: check analytically whether the equality should hold!!! */
   /* TODO: compare with ratios instead than absolute difference
   using http://floating-point-gui.de/errors/comparison/ */
-  for (index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+  for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
     
     int m = ppr2->m[index_m];
 
@@ -4621,10 +5026,7 @@ int perturb2_geometrical_corner (
       "mode (%g,%g,%g,%g), m=%d, k2_ten_k2 check failed!\n%20.12g != %20.12g, diff = %g",
       k1, k2, k, cosk1k2, m, k2_ten_k2_cminus, ppw2->k2_ten_k2[m+2],
       fabs (1-(k2_ten_k2_cminus)/(ppw2->k2_ten_k2[m+2])));
-
   }
-
-
 
 
   // ============================================================================
@@ -4652,9 +5054,6 @@ int perturb2_geometrical_corner (
   }
 
 
-
-
-
   // ==========================================================================================
   // =                              Useful checks on the geometry                             =
   // ==========================================================================================
@@ -4667,7 +5066,6 @@ int perturb2_geometrical_corner (
     "geometry check failed!\n%20.12g != %20.12g, diff = %g, sink1k=%g, sink2k=%g",
     k2/k1, sink1k/sink2k, fabs (1-(k2/k1)/(sink1k/sink2k)), sink1k, sink2k);
 
-
   /* Check that kz1 + kz2 = k (it follows from \vec{k1}+\vec{k2} = \vec{k}) */
   double kz1 = k1*cosk1k;
   double kz2 = k2*cosk2k;
@@ -4678,7 +5076,6 @@ int perturb2_geometrical_corner (
     "mode (%.17f,%.17f,%.17f): kz1 + kz2 != k (%.17f + %.17f != %.17f), there must be an error in the computation of the wavemodes angles.", 
       ppw2->k1, ppw2->k2, ppw2->k, kz1, kz2, k);
 
-
   /* Check that kx1 + kx2 = 0 (it follows from \vec{k1}+\vec{k2} = \vec{k}) */
   double kx1 = k1*sqrt(1.-cosk1k*cosk1k);
   double kx2 = -k2*sqrt(1.-cosk2k*cosk2k);
@@ -4688,7 +5085,6 @@ int perturb2_geometrical_corner (
     ppt2->error_message,
     "mode (%.17f,%.17f,%.17f): kx1 != -kx2 (kx1=%.17f, kx2=%.17f), there must be an error in the computation of the wavemodes angles.", 
       ppw2->k1, ppw2->k2, ppw2->k, kx1, kx2);
-
 
   /* Check that the l=1 rotation coefficients for the k-wavemode is equal to unit k-vector
   in spherical coordinates. This is just a property of spherical harmonics. */
@@ -4710,9 +5106,6 @@ int perturb2_geometrical_corner (
     "mode (%.17f,%.17f,%.17f): the L=1 rotation coefficient are not correct.",
       ppw2->k1, ppw2->k2, ppw2->k);
 
-
-
-
   /* Check that the scalar product is independent of the adopted k-coordinates. Note that
   this test does not need to be corrected for the rescaling because the scalar-product
   (being a scalar) is invariant under the rescaling. */
@@ -4724,17 +5117,12 @@ int perturb2_geometrical_corner (
     "mode (%.17f,%.17f,%.17f): the scalar product k1.k2 changes between spherical and cartesian coordinates (%.17f != %.17f).",
     ppw2->k1, ppw2->k2, ppw2->k, ppw2->k1_dot_k2, k1_dot_k2_spherical);
 
-
-
-
   /* Check the monopole of the 'plegendre_lm' routine.  The monopole is not affected by the rotation,
   hence rotation_1[0] should be equal to one regardless of the considered wavemodes. */
   class_test(fabs(ppw2->rotation_1[lm_quad(0,0)]-1.) > _SMALL_,
     ppt2->error_message,
     "mode (%.17f,%.17f,%.17f): the L=0 rotation coefficient is different from 1 (%.17f != %.17f). There must be a mistake in the way the geometrical quantities are computed.",
       ppw2->k1, ppw2->k2, ppw2->k, ppw2->rotation_1[lm_quad(0,0)], 1.);
-
-
 
   /* Check that the the inner coupling with c_minus is zero for l=m=0.  We need this to
   be true, otherwise the monopole hierarchy would be coupled to the l=-1 moment. */
@@ -4744,8 +5132,6 @@ int perturb2_geometrical_corner (
       ppt2->error_message,
       "mode (%.17f,%.17f,%.17f): found c_minus(l=0,m=0) !=  0 (%.17f != 0 or %.17f != 0). There must be a mistake in the way the geometrical quantities are computed.",
         ppw2->k1, ppw2->k2, ppw2->k, ppw2->c_minus_product_12[lm(0,0)], ppw2->c_minus_product_21[lm(0,0)]);
-
-
 
   /* Check that the the inner product with c_minus for L=1, m=0 is equal to rot_1*rot_2. This
   has to be the case because c_minus(1,m1,0) != 0 only if m1 = 0. */
@@ -4757,19 +5143,16 @@ int perturb2_geometrical_corner (
       "mode (%.17f,%.17f,%.17f): found wrong value for c_minus(l=1,m=0). There must be a mistake in the way the geometrical quantities are computed.",
         ppw2->k1, ppw2->k2, ppw2->k);
 
-
-
   /* Check that the d_zero-inner-product for m=0 (scalar modes) vanishes.  This is equivalent
   to test that B-mode polarization at second order does not exist for m=0, as it is clear from
   eq. 2.17 of BFK. */
   if (ppr2->compute_m[0]==_TRUE_)
     if (ppt2->has_polarization2 == _TRUE_)
-      for (l=0; l<=ppt2->largest_l; ++l)
+      for (int l=0; l<=ppt2->largest_l; ++l)
         class_test ( fabs(ppw2->d_zero_product_12[lm(l,0)]) > _SMALL_,
           ppt2->error_message,
           "mode (%.17f,%.17f,%.17f): found d_zero_product(l,0) != 0. There must be a mistake in the way the geometrical quantities are computed.",
           ppw2->k1, ppw2->k2, ppw2->k);
-
 
   /* Check that the scaling that we have applied separately on rot_1 and rot_2 is
   equivalent to an overall scaling of 1/sin(theta)^m. This is a very important test
@@ -4797,7 +5180,7 @@ int perturb2_geometrical_corner (
 
     /* Check that the scaling that we have applied separately on rot_1 and rot_2 is
     equivalent to an overall scaling of 1/sin(theta)^m */    
-    for (m=0; m <= 2; ++m) {
+    for (int m=0; m <= 2; ++m) {
       
       /* Apply the inverse scaling to the scaled tensor product */
       double k1_ten_k2_unrescaled = ppw2->k1_ten_k2[m+2] * pow (sink1k, m);
@@ -4811,13 +5194,11 @@ int perturb2_geometrical_corner (
 
     }    
   } // end of tests on rescaled coefficients
-
   
   /* There will be plenty of divisions in what follows. */
   class_test((k1==0.) || (k2==0.) || (k_sq==0.),
     ppt2->error_message,
-    "mode (%.17f,%.17f,%.17f): stop to avoid division by zero", ppw2->k1, ppw2->k2, ppw2->k);
-  
+    "mode (%.17f,%.17f,%.17f): stop to avoid division by zero", ppw2->k1, ppw2->k2, ppw2->k);  
  
   return _SUCCESS_;
   
@@ -4827,9 +5208,9 @@ int perturb2_geometrical_corner (
 
 
 /**
-  * Simple function to fill the ppw2->info string with useful information about the wavemode
-  * that is currently being integrated
-  */
+ * Simple function to fill the ppw2->info string with useful information about the wavemode
+ * that is currently being integrated
+ */
 int perturb2_wavemode_info (
         struct precision * ppr,
         struct precision2 * ppr2,
@@ -4842,41 +5223,19 @@ int perturb2_wavemode_info (
 {
 
   /*  We shall write on ppw2->info line by line, commenting each line with the below
-    comment style. */
+  comment style. */
   char comment[2] = "#";
   char line[1024];
   char * info = ppw2->info;
   
   sprintf(info, "");
 
-  sprintf(line, "Cosmological parameters:");
-  sprintf(info, "%s%s %s\n", info, comment, line);
-
-  sprintf(line, "a_equality = %g, Omega_b = %g, Tcmb = %g, Omega_cdm = %g, Omega_lambda = %g,\
-Omega_ur = %g, Omega_r = %g, Omega_fld = %g, h = %g, tau0 = %g",
-    pba->a_eq, pba->Omega0_b, pba->T_cmb, pba->Omega0_cdm, pba->Omega0_lambda,
-    pba->Omega0_ur, pba->Omega0_g+pba->Omega0_ur, pba->Omega0_fld, pba->h, pba->conformal_age);
-  sprintf(info, "%s%s %s\n", info, comment, line);
-  
-  sprintf(line, "Omega_b = %g, Tcmb = %g, Omega_cdm = %g, omega_lambda = %g, Omega_ur = %g, Omega_fld = %g",
-    pba->Omega0_b, pba->T_cmb, pba->Omega0_cdm, pba->Omega0_lambda, pba->Omega0_ur, pba->Omega0_fld);
-  sprintf(info, "%s%s %s\n", info, comment, line);
-
-  sprintf(line, "h = %g, conformal_age = %g, a_equality = %g, k_equality = %g",
-    pba->h, pba->conformal_age, pba->a_eq, pba->k_eq);
-  sprintf(info, "%s%s %s\n", info, comment, line);
-  
-  double h = pba->h;
-  sprintf(line, "omega_b = %g, omega_cdm = %g, omega_lambda = %g, omega_ur = %g, omega_fld = %g",
-    pba->Omega0_b*h*h, pba->Omega0_cdm*h*h, pba->Omega0_lambda*h*h, pba->Omega0_ur*h*h, pba->Omega0_fld*h*h);
-  sprintf(info, "%s%s %s\n", info, comment, line);
-
   sprintf(line, "k1 = %g, k2 = %g, k = %g, cosk1k2 = %g, theta_1 = %g",
     ppw2->k1, ppw2->k2, ppw2->k, ppw2->cosk1k2, ppw2->theta_1);
   sprintf(info, "%s%s %s\n", info, comment, line);
 
-  if (ppt->gauge == newtonian) sprintf(line, "gauge = Newtonian gauge");
-  if (ppt->gauge == synchronous) sprintf(line, "gauge = synchronous gauge");
+  if (ppt->gauge == newtonian) sprintf(line, "gauge = newtonian");
+  if (ppt->gauge == synchronous) sprintf(line, "gauge = synchronous");
   sprintf(info, "%s%s %s\n", info, comment, line);
 
   return _SUCCESS_;
@@ -4887,7 +5246,7 @@ Omega_ur = %g, Omega_r = %g, Omega_fld = %g, h = %g, tau0 = %g",
 
 
 
-
+/* TODO: add documentation */
 int perturb2_solve (
         struct precision * ppr,
         struct precision2 * ppr2,
@@ -4956,8 +5315,8 @@ int perturb2_solve (
   ppw2->last_index_thermo=0;
   ppw2->last_index_sources=0;  
 
-
-
+  /* Initialise the counter of time steps in the differential system */
+  ppw2->n_steps = 0;
 
 
 
@@ -4969,7 +5328,8 @@ int perturb2_solve (
   double tau;
   
   /* We automatically determine the starting integration time for this set of wavemodes only if the user
-    specified 'ppt2->tau_start_evolution = 0'. */
+  specified 'ppt2->tau_start_evolution = 0'. */
+  /* TODO: fix this! right now we always use a custom tau_start_evolution */
   if (ppt2->tau_start_evolution == 0) {
   
     /* Conformal time */
@@ -4979,16 +5339,16 @@ int perturb2_solve (
     int index_tau;
 
     /* Using bisection, compute minimum value of tau for which this wavenumber is integrated.
-      The actual starting time of integration will be the minimum between the number we find
-      here and ppt2->tau_sampling[0]. */
+    The actual starting time of integration will be the minimum between the number we find
+    here and ppt2->tau_sampling[0]. */
 
     /* Initial time will be at least the first time in the background table */
     tau_lower = pba->tau_table[0];
 
     /* Test that tau_lower is early enough to satisfy the conditions imposed by
-      ppr2->start_small_k_at_tau_c_over_tau_h_2nd_order and ppr2->start_large_k_at_tau_h_over_tau_k.
-      To use CLASS1 words: check that this initial time is indeed OK given imposed conditions on kappa'
-      and on k/aH. */
+    ppr2->start_small_k_at_tau_c_over_tau_h_song and ppr2->start_large_k_at_tau_h_over_tau_k.
+    To use CLASS1 words: check that this initial time is indeed OK given imposed conditions on kappa'
+    and on k/aH. */
 
     class_call (background_at_tau(pba,
                   tau_lower, 
@@ -5013,29 +5373,33 @@ int perturb2_solve (
     /* Variables that simplify the notation */
     double aH = ppw2->pvecback[pba->index_bg_a]*ppw2->pvecback[pba->index_bg_H];
     double tau_c_over_tau_h = aH/ppw2->pvecthermo[pth->index_th_dkappa];
-    double tau_h_over_tau_k = MAX(k1,k2)/aH;
+    double tau_h_over_tau_k = MAX(MAX(k1,k2),k)/aH;
   
-    class_test (tau_c_over_tau_h > ppr2->start_small_k_at_tau_c_over_tau_h_2nd_order,
-                ppt2->error_message,
-                "your choice of initial time for integrating wavenumbers at 2nd-order is inappropriate: it corresponds to a time before that at which the background has been integrated. You should increase 'start_small_k_at_tau_c_over_tau_h_2nd_order' up to at least %g, or decrease 'a_ini_over_a_today_default'\n", 
-                  tau_c_over_tau_h);
+    class_test (tau_c_over_tau_h > ppr2->start_small_k_at_tau_c_over_tau_h_song,
+      ppt2->error_message,
+      "your choice of initial time for integrating wavenumbers at 2nd-order is\
+inappropriate: it corresponds to a time before that at which the background has\
+been integrated. You should increase 'start_small_k_at_tau_c_over_tau_h_song' up\
+to at least %g, or decrease 'a_ini_over_a_today_default'\n", 
+      tau_c_over_tau_h);
   
-    class_test (tau_h_over_tau_k > ppr2->start_large_k_at_tau_h_over_tau_k_2nd_order,
-                ppt2->error_message,
-                "your choice of initial time for integrating wavenumbers at 2nd-order is inappropriate: it corresponds to a time before that at which the background has been integrated. You should increase 'start_large_k_at_tau_h_over_tau_k_2nd_order' up to at least %g, or decrease 'a_ini_over_a_today_default'\n",
-                  ppt2->k[ppt2->k_size-1]/aH);
- 
+    class_test (tau_h_over_tau_k > ppr2->start_large_k_at_tau_h_over_tau_k_song,
+      ppt2->error_message,
+      "your choice of initial time for integrating wavenumbers at 2nd-order is\
+inappropriate: it corresponds to a time before that at which the background has\
+been integrated. You should increase 'start_large_k_at_tau_h_over_tau_k_song' up\
+to at least %g, or decrease 'a_ini_over_a_today_default'\n",
+      ppt2->k[ppt2->k_size-1]/aH);
+
     
     /* We have to start integrating the system earlier with respect to when we need the sources */
     tau_upper = ppt2->tau_sampling[0];
     tau_mid = 0.5*(tau_lower + tau_upper);
   
     /* Print the result for the bisection for these wavemodes (to be paired with
-      the debug line soon out of this cycle */
+    the debug line soon out of this cycle */
     // printf("*** Bisection for k1 = %8.2g,  k2 = %8.2g,  k3 = %8.2g:   ", k1, k2, k);
     // printf("tau_lower = %8.2g, tau_upper = %8.2g, ", tau_lower, tau_upper);
-
-
 
 
     // ==========================================
@@ -5071,8 +5435,8 @@ int perturb2_solve (
       tau_c_over_tau_h = aH/ppw2->pvecthermo[pth->index_th_dkappa];
 
       /* Check that the two conditions on (aH/kappa') and (aH/k) are fulfilled */
-      if ((tau_c_over_tau_h > ppr2->start_small_k_at_tau_c_over_tau_h_2nd_order) ||
-          (tau_h_over_tau_k > ppr2->start_large_k_at_tau_h_over_tau_k_2nd_order)) {
+      if ((tau_c_over_tau_h > ppr2->start_small_k_at_tau_c_over_tau_h_song) ||
+          (tau_h_over_tau_k > ppr2->start_large_k_at_tau_h_over_tau_k_song)) {
 
         tau_upper = tau_mid;
       }
@@ -5326,13 +5690,13 @@ int perturb2_solve (
                   ppw2->pv->used_in_sources,
                   ppw2->pv->pt2_size,
                   &ppaw2,
-                  ppr2->tol_perturb_integration_2nd_order,
+                  ppr2->tol_perturb_integration_song,
                   ppr->smallest_allowed_variation,
                   perturb2_timescale,                    /* Not needed when using the ndf15 integrator */
                   ppr->perturb_integration_stepsize,    /* Not needed when using the ndf15 integrator */
                   ppt2->tau_sampling,
                   tau_actual_size,
-                  perturb2_source_terms,
+                  perturb2_sources,
                   /* next entry = 'NULL' in standard
                runs; = 'perturb2_print_variables' if
                you want to output perturbations at
@@ -5354,7 +5718,6 @@ int perturb2_solve (
   } // end of for (index_interval)
 
 
-
   /* Free quantitites allocated at the beginning of the routine */  
   class_call (perturb2_vector_free (ppw2->pv),
      ppt2->error_message,
@@ -5365,18 +5728,6 @@ int perturb2_solve (
   free (interval_approx);
   free (interval_limit); 
   free(interval_number_of);
-
-  /* Add to the sources the effects that depend on the time derivative of perturbations */
-  class_call (perturb2_sources (
-                ppr,
-                ppr2,
-                pba,
-                ppt,
-                ppt2,
-                ppw2),
-    ppt2->error_message,
-    ppt2->error_message);
-
 
   return _SUCCESS_;
           
@@ -5430,39 +5781,39 @@ int perturb2_vector_init (
   Also check that we have computed enough first-order multipoles to solve the second-order system. */
 
   /* Photon temperature */
-  class_test (ppr2->l_max_g_2nd_order < 2,
+  class_test (ppr2->l_max_g_song < 2,
               ppt2->error_message,
-              "ppr2->l_max_g_2nd_order should be at least 3.");
+              "ppr2->l_max_g_song should be at least 3.");
 
-  class_test (ppr2->l_max_g_2nd_order + ppt2->lm_extra > ppr->l_max_g,
+  class_test (ppr2->l_max_g_song + ppt2->lm_extra > ppr->l_max_g,
               ppt2->error_message,
               "to solve the second-order photon hierarchy up to l=%d, you need to specify l_max_g > %d",
-              ppr2->l_max_g_2nd_order, ppr2->l_max_g_2nd_order+3);
+              ppr2->l_max_g_song, ppr2->l_max_g_song+3);
 
   /* Photon polarization */
   if (ppt2->has_polarization2 == _TRUE_) {
     
-    class_test (ppr2->l_max_pol_g_2nd_order < 2,
+    class_test (ppr2->l_max_pol_g_song < 2,
                 ppt2->error_message,
-                "ppr2->l_max_pol_g_2nd_order should be at least 3.");
+                "ppr2->l_max_pol_g_song should be at least 3.");
     
-    class_test (ppr2->l_max_pol_g_2nd_order + ppt2->lm_extra > ppr->l_max_pol_g,
+    class_test (ppr2->l_max_pol_g_song + ppt2->lm_extra > ppr->l_max_pol_g,
                 ppt2->error_message,
                 "to solve the second-order photon hierarchy up to l=%d, you need to specify l_max_pol_g > %d",
-                ppr2->l_max_pol_g_2nd_order, ppr2->l_max_pol_g_2nd_order+ppt2->lm_extra);
+                ppr2->l_max_pol_g_song, ppr2->l_max_pol_g_song+ppt2->lm_extra);
   }
     
   /* Neutrinos */
   if (pba->has_ur == _TRUE_) {
     
-    class_test(ppr2->l_max_ur_2nd_order < 2,
+    class_test(ppr2->l_max_ur_song < 2,
                ppt2->error_message,
-               "ppr2->l_max_ur_2nd_order should be at least 3.");
+               "ppr2->l_max_ur_song should be at least 3.");
      
-    class_test (ppr2->l_max_ur_2nd_order + ppt2->lm_extra > ppr->l_max_ur,
+    class_test (ppr2->l_max_ur_song + ppt2->lm_extra > ppr->l_max_ur,
                 ppt2->error_message,
                 "to solve the second-order photon hierarchy up to l=%d, you need to specify l_max_ur > %d",
-                ppr2->l_max_ur_2nd_order, ppr2->l_max_ur_2nd_order+ppt2->lm_extra);
+                ppr2->l_max_ur_song, ppr2->l_max_ur_song+ppt2->lm_extra);
   }
 
 
@@ -5479,7 +5830,7 @@ int perturb2_vector_init (
 
   /* By default, the number of equations evolved for the radiation species is determined directly
     by the parameter file.  */
-  ppv->l_max_g = ppr2->l_max_g_2nd_order;
+  ppv->l_max_g = ppr2->l_max_g_song;
   ppv->n_hierarchy_g = size_l_indexm (ppv->l_max_g, ppt2->m, ppt2->m_size);
 
   /* The E and B-mode hierarchies start from the quadrupole, hence the number of equations is reduced.
@@ -5487,12 +5838,12 @@ int perturb2_vector_init (
     to implement it inside the code.  In this way we introduce a fake monopole and dipole that are not
     really evolved but are taken to be always zero. */
   if (ppt2->has_polarization2 == _TRUE_) {
-    ppv->l_max_pol_g = ppr2->l_max_pol_g_2nd_order;
+    ppv->l_max_pol_g = ppr2->l_max_pol_g_song;
     ppv->n_hierarchy_pol_g = size_l_indexm (ppv->l_max_pol_g, ppt2->m, ppt2->m_size);
   }
   
   if (pba->has_ur == _TRUE_) {
-    ppv->l_max_ur = ppr2->l_max_ur_2nd_order; 
+    ppv->l_max_ur = ppr2->l_max_ur_song; 
     ppv->n_hierarchy_ur = size_l_indexm (ppv->l_max_ur, ppt2->m, ppt2->m_size);
   }
 
@@ -5576,7 +5927,7 @@ int perturb2_vector_init (
 
     if ((pba->has_ur) && (ppt2->perturbations2_verbose > 4))
       printf("     * neutrino hierarchy: we shall evolve %d equations (l_max_ur = %d).\n",
-        ppv->n_hierarchy_ur, ppr2->l_max_ur_2nd_order);
+        ppv->n_hierarchy_ur, ppr2->l_max_ur_song);
 
     ppv->index_pt2_monopole_ur = index_pt;
     index_pt += ppv->n_hierarchy_ur;
@@ -6116,25 +6467,36 @@ int perturb2_free(
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Compute the time derivatives of all the perturbations to be integrated.
+ *
+ * The derivatives of the perturbations are with respect to conformal time (tau)
+ * and are computed using as an input the current value of the perturbations, contained
+ * in the argument y. You can find find a summary of all equations involved in sec. 5.3.1 
+ * http://arxiv.org/abs/1405.2280. More technical details on the differential system
+ * and on the solver can be found in sec 5.3.2 and 5.3.3.
+ *
+ * We are going to store the time derivatives in the array dy, passed as argument.
+ * Both y and dy are accessed with the index_pt2_XXX indices.
+ *
+ * This function is never called explicitly in this module. Instead, it is passed as an
+ * argument to the evolver, which calls it whenever it needs to update dy. Since the
+ * evolver should work with functions passed from various modules, the format of the
+ * arguments is a bit special:
+ * - fixed parameters and workspaces are passed through the generic pointer.
+ *   parameters_and_workspace.
+ * - errors are not written as usual in ppt2->error_message, but in a generic
+ *   error_message passed in the list of arguments.
+ */
 int perturb2_derivs (
-       double tau,
-       double * y,
-       double * dy,
-       void * parameters_and_workspace,
-       ErrorMsg error_message
-       )
+      double tau, /**< current time */
+      double * y, /**< values of evolved perturbations at tau (y[index_pt2_XXX]) */
+      double * dy, /**< output: derivatives of evolved perturbations at tau (dy[index_pt2_XXX]) */
+      void * parameters_and_workspace, /**< generic structure with all needed parameters, including
+                                       backgroudn and thermo structures; will be cast to type
+                                       perturb2_parameters_and_workspace()  */
+      ErrorMsg error_message /**< error message */
+      )
 {
   
   /* Define shortcuts to avoid heavy notation */
@@ -7371,8 +7733,6 @@ int perturb2_quadratic_sources_for_k1k2k (
 
 
 
-
-
 int perturb2_quadratic_sources (
       struct precision * ppr,
       struct precision2 * ppr2,
@@ -7439,12 +7799,12 @@ int perturb2_quadratic_sources (
  
       /* First-order sources in k1 */
       ppw2->pvec_sources1[index_type] =
-        ppt->quadsources[ppt->index_md_scalars][ppt2->index_ic*qs_size + index_type]
+        ppt->quadsources[ppt->index_md_scalars][ppt2->index_ic_first_order*qs_size + index_type]
                         [index_tau*ppt->k_size[ppt->index_md_scalars]+ppw2->index_k1];
  
       /* First-order sources in k2 */
       ppw2->pvec_sources2[index_type] =
-        ppt->quadsources[ppt->index_md_scalars][ppt2->index_ic*qs_size + index_type]
+        ppt->quadsources[ppt->index_md_scalars][ppt2->index_ic_first_order*qs_size + index_type]
                         [index_tau*ppt->k_size[ppt->index_md_scalars]+ppw2->index_k2];
     }
   }
@@ -7452,11 +7812,11 @@ int perturb2_quadratic_sources (
   else {
         
     /* Interpolate first-order quantities in tau and k1 (ppw2->psources_1) */
-    class_call (perturb_quadsources_at_tau_for_all_types (
+    class_call (perturb_song_sources_at_tau (
                  ppr,
                  ppt,
                  ppt->index_md_scalars,
-                 ppt2->index_ic,
+                 ppt2->index_ic_first_order,
                  ppw2->index_k1,
                  tau,
                  ppt->inter_normal,
@@ -7466,11 +7826,11 @@ int perturb2_quadratic_sources (
        ppt2->error_message);
   
     /* Interpolate first-order quantities in tau and k2 (ppw2->psources_2) */ 
-    class_call (perturb_quadsources_at_tau_for_all_types (
+    class_call (perturb_song_sources_at_tau (
                  ppr,
                  ppt,
                  ppt->index_md_scalars,
-                 ppt2->index_ic,
+                 ppt2->index_ic_first_order,
                  ppw2->index_k2,
                  tau,
                  ppt->inter_normal,
@@ -7661,7 +8021,6 @@ int perturb2_quadratic_sources (
     /* h'' */
     h_prime_prime_1 =  pvec_sources1[ppt->index_qs_h_prime_prime];
     h_prime_prime_2 =  pvec_sources2[ppt->index_qs_h_prime_prime];
-    
     
     /* Code the Einstein tensor for synchronous gauge, TODO! */
     
@@ -8103,7 +8462,7 @@ int perturb2_quadratic_sources (
     double delta_e_1 = delta_b_1;
     double delta_e_2 = delta_b_2;
 
-    if (ppt2->has_perturbed_recombination == _TRUE_) {
+    if (ppt2->has_perturbed_recombination_stz == _TRUE_) {
  
       /* If requested, we use the approximated formula in 3.23 of Senatore, Tassev, Zaldarriaga (STZ,
       http://arxiv.org/abs/0812.3652), which is valid for k < 1 in Newtonian gauge and it doesn't require
@@ -8138,7 +8497,7 @@ int perturb2_quadratic_sources (
       //   fprintf (stderr, "%12.7g %12.7g %12.7g %12.7g %12.7g %12.7g\n",
       //     ppt->tau_sampling_quadsources, a, delta_e_1, approx, delta_b_1, g);
 
-    } // end of if(has_perturbed_recombination)
+    } // end of if(has_perturbed_recombination_stz)
  
   
     // ------------------------------------------------
@@ -8470,19 +8829,39 @@ int perturb2_quadratic_sources (
 
 
 /**
-  * Get the sources terms from the solutions of the second-order system of equations at a fixed tau and k.
-  * This function is going to be used inside the evolver to get the 2nd-order quantities as they are computed.
-  * Remember that 'y' is the vector that contains the instantaneous value of the evolved perturbations,
-  * i.e. those that are indexed with index_pt2
-  */
-int perturb2_source_terms (
-    double tau,
-    double * y,
-    double * dy,
-    int index_tau,
-    void * parameters_and_workspace,
-    ErrorMsg error_message
-    )
+ * Build the second-order line-of-sight sources and store them in ppt2->sources.
+ *
+ * This function is called from inside the differential solver, so that it can
+ * access all perturbations as they are evolved.
+ *
+ * The derivatives of the perturbations need to be written with respect to conformal time
+ * (tau). You can find find a summary of all equations involved in sec. 5.3.1 
+ * http://arxiv.org/abs/1405.2280. More technical details on the differential system
+ * and on the solver can be found in sec 5.3.2 and 5.3.3.
+ *
+ * This function is never called explicitly in this module. Instead, it is passed as an
+ * argument to the evolver, which calls it whenever it hits a time contained in the time
+ * sampling array ppt2->tau_sampling. Therefore, this function is called ppt2->tau_size
+ * times for each (k1,k2,k3) triplet.
+ *
+ * Since the evolver should work with functions passed
+ * from various modules, the format of the arguments is a bit special:
+ * - fixed parameters and workspaces are passed through the generic pointer.
+ *   parameters_and_workspace.
+ * - errors are not written as usual in ppt2->error_message, but in a generic
+ *   error_message passed in the list of arguments.
+ */
+
+int perturb2_sources (
+      double tau, /**< current time */
+      double * y, /**< values of evolved perturbations at tau (y[index_pt2_XXX]) */
+      double * dy, /**< output: derivatives of evolved perturbations at tau (dy[index_pt2_XXX]) */
+      int index_tau, /**< current time index (from ppt2->tau_sampling array) */
+      void * parameters_and_workspace, /**< generic structure with all needed parameters, including
+                                       backgroudn and thermo structures; will be cast to type
+                                       perturb2_parameters_and_workspace()  */
+      ErrorMsg error_message /**< error message */
+      )
 {
 
   /* Shortcuts for the structures */
@@ -8510,7 +8889,32 @@ int perturb2_source_terms (
   double k1_dot_k2 = ppw2->k1_dot_k2;
   double * k1_m = ppw2->k1_m;
   double * k2_m = ppw2->k2_m;
+
+
+
+  // ======================================================================================
+  // =                                 Active effects                                     =
+  // ======================================================================================
+
+  /* By default we turn all optional effects off */
+  int switch_sw=0;
+  int switch_isw=0;
   
+  if (ppt2->has_sw == _TRUE_) {
+    switch_sw = 1;
+  }
+  
+  if (ppt2->has_isw == _TRUE_) {
+
+    switch_isw = 1;
+  
+    /* If the user asked for only the early ISW effect, then turn it off when after
+    recombination */
+    if ((ppt2->only_early_isw == _TRUE_) && (index_tau >= ppt2->index_tau_end_of_recombination))
+      switch_isw = 0;    
+  }
+
+
   // ======================================================================================
   // =                          Interpolate needed quantities                             =
   // ======================================================================================
@@ -8553,10 +8957,7 @@ int perturb2_source_terms (
   double kappa_dot = pvecthermo[pth->index_th_dkappa];
   double exp_minus_kappa = pvecthermo[pth->index_th_exp_m_kappa];
   double g = pvecthermo[pth->index_th_g];
-  
-  /* Have a look at the thermodynamics quantities */
-  // fprintf (stderr, "%13g %13g = %g\n", tau, Hc/kappa_dot);
-  
+    
   /* Interpolate quadratic sources (ppw2->pvec_quadsources). Note that,
   because we need the quadratic part of the collision term, too, we 
   use 'perturb2_quadratic_sources' rather than 'perturb2_quadratic_sources_at_tau'.
@@ -8585,11 +8986,11 @@ int perturb2_source_terms (
   }
   
   /* Interpolate first-order quantities in tau and k1 (ppw2->psources_1) */
-  class_call (perturb_quadsources_at_tau_for_all_types (
+  class_call (perturb_song_sources_at_tau (
                 ppr,
                 ppt,
                 ppt->index_md_scalars,
-                ppt2->index_ic,
+                ppt2->index_ic_first_order,
                 ppw2->index_k1,
                 tau,
                 ppt->inter_normal,
@@ -8599,11 +9000,11 @@ int perturb2_source_terms (
     error_message);
   
   /* Interpolate first-order quantities in tau and k2 (ppw2->psources_2) */
-  class_call (perturb_quadsources_at_tau_for_all_types (
+  class_call (perturb_song_sources_at_tau (
                 ppr,
                 ppt,
                 ppt->index_md_scalars,
-                ppt2->index_ic,
+                ppt2->index_ic_first_order,
                 ppw2->index_k2,
                 tau,
                 ppt->inter_normal,
@@ -8630,9 +9031,9 @@ int perturb2_source_terms (
     ppt2->error_message,
     error_message);
   
-  
   /* Shortcuts for metric variables */
-  double phi=0, phi_1=0, phi_2=0, psi=0, psi_1=0, psi_2=0, phi_prime=0, psi_prime=0, phi_prime_1=0, phi_prime_2=0, psi_prime_1=0, psi_prime_2=0;
+  double phi=0, phi_1=0, phi_2=0, psi=0, psi_1=0, psi_2=0, phi_prime=0,
+    psi_prime=0, phi_prime_1=0, phi_prime_2=0, psi_prime_1=0, psi_prime_2=0;
   double phi_exp=0, psi_exp=0, phi_exp_prime=0, psi_exp_prime=0;
   double omega_m1=0, omega_m1_prime=0, gamma_m2_prime=0;
   
@@ -8648,7 +9049,7 @@ int perturb2_source_terms (
     phi_prime_1 = pvec_sources1[ppt->index_qs_phi_prime];
     phi_prime_2 = pvec_sources2[ppt->index_qs_phi_prime];
 
-    if (ppt2->has_isw == _TRUE_) {
+    if (switch_isw == 1) {
       psi_prime_1 = pvec_sources1[ppt->index_qs_psi_prime];
       psi_prime_2 = pvec_sources2[ppt->index_qs_psi_prime];
     }
@@ -8662,7 +9063,8 @@ int perturb2_source_terms (
       phi_prime = pvecmetric[ppw2->index_mt2_phi_prime];
             
       /* Compute psi_prime, needed to add the ISW effect */
-      if (ppt2->has_isw == _TRUE_)  
+      if (switch_isw == 1) {
+
         class_call (perturb2_compute_psi_prime (
                      ppr,
                      ppr2,
@@ -8677,8 +9079,8 @@ int perturb2_source_terms (
                      ppw2),
           ppt2->error_message,
           error_message);
+      }
 
-      
       /* Exponential potentials, which appear in the metric as
         g_00 = -e^(2*psi_exp)
         g_ij = e^(-2*phi_exp) * delta_ij
@@ -8695,7 +9097,7 @@ int perturb2_source_terms (
       phi_exp = phi + 2*phi_1*phi_2;
       psi_exp = psi - 2*psi_1*psi_2;
       phi_exp_prime = phi_prime + 2*(phi_1*phi_prime_2 + phi_prime_1*phi_2);
-      if (ppt2->has_isw == _TRUE_)
+      if (switch_isw == 1)
         psi_exp_prime = psi_prime - 2*(psi_1*psi_prime_2 + psi_prime_1*psi_2);
       
       /* Should we use the linear potentials or the exponential ones? */
@@ -8703,7 +9105,7 @@ int perturb2_source_terms (
         phi = phi_exp;
         psi = psi_exp;
         phi_prime = phi_exp_prime;
-        if (ppt2->has_isw == _TRUE_)
+        if (switch_isw == 1)
           psi_prime = psi_exp_prime;
       }
       
@@ -8723,9 +9125,6 @@ int perturb2_source_terms (
   
 
   
-    
-  
-  
   // ====================================================================================
   // =                               Compute velocities                                 =
   // ====================================================================================
@@ -8743,7 +9142,8 @@ int perturb2_source_terms (
   double delta_b_1 = pvec_sources1[ppt->index_qs_delta_b];
   double delta_b_2 = pvec_sources2[ppt->index_qs_delta_b];
     
-  /* First-order photon velocity (for explanations on the following definitions, see comments in perturb2_quadratic_sources) */
+  /* First-order photon velocity (for explanations on the following definitions, see comments
+  in perturb2_quadratic_sources()) */
   double v_g_1 = ppw2->pvec_sources1[ppt->index_qs_v_g];
   double v_g_2 = ppw2->pvec_sources2[ppt->index_qs_v_g];
   double v_g_0_1 = -k1*v_g_1;
@@ -8773,7 +9173,7 @@ int perturb2_source_terms (
   double delta_e_1 = delta_b_1;
   double delta_e_2 = delta_b_2;
   
-  if (ppt2->has_perturbed_recombination == _TRUE_) {
+  if (ppt2->has_perturbed_recombination_stz == _TRUE_) {
    
     /* If requested, we use the approximated formula in 3.23 of Senatore, Tassev, Zaldarriaga (STZ,
     http://arxiv.org/abs/0812.3652), which is valid for k < 1 in Newtonian gauge and it doesn't require
@@ -8797,10 +9197,9 @@ int perturb2_source_terms (
     // if ((ppw2->index_k1==0) && (ppw2->index_k2==0) && (ppw2->index_k3==0))
     //   fprintf (stderr, "%12.7g %12.7g %12.7g\n", ppt2->tau_sampling[index_tau], delta_e_1, delta_e_2);
   
-  } // end of if(has_perturbed_recombination)
-   
-  
-  
+  } // end of if(has_perturbed_recombination_stz)
+
+     
   
   // =======================================================================================
   // =                                Build the LOS sources                                =
@@ -8808,7 +9207,7 @@ int perturb2_source_terms (
     
   /* We are now going to fill ppt2->sources, the multi-array containing the line-of-sight
   source functions for each type of source function and for each value of k1,k2,k3 and
-  tau. This is he main product of the whole perturbations2.c module.
+  tau. This is the main product of the whole perturbations2.c module.
     
     The sources array is indexed as
   
@@ -8841,10 +9240,10 @@ int perturb2_source_terms (
    *
    *   The scattering part of the LOS sources is given by the multipole decomposition of the quadratic part of
    * the collision term.  For the monopole, which lacks a purely second-order collision term, there is an extra
-   * kappa_dot*I(0,0) contribution.  The scattering part is the simplest part to treat, as it is strongly suppressed after
-   * recombination.  When all other sources are turned off, the sources of the LOS integration need to be computed
-   * only up to shortly after recombination.  Furthermore, the (l,m) contribution from the quadratic sources is
-   * is suppressed for l>2 multipoles by tight coupling.
+   * kappa_dot*I(0,0) contribution.  The scattering part is the simplest part to treat, as it is strongly
+   * suppressed after recombination.  When all other sources are turned off, the sources of the LOS integration
+   * need to be computed only up to shortly after recombination.  Furthermore, the (l,m) contribution from
+   * the quadratic sources is suppressed for l>2 multipoles by tight coupling.
    */
 
 
@@ -8891,17 +9290,13 @@ int perturb2_source_terms (
           /* SW and ISW effects, coming from the monopole term 4*phi_prime and from the integration
           by parts of the 4*k*psi term in the dipole */
           else {
-            
-            if (ppt2->has_sw == _TRUE_)
-              source += 4 * kappa_dot * psi;
-            
-            if (ppt2->has_isw == _TRUE_)
-              source += 4 * (phi_prime + psi_prime);
+            source += switch_sw * (4 * kappa_dot * psi);
+            source += switch_isw * (4 * (phi_prime + psi_prime));
           }
 
           /* Quadratic metric contribution from the Liouville operator. The monopole
           contribution exists only if using the standard linear potentials (cfr 4.97 and 4.100
-          of my thesis) */
+          of http://arxiv.org/abs/1405.2280) */
           if ((ppt2->has_quad_metric_in_los == _TRUE_)
           && (ppt2->use_exponential_potentials == _FALSE_))
             source += 8 * (phi_1*phi_prime_2 + phi_2*phi_prime_1);
@@ -8922,8 +9317,8 @@ int perturb2_source_terms (
             if (m == 0) source += 4 * k * psi;
             if (m == 1) source += - 4 * omega_m1_prime;
           }
-          else if (ppt2->has_isw == _TRUE_)
-            if (m == 1) source += - 4 * omega_m1_prime;
+          else
+            if (m == 1) source += switch_isw * (- 4 * omega_m1_prime);
 
           /* Quadratic metric contribution from the Liouville operator  */
           if (ppt2->has_quad_metric_in_los == _TRUE_) {
@@ -8947,10 +9342,11 @@ int perturb2_source_terms (
             source += kappa_dot * 0.1 * (I(2,m) - sqrt_6*E(2,m));
 
           /* Tensor metric contribution */
-          if (ppt2->has_metric_in_los == _TRUE_)
+          if (ppt2->has_metric_in_los == _TRUE_) {
             if (m == 2) source += 4 * gamma_m2_prime;
-          else if (ppt2->has_isw == _TRUE_)
-            if (m == 2) source += 4 * gamma_m2_prime;
+          else
+            if (m == 2) source += switch_isw * (4 * gamma_m2_prime);
+          }
 
         } // end of quadrupole sources
 
@@ -9258,7 +9654,6 @@ int perturb2_source_terms (
 
   
   
-  
   // -------------------------------------------------------------------------------
   // -                            B-mode polarisation                              -
   // -------------------------------------------------------------------------------  
@@ -9486,36 +9881,7 @@ int perturb2_source_terms (
   
   return _SUCCESS_;
 
-} // end of perturb2_source_terms
-
-
-
-
-
-
-
-/**
- * Compute some of the line of sight sources by means of integration by parts.
- */
-int perturb2_sources (
-  struct precision * ppr,
-  struct precision2 * ppr2,
-  struct background * pba,
-  struct perturbs * ppt,
-  struct perturbs2 * ppt2,
-  struct perturb2_workspace * ppw2)
-{
-  
-    
-  return _SUCCESS_;   
-    
-}
-
-
-
-
-
-
+} // end of perturb2_sources
 
 
 
@@ -9663,15 +10029,23 @@ int what_if_ndf15_fails(int (*derivs)(double x,
 
 
 /**
- * This is the point where you can output the second-order transfer functions, or any other quantity you
- * are interested into.  This function is called from within the evolver at the times sampled in
- * ppt2->tau_sampling.
-*/
+ * Output to file the state of the differential system.
+ *
+ * This is the point where you can output to file or to screen the second-order transfer
+ * functions, or any other quantity you are interested into.
+ * 
+ * The transfer functions will be saved to the file ppt2->transfers_file, whose name
+ * is specified in the parameter file via the parameter transfers_filename. The
+ * qudratic sources will be saved to the file ppt2->quadsources_file, whose path is
+ * specified via the quadsources_filename parameter.
+ *
+ * Note that this function is called from within the evolver at each time step, so
+ * expect the outputted files to be large.
+ */
 int perturb2_save_early_transfers (
           double tau,
           double * y,
           double * dy,
-          int index_tau,
           void * parameters_and_workspace,
           ErrorMsg error_message
           )
@@ -9703,7 +10077,8 @@ int perturb2_save_early_transfers (
   double * k1_m = ppw2->k1_m;
   double * k2_m = ppw2->k2_m;
   
-  
+  /* Update the number of steps in the differential system */
+  ppw2->n_steps++;
   
   // ======================================================================================
   // =                          Interpolate needed quantities                             =
@@ -9775,11 +10150,11 @@ int perturb2_save_early_transfers (
   }
   
   /* Interpolate first-order quantities (ppw2->psources_1) */
-  class_call (perturb_quadsources_at_tau_for_all_types (
+  class_call (perturb_song_sources_at_tau (
                ppr,
                ppt,
                ppt->index_md_scalars,
-               ppt2->index_ic,
+               ppt2->index_ic_first_order,
                ppw2->index_k1,
                tau,
                ppt->inter_normal,
@@ -9789,11 +10164,11 @@ int perturb2_save_early_transfers (
      ppt2->error_message);
   
   /* Interpolate first-order quantities (ppw2->psources_2) */
-  class_call (perturb_quadsources_at_tau_for_all_types (
+  class_call (perturb_song_sources_at_tau (
                ppr,
                ppt,
                ppt->index_md_scalars,
-               ppt2->index_ic,
+               ppt2->index_ic_first_order,
                ppw2->index_k2,
                tau,
                ppt->inter_normal,
@@ -10155,7 +10530,7 @@ int perturb2_save_early_transfers (
   
   /* Debug of the analytical limits for m=1 and m=2 */
   // if ((ppr2->compute_m[1] == _TRUE_) && (ppr2->compute_m[2] == _TRUE_)) {
-  //   if (index_tau==0) {
+  //   if (ppw2->n_steps==1) {
   //     fprintf (stderr, "%12s %12s %12s %12s %12s %12s %12s %12s %12s %12s \n",
   //       "tau", "z", "frac_vec", "frac_ten", "rho_r/rho_m", "growth", "Fz*Hc/2", "Fz/tau/2", "Omega_m", "Omega_l");
   //   }
@@ -10213,14 +10588,14 @@ int perturb2_save_early_transfers (
   
   
   // *** Print some info to file
-  if ( (index_tau==0) && (ppt2->perturbations2_verbose > 0) ) {
-    fprintf(file_tr, "%s", ppw2->info);
-    fprintf(file_qs, "%s", ppw2->info);
+  if ((ppw2->n_steps==1) && (ppt2->perturbations2_verbose > 0)) {
+    fprintf(file_tr, "%s%s", pba->info, ppw2->info);
+    fprintf(file_qs, "%s%s", pba->info, ppw2->info);
   }
   
   // *** Time variables
   // conformal time
-  if (index_tau==0) {
+  if (ppw2->n_steps==1) {
     fprintf(file_tr, format_label, "tau", index_print_tr++);
     fprintf(file_qs, format_label, "tau", index_print_qs++);
   }
@@ -10229,7 +10604,7 @@ int perturb2_save_early_transfers (
     fprintf(file_qs, format_value, tau);
   }
   // scale factor
-  if (index_tau==0) {
+  if (ppw2->n_steps==1) {
     fprintf(file_tr, format_label, "a", index_print_tr++);
     fprintf(file_qs, format_label, "a", index_print_qs++);
   }
@@ -10238,7 +10613,7 @@ int perturb2_save_early_transfers (
     fprintf(file_qs, format_value, a);
   }
   // y = log10(a/a_eq)
-  if (index_tau==0) {
+  if (ppw2->n_steps==1) {
     fprintf(file_tr, format_label, "y", index_print_tr++);
     fprintf(file_qs, format_label, "y", index_print_qs++);
   }
@@ -10247,52 +10622,61 @@ int perturb2_save_early_transfers (
     fprintf(file_qs, format_value, Y);
   }
   
-  // *** Photon temperature sources
-  int l_max_los_t = MIN(ppr2->l_max_los_t, ppt2->l_max_debug);
+  /* Printing of sources is disabled since CLASS v2. The reason is
+  that prior to v2 this function was called when the differential
+  system reached one of the time steps in ppt2->tau_sampling, which
+  coincide to the time steps where the sources are computed. Now, 
+  this function is called at the end of all time steps in the 
+  differential system, meaning that there is now way to access
+  the sources other than calling here a modified version of
+  perturb2_sources() that does not take index_tau as an input. */
   
-  for (int l=0; l<=l_max_los_t; ++l) {
-    for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
-      int m = ppr2->m[index_m];
-      sprintf(buffer, "I_%d_%d", l, m);
-      if (index_tau==0) {
-       fprintf(file_tr, format_label, buffer, index_print_tr++);
-      }
-      else {
-       fprintf(file_tr, format_value, sources(ppt2->index_tp2_T+lm(l,m))/kappa_dot);
-      }
-    }
-  }
-  
-  // *** Photon E-mode polarisation sources
-  int l_max_los_p = MIN(ppr2->l_max_los_p, ppt2->l_max_debug);
-  
-  for (int l=2; l<=l_max_los_p; ++l) {
-    for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
-      int m = ppr2->m[index_m];
-      sprintf(buffer, "E_%d_%d", l, m);
-      if (index_tau==0) {
-       fprintf(file_tr, format_label, buffer, index_print_tr++);
-      }
-      else {
-       fprintf(file_tr, format_value, sources(ppt2->index_tp2_E+lm(l,m))/kappa_dot);
-      }
-    }
-  }
-  
-  // *** Photon B-mode polarisation sources
-  for (int l=2; l<=l_max_los_p; ++l) {
-    for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
-      int m = ppr2->m[index_m];
-      if (m==0) continue;
-      sprintf(buffer, "B_%d_%d", l, m);
-      if (index_tau==0) {
-       fprintf(file_tr, format_label, buffer, index_print_tr++);
-      }
-      else {
-       fprintf(file_tr, format_value, sources(ppt2->index_tp2_B+lm(l,m))/kappa_dot);
-      }
-    }
-  }
+  // // *** Photon temperature sources
+  // int l_max_los_t = MIN(ppr2->l_max_los_t, ppt2->l_max_debug);
+  //
+  // for (int l=0; l<=l_max_los_t; ++l) {
+  //   for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+  //     int m = ppr2->m[index_m];
+  //     sprintf(buffer, "I_%d_%d", l, m);
+  //     if (ppw2->n_steps==1) {
+  //      fprintf(file_tr, format_label, buffer, index_print_tr++);
+  //     }
+  //     else {
+  //      fprintf(file_tr, format_value, sources(ppt2->index_tp2_T+lm(l,m))/kappa_dot);
+  //     }
+  //   }
+  // }
+  //
+  // // *** Photon E-mode polarisation sources
+  // int l_max_los_p = MIN(ppr2->l_max_los_p, ppt2->l_max_debug);
+  //
+  // for (int l=2; l<=l_max_los_p; ++l) {
+  //   for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+  //     int m = ppr2->m[index_m];
+  //     sprintf(buffer, "E_%d_%d", l, m);
+  //     if (ppw2->n_steps==1) {
+  //      fprintf(file_tr, format_label, buffer, index_print_tr++);
+  //     }
+  //     else {
+  //      fprintf(file_tr, format_value, sources(ppt2->index_tp2_E+lm(l,m))/kappa_dot);
+  //     }
+  //   }
+  // }
+  //
+  // // *** Photon B-mode polarisation sources
+  // for (int l=2; l<=l_max_los_p; ++l) {
+  //   for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+  //     int m = ppr2->m[index_m];
+  //     if (m==0) continue;
+  //     sprintf(buffer, "B_%d_%d", l, m);
+  //     if (ppw2->n_steps==1) {
+  //      fprintf(file_tr, format_label, buffer, index_print_tr++);
+  //     }
+  //     else {
+  //      fprintf(file_tr, format_value, sources(ppt2->index_tp2_B+lm(l,m))/kappa_dot);
+  //     }
+  //   }
+  // }
   
   // *** Newtonian gauge metric variables  
   if (ppt->gauge == newtonian) {    
@@ -10300,7 +10684,7 @@ int perturb2_save_early_transfers (
     /* Scalar potentials */
     if (ppr2->compute_m[0] == _TRUE_) {
       // psi
-      if (index_tau==0) {
+      if (ppw2->n_steps==1) {
        fprintf(file_tr, format_label, "psi", index_print_tr++);
        fprintf(file_qs, format_label, "psi", index_print_qs++);
       }
@@ -10310,7 +10694,7 @@ int perturb2_save_early_transfers (
       }
       // psi_prime
       if (ppt2->has_isw == _TRUE_) {
-        if (index_tau==0) {
+        if (ppw2->n_steps==1) {
          fprintf(file_tr, format_label, "psi'", index_print_tr++);
          fprintf(file_qs, format_label, "psi'", index_print_qs++);
         }
@@ -10320,10 +10704,10 @@ int perturb2_save_early_transfers (
         }
       }
       // phi
-      if (index_tau==0) fprintf(file_tr, format_label, "phi", index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "phi", index_print_tr++);
       else fprintf(file_tr, format_value, phi);
       // phi_prime_poisson
-      if (index_tau==0) {
+      if (ppw2->n_steps==1) {
        fprintf(file_tr, format_label, "phi'tt", index_print_tr++);
        fprintf(file_qs, format_label, "phi'tt", index_print_qs++);
       }
@@ -10332,7 +10716,7 @@ int perturb2_save_early_transfers (
        fprintf(file_qs, format_value, pvec_quadsources[ppw2->index_qs2_phi_prime_poisson]);
       }
       // phi_prime_longitudinal
-      if (index_tau==0) {
+      if (ppw2->n_steps==1) {
        fprintf(file_tr, format_label, "phi'lg", index_print_tr++);
        fprintf(file_qs, format_label, "phi'lg", index_print_qs++);
       }
@@ -10341,13 +10725,13 @@ int perturb2_save_early_transfers (
        fprintf(file_qs, format_value, pvec_quadsources[ppw2->index_qs2_phi_prime_longitudinal]);
       }
       // psi_analytical
-      if (index_tau==0) fprintf(file_tr, format_label, "psi_an", index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "psi_an", index_print_tr++);
       else fprintf(file_tr, format_value, psi_analytical);
     }  
     /* Vector potentials */
     if (ppr2->compute_m[1] == _TRUE_) {
       // omega_m1
-      if (index_tau==0) {
+      if (ppw2->n_steps==1) {
        fprintf(file_tr, format_label, "omega_m1", index_print_tr++);
        fprintf(file_qs, format_label, "omega_m1'", index_print_qs++);
       }
@@ -10356,16 +10740,16 @@ int perturb2_save_early_transfers (
        fprintf(file_qs, format_value, pvec_quadsources[ppw2->index_qs2_omega_m1_prime]);
       }
       // omega_m1_constraint
-      if (index_tau==0) fprintf(file_tr, format_label, "omega_m1_c", index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "omega_m1_c", index_print_tr++);
       else fprintf(file_tr, format_value, omega_m1_constraint);
       // omega_m1_analytical
-      if (index_tau==0) fprintf(file_tr, format_label, "omega_m1_an", index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "omega_m1_an", index_print_tr++);
       else fprintf(file_tr, format_value, omega_m1_analytical);
     }
     /* Tensor potentials */
     if (ppr2->compute_m[2] == _TRUE_) {
       // gamma_m2
-      if (index_tau==0) {
+      if (ppw2->n_steps==1) {
        fprintf(file_tr, format_label, "gamma_m2", index_print_tr++);
        fprintf(file_qs, format_label, "gamma_m2''", index_print_qs++);
       }
@@ -10374,10 +10758,10 @@ int perturb2_save_early_transfers (
        fprintf(file_qs, format_value, pvec_quadsources[ppw2->index_qs2_gamma_m2_prime_prime]);
       }
       // gamma_m2_analytical
-      if (index_tau==0) fprintf(file_tr, format_label, "gamma_m2_an", index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "gamma_m2_an", index_print_tr++);
       else fprintf(file_tr, format_value, gamma_m2_analytical);
       // gamma_m2_prime
-      if (index_tau==0) fprintf(file_tr, format_label, "gamma_m2'", index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "gamma_m2'", index_print_tr++);
       else fprintf(file_tr, format_value, y[ppw2->pv->index_pt2_gamma_m2_prime]);
     }
   
@@ -10388,10 +10772,10 @@ int perturb2_save_early_transfers (
   if (pba->has_cdm == _TRUE_ ) {
     if (ppr2->compute_m[0] == _TRUE_) {
       // delta_cdm_analytical
-      if (index_tau==0) fprintf(file_tr, format_label, "deltacdm_an", index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "deltacdm_an", index_print_tr++);
       else fprintf(file_tr, format_value, delta_cdm_analytical);
       // v_0_cdm_analytical
-      if (index_tau==0) fprintf(file_tr, format_label, "v_0_cdm_an", index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "v_0_cdm_an", index_print_tr++);
       else fprintf(file_tr, format_value, v_0_cdm_analytical);
     }  
   }
@@ -10402,11 +10786,11 @@ int perturb2_save_early_transfers (
   
   if (ppr2->compute_m[0] == _TRUE_) {
     // I_2_0_analytical
-    if (index_tau==0) fprintf(file_tr, format_label, "I_2_0_an", index_print_tr++);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, "I_2_0_an", index_print_tr++);
     else fprintf(file_tr, format_value, I_2_0_analytical);
   
     // Adiabatic velocity
-    if (index_tau==0) fprintf(file_tr, format_label, "v_0_adiab", index_print_tr++);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, "v_0_adiab", index_print_tr++);
     else fprintf(file_tr, format_value, v_0_adiabatic);
   }  
   
@@ -10417,20 +10801,20 @@ int perturb2_save_early_transfers (
   // *** Baryon fluid limit variables
   if (ppr2->compute_m[0] == _TRUE_) {
     // delta_g_adiab
-    if (index_tau==0) fprintf(file_tr, format_label, "delta_g_ad", index_print_tr++);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, "delta_g_ad", index_print_tr++);
     else fprintf(file_tr, format_value, delta_g_adiab);
     // delta_b
-    if (index_tau==0)  fprintf(file_tr, format_label, "delta_b", index_print_tr++);
+    if (ppw2->n_steps==1)  fprintf(file_tr, format_label, "delta_b", index_print_tr++);
     else fprintf(file_tr, format_value, delta_b);
     // pressure_b 
-    if (index_tau==0)  fprintf(file_tr, format_label, "pressure_b", index_print_tr++);
+    if (ppw2->n_steps==1)  fprintf(file_tr, format_label, "pressure_b", index_print_tr++);
     else fprintf(file_tr, format_value, pressure_b);
   }
   // velocity_b[m]
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     int m = ppt2->m[index_m];
     sprintf(buffer, "vel_b_m%d", m);
-    if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
     else fprintf(file_tr, format_value,
       b(1,1,m)/3. - delta_b_1*(-k2_m[m+1]*v_b_2) - delta_b_2*(-k1_m[m+1]*v_b_1));
   }
@@ -10438,7 +10822,7 @@ int perturb2_save_early_transfers (
   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
     int m = ppr2->m[index_m];
     sprintf(buffer, "sigma_b_m%d", m);
-    if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
     else fprintf(file_tr, format_value,
       -2/15.*ppw2->b_22m[m] + 2*k1_ten_k2[m+2]*v_b_1*v_b_2);
   }  
@@ -10446,10 +10830,10 @@ int perturb2_save_early_transfers (
   if (pba->has_cdm == _TRUE_ ) {
     if (ppr2->compute_m[0] == _TRUE_) {
       // delta_cdm
-      if (index_tau==0)  fprintf(file_tr, format_label, "delta_cdm", index_print_tr++);
+      if (ppw2->n_steps==1)  fprintf(file_tr, format_label, "delta_cdm", index_print_tr++);
       else fprintf(file_tr, format_value, delta_cdm);
       // pressure_cdm 
-      if (index_tau==0)  fprintf(file_tr, format_label, "pressure_cdm", index_print_tr++);
+      if (ppw2->n_steps==1)  fprintf(file_tr, format_label, "pressure_cdm", index_print_tr++);
       else fprintf(file_tr, format_value, pressure_cdm);
     }
     // velocity_cdm[m]
@@ -10457,7 +10841,7 @@ int perturb2_save_early_transfers (
       for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
         int m = ppt2->m[index_m];
         sprintf(buffer, "vel_cdm_m%d", m);
-        if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
+        if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
         else fprintf(file_tr, format_value,
           cdm(1,1,m)/3. - delta_cdm_1*(-k2_m[m+1]*v_cdm_2) - delta_cdm_2*(-k1_m[m+1]*v_cdm_1));
       }
@@ -10466,7 +10850,7 @@ int perturb2_save_early_transfers (
     for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
       int m = ppr2->m[index_m];
       sprintf(buffer, "sigma_cdm_m%d", m);
-      if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
       else fprintf(file_tr, format_value,
         -2/15.*ppw2->cdm_22m[m] + 2*k1_ten_k2[m+2]*v_cdm_1*v_cdm_2);    
     }  
@@ -10475,17 +10859,17 @@ int perturb2_save_early_transfers (
   // *** Photon fluid limit variables
   if (ppr2->compute_m[0] == _TRUE_) {
     // delta_g
-    if (index_tau==0)  fprintf(file_tr, format_label, "delta_g", index_print_tr++);
+    if (ppw2->n_steps==1)  fprintf(file_tr, format_label, "delta_g", index_print_tr++);
     else fprintf(file_tr, format_value, delta_g);
     // pressure_g 
-    if (index_tau==0) fprintf(file_tr, format_label, "pressure_g", index_print_tr++);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, "pressure_g", index_print_tr++);
     else fprintf(file_tr, format_value, pressure_g);
   }
   // velocity_g[m]
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     int m = ppr2->m[index_m];
     sprintf(buffer, "vel_g_m%d", m);
-    if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
     else fprintf(file_tr, format_value,
       I(1,m)*0.25 - delta_g_1*(-k2_m[m+1]*v_g_2) - delta_g_2*(-k1_m[m+1]*v_g_1));
   }
@@ -10493,7 +10877,7 @@ int perturb2_save_early_transfers (
   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
     int m = ppr2->m[index_m];
     sprintf(buffer, "sigma_g_m%d", m);
-    if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
     else fprintf(file_tr, format_value, 
       -2/15.*I(2,m) + 8/3.*k1_ten_k2[m+2]*v_g_1*v_g_2);
   }
@@ -10502,17 +10886,17 @@ int perturb2_save_early_transfers (
   if (pba->has_ur == _TRUE_) {
     if (ppr2->compute_m[0] == _TRUE_) {
       // delta_ur
-      if (index_tau==0) fprintf(file_tr, format_label, "delta_ur", index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "delta_ur", index_print_tr++);
       else fprintf(file_tr, format_value, delta_ur);
       // pressure_ur 
-      if (index_tau==0) fprintf(file_tr, format_label, "pressure_ur", index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "pressure_ur", index_print_tr++);
       else fprintf(file_tr, format_value, pressure_ur);
     }  
     // velocity_ur[m]
     for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
       int m = ppr2->m[index_m];
       sprintf(buffer, "vel_ur_m%d", m);
-      if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
       else fprintf(file_tr, format_value,
         N(1,m)*0.25 - delta_ur_1*(-k2_m[m+1]*v_ur_2) - delta_ur_2*(-k1_m[m+1]*v_ur_1));
     }
@@ -10520,7 +10904,7 @@ int perturb2_save_early_transfers (
     for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
       int m = ppr2->m[index_m];
       sprintf(buffer, "sigma_ur_m%d", m);
-      if (index_tau==0) fprintf(file_tr, format_label, buffer, index_print_tr++);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
       else fprintf(file_tr, format_value,
         -2/15.*N(2,m) + 8/3.*k1_ten_k2[m+2]*v_ur_1*v_ur_2);
     }
@@ -10537,7 +10921,7 @@ int perturb2_save_early_transfers (
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
         int m = ppr2->m[index_m];
         sprintf(buffer, "b_%d_%d_%d", n, l, m);
-        if (index_tau==0) {
+        if (ppw2->n_steps==1) {
           fprintf(file_tr, format_label, buffer, index_print_tr++);
           fprintf(file_qs, format_label, buffer, index_print_qs++);
         }
@@ -10561,7 +10945,7 @@ int perturb2_save_early_transfers (
         for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
           int m = ppr2->m[index_m];
           sprintf(buffer, "cdm_%d_%d_%d", n, l, m);
-          if (index_tau==0) {
+          if (ppw2->n_steps==1) {
             fprintf(file_tr, format_label, buffer, index_print_tr++);
             fprintf(file_qs, format_label, buffer, index_print_qs++);
           }
@@ -10581,7 +10965,7 @@ int perturb2_save_early_transfers (
     for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
       int m = ppr2->m[index_m];
       sprintf(buffer, "I_%d_%d", l, m);
-      if (index_tau==0) {
+      if (ppw2->n_steps==1) {
        fprintf(file_tr, format_label, buffer, index_print_tr++);
        fprintf(file_qs, format_label, buffer, index_print_qs++);
       }
@@ -10602,7 +10986,7 @@ int perturb2_save_early_transfers (
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
         int m = ppr2->m[index_m];
         sprintf(buffer, "E_%d_%d", l, m);
-        if (index_tau==0) {
+        if (ppw2->n_steps==1) {
          fprintf(file_tr, format_label, buffer, index_print_tr++);
          fprintf(file_qs, format_label, buffer, index_print_qs++);
         }
@@ -10618,7 +11002,7 @@ int perturb2_save_early_transfers (
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
         int m = ppr2->m[index_m];
         sprintf(buffer, "B_%d_%d", l, m);
-        if (index_tau==0) {
+        if (ppw2->n_steps==1) {
          fprintf(file_tr, format_label, buffer, index_print_tr++);
          fprintf(file_qs, format_label, buffer, index_print_qs++);
         }
@@ -10642,7 +11026,7 @@ int perturb2_save_early_transfers (
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
         int m = ppr2->m[index_m];
         sprintf(buffer, "N_%d_%d", l, m);
-        if (index_tau==0) {
+        if (ppw2->n_steps==1) {
          fprintf(file_tr, format_label, buffer, index_print_tr++);
          fprintf(file_qs, format_label, buffer, index_print_qs++);
         }
@@ -10658,25 +11042,25 @@ int perturb2_save_early_transfers (
   
   // *** Some other random variables
   sprintf(buffer, "exp_m_kappa");
-  if (index_tau==0)
+  if (ppw2->n_steps==1)
    fprintf(file_tr, format_label, buffer, index_print_tr++);
   else
    fprintf(file_tr, format_value, pvecthermo[pth->index_th_exp_m_kappa]);
   
   sprintf(buffer, "g");
-  if (index_tau==0)
+  if (ppw2->n_steps==1)
    fprintf(file_tr, format_label, buffer, index_print_tr++);
   else
    fprintf(file_tr, format_value, pvecthermo[pth->index_th_g]);
   
   sprintf(buffer, "H");
-  if (index_tau==0)
+  if (ppw2->n_steps==1)
    fprintf(file_tr, format_label, buffer, index_print_tr++);
   else
    fprintf(file_tr, format_value, pvecback[pba->index_bg_H]);
   
   sprintf(buffer, "Hc");
-  if (index_tau==0)
+  if (ppw2->n_steps==1)
    fprintf(file_tr, format_label, buffer, index_print_tr++);
   else
    fprintf(file_tr, format_value, a*pvecback[pba->index_bg_H]);
@@ -10721,7 +11105,7 @@ int perturb2_quadratic_sources_at_tau (
   /* Cubic spline interpolation */
   else if (ppr->quadsources_time_interpolation == cubic_interpolation) {
 
-    class_call(perturb2_quadratic_sources_at_tau_cubic_spline (
+    class_call(perturb2_quadratic_sources_at_tau_spline (
               ppt,
               ppt2,
               tau,            
@@ -10874,7 +11258,7 @@ int perturb2_quadratic_sources_at_tau_linear(
 
 
 
-int perturb2_quadratic_sources_at_tau_cubic_spline (
+int perturb2_quadratic_sources_at_tau_spline (
         struct perturbs * ppt,
         struct perturbs2 * ppt2,
         double tau,
@@ -10906,74 +11290,10 @@ int perturb2_quadratic_sources_at_tau_cubic_spline (
 
 
 /**
-  * Load the line of sight sources from disk for a given k1 value. The sources will be read from the file
-  * given in ppt2->sources_paths[index_k1].
-  *
-  * This function is used in the transfer2.c module.
-  *
-  */
-int perturb2_load_sources_from_disk(
-        struct perturbs2 * ppt2,
-        int index_k1
-        )
-{
- 
-  /* Allocate memory to keep the line-of-sight sources */
-  class_call (perturb2_allocate_k1_level(ppt2, index_k1), ppt2->error_message, ppt2->error_message);
-  
-  /* Open file for reading */
-  class_open (ppt2->sources_files[index_k1], ppt2->sources_paths[index_k1], "rb", ppt2->error_message);
-
-  /* Print some debug */
-  if (ppt2->perturbations2_verbose > 2)
-    printf("     * reading line-of-sight source for index_k1=%d from '%s' ... \n", index_k1, ppt2->sources_paths[index_k1]);
-  
-  for (int index_type = 0; index_type < ppt2->tp2_size; ++index_type) {
-  
-    for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
-
-      int k3_size = ppt2->k3_size[index_k1][index_k2];
-
-        int n_to_read = ppt2->tau_size*k3_size;
-
-        int n_read = fread(
-              ppt2->sources[index_type][index_k1][index_k2],
-              sizeof(double),
-              n_to_read,
-              ppt2->sources_files[index_k1]);
-
-        /* Read a chunk with all the time values for this set of (type,k1,k2,k3) */
-        class_test( n_read != n_to_read,
-          ppt2->error_message,
-          "Could not read in '%s' file, read %d entries but expected %d",
-          ppt2->sources_paths[index_k1], n_read, n_to_read);
-
-        /* Update the counter for the values stored in ppt2->sources */
-        #pragma omp atomic
-        ppt2->count_memorised_sources += n_to_read;
-
-    } // end of for (index_k2)
-    
-  } // end of for (index_type)
-  
-  /* Close file */
-  fclose(ppt2->sources_files[index_k1]);
-  
-  // if (ppt2->perturbations2_verbose > 2)
-  //   printf ("Done.\n");
-
-  return _SUCCESS_; 
-  
-}
-
-
-
-
-
-/**
-  * Save the line of sight sources to disk for a given k1 value. The file were the sources will be saved
-  * is given by ppt2->sources_paths[index_k1].
-  */
+ * Save the second-order line of sight sources to disk for a given k1 value.
+ * 
+ * The sources will be saved to the file in ppt2->sources_paths[index_k1].
+ */
 int perturb2_store_sources_to_disk(
         struct perturbs2 * ppt2,
         int index_k1
@@ -11021,113 +11341,6 @@ int perturb2_store_sources_to_disk(
   return _SUCCESS_; 
   
 }
-  
-  
-  
-
-
-
-/**
-  * Allocate the k1 level of the array ppt2->sources[index_type][index_k1][index_k2][index_tau*k3_size + index_k3.
-  * This function must be called after the functions perturb2_indices_of_perturbs and perturb2_get_k_lists, and
-  * after the ppt2->tau_size field have been filled.
-  *
-  */
-int perturb2_allocate_k1_level(
-     struct perturbs2 * ppt2,
-     int index_k1
-     // int index_m
-     )
-{
-
-  /* Issue an error if ppt2->sources[index_k1] has already been allocated */
-  class_test (ppt2->has_allocated_sources[index_k1] == _TRUE_,
-              ppt2->error_message,
-              "the index_k1=%d level of ppt2->sources is already allocated, stop to prevent error", index_k1);
-
-
-  int index_k2, index_k3, index_type;
-  long int count=0;
-  
-  for (index_type = 0; index_type < ppt2->tp2_size; index_type++) {
-
-    /* Allocate only the level corresponding to the considered 'm' mode */
-    // if (ppt2->corresponding_index_m[index_type] != index_m) continue;
-
-    /* Allocate k2 level.  Note that the size of this level is smaller than ppt2->k_size,
-    and depends on k1.  The reason is that we shall solve the system only for those k2's
-    that are smaller than k1 (our equations are symmetrised wrt to k1<->k2) */
-
-    class_alloc (
-      ppt2->sources[index_type][index_k1],
-      (index_k1+1) * sizeof(double *),
-      ppt2->error_message);
-
-    for (index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
-
-      /* Allocate k3-tau level. Use calloc as we rely on the array to be initialised to zero. */
-      class_calloc (
-        ppt2->sources[index_type][index_k1][index_k2],
-        ppt2->tau_size*ppt2->k3_size[index_k1][index_k2],
-        sizeof(double),
-        ppt2->error_message);
-    
-      #pragma omp atomic
-      ppt2->count_allocated_sources += ppt2->tau_size*ppt2->k3_size[index_k1][index_k2];
-      count += ppt2->tau_size*ppt2->k3_size[index_k1][index_k2];
-
-    } // end of for (index_k2)
-  } // end of for (index_type)
-
-  /* Print some debug information on memory consumption */
-  if (ppt2->perturbations2_verbose > 2)
-    printf(" -> allocated ~ %.3g MB (%ld doubles) for index_k1=%d; the size of ppt2->sources so far is ~ %.3g MB;\n",
-      count*sizeof(double)/1e6, count, index_k1, ppt2->count_allocated_sources*sizeof(double)/1e6);
-
-  /* We succesfully allocated the k1 level of ppt2->sources */
-  ppt2->has_allocated_sources[index_k1] = _TRUE_;
-
-
-  return _SUCCESS_;
-
-}
-
-
-
-
-
-
-
-int perturb2_free_k1_level(
-     struct perturbs2 * ppt2,
-     int index_k1
-     )
-{
-
-  /* Issue an error if ppt2->sources[index_k1] has already been freed */
-  class_test (ppt2->has_allocated_sources[index_k1] == _FALSE_,
-    ppt2->error_message,
-    "the index_k1=%d level of ppt2->sources is already free, stop to prevent error", index_k1);
-
-  int k1_size = ppt2->k_size;
-
-  for (int index_type = 0; index_type < ppt2->tp2_size; index_type++) {
-    for (int index_k2 = 0; index_k2 <= index_k1; index_k2++)
-        free(ppt2->sources[index_type][index_k1][index_k2]);
-  
-    free(ppt2->sources[index_type][index_k1]);
-  
-  } // end of for (index_type)
-
-
-  /* We succesfully freed the k1 level of ppt2->sources */
-  ppt2->has_allocated_sources[index_k1] = _FALSE_;
-
-  return _SUCCESS_;
-
-}
-
-
 
 #undef sources
 
