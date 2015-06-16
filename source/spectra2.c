@@ -205,8 +205,8 @@ int spectra2_init(
   
       	
       	for (int index_k3 = 0; index_k3 < psp2->k_size; ++index_k3) {
-      		if (index_k1 == 16 && index_k2 == 10 && index_tp == 13) {
-      			 
+      		if (index_k1 == 16 && index_k2 == 10 && index_tp == ppt2->index_tp2_M + lm(1,1)) {
+      			 if (index_k3 == 0) printf("k1 = %f k2 = %f \n",psp2->k[index_k1],psp2->k[index_k2]);
   						fprintf(file_sp, format_value, psp2->k[index_k3]);
   
  		 					fprintf(file_sp, format_value, interpolated_sources_in_k[index_tp][index_k3*ppt2->tau_size + 300] );
@@ -321,6 +321,12 @@ int spectra2_interpolate_sources_in_k(
   double h = k_pt[index_k+1] - k_pt[index_k];
   
   int index_k_sp;
+  
+ 	for (index_k_sp = 0; index_k_sp < first_physical_index; ++index_k_sp) {
+    for (index_tau = 0; index_tau < ppt2->tau_size; index_tau++) {
+    	interpolated_sources_in_k[index_k_sp*ppt2->tau_size + index_tau] = 0.;
+    }
+  } // end of for (index_k_tr) 
     
   for (index_k_sp = first_physical_index; index_k_sp <= last_physical_index; ++index_k_sp) {
     
@@ -349,7 +355,11 @@ int spectra2_interpolate_sources_in_k(
     } 
   } // end of for (index_k_tr)
 
-
+	for (index_k_sp = last_physical_index+1; index_k_sp < k_sp_size; ++index_k_sp) {
+    for (index_tau = 0; index_tau < ppt2->tau_size; index_tau++) {
+    	interpolated_sources_in_k[index_k_sp*ppt2->tau_size + index_tau] = 0.;
+    }
+  } // end of for (index_k_tr) 
  
   return _SUCCESS_;
   
