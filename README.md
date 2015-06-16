@@ -34,7 +34,7 @@ Here is a summary of the most relevant properties of SONG:
 
 
 ## DOCUMENTATION
-SONG's source code is extensively documented with more than 10,000 lines of comments. We are also working on a manual which we plan to release by the end of 2015.
+SONG's source code is extensively documented with more than 10,000 lines of comments. The physical and numerical steps are explained in the source (.c) files, while the employed variables are documented in the header (.h) files.  We are also working on a manual which we plan to release by the end of 2015.
 
 The physics, mathematics and numerics of SONG are described extensively in my PhD thesis [[10]], especially in Chapters 5 and 6. For any doubt or enquiry, please email me at <guido.pettinari@gmail.com>.
 
@@ -43,13 +43,19 @@ The physics, mathematics and numerics of SONG are described extensively in my Ph
 To compile and make a test run of SONG, execute the following commands from your terminal:
 
     make song
-    ./song ini/quick_intrinsic.ini ini/quick_intrinsic.pre
+    ./song ini/intrinsic.ini pre/quick_song_run.pre
 
-The first command compiles the code using the instructions contained in the file `makefile`. This can be customised to match the configuration of your system. The main variables are the location of the C compiler (gcc by default) and of the OpenMP library (if you want parallelisation); SONG does not rely on any other external library.
+The first command compiles the code using the instructions contained in the file `makefile`. This can be customised to match the configuration of your system. The main variables are the location of the C compiler (gcc by default, the only compiler SONG has been tested on) and of the OpenMP library (if you want parallelisation); SONG does not rely on any other external library.
 
-The second command executes a test run of SONG using the input files `quick_intrinsic.ini` and `quick_intrinsic.pre`. These are text-only files with a list of "key = value" settings; SONG will read their content and set its internal parameters accordingly.
+The second command executes a test run of SONG using the input files `ini/intrinsic.ini` and `pre/quick_song_run.pre`. These are text-only files with a list of "key = value" settings; SONG will read their content and set its internal parameters accordingly.
 
-Feel free to experiment with the parameter files! For a guide on what each parameter does, please refer to the commented file `params_explanatory.ini`. Use this file as a template for creating your custom input files!
+To make a SONG run that will produce an actual physical result, try with
+
+    ./song ini/intrinsic.ini pre/sn_pol_10percent_lmax2000.pre
+    
+SONG will output to file and to screen the Fisher matrix and signal-to-noise of the intrinsic bispectrum, with a moderate angular resolution, and a precision of about 10% for both temperature and polarisation; the calculation will take about 40 minutes on an 8-core machine.
+
+Feel free to experiment with the parameter files! For example, you can remove from `ini/intrinsic.ini` the E-polarisation to make SONG run much faster. For a guide on what each parameter does, please refer to the (not yet) documented file `explanatory.ini` or to the (yet) documented `ini/intrinsic.ini`. Use these files as templates for creating your custom input files!
 
 
 ## PARALLEL COMPUTING
@@ -74,6 +80,10 @@ The directory structure of SONG is important to learn how the code works:
 
 * The 'test' directory contains executable programs to test the outputs of SONG.
 
+* The 'scripts' directory contains bash, python and gnuplot scripts to run SONG efficiently or to process and plot SONG's results.
+
+* The 'ini' and 'pre' directories contain, respectively, parameter and precision files that can be fed to SONG.
+
 
 ## CONTRIBUTE
 Please feel free to contribute to the development of SONG! You can do so via a pull request using the Github project page: <https://github.com/coccoinomane/song.git>.
@@ -84,7 +94,7 @@ If you do not have a feature in mind, but nonetheless want to contribute to SONG
 
 
 ## CONTACT
-Feel free to send an email to <guido.pettinari@gmail.com> for any enquiry or suggestion. We realise that bispectra and second-order perturbation theory may be a bit confusing, so we are happy to help.
+Feel free to send an email to Guido Pettinari <guido.pettinari@gmail.com> or Christian Fidler <christian.fidler@port.ac.uk> for any enquiry or suggestion. We realise that bispectra and second-order perturbation theory may be a bit confusing, so we are happy to help.
 
 
 [1]: http://camb.info/ "The CAMB Boltzmann code"
