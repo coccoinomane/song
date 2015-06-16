@@ -2170,6 +2170,7 @@ int perturb2_get_k_lists (
  *
  *  TODO: streamline code, using realloc like CLASS.
  */
+
 int perturb2_timesampling_for_sources (
              struct precision * ppr,
              struct precision2 * ppr2,
@@ -2464,122 +2465,46 @@ int perturb2_timesampling_for_sources (
     /* If we are only interested into the scattering sources of the line-of-sight integral, then
     we can stop integrating the  system just after recombination.  In this case, we cut
     the standard time-sampling at some suitable time, which we define as the time when the
-    visibility function is 'ppt2->visibility_max_to_end_ratio' times smaller than its maximum
+    visibility function is 'ppt2->recombination_max_to_end_ratio' times smaller than its maximum
     value. */
-
-    // ==================================================================
-    // =          Recombination only 2nd-order time sampling            =
-    // ==================================================================
-
-    if (ppt2->has_recombination_only == _TRUE_) {
-
-      // ***  Find maximum value of the visibiliy function  ****
-        
-      /* Redshift and conformal time where the visibility function 'g' peaks */
-      double tau_rec;
-      double z_max = pth->z_rec;
-      class_call (background_tau_of_z (pba, z_max, &tau_rec), pba->error_message, ppt2->error_message);
-
-      /* Interpolate background quantities */
-      class_call (background_at_tau(
-                    pba,
-                    tau_rec, 
-                    pba->normal_info, 
-                    pba->inter_normal, 
-                    &dump, 
-                    pvecback),
-        pba->error_message,
-        ppt2->error_message);
-
-
-      /* Interpolate thermodynamics quantities */
-      class_call (thermodynamics_at_z(
-                    pba,
-                    pth,
-                    z_max,
-                    pth->inter_normal,
-                    &dump,
-                    pvecback,
-                    pvecthermo),
-       pth->error_message,
-       ppt2->error_message);
-
-      /* Maximum of the visibility function */
-      double g_max = pvecthermo[pth->index_th_g];
-    
-      /* Value of the visibility function when recombination ends */
-      double g_end = g_max/ppt2->recombination_max_to_end_ratio;
-
-
-      // *** Find time index corresponding to the maximum ***
-
-      int index_tau = 0;
-
-      for (index_tau=0; index_tau < ppt2->tau_size; ++index_tau) {
-
-        /* We want to find a time after recombination, not before */
-        if (ppt2->tau_sampling[index_tau] < tau_rec)
-          continue;
-
-        /* Interpolate background quantities */
-        class_call (background_at_tau(
-                      pba,
-                      ppt2->tau_sampling[index_tau], 
-                      pba->normal_info, 
-                      pba->inter_normal, 
-                      &dump, 
-                      pvecback),
-          pba->error_message,
-          ppt2->error_message);
-
-        double a = pvecback[pba->index_bg_a];
-
-        /* Interpolate thermodynamics quantities */
-        class_call (thermodynamics_at_z(
-                      pba,
-                      pth,
-                      1./a-1.,  /* redshift z=1/a-1 */
-                      pth->inter_normal,
-                      &dump,
-                      pvecback,
-                      pvecthermo),
-          pth->error_message,
-          ppt2->error_message);
-      
-        /* If we reached the time where the visibility function is smaller than g_end, we decide
-          that recombination is over and resize the time-sampling vector accordingly */
-        if (pvecthermo[pth->index_th_g] <= g_end) {
-
-          ppt2->tau_size = index_tau + 1;
-          break;
-        }
-
-      } // end of for (index_tau)
-
-
-      /* Some debug */
-      // printf("z_rec = %g\n", pth->z_rec);
-      // printf("tau_rec = %g\n", tau_rec);
-      // printf("g_max = %g\n", g_max);
-      // printf("g_end = %g\n", g_end);
-
-    } // end of if (ppt2->has_recombination_only==_TRUE_)
-
 
   } // end of if (has_custom_timesampling == _FALSE_)
 
 
 
+  // =================================================================================
+  // =                                 Recombination                                 =
+  // =================================================================================
+
+  /* Find the time when recombination ends, and store the corresponding time index
+  into ppt2->index_tau_end_of_recombination */
+
+  class_call (perturb2_end_of_recombination (
+                ppr,
+                ppr2,
+                pba,
+                pth,
+                ppt,
+                ppt2),
+    ppt2->error_message,
+    ppt2->error_message);
   
 
+  /* If all of the requested line-of-sight sources are located at recombination or
+  earlier, cut the time-sampling vector so that sources at later times are not
+  computed */
+
+  if (ppt2->has_recombination_only == _TRUE_) {
+    ppt2->tau_size = ppt2->index_tau_end_of_recombination;
+  }
 
 
 
-  // ***************              Allocate ppt2->sources         *****************
+  // =======================================================================================
+  // =                               Allocate sources array                                =
+  // =======================================================================================
 
   /* Loop over types, k1, k2, and k3.  For each combination of them, allocate the tau level. */
-
-  int index_type, index_k1, index_k2, index_k3;
 
   if(ppt2->perturbations2_verbose > 2)
     printf(" -> allocating memory for the sources array\n");
@@ -2589,7 +2514,7 @@ int perturb2_timesampling_for_sources (
   ppt2->count_allocated_sources = 0;
   
   /* Allocate k1 level.  The further levels (k2, k3 and time) will be allocated when needed */
-  for (index_type = 0; index_type < ppt2->tp2_size; index_type++)
+  for (int index_type = 0; index_type < ppt2->tp2_size; index_type++)
     class_alloc (ppt2->sources[index_type], ppt2->k_size * sizeof(double **), ppt2->error_message);
   
   /* Allocate and initialize the logical array that keeps track of the memory state of ppt2->sources */
@@ -2638,14 +2563,15 @@ int perturb2_timesampling_for_sources (
     // ******      Determine size of ppt->tau_sampling_quadsources     *******
 
     /* Determine how many sample points we need for the quadratic sources, based on the parameter
-      ppr->perturb_sampling_stepsize_quadsources. */
+    ppr->perturb_sampling_stepsize_quadsources. */
 
     /* We start sampling the quadratic sources at the time when we start to evolve the second-order
-      system.  */
+    system.  */
     class_test (ppt2->tau_start_evolution == 0,
       ppt2->error_message,
-      "a variable starting integration time is not supported yet.  To implement it, you should first\
-determine a starting integration time for the first-order system, maybe by using the bisection technique applied to k_min");
+      "a variable starting integration time is not supported yet. To implement it,\
+you should first determine a starting integration time for the first-order system,\
+maybe by using the bisection technique applied to k_min");
 
     double tau_ini_quadsources = MIN (ppt2->tau_sampling[0], ppt2->tau_start_evolution);
   
@@ -2868,6 +2794,136 @@ determine a starting integration time for the first-order system, maybe by using
   
 }
 
+
+/**
+ * Find the conformal time where recombination is effectively over, based on 
+ * the parameter ppt2->recombination_max_to_end_ratio.
+ * 
+ * In order to match some analytical limits, or for debug purposes, it is useful
+ * to constrain some physical effects to the time of recombination. For example,
+ * we might want to consider the integrated Sachs-Wolfe effect only up to
+ * the end recombination (early ISW effect), in order to separate it from the
+ * contribution from dark energy (late ISW effect). By doing so, we obtain a 
+ * better match with the analytical approximation for the squeezed intrinsic
+ * bispectrum (see http://arxiv.org/abs/1109.1822, http://arxiv.org/abs/1204.5018,
+ * http://arxiv.org/abs/1109.2043). 
+ *
+ * Note however that separating early and late-time effects might bring in some
+ * unphysical effects, such as gauge dependences, especially at second order.
+ *
+ * We set the end of recombination as the time where the visibility function is
+ * ppt2->recombination_max_to_end_ratio times smaller than its maximum value,
+ * and store the corresponding index in ppt2->tau_sampling in the field
+ * ppt2->index_tau_end_of_recombination.
+ */
+int perturb2_end_of_recombination (
+             struct precision * ppr,
+             struct precision2 * ppr2,
+             struct background * pba,
+             struct thermo * pth,
+             struct perturbs * ppt,
+             struct perturbs2 * ppt2
+             )
+{
+
+  /* Temporary arrays used to store background and thermodynamics quantities */
+  double *pvecback, *pvecthermo;
+  class_alloc (pvecback, pba->bg_size*sizeof(double), ppt2->error_message);
+  class_alloc (pvecthermo, pth->th_size*sizeof(double), ppt2->error_message);
+  int dump;
+
+  /* Extract from the thermodynamics module the redshift and conformal time where
+  the visibility function 'g' peaks */
+  double tau_rec;
+  double z_max = pth->z_rec;
+  class_call (background_tau_of_z (pba, z_max, &tau_rec),
+    pba->error_message, ppt2->error_message);
+
+  /* Interpolate background quantities at z_max */
+  class_call (background_at_tau(
+                pba,
+                tau_rec, 
+                pba->normal_info, 
+                pba->inter_normal, 
+                &dump, 
+                pvecback),
+    pba->error_message,
+    ppt2->error_message);
+
+  /* Interpolate thermodynamics quantities at z_max */
+  class_call (thermodynamics_at_z(
+                pba,
+                pth,
+                z_max,
+                pth->inter_normal,
+                &dump,
+                pvecback,
+                pvecthermo),
+   pth->error_message,
+   ppt2->error_message);
+
+  /* Maximum of the visibility function */
+  double g_max = pvecthermo[pth->index_th_g];
+
+  /* Value of the visibility function when recombination ends */
+  double g_end = g_max/ppt2->recombination_max_to_end_ratio;
+
+
+  /* Now, find the time index in the sources sampling corresponding to
+  the peak of recombination by looping over ppt2->tau_sampling */
+  for (int index_tau=0; index_tau < ppt2->tau_size; ++index_tau) {
+
+    /* We want to find a time after recombination, not before */
+    if (ppt2->tau_sampling[index_tau] < tau_rec)
+      continue;
+
+    /* Interpolate background quantities */
+    class_call (background_at_tau(
+                  pba,
+                  ppt2->tau_sampling[index_tau], 
+                  pba->normal_info, 
+                  pba->inter_normal, 
+                  &dump, 
+                  pvecback),
+      pba->error_message,
+      ppt2->error_message);
+
+    double a = pvecback[pba->index_bg_a];
+
+    /* Interpolate thermodynamics quantities */
+    class_call (thermodynamics_at_z(
+                  pba,
+                  pth,
+                  1./a-1.,
+                  pth->inter_normal,
+                  &dump,
+                  pvecback,
+                  pvecthermo),
+      pth->error_message,
+      ppt2->error_message);
+  
+    /* If we reached the time where the visibility function is smaller than g_end, then
+    recombination is over */
+    if (pvecthermo[pth->index_th_g] <= g_end) {
+
+      ppt2->index_tau_end_of_recombination = index_tau + 1;
+      break;
+    }
+
+  } // end of for (index_tau)
+  
+  free (pvecback);
+  free (pvecthermo);
+
+  /* Debug */
+  // printf("z_rec = %g\n", pth->z_rec);
+  // printf("tau_rec = %g\n", tau_rec);
+  // printf("g_max = %g\n", g_max);
+  // printf("g_end = %g\n", g_end);
+ 
+  return _SUCCESS_; 
+  
+}
 
 
 /**
@@ -5267,7 +5323,7 @@ int perturb2_solve (
   double tau;
   
   /* We automatically determine the starting integration time for this set of wavemodes only if the user
-    specified 'ppt2->tau_start_evolution = 0'. */
+  specified 'ppt2->tau_start_evolution = 0'. */
   /* TODO: fix this! right now we always use a custom tau_start_evolution */
   if (ppt2->tau_start_evolution == 0) {
   
@@ -5278,16 +5334,16 @@ int perturb2_solve (
     int index_tau;
 
     /* Using bisection, compute minimum value of tau for which this wavenumber is integrated.
-      The actual starting time of integration will be the minimum between the number we find
-      here and ppt2->tau_sampling[0]. */
+    The actual starting time of integration will be the minimum between the number we find
+    here and ppt2->tau_sampling[0]. */
 
     /* Initial time will be at least the first time in the background table */
     tau_lower = pba->tau_table[0];
 
     /* Test that tau_lower is early enough to satisfy the conditions imposed by
-      ppr2->start_small_k_at_tau_c_over_tau_h_song and ppr2->start_large_k_at_tau_h_over_tau_k.
-      To use CLASS1 words: check that this initial time is indeed OK given imposed conditions on kappa'
-      and on k/aH. */
+    ppr2->start_small_k_at_tau_c_over_tau_h_song and ppr2->start_large_k_at_tau_h_over_tau_k.
+    To use CLASS1 words: check that this initial time is indeed OK given imposed conditions on kappa'
+    and on k/aH. */
 
     class_call (background_at_tau(pba,
                   tau_lower, 
@@ -5312,29 +5368,33 @@ int perturb2_solve (
     /* Variables that simplify the notation */
     double aH = ppw2->pvecback[pba->index_bg_a]*ppw2->pvecback[pba->index_bg_H];
     double tau_c_over_tau_h = aH/ppw2->pvecthermo[pth->index_th_dkappa];
-    double tau_h_over_tau_k = MAX(k1,k2)/aH;
+    double tau_h_over_tau_k = MAX(MAX(k1,k2),k)/aH;
   
     class_test (tau_c_over_tau_h > ppr2->start_small_k_at_tau_c_over_tau_h_song,
-                ppt2->error_message,
-                "your choice of initial time for integrating wavenumbers at 2nd-order is inappropriate: it corresponds to a time before that at which the background has been integrated. You should increase 'start_small_k_at_tau_c_over_tau_h_song' up to at least %g, or decrease 'a_ini_over_a_today_default'\n", 
-                  tau_c_over_tau_h);
+      ppt2->error_message,
+      "your choice of initial time for integrating wavenumbers at 2nd-order is\
+inappropriate: it corresponds to a time before that at which the background has\
+been integrated. You should increase 'start_small_k_at_tau_c_over_tau_h_song' up\
+to at least %g, or decrease 'a_ini_over_a_today_default'\n", 
+      tau_c_over_tau_h);
   
     class_test (tau_h_over_tau_k > ppr2->start_large_k_at_tau_h_over_tau_k_song,
-                ppt2->error_message,
-                "your choice of initial time for integrating wavenumbers at 2nd-order is inappropriate: it corresponds to a time before that at which the background has been integrated. You should increase 'start_large_k_at_tau_h_over_tau_k_song' up to at least %g, or decrease 'a_ini_over_a_today_default'\n",
-                  ppt2->k[ppt2->k_size-1]/aH);
- 
+      ppt2->error_message,
+      "your choice of initial time for integrating wavenumbers at 2nd-order is\
+inappropriate: it corresponds to a time before that at which the background has\
+been integrated. You should increase 'start_large_k_at_tau_h_over_tau_k_song' up\
+to at least %g, or decrease 'a_ini_over_a_today_default'\n",
+      ppt2->k[ppt2->k_size-1]/aH);
+
     
     /* We have to start integrating the system earlier with respect to when we need the sources */
     tau_upper = ppt2->tau_sampling[0];
     tau_mid = 0.5*(tau_lower + tau_upper);
   
     /* Print the result for the bisection for these wavemodes (to be paired with
-      the debug line soon out of this cycle */
+    the debug line soon out of this cycle */
     // printf("*** Bisection for k1 = %8.2g,  k2 = %8.2g,  k3 = %8.2g:   ", k1, k2, k);
     // printf("tau_lower = %8.2g, tau_upper = %8.2g, ", tau_lower, tau_upper);
-
-
 
 
     // ==========================================
@@ -8786,6 +8846,7 @@ int perturb2_quadratic_sources (
  * - errors are not written as usual in ppt2->error_message, but in a generic
  *   error_message passed in the list of arguments.
  */
+
 int perturb2_sources (
       double tau, /**< current time */
       double * y, /**< values of evolved perturbations at tau (y[index_pt2_XXX]) */

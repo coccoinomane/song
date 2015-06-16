@@ -151,28 +151,26 @@ struct perturbs2
   // =                                Differential system                                  =
   // =======================================================================================
   
+  /* Option flags for the differential system (initialized in the input module) */
+  short has_polarization2;                  /**< Shall we evolve the photon polarization hierarchy at second-order? */  
+  short has_quadratic_sources;              /**< Shall we include the quadratic sources in the 2nd-order system at all? */  
+  short has_quadratic_liouville;            /**< Shall we include the quadratic sources in the Liouville operator? */      
+  short has_quadratic_collision;            /**< Shall we include the quadratic sources in the photon-baryon collision term? */      
+  short has_perfect_baryons;                /**< Shall we treat baryons as a pressureless perfect fluid? */
+  short has_perfect_cdm;                    /**< Shall we treat cold dark matter as a pressureless perfect fluid? */
 
-  // *** Option flags for the differential system (initialized in the input module)
-  short has_polarization2;                  /* Shall we evolve the photon polarization hierarchy at second-order? */  
-  short has_quadratic_sources;              /* Shall we include the quadratic sources in the 2nd-order system at all? */  
-  short has_quadratic_liouville;            /* Shall we include the quadratic sources in the Liouville operator? */      
-  short has_quadratic_collision;            /* Shall we include the quadratic sources in the photon-baryon collision term? */      
-  short has_perfect_baryons;                /* Shall we treat baryons as a pressureless perfect fluid? */
-  short has_perfect_cdm;                    /* Shall we treat cold dark matter as a pressureless perfect fluid? */
+  short has_perturbed_recombination_stz;    /**< Shall we use the perturbed fraction of free electrons? */
+  int perturbed_recombination_use_approx;   /**< Shall we use the approximation in eq. 3.23 of Senatore et al. 2009? */
 
-  short has_perturbed_recombination_stz;    /* Shall we use the perturbed fraction of free electrons? */
-  int perturbed_recombination_use_approx;   /* Shall we use the approximation in eq. 3.23 of Senatore et al. 2009? */
-
-
-  /* Is it ok to evolve the system only up to recombination time?  This is _TRUE_ only if both
-  'has_lensing_in_los' and 'has_metric_in_los' are _FALSE_, i.e. if the only contribution to the
-  line-of-sight integral comes from visibility function terms.  */
+  /**< If true, all of the requested line-of-sight sources are located at recombination or
+  earlier, so that we can avoid computing them all the way to today. This is a major speed-up
+  that affects also the line-of-sight integration in the transfer2.c module */
   int has_recombination_only;
 
-  /* Variable that controls whether to use the longitudinal or Poisson equation to compute
-  the derivative of the curvature potential (phi_prime) in Newtonian gauge. */
+  /**< Which equation should we use to evolve the curvature potential phi in Newtonian gauge?
+  Current options are poisson for the time-time Einstein equation and longitudinal for the
+  time-space Einstein equation */
   enum phi_prime_equation phi_prime_eq;
-
 
   /* In order to compute the bispectrum integral, it is useful to rescale the line of sight sources
   by a 1/sin(theta_1)^m factor, where theta_1 is the angle between \vec{k1} and \vec{k3}. This
@@ -438,10 +436,12 @@ struct perturbs2
   // =                                 Time sampling                                   =
   // ===================================================================================
 
+  double * tau_sampling; /**< array with the time values where the line-of-sight sources will
+                              be computed */
+  int tau_size; /**< number of entries in tau_sampling */
 
-  /* Vector that contains the time values where the line-of-sight sources will be computed */
-  double * tau_sampling;
-  int tau_size;
+  int index_tau_end_of_recombination; /**< index in tau_sampling that marks the end of
+                                        recombination */
 
   /* Time at which the second-order system will start being evolved */
   double tau_start_evolution;
@@ -996,7 +996,15 @@ struct perturb2_parameters_and_workspace {
            struct perturbs * ppt,
            struct perturbs2 * ppt2
            );
-           
+
+    int perturb2_end_of_recombination (
+          struct precision * ppr,
+          struct precision2 * ppr2,
+          struct background * pba,
+          struct thermo * pth,
+          struct perturbs * ppt,
+          struct perturbs2 * ppt2
+          );
     
     int perturb2_get_lm_lists(
          struct precision * ppr,
