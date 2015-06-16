@@ -2492,7 +2492,7 @@ int perturb2_timesampling_for_sources (
 
   /* If all of the requested line-of-sight sources are located at recombination or
   earlier, cut the time-sampling vector so that sources at later times are not
-  computed */
+  computed. */
 
   if (ppt2->has_recombination_only == _TRUE_) {
     ppt2->tau_size = ppt2->index_tau_end_of_recombination;
@@ -2911,6 +2911,11 @@ int perturb2_end_of_recombination (
     }
 
   } // end of for (index_tau)
+  
+  if (ppt2->perturbations2_verbose > 1)
+    printf ("     * recombination ends at tau=%g, index_tau=%d\n",
+      ppt2->tau_sampling[ppt2->index_tau_end_of_recombination-1],
+      ppt2->index_tau_end_of_recombination-1);
   
   free (pvecback);
   free (pvecthermo);
@@ -8888,6 +8893,29 @@ int perturb2_sources (
 
 
   // ======================================================================================
+  // =                                 Active effects                                     =
+  // ======================================================================================
+
+  /* By default we turn all optional effects off */
+  int switch_sw=0;
+  int switch_isw=0;
+  
+  if (ppt2->has_sw == _TRUE_) {
+    switch_sw = 1;
+  }
+  
+  if (ppt2->has_isw == _TRUE_) {
+
+    switch_isw = 1;
+  
+    /* If the user asked for only the early ISW effect, then turn it off when after
+    recombination */
+    if ((ppt2->only_early_isw == _TRUE_) && (index_tau >= ppt2->index_tau_end_of_recombination))
+      switch_isw = 0;    
+  }
+
+
+  // ======================================================================================
   // =                          Interpolate needed quantities                             =
   // ======================================================================================
   
@@ -9021,7 +9049,7 @@ int perturb2_sources (
     phi_prime_1 = pvec_sources1[ppt->index_qs_phi_prime];
     phi_prime_2 = pvec_sources2[ppt->index_qs_phi_prime];
 
-    if (ppt2->has_isw == _TRUE_) {
+    if (switch_isw == 1) {
       psi_prime_1 = pvec_sources1[ppt->index_qs_psi_prime];
       psi_prime_2 = pvec_sources2[ppt->index_qs_psi_prime];
     }
@@ -9035,7 +9063,8 @@ int perturb2_sources (
       phi_prime = pvecmetric[ppw2->index_mt2_phi_prime];
             
       /* Compute psi_prime, needed to add the ISW effect */
-      if (ppt2->has_isw == _TRUE_)  
+      if (switch_isw == 1) {
+
         class_call (perturb2_compute_psi_prime (
                      ppr,
                      ppr2,
@@ -9050,6 +9079,7 @@ int perturb2_sources (
                      ppw2),
           ppt2->error_message,
           error_message);
+      }
 
       /* Exponential potentials, which appear in the metric as
         g_00 = -e^(2*psi_exp)
@@ -9067,7 +9097,7 @@ int perturb2_sources (
       phi_exp = phi + 2*phi_1*phi_2;
       psi_exp = psi - 2*psi_1*psi_2;
       phi_exp_prime = phi_prime + 2*(phi_1*phi_prime_2 + phi_prime_1*phi_2);
-      if (ppt2->has_isw == _TRUE_)
+      if (switch_isw == 1)
         psi_exp_prime = psi_prime - 2*(psi_1*psi_prime_2 + psi_prime_1*psi_2);
       
       /* Should we use the linear potentials or the exponential ones? */
@@ -9075,7 +9105,7 @@ int perturb2_sources (
         phi = phi_exp;
         psi = psi_exp;
         phi_prime = phi_exp_prime;
-        if (ppt2->has_isw == _TRUE_)
+        if (switch_isw == 1)
           psi_prime = psi_exp_prime;
       }
       
@@ -9168,9 +9198,8 @@ int perturb2_sources (
     //   fprintf (stderr, "%12.7g %12.7g %12.7g\n", ppt2->tau_sampling[index_tau], delta_e_1, delta_e_2);
   
   } // end of if(has_perturbed_recombination_stz)
-   
-  
-  
+
+     
   
   // =======================================================================================
   // =                                Build the LOS sources                                =
@@ -9261,12 +9290,8 @@ int perturb2_sources (
           /* SW and ISW effects, coming from the monopole term 4*phi_prime and from the integration
           by parts of the 4*k*psi term in the dipole */
           else {
-            
-            if (ppt2->has_sw == _TRUE_)
-              source += 4 * kappa_dot * psi;
-            
-            if (ppt2->has_isw == _TRUE_)
-              source += 4 * (phi_prime + psi_prime);
+            source += switch_sw * (4 * kappa_dot * psi);
+            source += switch_isw * (4 * (phi_prime + psi_prime));
           }
 
           /* Quadratic metric contribution from the Liouville operator. The monopole
@@ -9292,8 +9317,8 @@ int perturb2_sources (
             if (m == 0) source += 4 * k * psi;
             if (m == 1) source += - 4 * omega_m1_prime;
           }
-          else if (ppt2->has_isw == _TRUE_)
-            if (m == 1) source += - 4 * omega_m1_prime;
+          else
+            if (m == 1) source += switch_isw * (- 4 * omega_m1_prime);
 
           /* Quadratic metric contribution from the Liouville operator  */
           if (ppt2->has_quad_metric_in_los == _TRUE_) {
@@ -9319,8 +9344,8 @@ int perturb2_sources (
           /* Tensor metric contribution */
           if (ppt2->has_metric_in_los == _TRUE_) {
             if (m == 2) source += 4 * gamma_m2_prime;
-          else if (ppt2->has_isw == _TRUE_)
-            if (m == 2) source += 4 * gamma_m2_prime;
+          else
+            if (m == 2) source += switch_isw * (4 * gamma_m2_prime);
           }
 
         } // end of quadrupole sources
