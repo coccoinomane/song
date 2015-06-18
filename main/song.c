@@ -110,6 +110,8 @@ int main(int argc, char **argv) {
   }
   
   /* Compute the power spectra */
+  
+  
   if (spectra2_init(&pm,&pr,&pr2,&ba,&th,&pt,&pt2,&sp2) == _FAILURE_) {
     printf("\n\nError in primordial_init \n=>%s\n",pm.error_message);
     return _FAILURE_;

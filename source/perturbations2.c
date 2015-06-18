@@ -5326,6 +5326,7 @@ int perturb2_solve (
 
   // *** Should we create debug files for this particular (k1,k2,k3)?
   ppw2->print_function = NULL;
+  
   if ((ppt2->has_debug_files == _TRUE_)
      && (index_k1 == ppt2->index_k1_debug)
      && (index_k2 == ppt2->index_k2_debug)
@@ -7094,8 +7095,8 @@ int perturb2_derivs (
       The quadsources contain the quadratic part and the generation 
       from photon anisotropic stress*/
       
-      dmag(1,m) = -2. * Hc * mag(1,m) + k
-      	* pvecback[pba->index_bg_rho_g] /*stupid trick we are computing noise here*/
+      dmag(1,m) = -2. * Hc * mag(1,m) + 0.*k
+      	* pvecback[pba->index_bg_rho_g] 
       	*(I(1,m) -  four_thirds * b(1,1,m))/4. /* I(3,m)*/; /*the cancelation is not really good*/
       	/*this is not the fluid limit metric velocity add quadsources!*/
       	}
@@ -8375,16 +8376,24 @@ int perturb2_quadratic_sources (
  				for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
           int m = ppt2->m[index_m];
           	dmag_qs2(1,m) = k *   pvecback[pba->index_bg_rho_g] * ( 0.
-          			+( I_1(0,0) +phi_1 - psi_1) * ( I_2(1,m)/4. + k2_m[m+1] * v_b_2)
-          				+( I_2(0,0) +phi_2 - psi_2) * ( I_1(1,m)/4. + k1_m[m+1] * v_b_1)
-          				- I_1(0,0)* I_2(1,m)/4. + delta_b_1 * (-k2_m[m+1]) * v_b_2
+          			
+          			//slip
+          			+( I_1(0,0) +phi_1 - psi_1) * ( I_2(1,m)/4. - (-k2_m[m+1] * v_b_2))
+          				+( I_2(0,0) +phi_2 - psi_2) * ( I_1(1,m)/4. - (-k1_m[m+1] * v_b_1))
+          				
+          				// contribution from second order slip
+          			/*	- I_1(0,0)* I_2(1,m)/4. + delta_b_1 * (-k2_m[m+1]) * v_b_2
           				- I_2(0,0)* I_1(1,m)/4.+ delta_b_2 * (-k1_m[m+1]) * v_b_1
+          				*/
+          				// anisotropic stree
+          				/*
           				- sqrt((2.-m)*(3.-m)/2.) *(I_1(2,m-1) * k2_m[1+1] * v_b_2)
           				+ sqrt(4.-m*m) *(I_1(2,m) * k2_m[1] * v_b_2)
         					- sqrt((2.+m)*(3.+m)/2.) *(I_1(2,m+1) * k2_m[1-1] * v_b_2)
         					- sqrt((2.-m)*(3.-m)/2.) *(I_2(2,m-1) * k1_m[1+1] * v_b_1)
           				+ sqrt(4.-m*m) *(I_2(2,m) * k1_m[1] * v_b_1)
         					- sqrt((2.+m)*(3.+m)/2.) *(I_2(2,m+1) * k1_m[1-1] * v_b_1)
+        					*/
           	);
           
      	 }
@@ -10334,7 +10343,7 @@ int perturb2_save_early_transfers (
       error_message);
   }
   
-  
+ 
   // =======================================================================================
   // =                        Compute Newtonian Gauge constraints                          =
   // =======================================================================================
@@ -10922,19 +10931,21 @@ int perturb2_save_early_transfers (
   	}
   	if (ppr2->compute_m[1] == _TRUE_) {
   		if (index_tau==0) fprintf(file_tr, format_label, "dipsource", index_print_tr++);
-  		else fprintf(file_tr, format_value, kappa_dot */*pvecback[pba->index_bg_rho_g]*/
-  		 ( I(1,1)*0.25 - delta_g_1*(-k2_m[1+1]*v_g_2) - delta_g_2*(-k1_m[1+1]*v_g_1)
-  		 - (b(1,1,1)/3. - delta_b_1*(-k2_m[1+1]*v_b_2) - delta_b_2*(-k1_m[1+1]*v_b_1)) ));
+  		else fprintf(file_tr, format_value, 
+  		/* ( I(1,1)*0.25 - delta_g_1*(-k2_m[1+1]*v_g_2) - delta_g_2*(-k1_m[1+1]*v_g_1)
+  		 - (b(1,1,1)/3. - delta_b_1*(-k2_m[1+1]*v_b_2) - delta_b_2*(-k1_m[1+1]*v_b_1)) )*/
+  		 (-k1_m[1+1])*v_g_1 - (-k1_m[1+1])*v_b_1
+  		 );
   	}
   	
   	if (ppr2->compute_m[1] == _TRUE_) {
-  		if (index_tau==0) fprintf(file_tr, format_label, "quad", index_print_tr++);
-  		else fprintf(file_tr, format_value, kappa_dot /*pvecback[pba->index_bg_rho_g]*/ *I(2,1));
+  		if (index_tau==0) fprintf(file_tr, format_label, "baryon velocity", index_print_tr++);
+  		else fprintf(file_tr, format_value,  	(-k1_m[1+1])*v_b_1);
   	}
   	
   	if (ppr2->compute_m[1] == _TRUE_) {
-  		if (index_tau==0) fprintf(file_tr, format_label, "oct", index_print_tr++);
-  		else fprintf(file_tr, format_value, kappa_dot /*pvecback[pba->index_bg_rho_g]*/ *(I(3,1) ) );
+  		if (index_tau==0) fprintf(file_tr, format_label, "qudrupole", index_print_tr++);
+  		else fprintf(file_tr, format_value, 1.  );
   	}
   }
   

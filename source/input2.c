@@ -781,12 +781,12 @@ int input2_init (
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
     ppt2->has_debug_files = _TRUE_;
 
-  class_call(parser_read_string(pfc,"spectra_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);    
-  if ((flag1 == _TRUE_) && (string1 != NULL))
-    strcpy(psp2->spectra_filename, string1);
-  class_open(psp2->spectra_file,psp2->spectra_filename,"w",errmsg);
-
   if (ppt2->has_debug_files == _TRUE_) {
+  
+    class_call(parser_read_string(pfc,"spectra_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);    
+    if ((flag1 == _TRUE_) && (string1 != NULL))
+      strcpy(psp2->spectra_filename, string1);
+    class_open(psp2->spectra_file,psp2->spectra_filename,"w",errmsg);		
 
     class_call(parser_read_string(pfc,"transfers_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);  
     if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_))

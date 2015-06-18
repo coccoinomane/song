@@ -20,6 +20,9 @@ struct spectra2 {
   /* For a given (k1,k2), index of the first value of k3 that satisfies the triangular condition. All
   entries must be equal zero when no extrapolation is used */
   int ** k_physical_start_k1k2;
+	int ** k_true_physical_start_k1k2;
+	
+	// physical start is based on ppt2 k sampling, true physical start is based on the triangular condition and usually contains a bit more based on the k smapling. 
 
   /* For a given (k1,k2), number of k3 values that satisfy the triangular condition */
   int ** k_physical_size_k1k2;

@@ -104,20 +104,53 @@ int spectra2_init(
   
   // conformal time
   int index_sp = 1;
+	
+	// Print time 
+	
 	fprintf(file_sp, format_label, "tau",index_sp);
+	index_sp++;
   
+  fprintf(file_sp, format_label, "a", index_sp);
   index_sp++;
-  fprintf(file_sp, format_label, "magnet",index_sp);
+  
+  fprintf(file_sp, format_label, "Y",index_sp);		
   index_sp++;
+  	
+  for (int index_k3 = 0; index_k3 < psp2->k_size; ++index_k3) { 
+  		sprintf(buffer, "magnet k=%f", psp2->k[index_k3] );
+ 			fprintf(file_sp, format_label, buffer,index_sp );
+ 			index_sp++;		
+ 		}
   
   fprintf(file_sp, "\n");
+  
+  
+  //Print k 
+  /*
+  fprintf(file_sp, format_label, "k",index_sp);
+	index_sp++;
 
+	for (int index_tau = 0; index_tau < ppt2->tau_size; ++index_tau) { 
+  		sprintf(buffer, "magnet tau=%f", ppt2->tau_sampling[index_tau] );
+ 			fprintf(file_sp, format_label, buffer,index_sp );
+ 			index_sp++;		
+ 		} 
+ 				
+ 		fprintf(file_sp, "\n");
+	*/
+	
   /* Four loops over k1, k2, transfer type follow */
   double step_k1, step_k2;
   for (int index_k1 = 0; index_k1 < psp2->k_size; ++index_k1) {
-		if (psp2->spectra2_verbose > 1)
+		if (psp2->spectra2_verbose > 0)
       printf ("     * computing integral for index_k1=%d of %d, k1=%g\n",
         index_k1, psp2->k_size, psp2->k[index_k1]);
+        
+        
+        if ((ppr2->load_sources_from_disk == _TRUE_) || (ppr2->store_sources_to_disk == _TRUE_))
+      		class_call(perturb2_load_sources_from_disk(ppt2, index_k1),
+          	ppt2->error_message,
+          	psp2->error_message);
         
         if (index_k1 == 0) step_k1 = (psp2->k[1] - psp2->k[0])/2.;
         else if (index_k1 == psp2->k_size -1) step_k1 = (psp2->k[psp2->k_size-1] - psp2->k[psp2->k_size -2])/2.;
@@ -205,18 +238,44 @@ int spectra2_init(
   
       	
       	for (int index_k3 = 0; index_k3 < psp2->k_size; ++index_k3) {
-      		if (index_k1 == 16 && index_k2 == 10 && index_tp == ppt2->index_tp2_M + lm(1,1)) {
-      			 if (index_k3 == 0) printf("k1 = %f k2 = %f \n",psp2->k[index_k1],psp2->k[index_k2]);
-  						fprintf(file_sp, format_value, psp2->k[index_k3]);
-  
- 		 					fprintf(file_sp, format_value, interpolated_sources_in_k[index_tp][index_k3*ppt2->tau_size + 300] );
-  	
-  						fprintf(file_sp, "\n");
-						}
-					
+      		
+      		// find the correct stepsize for k2 based on the triangular inequality //
+      		double triangular_step_k2;
+      		if (psp2->k[index_k1] < psp2->k[index_k3] /2.) {triangular_step_k2 = 0.;}
+      		else if (psp2->k[index_k1] < psp2->k[index_k3]) {
+      		// This region k2 starts from k - k1
+      			// is k_2 next to the boundary? This tests the boundary defined by ppt2 k3 range, but that is very close to the real boundary. Outside of it the transfer function is not computed and set to zero. To improve one has to extrapolate (FLAT?) and use the actual boundary k-k1 here. 
+      			if (index_k2 < psp2->k_true_physical_start_k1k2[index_k3][index_k1] ) {
+      				triangular_step_k2 = 0.;
+      			} 
+      			else if (index_k2 == psp2->k_true_physical_start_k1k2[index_k3][index_k1]) {
+      				if (index_k2 == index_k1) {
+      					triangular_step_k2 = 2.*psp2->k[index_k1] - psp2->k[index_k3]; 
+      				}
+      				else {
+      					triangular_step_k2 = (psp2->k[index_k2+1] - psp2->k[index_k2])/2. + psp2->k[index_k2] - (psp2->k[index_k3]- psp2->k[index_k1]);
+      				}
+      			}
+      			else triangular_step_k2 = step_k2;
+      		}
+      		else {
+      		// This region starts from k1 - k 
+      			if (index_k2 < psp2->k_true_physical_start_k1k2[index_k1][index_k3] ) {
+      				triangular_step_k2 = 0.;
+      			} 
+      		  else if (index_k2 == psp2->k_true_physical_start_k1k2[index_k1][index_k3]) {
+      				if (index_k2 == index_k1) {
+      					triangular_step_k2 = psp2->k[index_k3];
+      				}
+      				else {
+      					triangular_step_k2 = (psp2->k[index_k2+1]-psp2->k[index_k2])/2. + psp2->k[index_k2] -psp2->k[index_k1] + psp2->k[index_k3];
+      				}
+      			}
+      			else triangular_step_k2 = step_k2;
+      		}					
 					for (int index_tau = 0; index_tau < ppt2->tau_size; ++index_tau) {
 						psp2->spectra[index_tp][index_k3*ppt2->tau_size + index_tau] += 
-						4./2./_PI_/2./_PI_/2./_PI_ *k1*k2/psp2->k[index_k3]*step_k1*step_k2*spectra_k1*spectra_k2*
+						4./2./_PI_/2./_PI_/2./_PI_ *k1*k2/psp2->k[index_k3]*step_k1*triangular_step_k2*spectra_k1*spectra_k2*
 						interpolated_sources_in_k[index_tp][index_k3*ppt2->tau_size + index_tau]*interpolated_sources_in_k[index_tp][index_k3*ppt2->tau_size + index_tau];
 					} 
 		      
@@ -234,7 +293,9 @@ int spectra2_init(
 
     } // end of for(index_k2)
 
-    
+   
+    class_call (perturb2_free_k1_level (ppt2, index_k1), ppt2->error_message, ppt2->error_message);
+      	
 
     
   } // end of for(index_k1)
@@ -242,12 +303,70 @@ int spectra2_init(
 	free (interpolated_sources_in_k);
   free(sources_k_spline);
   
-  
  
+
+//	for (int index_k3 = 0; index_k3 < psp2->k_size; ++index_k3) {     			
+ // 	fprintf(file_sp, format_value, psp2->k[index_k3]);
+ //		fprintf(file_sp, format_value, psp2->spectra[ppt2->index_tp2_M + lm(1,1)][index_k3*ppt2->tau_size + 300] );	
+ // 	fprintf(file_sp, "\n");
+//	}
+	int last_index = 0;
+
+	double *pvecback;
+  class_alloc (pvecback, pba->bg_size*sizeof(double), psp2->error_message);
+
+ // print time
+
+	for (int index_tau = 0; index_tau < ppt2->tau_size; ++index_tau) { 
+	
+	class_call (background_at_tau(
+                pba,
+                ppt2->tau_sampling[index_tau],
+                pba->long_info, 
+                pba->inter_normal, 
+                &last_index,
+                pvecback),
+    pba->error_message,
+    psp2->error_message);
   
+ 	 	double a = pvecback[pba->index_bg_a];
+ 	 	double H = pvecback[pba->index_bg_H];
+ 	 	double Hc = pvecback[pba->index_bg_H]*a;
+ 	 	double Y = a/pba->a_eq;  
+	
+	    			
+  	fprintf(file_sp, format_value, ppt2->tau_sampling[index_tau]);
+  	
+  	fprintf(file_sp, format_value, a);
+  	
+  	fprintf(file_sp, format_value, Y);
+  	
+  	for (int index_k3 = 0; index_k3 < psp2->k_size; ++index_k3) { 
+  		
+ 			fprintf(file_sp, format_value, psp2->spectra[ppt2->index_tp2_M + lm(1,1)][index_k3*ppt2->tau_size + index_tau] );	
+ 			
+ 		}
+  	fprintf(file_sp, "\n");
+	}
   
+  // Print k 
+  /*
+  for (int index_k3 = 0; index_k3 < psp2->k_size; ++index_k3) { 
+
+	    			
+  	fprintf(file_sp, format_value, psp2->k[index_k3]);
+  	
+  	for (int index_tau = 0; index_tau < ppt2->tau_size; ++index_tau) { 
+  		
+ 			fprintf(file_sp, format_value, psp2->spectra[ppt2->index_tp2_M + lm(1,1)][index_k3*ppt2->tau_size + index_tau] );	
+ 			
+ 		}
+  	fprintf(file_sp, "\n");
+	}
   
- 
+  */
+  
+ 	printf("keq = %f \n",pba->k_eq);
   fclose(psp2->spectra_file);
   return _SUCCESS_;
 }
@@ -321,12 +440,7 @@ int spectra2_interpolate_sources_in_k(
   double h = k_pt[index_k+1] - k_pt[index_k];
   
   int index_k_sp;
-  
- 	for (index_k_sp = 0; index_k_sp < first_physical_index; ++index_k_sp) {
-    for (index_tau = 0; index_tau < ppt2->tau_size; index_tau++) {
-    	interpolated_sources_in_k[index_k_sp*ppt2->tau_size + index_tau] = 0.;
-    }
-  } // end of for (index_k_tr) 
+ 
     
   for (index_k_sp = first_physical_index; index_k_sp <= last_physical_index; ++index_k_sp) {
     
@@ -355,9 +469,19 @@ int spectra2_interpolate_sources_in_k(
     } 
   } // end of for (index_k_tr)
 
+//Extrapolation either set to zero or flat
+
+	for (index_k_sp = 0; index_k_sp < first_physical_index; ++index_k_sp) {
+    for (index_tau = 0; index_tau < ppt2->tau_size; index_tau++) {
+    	interpolated_sources_in_k[index_k_sp*ppt2->tau_size + index_tau] = 
+    		interpolated_sources_in_k[first_physical_index*ppt2->tau_size + index_tau];
+    }
+  } // end of for (index_k_tr) 
+
 	for (index_k_sp = last_physical_index+1; index_k_sp < k_sp_size; ++index_k_sp) {
     for (index_tau = 0; index_tau < ppt2->tau_size; index_tau++) {
-    	interpolated_sources_in_k[index_k_sp*ppt2->tau_size + index_tau] = 0.;
+    	interpolated_sources_in_k[index_k_sp*ppt2->tau_size + index_tau] = 
+    		interpolated_sources_in_k[last_physical_index*ppt2->tau_size + index_tau];
     }
   } // end of for (index_k_tr) 
  
@@ -377,6 +501,7 @@ int spectra2_get_k3_size (
 	 /* Allocate k1 level */
   int k1_size = psp2->k_size;
  
+  class_alloc(psp2->k_true_physical_start_k1k2, k1_size*sizeof(int *), psp2->error_message);
   class_alloc(psp2->k_physical_start_k1k2, k1_size*sizeof(int *), psp2->error_message);
   class_alloc(psp2->k_physical_size_k1k2, k1_size*sizeof(int *), psp2->error_message);
 
@@ -389,6 +514,7 @@ int spectra2_get_k3_size (
     /* Allocate k2 level */
     int k2_size = index_k1 + 1;
 
+		class_alloc(psp2->k_true_physical_start_k1k2[index_k1], k2_size*sizeof(int), psp2->error_message);
 	  class_alloc(psp2->k_physical_start_k1k2[index_k1], k2_size*sizeof(int), psp2->error_message);
     class_alloc(psp2->k_physical_size_k1k2[index_k1], k2_size*sizeof(int), psp2->error_message);
    
@@ -400,15 +526,7 @@ int spectra2_get_k3_size (
   		double k_min_pt = ppt2->k3[index_k1][index_k2][0];
  			double k_max_pt = ppt2->k3[index_k1][index_k2][k_pt_size-1];
 
-  /* Some debug on the limits of k3 */
-  // if ((index_k1==85) && (index_k2==63)) {
-  //   
-  //  printf ("(k1, k2 ) = (%g,%g)\n", ppt2->k[index_k1],ppt2->k[index_k2]);
-  // printf ("(k_min_pt,|k1-k2|) = (%g,%g)\n", k_min_pt, fabs(ppt2->k[index_k1]-ppt2->k[index_k2]));
-  // printf ("(k_max_pt, k1+k2 ) = (%g,%g)\n", k_max_pt, ppt2->k[index_k1]+ppt2->k[index_k2]);
-  //   
-  // }
-
+ 
   		int index_k_sp;
 
  			 // *** Count the number of necessary values
@@ -439,9 +557,30 @@ int spectra2_get_k3_size (
 
   		psp2->k_physical_size_k1k2[index_k1][index_k2] = index_k_sp- psp2->k_physical_start_k1k2[index_k1][index_k2]+1;
   		if (psp2->k_physical_size_k1k2[index_k1][index_k2] < 1) printf("Alert empty k3 range for k1 = %f and k2 = %f \n", psp2->k[index_k1],psp2->k[index_k2]);
-      /* Compute the number of points in the k3_grid for the given pair of (k1,k2) */
-    //  printf("found: kmin = %f as %d, kmax = %f as %d, number = %d \n",  psp2->k[psp2->k_physical_start_k1k2[index_k1][index_k2] ],psp2->k_physical_start_k1k2[index_k1][index_k2],psp2->k[psp2->k_physical_start_k1k2[index_k1][index_k2] + psp2->k_physical_size_k1k2[index_k1][index_k2] - 1 ],psp2->k_physical_start_k1k2[index_k1][index_k2] + psp2->k_physical_size_k1k2[index_k1][index_k2] - 1 ,psp2->k_physical_size_k1k2[index_k1][index_k2] );
-    } // end of for(index_k2)
+  		
+  		
+  	// Here we compute the physical size based on the excat triangular condition
+  	
+  	 	
+  			/* First point */
+  
+  			index_k_sp = 0; /*?????*/
+  
+  			k = psp2->k[index_k_sp];
+   
+  		
+ 				while (k < (psp2->k[index_k1] - psp2->k[index_k2]) && index_k_sp<psp2->k_size -1) {
+  				index_k_sp++;
+				  k = psp2->k[index_k_sp];
+			  }
+	
+ 		 	
+  		psp2->k_true_physical_start_k1k2[index_k1][index_k2] = index_k_sp;
+	
+		
+  		
+  		
+  	} // end of for(index_k2)
   } // end of for(index_k1)
 
   
