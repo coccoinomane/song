@@ -120,16 +120,16 @@ int main(int argc, char **argv) {
   // printf("\tpt.custom_tau_mode_quadsources = %d\n", pt.custom_tau_mode_quadsources);
   
   /* Time sampling for second-order sources */
-  printf("* Time sampling for second-order sources\n");
-  printf("\tpr2.perturb_sampling_stepsize_song = %g\n", pr2.perturb_sampling_stepsize_song);
-  printf("\tpt2.tau_start_evolution = %g\n", pt2.tau_start_evolution);
-  printf("\tpt2.recombination_max_to_end_ratio = %g\n", pt2.recombination_max_to_end_ratio);
-  printf("\tpt2.has_custom_timesampling = %d\n", pt2.has_custom_timesampling);
-  printf("\tpt2.custom_tau_ini = %g\n", pt2.custom_tau_ini);
-  printf("\tpt2.custom_tau_end = %g\n", pt2.custom_tau_end);
-  printf("\tpt2.custom_tau_size = %d\n", pt2.custom_tau_size);
-  printf("\tpt2.custom_tau_mode = %d\n", pt2.custom_tau_mode);
-  printf("\tpt2.match_final_time_los = %d\n", pt2.match_final_time_los);
+  // printf("* Time sampling for second-order sources\n");
+  // printf("\tpr2.perturb_sampling_stepsize_song = %g\n", pr2.perturb_sampling_stepsize_song);
+  // printf("\tpt2.tau_start_evolution = %g\n", pt2.tau_start_evolution);
+  // printf("\tpt2.recombination_max_to_end_ratio = %g\n", pt2.recombination_max_to_end_ratio);
+  // printf("\tpt2.has_custom_timesampling = %d\n", pt2.has_custom_timesampling);
+  // printf("\tpt2.custom_tau_ini = %g\n", pt2.custom_tau_ini);
+  // printf("\tpt2.custom_tau_end = %g\n", pt2.custom_tau_end);
+  // printf("\tpt2.custom_tau_size = %d\n", pt2.custom_tau_size);
+  // printf("\tpt2.custom_tau_mode = %d\n", pt2.custom_tau_mode);
+  // printf("\tpt2.match_final_time_los = %d\n", pt2.match_final_time_los);
 
   /* Wavemode sampling */
   // printf("* Wavemode sampling for second-order sources\n");
@@ -162,24 +162,27 @@ int main(int argc, char **argv) {
   // printf("\tpt2.primordial_local_fnl_phi = %g\n", pt2.primordial_local_fnl_phi);
 
   /* Bispectrum */
-  // printf("* Bispectrum parameters\n");
-  // printf("\tpt2.has_bispectra = %d\n", pt2.has_bispectra);
-  // printf("\tbi.has_bispectra = %d\n", bi.has_bispectra);
-  // printf("\tpr.r_min = %g\n", pr.r_min);
-  // printf("\tpr.r_max = %g\n", pr.r_max);
-  // printf("\tpr.r_size = %d\n", pr.r_size);
-  // printf("\tbi.has_local_model = %d\n", bi.has_local_model);
-  // printf("\tbi.has_equilateral_model = %d\n", bi.has_equilateral_model);
-  // printf("\tbi.has_orthogonal_model = %d\n", bi.has_orthogonal_model);
-  // printf("\tbi.has_galileon_model = %d\n", bi.has_galileon_model);
-  // printf("\tbi.has_intrinsic = %d\n", bi.has_intrinsic);
-  // printf("\tbi.has_intrinsic_squeezed = %d\n", bi.has_intrinsic_squeezed);
-  // printf("\tbi.has_intrinsic_squeezed_unlensed = %d\n", bi.has_intrinsic_squeezed_unlensed);
-  // printf("\tbi.has_quadratic_correction = %d\n", bi.has_quadratic_correction);
-  // printf("\tbi.add_quadratic_correction = %d\n", bi.add_quadratic_correction);
-  // printf("\tbi.include_lensing_effects = %d\n", bi.include_lensing_effects);
-  // printf("\tbi.lensed_intrinsic = %d\n", bi.lensed_intrinsic);
-  // printf("\tpr.extend_lensed_cls = %d\n", pr.extend_lensed_cls);
+  printf("* Bispectrum parameters\n");
+  printf("\tpt2.has_bispectra = %d\n", pt2.has_bispectra);
+  printf("\tbi.has_bispectra = %d\n", bi.has_bispectra);
+  printf("\tbi.has_local_model = %d\n", bi.has_local_model);
+  printf("\tbi.has_equilateral_model = %d\n", bi.has_equilateral_model);
+  printf("\tbi.has_orthogonal_model = %d\n", bi.has_orthogonal_model);
+  printf("\tbi.has_galileon_model = %d\n", bi.has_galileon_model);
+  printf("\tbi.has_intrinsic = %d\n", bi.has_intrinsic);
+  printf("\tbi.has_intrinsic_squeezed = %d\n", bi.has_intrinsic_squeezed);
+  printf("\tbi.has_intrinsic_squeezed_unlensed = %d\n", bi.has_intrinsic_squeezed_unlensed);
+  printf("\tbi.has_quadratic_correction = %d\n", bi.has_quadratic_correction);
+  printf("\tbi.add_quadratic_correction = %d\n", bi.add_quadratic_correction);
+  printf("\tbi.include_lensing_effects = %d\n", bi.include_lensing_effects);
+  printf("\tbi.lensed_intrinsic = %d\n", bi.lensed_intrinsic);
+  printf("\tpr.extend_lensed_cls = %d\n", pr.extend_lensed_cls);
+  printf("\tpr.bispectra_r_sampling = %d\n", pr.bispectra_r_sampling);
+  printf("\tpr.r_left = %g\n", pr.r_left);
+  printf("\tpr.r_right = %g\n", pr.r_right);
+  printf("\tpr.r_min = %g\n", pr.r_min);
+  printf("\tpr.r_max = %g\n", pr.r_max);
+  printf("\tpr.r_size = %d\n", pr.r_size);
 
   /* Fisher */
   // printf("\tfi.always_interpolate_bispectra = %d\n", fi.always_interpolate_bispectra);

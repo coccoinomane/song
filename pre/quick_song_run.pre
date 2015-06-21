@@ -181,7 +181,22 @@ l_max_ur = 10
 # =                        Bispectrum integration                           =
 # ===========================================================================
 
-## Bispectrum integration (choose between no_extrapolation and flat_extrapolation)
+# Integration of the bispectrum along the r-direction.
+#  - If bispectra_r_sampling=custom, then the r will be sampled r_size
+# times between r_min and r_right.
+#  - If bispectra_r_sampling=centred, then the r will be sampled r_size 
+# times between (tau0-tau_rec)-tau_rec*r_left and (tau0-tau_rec)+tau_rec*r_right.
+# This choice is justified by the fact that the transfer functions in the
+# bispectrum integral are peaked at recombination which, due to the
+# presence of the Bessel functions with argument k*r, makes the integrand
+# function peaked at r=tau0-tau.
+bispectra_r_sampling = centred
+r_size = 50
+r_left = 1
+r_right = 1
+
+## Extrapolation of the transfer functions for the bispectrum integration;
+## choose between no_extrapolation and flat_extrapolation.
 bispectra_k3_extrapolation = flat_extrapolation
 extra_k3_oscillations_right = 50
 extra_k3_oscillations_left = 50

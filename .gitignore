@@ -16,6 +16,11 @@ output/*
 # Binary files
 song
 print_bispectra
+print_params
+print_sources1
+print_sources2
+print_transfers1
+print_transfers2
 class
 
 # Ad hoc folder for untracked files

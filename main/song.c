@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
   }
   
   /* Compute geometrical factors needed for the bispectrum integration */
-  if (bessel_init(&pr,&ba,&tr,&bs) == _FAILURE_) {
+  if (bessel_init(&pr,&ba,&th,&tr,&bs) == _FAILURE_) {
     printf("\n\nError in bessel_init \n =>%s\n",bs.error_message);
     return _FAILURE_;
   }
