@@ -84,7 +84,7 @@ The directory structure of SONG is important to learn how the code works:
 
 * The 'ini' and 'pre' directories contain, respectively, parameter and precision files that can be fed to SONG.
 
-* The 'output' folder, initially empty, will containt the products of SONG computation usually in the form of text files.
+* The 'output' folder, initially empty, will contain the products of SONG computations, usually in the form of text files.
 
 
 ## CONTRIBUTE

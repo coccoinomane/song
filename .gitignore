@@ -1,0 +1,28 @@
+# Build directory
+*build/*
+
+# Output directory
+output/*
+
+# Compressed files
+*.tar
+*.tar.*
+*.zip
+*.tgz
+*.log
+*.log.*
+*.sig
+
+# Binary files
+song
+print_bispectra
+class
+
+# Ad hoc folder for untracked files
+untracked
+
+# Valgrind suppression files
+*.supp
+
+# Textmate configuration file
+.tm_properties
