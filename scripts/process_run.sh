@@ -1,5 +1,5 @@
 # Modify a SONG run so that sources & transfer functions are 
-# not computed the next time it is used.
+# not computed the next time it is used by SONG.
 #
 # Useful only when we want to reuse a run that contains bispectra to
 # compute Fisher matrices, without having to recompute the source &

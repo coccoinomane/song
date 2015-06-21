@@ -18,7 +18,7 @@ make -f makefile -j8 song > /dev/null;
 export OMP_NUM_THREADS=$threads;
 
 for folder in $folders; do
-  cmd="unbuffer time ./song $folder 2>&1 | tee $root/$folder/log.txt"
+  cmd="unbuffer time ./song $folder 2>&1 | tee $folder/log.txt"
   echo "$cmd"
   eval "$cmd"
 done
