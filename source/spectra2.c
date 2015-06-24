@@ -106,7 +106,7 @@ int spectra2_init(
   int index_sp = 1;
 	
 	// Print time 
-	
+	/*
 	fprintf(file_sp, format_label, "tau",index_sp);
 	index_sp++;
   
@@ -124,9 +124,9 @@ int spectra2_init(
   
   fprintf(file_sp, "\n");
   
-  
+  */
   //Print k 
-  /*
+  
   fprintf(file_sp, format_label, "k",index_sp);
 	index_sp++;
 
@@ -137,7 +137,7 @@ int spectra2_init(
  		} 
  				
  		fprintf(file_sp, "\n");
-	*/
+	
 	
   /* Four loops over k1, k2, transfer type follow */
   double step_k1, step_k2;
@@ -176,7 +176,7 @@ int spectra2_init(
         printf(" -> computing integral for (k1,k2) = (%.3g,%.3g)\n", psp2->k[index_k1], psp2->k[index_k2]);
 				if (index_k1 == 0) step_k2 = 0.;
 				else if (index_k2 == 0) step_k2 = (psp2->k[1] - psp2->k[0])/2.;
-        else if (index_k2 == index_k1) step_k1 = (psp2->k[index_k1] - psp2->k[index_k1-1])/2.;
+        else if (index_k2 == index_k1) step_k2 = (psp2->k[index_k1] - psp2->k[index_k1-1])/2.;
         else step_k2 = (psp2->k[index_k2+1] - psp2->k[index_k2 -1])/2.;
         
         
@@ -254,8 +254,8 @@ int spectra2_init(
       				}
       				else {
       					triangular_step_k2 = (psp2->k[index_k2+1] - psp2->k[index_k2])/2. + psp2->k[index_k2] - (psp2->k[index_k3]- psp2->k[index_k1]);
+      					}
       				}
-      			}
       			else triangular_step_k2 = step_k2;
       		}
       		else {
@@ -275,9 +275,33 @@ int spectra2_init(
       		}					
 					for (int index_tau = 0; index_tau < ppt2->tau_size; ++index_tau) {
 						psp2->spectra[index_tp][index_k3*ppt2->tau_size + index_tau] += 
-						4./2./_PI_/2./_PI_/2./_PI_ *k1*k2/psp2->k[index_k3]*step_k1*triangular_step_k2*spectra_k1*spectra_k2*
-						interpolated_sources_in_k[index_tp][index_k3*ppt2->tau_size + index_tau]*interpolated_sources_in_k[index_tp][index_k3*ppt2->tau_size + index_tau];
+					// (index_k1==53 ? triangular_step_k2: 0.)
+					// symmetry factor
+					 2.*
+					// integration weight	
+					 k1*k2/psp2->k[index_k3]*
+					// integration stepsize
+					 step_k1*triangular_step_k2*
+					// phi integration
+					 2 * _PI_*
+					// spectra factors
+					 4./2./_PI_/2./_PI_/2./_PI_* 
+					// definition of second order perturbation theory
+					 1./2./2.*
+					// psi od phi
+					// primordial spectra
+					 spectra_k1*spectra_k2*
+					//sources
+					 interpolated_sources_in_k[index_tp][index_k3*ppt2->tau_size + index_tau]*interpolated_sources_in_k[index_tp][index_k3*ppt2->tau_size + index_tau]
+					// 6.652 * 1.e-29 is sigma_t in m^2, 1.878 * 1.e-26 is critical density in kg/m^3
+					// 1.602 * 1.e-19 is electron charge ,  1.e-6 is e-10 from CLASS convention 
+					// (rho_g_CLASS^0 = e+10 h^2/c^2 * Omega_g^0) and e+4 to covert from international units to Gauss
+					// (1 G = 10 e-4 kg/ s/ C)
+					*_c_*_c_*_c_* 6.652 * 1.e-29 * 1.e-6 * 1.878 * 1.e-26 / 1.602 / 1.e-19
+					*_c_*_c_*_c_* 6.652 * 1.e-29 * 1.e-6 * 1.878 * 1.e-26 / 1.602 / 1.e-19
+					;
 					} 
+					
 		      
       	}
       
@@ -316,7 +340,7 @@ int spectra2_init(
   class_alloc (pvecback, pba->bg_size*sizeof(double), psp2->error_message);
 
  // print time
-
+/*
 	for (int index_tau = 0; index_tau < ppt2->tau_size; ++index_tau) { 
 	
 	class_call (background_at_tau(
@@ -348,9 +372,9 @@ int spectra2_init(
  		}
   	fprintf(file_sp, "\n");
 	}
-  
+  */
   // Print k 
-  /*
+  
   for (int index_k3 = 0; index_k3 < psp2->k_size; ++index_k3) { 
 
 	    			
@@ -364,7 +388,7 @@ int spectra2_init(
   	fprintf(file_sp, "\n");
 	}
   
-  */
+  
   
  	printf("keq = %f \n",pba->k_eq);
   fclose(psp2->spectra_file);

@@ -7095,10 +7095,12 @@ int perturb2_derivs (
       The quadsources contain the quadratic part and the generation 
       from photon anisotropic stress*/
       
-      dmag(1,m) = -2. * Hc * mag(1,m) + 0.*k
-      	* pvecback[pba->index_bg_rho_g] 
-      	*(I(1,m) -  four_thirds * b(1,1,m))/4. /* I(3,m)*/; /*the cancelation is not really good*/
-      	/*this is not the fluid limit metric velocity add quadsources!*/
+      dmag(1,m) = -2. * Hc * mag(1,m) 
+      					//+ k* pvecback[pba->index_bg_rho_g] /3. *(four_thirds*b(1,1,m) - I(1,m))
+      					;
+      					 /*this is the conversion factor, after this add the collison term for photons stripped by kappa+_dot. Numerical factor of sigma_t/e missing*/
+      					/*keep in mind that the collision term for photons does include the perturbation of xe form delta_b (and possible perturbed recombination) This needs to be removed for the magnetic field. Then an additional term of - psi has to be added seperately coming from the vierbein. Note that the contribution from phi is already included in the collision term*/		
+      	 				
       	}
 		
 		if (ppt2->has_quadratic_sources == _TRUE_) {
@@ -8369,35 +8371,7 @@ int perturb2_quadratic_sources (
         }
       }
 
- 			// ----------------------------------------------
-      // -               magnetic fields              -
-      // ----------------------------------------------
- 			if (ppt2->has_magnetic_field == _TRUE_) {
- 				for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
-          int m = ppt2->m[index_m];
-          	dmag_qs2(1,m) = k *   pvecback[pba->index_bg_rho_g] * ( 0.
-          			
-          			//slip
-          			+( I_1(0,0) +phi_1 - psi_1) * ( I_2(1,m)/4. - (-k2_m[m+1] * v_b_2))
-          				+( I_2(0,0) +phi_2 - psi_2) * ( I_1(1,m)/4. - (-k1_m[m+1] * v_b_1))
-          				
-          				// contribution from second order slip
-          			/*	- I_1(0,0)* I_2(1,m)/4. + delta_b_1 * (-k2_m[m+1]) * v_b_2
-          				- I_2(0,0)* I_1(1,m)/4.+ delta_b_2 * (-k1_m[m+1]) * v_b_1
-          				*/
-          				// anisotropic stree
-          				/*
-          				- sqrt((2.-m)*(3.-m)/2.) *(I_1(2,m-1) * k2_m[1+1] * v_b_2)
-          				+ sqrt(4.-m*m) *(I_1(2,m) * k2_m[1] * v_b_2)
-        					- sqrt((2.+m)*(3.+m)/2.) *(I_1(2,m+1) * k2_m[1-1] * v_b_2)
-        					- sqrt((2.-m)*(3.-m)/2.) *(I_2(2,m-1) * k1_m[1+1] * v_b_1)
-          				+ sqrt(4.-m*m) *(I_2(2,m) * k1_m[1] * v_b_1)
-        					- sqrt((2.+m)*(3.+m)/2.) *(I_2(2,m+1) * k1_m[1-1] * v_b_1)
-        					*/
-          	);
-          
-     	 }
-			}
+ 			
 			
       // ----------------------------------------------
       // -               Cold Dark Matter             -
@@ -8886,6 +8860,53 @@ int perturb2_quadratic_sources (
       For now, we set them to zero */
  
     }
+
+		// ----------------------------------------------
+    // -               magnetic fields              -
+    // ----------------------------------------------
+    
+    //  Note that we have put the magnetic field here. It is not a collision term in the classical sense, but the origin of the magnetic field is directly linked to collisions.  
+ 		if (ppt2->has_magnetic_field == _TRUE_) {
+ 			for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+        int m = ppt2->m[index_m];
+        c_1 = 4*V_b_1[(m)+1] - I_1(1,m);
+        c_2 = 4*V_b_2[(m)+1] - I_2(1,m);
+        double D_1 = pvec_sources1[ppt->index_qs_phi];
+      	double D_2 = pvec_sources2[ppt->index_qs_phi];
+      	double delta_g_1 = pvec_sources1[ppt->index_qs_delta_g];
+  			double delta_g_2 = pvec_sources2[ppt->index_qs_delta_g];
+        //factor sigma_t/e missing + remove delta_e C1 and add -Psi C1
+        dmag_qs2(1,m) = + k* pvecback[pba->index_bg_rho_g] /3.*(
+          		// dI_qc2(1,ppt2->m[index_m])
+          		// here we substract delta_e C1 and add -Psi C1.
+          		//	-(D_1 + delta_e_1)*c_2  -  (D_2 + delta_e_2)*c_1
+          			
+          		// test source term
+          		( A_1 - D_1 + delta_g_1 )*c_2  +  (A_2 - D_2 + delta_g_2)*c_1
+          			);
+          			
+          			//old code
+          			//slip
+          		 //	+( I_1(0,0) +phi_1 - psi_1) * ( I_2(1,m)/4. - (-k2_m[m+1] * v_b_2))
+          			//	+( I_2(0,0) +phi_2 - psi_2) * ( I_1(1,m)/4. - (-k1_m[m+1] * v_b_1))
+          				
+          				// contribution from second order slip
+          			//	- I_1(0,0)* I_2(1,m)/4. + delta_b_1 * (-k2_m[m+1]) * v_b_2
+          			//	- I_2(0,0)* I_1(1,m)/4.+ delta_b_2 * (-k1_m[m+1]) * v_b_1
+          				
+          				// anisotropic stree
+          				
+          			//	- sqrt((2.-m)*(3.-m)/2.) *(I_1(2,m-1) * k2_m[1+1] * v_b_2)
+          			//	+ sqrt(4.-m*m) *(I_1(2,m) * k2_m[1] * v_b_2)
+        				//	- sqrt((2.+m)*(3.+m)/2.) *(I_1(2,m+1) * k2_m[1-1] * v_b_2)
+        				//	- sqrt((2.-m)*(3.-m)/2.) *(I_2(2,m-1) * k1_m[1+1] * v_b_1)
+          			//	+ sqrt(4.-m*m) *(I_2(2,m) * k1_m[1] * v_b_1)
+        				//	- sqrt((2.+m)*(3.+m)/2.) *(I_2(2,m+1) * k1_m[1-1] * v_b_1)
+        					
+          	
+          
+     	 }
+			}
 
     // ---------------------------------------------------------------------
     // -                      Add collisions to sources                    -
@@ -10944,8 +10965,8 @@ int perturb2_save_early_transfers (
   	}
   	
   	if (ppr2->compute_m[1] == _TRUE_) {
-  		if (index_tau==0) fprintf(file_tr, format_label, "qudrupole", index_print_tr++);
-  		else fprintf(file_tr, format_value, 1.  );
+  		if (index_tau==0) fprintf(file_tr, format_label, "rho_g", index_print_tr++);
+  		else fprintf(file_tr, format_value,  pvecback[pba->index_bg_rho_g]  );
   	}
   }
   
