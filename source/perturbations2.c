@@ -1820,8 +1820,11 @@ int perturb2_get_k_lists (
       k = k_next;
 
     }
+    int n_mult = 2;
+    double spacing_fraction = 0.15;
     
-    ppt2->k_size = index_k;
+    /*magnets: here is add a strange sampling in n-tuplets, which should improve the integration of at least fourier power spectra. In general, the ksampling should be compeltely reworked for this.*/
+    ppt2->k_size = n_mult*(index_k-1) + 1;
     
   
     // *** Allocate and fill ppt2->k ***
@@ -1832,44 +1835,55 @@ int perturb2_get_k_lists (
     
     ppt2->k[index_k] = ppr2->k_min_tau0/pba->conformal_age;
   
-    index_k++;
+    index_k+= n_mult;
   
     while (index_k < ppt2->k_size) {
 
       /* Linear step */
       double lin_step = ppr2->k_step_super  
-           + 0.5 * (tanh((ppt2->k[index_k-1]-k_rec)/k_rec/ppr2->k_step_transition)+1.)
+           + 0.5 * (tanh((ppt2->k[index_k-n_mult]-k_rec)/k_rec/ppr2->k_step_transition)+1.)
                  * (ppr2->k_step_sub-ppr2->k_step_super);
   
       /* Logarithmic step */
-      double log_step = ppt2->k[index_k-1] * (ppr2->k_logstep_super - 1.);
+      double log_step = ppt2->k[index_k-n_mult] * (ppr2->k_logstep_super - 1.);
   
       /* Use the smallest between the logarithmic and linear steps. If we are considering
       small enough scales, just use the linear step. */
-      if ((log_step > (lin_step*k_rec)) || (ppt2->k[index_k-1] > k_rec)) {
-        ppt2->k[index_k] = ppt2->k[index_k-1] + lin_step * k_rec;
+      if ((log_step > (lin_step*k_rec)) || (ppt2->k[index_k-n_mult] > k_rec)) {
+        ppt2->k[index_k] = ppt2->k[index_k-n_mult] + lin_step * k_rec;
         // printf("linstep = %g\n", lin_step*k_rec);
       }
       else {
-        ppt2->k[index_k] = ppt2->k[index_k-1] * ppr2->k_logstep_super;
+        ppt2->k[index_k] = ppt2->k[index_k-n_mult] * ppr2->k_logstep_super;
         // printf("logstep = %g\n", ppt2->k[index_k] - ppt2->k[index_k-1]);
       }
       
-      index_k++;
+      
+      index_k+= n_mult;
+      
+      
     }
-
+	
     /* We do not want to overshoot k_max as pbs->x_max, that is the maximum argument for which
     the Bessel functions are computed, is determined using it */
-    ppt2->k[ppt2->k_size-1] = MIN (ppt2->k[ppt2->k_size-1], k_max);
+		ppt2->k[ppt2->k_size-1] = MIN (ppt2->k[ppt2->k_size-1], k_max);
+		
+		// now add the tuplets
+    for (int index_k=0; index_k < ppt2->k_size-n_mult; index_k+=n_mult) {  
+    	double final_step = ppt2->k[index_k + n_mult] - ppt2->k[index_k];
+    	for (int nc = 1; nc < n_mult; ++nc){
+     	 ppt2->k[index_k+nc] = ppt2->k[index_k] + nc*final_step*spacing_fraction;
+    	}
+    }
   
   } // end of if(smart_sources_k_sampling)
   
 
   /* Some debug - print out the k-list */
-  // printf ("# ~~~ k-sampling for k1 and k2 (size=%d) ~~~\n", ppt2->k_size);
-  // for (int index_k=0; index_k < ppt2->k_size; ++index_k) {
-  //   printf ("%17d %17.7g\n", index_k, ppt2->k[index_k]);
-  // }
+   printf ("# ~~~ k-sampling for k1 and k2 (size=%d) ~~~\n", ppt2->k_size);
+   for (int index_k=0; index_k < ppt2->k_size; ++index_k) {
+	 	 printf ("%17d %17.7g\n", index_k, ppt2->k[index_k]);
+   }
   
   
   
@@ -7096,7 +7110,7 @@ int perturb2_derivs (
       from photon anisotropic stress*/
       
       dmag(1,m) = -2. * Hc * mag(1,m) 
-      					//+ k* pvecback[pba->index_bg_rho_g] /3. *(four_thirds*b(1,1,m) - I(1,m))
+      					+ k* pvecback[pba->index_bg_rho_g] /3. *(four_thirds*b(1,1,m) - I(1,m))
       					;
       					 /*this is the conversion factor, after this add the collison term for photons stripped by kappa+_dot. Numerical factor of sigma_t/e missing*/
       					/*keep in mind that the collision term for photons does include the perturbation of xe form delta_b (and possible perturbed recombination) This needs to be removed for the magnetic field. Then an additional term of - psi has to be added seperately coming from the vierbein. Note that the contribution from phi is already included in the collision term*/		
@@ -8871,18 +8885,18 @@ int perturb2_quadratic_sources (
         int m = ppt2->m[index_m];
         c_1 = 4*V_b_1[(m)+1] - I_1(1,m);
         c_2 = 4*V_b_2[(m)+1] - I_2(1,m);
-        double D_1 = pvec_sources1[ppt->index_qs_phi];
-      	double D_2 = pvec_sources2[ppt->index_qs_phi];
+        double D_1 = -pvec_sources1[ppt->index_qs_phi];
+      	double D_2 = -pvec_sources2[ppt->index_qs_phi];
       	double delta_g_1 = pvec_sources1[ppt->index_qs_delta_g];
   			double delta_g_2 = pvec_sources2[ppt->index_qs_delta_g];
         //factor sigma_t/e missing + remove delta_e C1 and add -Psi C1
         dmag_qs2(1,m) = + k* pvecback[pba->index_bg_rho_g] /3.*(
-          		// dI_qc2(1,ppt2->m[index_m])
+          		 dI_qc2(1,ppt2->m[index_m])
           		// here we substract delta_e C1 and add -Psi C1.
-          		//	-(D_1 + delta_e_1)*c_2  -  (D_2 + delta_e_2)*c_1
+          			-(delta_e_1 - D_1)*c_2  -  (delta_e_2 - D_2)*c_1
           			
           		// test source term
-          		( A_1 - D_1 + delta_g_1 )*c_2  +  (A_2 - D_2 + delta_g_2)*c_1
+          		//( A_1 + D_1 + delta_g_1 )*c_2  +  (A_2 + D_2 + delta_g_2)*c_1
           			);
           			
           			//old code

@@ -152,6 +152,7 @@ int spectra2_init(
           	ppt2->error_message,
           	psp2->error_message);
         
+
         if (index_k1 == 0) step_k1 = (psp2->k[1] - psp2->k[0])/2.;
         else if (index_k1 == psp2->k_size -1) step_k1 = (psp2->k[psp2->k_size-1] - psp2->k[psp2->k_size -2])/2.;
         else step_k1 = (psp2->k[index_k1+1] - psp2->k[index_k1 -1])/2.;
@@ -178,6 +179,7 @@ int spectra2_init(
 				else if (index_k2 == 0) step_k2 = (psp2->k[1] - psp2->k[0])/2.;
         else if (index_k2 == index_k1) step_k2 = (psp2->k[index_k1] - psp2->k[index_k1-1])/2.;
         else step_k2 = (psp2->k[index_k2+1] - psp2->k[index_k2 -1])/2.;
+        
         
         
         double k2 = psp2->k[index_k2];
@@ -238,45 +240,74 @@ int spectra2_init(
   
       	
       	for (int index_k3 = 0; index_k3 < psp2->k_size; ++index_k3) {
+					int print = 0;
+					
       		
       		// find the correct stepsize for k2 based on the triangular inequality //
       		double triangular_step_k2;
-      		if (psp2->k[index_k1] < psp2->k[index_k3] /2.) {triangular_step_k2 = 0.;}
+      		
+      		if (print == 1) printf("printing for k3 = %f\n",psp2->k[index_k3]);
+      		
+      		// first region, excluded by triangular equality
+      		if (psp2->k[index_k1] < psp2->k[index_k3] /2.) {triangular_step_k2 = 0.;
+      		}
+      		
+      		// second region with growing width
       		else if (psp2->k[index_k1] < psp2->k[index_k3]) {
       		// This region k2 starts from k - k1
-      			// is k_2 next to the boundary? This tests the boundary defined by ppt2 k3 range, but that is very close to the real boundary. Outside of it the transfer function is not computed and set to zero. To improve one has to extrapolate (FLAT?) and use the actual boundary k-k1 here. 
+      			// is k_2 next to the boundary?
       			if (index_k2 < psp2->k_true_physical_start_k1k2[index_k3][index_k1] ) {
       				triangular_step_k2 = 0.;
+      				
       			} 
       			else if (index_k2 == psp2->k_true_physical_start_k1k2[index_k3][index_k1]) {
       				if (index_k2 == index_k1) {
-      					triangular_step_k2 = 2.*psp2->k[index_k1] - psp2->k[index_k3]; 
+      					triangular_step_k2 = (2.*psp2->k[index_k1] - psp2->k[index_k3]) ; 
+      					if (print == 1) printf("region 2: start and end: k1 = %f, k2 = %f, step = %f \n",psp2->k[index_k1],psp2->k[index_k2],triangular_step_k2);
       				}
       				else {
-      					triangular_step_k2 = (psp2->k[index_k2+1] - psp2->k[index_k2])/2. + psp2->k[index_k2] - (psp2->k[index_k3]- psp2->k[index_k1]);
+
+      					triangular_step_k2 = (psp2->k[index_k2+1] - psp2->k[index_k2])/2.
+      					 + (psp2->k[index_k2] - (psp2->k[index_k3]- psp2->k[index_k1]));
+      					
+      					if (print == 1) printf("region 2: start: k1 = %f, k2 = %f, step = %f \n",psp2->k[index_k1],psp2->k[index_k2],triangular_step_k2);
       					}
       				}
-      			else triangular_step_k2 = step_k2;
+      			else {triangular_step_k2 = step_k2 ;
+      				if (print == 1) printf("region 2: nomral: k1 = %f, k2 = %f, step = %f \n",psp2->k[index_k1],psp2->k[index_k2],triangular_step_k2);
+      			}
       		}
+      		
+      		//final region with constant width
       		else {
       		// This region starts from k1 - k 
       			if (index_k2 < psp2->k_true_physical_start_k1k2[index_k1][index_k3] ) {
       				triangular_step_k2 = 0.;
+
       			} 
       		  else if (index_k2 == psp2->k_true_physical_start_k1k2[index_k1][index_k3]) {
       				if (index_k2 == index_k1) {
-      					triangular_step_k2 = psp2->k[index_k3];
+      				      			
+      					triangular_step_k2 = psp2->k[index_k3] ;
+      					if (print == 1) printf("region 3: start and end: k1 = %f, k2 = %f, step = %f \n",psp2->k[index_k1],psp2->k[index_k2],triangular_step_k2);
       				}
       				else {
-      					triangular_step_k2 = (psp2->k[index_k2+1]-psp2->k[index_k2])/2. + psp2->k[index_k2] -psp2->k[index_k1] + psp2->k[index_k3];
+      				      			
+      					triangular_step_k2 = (psp2->k[index_k2+1]-psp2->k[index_k2])/2.
+      					 + (psp2->k[index_k2] -psp2->k[index_k1] + psp2->k[index_k3]) ;
+      					if (print == 1) printf("region 3: start: k1 = %f, k2 = %f, step = %f \n",psp2->k[index_k1],psp2->k[index_k2],triangular_step_k2);
       				}
       			}
-      			else triangular_step_k2 = step_k2;
+      			else {triangular_step_k2 = step_k2;
+      			      			if (print == 1) printf("region 3: normal: k1 = %f, k2 = %f, step = %f \n",psp2->k[index_k1],psp2->k[index_k2],triangular_step_k2);
+
+      			}
       		}					
+					
 					for (int index_tau = 0; index_tau < ppt2->tau_size; ++index_tau) {
 						psp2->spectra[index_tp][index_k3*ppt2->tau_size + index_tau] += 
 					// (index_k1==53 ? triangular_step_k2: 0.)
-					// symmetry factor
+					// symmetry factor (doing only half plane in k1 k2)
 					 2.*
 					// integration weight	
 					 k1*k2/psp2->k[index_k3]*
@@ -340,7 +371,7 @@ int spectra2_init(
   class_alloc (pvecback, pba->bg_size*sizeof(double), psp2->error_message);
 
  // print time
-/*
+ /*
 	for (int index_tau = 0; index_tau < ppt2->tau_size; ++index_tau) { 
 	
 	class_call (background_at_tau(
@@ -390,7 +421,9 @@ int spectra2_init(
   
   
   
+  
  	printf("keq = %f \n",pba->k_eq);
+
   fclose(psp2->spectra_file);
   return _SUCCESS_;
 }
@@ -464,7 +497,7 @@ int spectra2_interpolate_sources_in_k(
   double h = k_pt[index_k+1] - k_pt[index_k];
   
   int index_k_sp;
- 
+
     
   for (index_k_sp = first_physical_index; index_k_sp <= last_physical_index; ++index_k_sp) {
     
@@ -550,7 +583,6 @@ int spectra2_get_k3_size (
   		double k_min_pt = ppt2->k3[index_k1][index_k2][0];
  			double k_max_pt = ppt2->k3[index_k1][index_k2][k_pt_size-1];
 
- 
   		int index_k_sp;
 
  			 // *** Count the number of necessary values
@@ -605,6 +637,7 @@ int spectra2_get_k3_size (
   		
   		
   	} // end of for(index_k2)
+
   } // end of for(index_k1)
 
   
