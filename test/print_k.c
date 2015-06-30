@@ -1,9 +1,18 @@
 /** @file print_k.c 
- * Guido Walter Pettinari 24/06/2011
  *
- * Print to screen the k-sampling used to solve the differential system in the perturbations module.
- * The first argument is the .ini file, the second one is the .pre file (optional), while the third one
- * is the index of the mode (S, V, T) for which you want the k-sampling to be printed
+ * Print to screen the k-sampling used to solve the differential system in the
+ * perturbations.c module.
+ *
+ * Arguments:
+ * -# The .ini file
+ * -# The .pre file (optional)
+ * -# The index of the mode (scalar, vector, tensor)
+ * 
+ * Created by Guido Walter Pettinari on 24/06/2011
+ * Last edited by Guido Walter Pettinari on 30/06/2015
+ *
+ * IMPORTANT: this file won't compile; it has to be updated it
+ * for the latest version of SONG.
  *
  */
  

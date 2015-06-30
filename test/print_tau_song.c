@@ -4,6 +4,8 @@
  * Print to screen the tau-sampling of the sources in the perturbations2 module.
  * The only argument is the .ini file,
  *
+ * IMPORTANT: this file won't compile; it has to be updated it
+ * for the latest version of SONG.
  */
  
 #include "class.h"

@@ -1,8 +1,11 @@
 /** @file print_params.c 
- * Guido W. Pettinari, 15.06.2011
+ *
  * Test that the new parameters I introduced in CLASS and SONG work correctly.
  * This main needs to be called with a .ini file; the test consists of comparing 
  * the parameters specified in the .ini file against what is printed to screen.
+ *
+ * Created by Guido W. Pettinari on 15.06.2011
+ * Last edited by Guido W. Pettinari on 30.06.2015
  */
  
 #include "song.h"

@@ -6662,7 +6662,8 @@ int perturb2_derivs (
 
     int m = ppt2->m[index_m];
 
-    /* The free streaming term is k*(I(0,0)-2/5*I(2,0)) for m=0 and -k*sqrt(3)/5*I(2,1) for m=1 */
+    /* The free streaming term is k*(I(0,0)-2/5*I(2,0)) for m=0 and
+    -k*sqrt(3)/5*I(2,1) for m=1 */
     dI(1,m) = k * (c_minus(1,m,m)*I(0,m) - c_plus(1,m,m)*I(2,m))
               + kappa_dot * (four_thirds*b(1,1,m) - I(1,m));
 
@@ -6683,7 +6684,12 @@ int perturb2_derivs (
 
     int m = ppt2->m[index_m];
     
+    /* To recover Ma & Berty's notation (same as CLASS), consider that for photons
+    I_20 = 10 * sigma_g and E_20 = -5/sqrt(6) * (G_0 + G_2) */
     double Pi = 0.1 * ( I(2,m) - sqrt_6*E(2,m) );
+
+    /* The free streaming term is k*(2/3*I(1,0)-3/7*I(3,0)) for m=0 and
+    k*(sqrt(3)/3*I(1,1)-sqrt(8)/7*I(3,1)) for m=1 */
     dI(2,m) = k * (c_minus(2,m,m)*I(1,m) - c_plus(2,m,m)*I(3,m))
               - kappa_dot*(I(2,m) - Pi);
     
@@ -6947,29 +6953,37 @@ int perturb2_derivs (
 
   
   // *** Baryon dipole
-  /*  We write the collision term for the baryon monopole and dipole very simply by enforcing
-  the conservation of the energy and momentum, expressed through the energy momentum tensor:
+
+  /* The baryon collision term for the monopole and dipole is the same as the photon's,
+  multiplied by -r = -rho_g/rho_b. This can be seen by enforcing the conservation of
+  energy and momentum, expressed through the energy momentum tensor:
   
-  d T00_b / d tau = - d T00_g / d tau
-  d T0i_b / d tau = - d T0i_g / d tau        
+    d T00_b / d tau = - d T00_g / d tau ,
+    d T0i_b / d tau = - d T0i_g / d tau .       
   
-  where the the time derivative accounts only for the variations due to the Thomson
-  scattering, and where the right hand side is just minus the collision term of
-  photons.
+  The time derivatives here account only for the variations due to the Thomson
+  scattering, which are very localised in time compared to the gravitational
+  interaction. Therefore in terms of the energy momentum tensor, the baryon and
+  photon collision terms are equal and opposite.
 
   We describe the distribution function of baryons through its expansion in beta-moments,
-  which are conceptually the same as the photon multipoles.  We do so because we want to
-  treat baryons and photons on the same ground.  One of the advantages of this approach
+  which are conceptually the same as the photon multipoles. We do so because we want to
+  treat baryons and photons on the same ground. One of the advantages of this approach
   is manifest here.  Since the first two beta-moments are just T00/rho (monopole) and
-  T0i/rho (dipole), we have that the collision term for the baryons is given by the one
-  from the photons times -rho_g/rho_b.  */
+  T0i/rho (dipole), we have that the collision term for the first two baryon moments
+  is the same as the photon's, times -r = -rho_g/rho_b. Had we used fluid variables instead
+  (delta and velocity), there would have been a -R = -4/3 rho_g/rho_b factor instead, and
+  two additional terms quadratic in the photon and baryon velocities. */
 
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     
     int m = ppt2->m[index_m];
     
-    /* With respect to the photon dipole, there is an extra damping term given by -Hc*dipole.
-    The free streaming term is k*(b(0,0)-2/5*b(2,0)) for m=0 and -k*sqrt(3)/5*b(2,1) for m=1 */
+    /* With respect to the photon dipole, there is an extra damping term given by
+    -Hc*dipole. The free streaming term is k*(b(0,0)-2/5*b(2,0)) for m=0 and
+    -k*sqrt(3)/5*b(2,1) for m=1. The collision term is the same as the photon
+    dipole's, multiplied by r=-rho_g/rho_b. This is eq. 5.16 of
+    http://arxiv.org/abs/1405.2280. */
     db(1,1,m) = - Hc * b(1,1,m)
                 + k * (c_minus(1,m,m)*ppw2->b_200 - c_plus(1,m,m)*ppw2->b_22m[m])
                 + r*kappa_dot * (I(1,m) - four_thirds * b(1,1,m));
@@ -8750,37 +8764,21 @@ int perturb2_quadratic_sources (
     // -                Baryons              -
     // ---------------------------------------
  
-    /*  We write the collision term for the baryon monopole and dipole very simply by enforcing
-      the conservation of the energy and momentum, expressed through the energy momentum tensor:
-      
-      d T00_b / d tau = - d T00_g / d tau
-      d T0i_b / d tau = - d T0i_g / d tau        
-      
-      where the the time derivative accounts only for the variations due to the Thomson
-      scattering, and where the right hand side is just minus the collision term of
-      photons.
+    /* The collision term for the baryon monopole and dipole is the
+    the photon's multiplied by -r = -rho_g/rho_b. See comment in 
+    perturb2_derivs() or eq. 5.16 of http://arxiv.org/abs/1405.2280
+    for details. */
  
-      We describe the distribution function of baryons through its expansion in beta-moments,
-      which are conceptually the same as the photon multipoles.  We do so because we want to
-      treat baryons and photons on the same ground.  One of the advantages of this approach
-      is manifest here.  Since the first two beta-moments are just T00/rho (monopole) and
-      T0i/rho (dipole), we have that the collision term for the baryons is given by the one
-      from the photons times -rho_g/rho_b.
-  
-      Note that the smart dipole 's_11m' does not have a collision term by construction
-      (see comment in perturb2_derivs).   */
- 
- 
-    // *** Monopole
+    /* Monopole collision term */
     if (ppr2->compute_m[0] == _TRUE_)
       db_qc2(0,0,0) = - r * dI_qc2(0,0);
  
-    // *** Dipole
+    /* Dipole collision term */
     for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m)
       db_qc2(1,1,ppt2->m[index_m]) = - r * dI_qc2(1,ppt2->m[index_m]);
           
  
-    // *** Pressure and quadrupole
+    /* Pressure and quadrupole collision term */
     if (ppt2->has_perfect_baryons == _FALSE_) {
  
       /* TODO: Derive baryon pressure & quadrupole collision terms!!!!

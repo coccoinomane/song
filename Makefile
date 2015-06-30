@@ -36,7 +36,7 @@ WRKDIR = $(MDIR)/build
 # CLASS subfolder
 CLASS_DIR = $(MDIR)/class.git
 
-# Source files
+# Source files, including those in CLASS subfolder
 vpath %.c source:tools:main:test:$(CLASS_DIR)/source:$(CLASS_DIR)/tools:$(CLASS_DIR)/main:$(CLASS_DIR)/test
 vpath %.o build:$(CLASS_DIR)/build
 vpath .base build
@@ -94,10 +94,6 @@ FISHER = fisher.o
 # =                                Targets                                 =
 # ==========================================================================
 
-clean: .base
-	rm -rf $(WRKDIR);
-	cd $(CLASS_DIR); $(MAKE) clean;
-
 # Rule to be executed when make is called with no parameters
 default: class song print_params print_sources1 print_sources2 print_transfers1 print_transfers2 print_bispectra
 
@@ -106,24 +102,16 @@ libclass.a class test_background test_thermodynamics test_perturbations test_tra
 	cd $(CLASS_DIR); export WITH_BISPECTRA=1; export WITH_SONG_SUPPORT=1; make $@
 
 # SONG executables
-TEST_INPUT = test_input.o
 SONG = song.o
-PRINT_K = print_k.o
-PRINT_K_2ND_ORDER = print_k_2nd_order.o
-PRINT_TAU_2ND_ORDER = print_tau_2nd_order.o
 PRINT_PARAMS = print_params.o
 PRINT_SOURCES1 = print_sources1.o
 PRINT_SOURCES2 = print_sources2.o
 PRINT_TRANSFERS1 = print_transfers1.o
 PRINT_TRANSFERS2 = print_transfers2.o
-PRINT_CLS = print_cls.o
 PRINT_BISPECTRA = print_bispectra.o
 PRINT_BACKGROUND = print_background.o
 PRINT_THERMO = print_thermo.o
-PRINT_INITIAL_CONDITIONS_2ND_ORDER = print_initial_conditions_2nd_order.o
-PRINT_KERNEL = print_kernel.o
-PRINT_MATRICES = print_matrices.o
-TEST_COUPLINGS = test_couplings.o
+PRINT_COUPLINGS = print_couplings.o
 
 song: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2)\
 	$(BESSEL2) $(TRANSFER2) $(BISPECTRA2) $(OUTPUT) $(SONG)
@@ -157,23 +145,36 @@ print_background: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PRINT_BACKGROUND)
 print_thermo: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PRINT_THERMO)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-# NOT UPDATED YET!
+print_couplings: $(SONG_TOOLS) $(SOURCE_CLASS) $(PRINT_COUPLINGS)
+	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+
+clean: .base
+	rm -rf $(WRKDIR);
+	cd $(CLASS_DIR); $(MAKE) clean;
+
+# THE EXECUTABLES BELOW THIS POINT ARE BROKEN AND NEED TO BE UPDATED TO THE
+# LATEST VERSION OF SONG!
+
+PRINT_K = print_k.o
+PRINT_K_SONG = print_k_song.o
+PRINT_TAU_SONG = print_tau_song.o
+PRINT_INITIAL_CONDITIONS_SONG = print_initial_conditions_song.o
+PRINT_KERNEL = print_kernel.o
+
 print_k: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PRINT_K)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-print_k_2nd_order: $(SONG_TOOLS) $(SOURCE_CLASS) $(PRINT_K_2ND_ORDER)
+print_k_song: $(SONG_TOOLS) $(SOURCE_CLASS) $(PRINT_K_SONG)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-print_tau_2nd_order: $(SONG_TOOLS) $(SOURCE_CLASS) $(PERTURBATIONS2) $(PRINT_TAU_2ND_ORDER)
+print_tau_song: $(SONG_TOOLS) $(SOURCE_CLASS) $(PERTURBATIONS2) $(PRINT_TAU_SONG)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-print_initial_conditions_2nd_order: $(SONG_TOOLS) $(SOURCE_CLASS) $(PERTURBATIONS2) \
-	$(PRINT_INITIAL_CONDITIONS_2ND_ORDER)
+print_initial_conditions_song: $(SONG_TOOLS) $(SOURCE_CLASS) $(PERTURBATIONS2) \
+	$(PRINT_INITIAL_CONDITIONS_SONG)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm	
 
 print_kernel: $(SONG_TOOLS) $(SOURCE_CLASS) $(PERTURBATIONS2) $(PRINT_KERNEL)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
-test_couplings: $(SONG_TOOLS) $(SOURCE_CLASS) $(TEST_COUPLINGS)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 

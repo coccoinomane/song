@@ -9,9 +9,10 @@
  * The columns from 4 to 4+pt2.cosk1k2_size-1 contain the time evolution of the perturbation
  * for cosk1k2 = pt2.cosk1k2(index_cosk1k2).
  *
- *
  * usage:     print_kernel <ini file> [<pre file>] <index_mode> <index_k1> <index_k2> <index_tp>
  *
+ * IMPORTANT: this file won't compile; it has to be updated it
+ * for the latest version of SONG.
  */
  
 #include "class.h"

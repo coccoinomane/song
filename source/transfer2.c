@@ -1885,6 +1885,7 @@ int transfer2_compute (
   } // end of temperature
 
 
+
   // =====================================================================================
   // =                     E-mode polarisation transfer function                         =
   // =====================================================================================
@@ -2035,6 +2036,7 @@ int transfer2_compute (
   } // end of B-modes
 
 
+
   // ====================================================
   // =           Rescale transfer functions             =
   // ====================================================
@@ -2072,11 +2074,9 @@ int transfer2_compute (
 
 
 
-
   // ===============================================
   // =           Store transfer function           =
   // ===============================================
-
 
   /* Store transfer function in transfer structure */
   ptr2->transfer[index_tt][index_k1][index_k2][index_k] = pw->transfer;

@@ -1,16 +1,24 @@
-/** @file print_k.c 
- * Created by Guido Walter Pettinari on 01/08/2011
- * Last modified by Guido Walter Pettinari on 10/08/2011
+/** @file print_k_song.c 
  *
- * Print to screen the k-sampling used to solve the differential system in the perturbations2 module.
- * The first argument is the .ini file, the second (optional) argument is the .pre file, the third argument
- * is the index of the mode (S, V, T) for which you want the k-sampling to be printed, while the third
- * argument is either 0 or 1 and selects respectively between k and cosk1k2
+ * Print to screen the k-sampling used to solve the second-order differential
+ * system in the perturbations2.c module.
+ *
+ * Arguments:
+ * -# The .ini file
+ * -# The .pre file (optional)
+ * -# The index of the mode (scalar, vector, tensor)
+ * -# Choose between 0 and 1 to print either k or cosk1k2, respectively.
  *
  * usage:     %s <ini file> [<pre file>] <index mode S,V,T> <index wavemode k,cosk1k2>
  *
+ * Created by Guido Walter Pettinari on 01/08/2011
+ * Last modified by Guido Walter Pettinari on 30/06/2015
+ *
+ * IMPORTANT: this file won't compile; it has to be updated it
+ * for the latest version of SONG.
+ *
  */
- 
+
 #include "class.h"
 
 int main(int argc, char **argv) {

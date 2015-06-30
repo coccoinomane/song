@@ -91,14 +91,18 @@ enum sources2_k3_sampling {
 // -                             Precision parameters                              -
 // ---------------------------------------------------------------------------------
 
-/* The differential system at second-order has to be solved for a set of three wavemodes
+/** The differential system at second-order has to be solved for a set of three wavemodes
 (k1,k2,k3) whereby k3 has to be in the range |k1-k2|<=k3<=k1+k1. When k3 is too close
-to the boundaries, numerical instabilities might arise such as nan's or larger than one
-sines and cosines. In order to avoid that, we define here a safety distance between
+to the boundaries, numerical instabilities might arise such as nan's or larger-than-one
+sines and cosines. In order to avoid that, we define here the safety distance between
 k3 and the bounds. This safety distance is going to correspond to the largest scale
-probed by SONG. Using k_min_tau0=1e-3, that corresponds to k_min=1e-8,
-it seems that setting _MIN_K3_DISTANCE_=1e-10 is ok. */
+probed by SONG. The largest angular scale probed by SONG is l_min=2, which corresponds
+to k~l_min/tau_0^-1~1e-4. Therefore, setting _MIN_K3_DISTANCE_ to anything smaller
+than 1e-6 is quite safe. */
 #define _MIN_K3_DISTANCE_ 1e-10
+
+/** The differential system dies when k3 is much smaller than k1+k2. These configurations
+are irrelevant, so we set a minimum ratio between k1+k2 and k3 */
 #define _MIN_K3_RATIO_ 100
 
 
@@ -110,19 +114,16 @@ struct perturbs2
   // =                                    Output flags                                  =
   // ====================================================================================
 
-  /* Do we need to compute 2nd order perturbations at all? */
-  short has_perturbations2;
+  short has_perturbations2; /**< Do we need to compute the 2nd-order source functions? */
 
-  /* These flags are initialised in the input2.c module and are used by all other modules to determine
-  which probes (T,E,B...) to compute */
-  short has_cmb_temperature;          /* Do we need to compute spectra or bispectra for the CMB temperature? */
-  short has_cmb_polarization_e;       /* Do we need to compute spectra or bispectra for the CMB E-modes? */
-  short has_cmb_polarization_b;       /* Do we need to compute spectra or bispectra for the CMB B-modes? */
-  short has_pk_matter;                /* Do we need the second-order matter Fourier spectrum? */
-
-  /* TODO: I am not sure we really need these two */
-  short has_cls;                      /* Do we need any harmonic space spectrum C_l?*/
-  short has_bispectra;                /* Do we need any harmonic space bispectrum */
+  /* These flags are initialised in the input2.c module and are used by all other modules
+  to determine what to to compute (T,E,B,...) */
+  short has_cmb_temperature;     /**< Do we need to compute spectra or bispectra for the CMB temperature? */
+  short has_cmb_polarization_e;  /**< Do we need to compute spectra or bispectra for the CMB E-modes? */
+  short has_cmb_polarization_b;  /**< Do we need to compute spectra or bispectra for the CMB B-modes? */
+  short has_pk_matter;           /**< Do we need the second-order matter Fourier spectrum? */
+  short has_cls;            /**< Do we need to compute the second-order C_l? */
+  short has_bispectra;      /**< Do we need to compute the intrinsic bispectrum? */
 
 
 
@@ -131,10 +132,10 @@ struct perturbs2
   // ========================================================================================
 
   /* Initial condition flags */
-  short has_ad;                      /* Do we need adiabatic mode? */
-  short has_ad_first_order;          /* Use first-order initial conditions for the adiabatic modes */
-  short has_zero_ic;                 /* Do we need adiabatic mode, with vanishing initial conditions? */  
-  short has_unphysical_ic;           /* Custom initial conditions to be specified in perturb2_intial_conditions */
+  short has_ad;                  /**< Adiabatic initial conditions */
+  short has_ad_first_order;      /**< Adiabatic initial conditions, with no quadratic sources */
+  short has_zero_ic;             /**< Vanishing initial conditions */  
+  short has_unphysical_ic;       /**< Custom initial conditions for debug purposes */
 
 
   /* Primordial non-Gaussianity */

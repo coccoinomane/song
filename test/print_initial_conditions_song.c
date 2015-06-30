@@ -7,6 +7,8 @@
  * This script accepts the following arguments:
  * ./print_initial_conditions_2nd_order <ini file> [pre file] <index_k1> <index_k2> <index_cosk1k2>
  *
+ * IMPORTANT: this file won't compile; it has to be updated it
+ * for the latest version of SONG.
  */
  
 #include "class.h"

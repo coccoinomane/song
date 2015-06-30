@@ -1,8 +1,5 @@
 /** @file print_transfers2.c 
  *
- * Created by Guido W. Pettinari on 03.07.2012
- * Last edited by Guido W. Pettinari on 24.05.2015
- *
  * Print to screen the second-order transfer functions. The definition
  * of second-order transfer function can be found in eq. 3.69 of
  * http://arxiv.org/abs/1405.2280.
@@ -18,6 +15,8 @@
  *
  *  example:   ./print_transfers2 params.ini params.pre 1 0 T_2_1
  *
+ * Created by Guido W. Pettinari on 03.07.2012
+ * Last edited by Guido W. Pettinari on 24.05.2015
  */
  
 #include "song.h"

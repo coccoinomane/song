@@ -1,8 +1,5 @@
 /** @file print_sources2.c 
  *
- * Created by Guido W. Pettinari on 10.08.2011
- * Last edited by Guido W. Pettinari on 20.05.2015
- *
  * Print to screen the sources array inside the perturbs2 structure,
  * along with conformal time (first column), scale factor (second column),
  * and the scale factor normalized to equality a/a_eq (third column).
@@ -12,6 +9,9 @@
  *
  * <variable to print> can be either 'k2', 'k' or 'tau'.
  * Specify a negative time index to show the sources at the peak of recombination.
+ *
+ * Created by Guido W. Pettinari on 10.08.2011
+ * Last edited by Guido W. Pettinari on 20.05.2015
  */
  
 #include "song.h"
