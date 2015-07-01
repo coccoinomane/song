@@ -1,3 +1,5 @@
+/** @file perturbations2.h Documented includes for perturbations2 module */
+
 #ifndef __PERTURBATIONS2__
 #define __PERTURBATIONS2__
 

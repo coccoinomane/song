@@ -2936,8 +2936,8 @@ int perturb2_end_of_recombination (
  * 
  * This function is called once for each k-triplet (k1,k2,k3) by perturb2_vector_init(),
  * which in turn is called by perturb2_solve(); it fills the ppw2->pv->y array. It is
- * assumed here that all values have been set previously to zero, only non-zero values are set
- * here.
+ * assumed here that all values have been set previously to zero, only non-zero values
+ * are set here.
  *
  * Important: mind which approximations are turned on when this function is called.
  * Usually, the tight-coupling approximation is turned on at early times, meaning that any
@@ -2970,7 +2970,12 @@ int perturb2_initial_conditions (
   double k2_0 = ppw2->k2_m[0+1]; 
   double * k1_ten_k2 = ppw2->k1_ten_k2;
 
-  // *** Get background quantities
+
+  // ======================================================================================
+  // =                          Interpolate needed quantities                             =
+  // ======================================================================================
+
+  /* Background quantities at tau */
   class_call (background_at_tau(
                 pba,
                 tau, 
@@ -3003,7 +3008,7 @@ int perturb2_initial_conditions (
   double frac_g = 1 - frac_ur;
 
 
-  // *** Get thermodynamics quantities (needed by quadratic_sources, below)
+  /* Thermodynamics quantities, needed by perturb2_quadratic_sources_at_tau() */
   class_call (thermodynamics_at_z(
                 pba,
                 pth,
@@ -3032,7 +3037,7 @@ int perturb2_initial_conditions (
       ppt2->error_message);
   }
 
-  // *** Interpolate first-order quantities (ppw2->psources_1)
+  /* Interpolate first-order quantities (ppw2->psources_1) */
   class_call (perturb_song_sources_at_tau (
                 ppr,
                 ppt,
@@ -3046,7 +3051,7 @@ int perturb2_initial_conditions (
     ppt->error_message,
     ppt2->error_message);
 
-  // *** Interpolate first-order quantities (ppw2->psources_2)  
+  /* Interpolate first-order quantities (ppw2->psources_2) */
   class_call (perturb_song_sources_at_tau (
                 ppr,
                 ppt,
@@ -3064,8 +3069,9 @@ int perturb2_initial_conditions (
   double * pvec_sources1 = ppw2->pvec_sources1;
   double * pvec_sources2 = ppw2->pvec_sources2;
 
-    
-  // *** Densities and velocities at first order
+
+  /* - Densities and velocities at first order */
+
   double delta_g=0, pressure_g=0, v_0_g=0, sigma_0_g=0, delta_g_adiab=0;
   double delta_g_1=0, delta_g_2=0, v_g_1=0, v_g_2=0;
   double delta_b=0, pressure_b=0, v_0_b=0, sigma_0_b=0;
@@ -3120,9 +3126,9 @@ int perturb2_initial_conditions (
   }
 
 
-  // ======================================================
-  // =            Vanishing initial conditions            =
-  // ======================================================
+  // =======================================================================================
+  // =                            Vanishing initial conditions                             =
+  // =======================================================================================
 
 
   /* If the user asked for vanishing initial conditions, then do not do anything, as the
@@ -3137,9 +3143,9 @@ int perturb2_initial_conditions (
 
 
 
-  // ========================================================
-  // =            First-order initial conditions            =
-  // ========================================================
+  // =======================================================================================
+  // =                            First-order initial conditions                           =
+  // =======================================================================================
 
   /* These initial conditions should be used only for testing purposes.  For example,
   if you set 'quadratic_sources = no' in the .ini file and use these IC, then
@@ -3214,9 +3220,9 @@ int perturb2_initial_conditions (
 
 
 
-  // ========================================================
-  // =            Unphysical initial conditions            =
-  // ========================================================
+  // =======================================================================================
+  // =                            Unphysical initial conditions                            =
+  // =======================================================================================
 
   /* These initial conditions are used for testing purposes only. */
 
@@ -3232,9 +3238,13 @@ int perturb2_initial_conditions (
 
 
 
-  // ============================================================
-  // =              Adiabatic initial conditions                =
-  // ============================================================
+  // =======================================================================================
+  // =                            Adiabatic initial conditions                             =
+  // =======================================================================================
+
+  /* Default initial conditions in SONG. Their derivation is explained in detail in section
+  5.4 of my PhD thesis (http://arxiv.org/abs/1405.2280). Here we assume that there are no
+  primordial vector or tensor modes from inflation or any other primordial phase. */
 
   else if (ppt2->has_ad == _TRUE_) {  
 
@@ -3242,47 +3252,43 @@ int perturb2_initial_conditions (
       printf("     * Using adiabatic initial conditions.\n");
     
 
-    // -----------------------------------------------------------
-    // -                      Scalar modes                       -
-    // -----------------------------------------------------------
-
     if (ppr2->compute_m[0] == _TRUE_) {
 
-      // *****         Metric & quadrupoles        ******
+      // -----------------------------------------------------------------------
+      // -                          Metric & Quadrupoles                       -
+      // -----------------------------------------------------------------------
     
-      /* At second-order, we have that R^(2) = - 2 * fNL_zeta * R^(1)*R^(1), where fNL_zeta = 3/5. * fNL_phi + 1.
-      In order to have Gaussian primordial initial conditions, set fNL_phi = 0. This is also what you get for
-      slow-rolling single field inflationary models: R(2) = - 2 R(1)*R(1)  (eq. 3.19 of Pitrou et al. 2010), 
-      Note that we set R^(1) = 5/3 at first-order, in order to obtain psi=1 at early times. Hence, a Gaussian 
-      Universe will have R^(2) = - 2 R(1)*R(1) equal to -50/9 ~ 5.555. */
-      // double primordial_local_fnl_zeta = 3/5. * ppt2->primordial_local_fnl_phi + 1;
-      // double primordial_local_fnl_R = - primordial_local_fnl_zeta;
-      // double R = 2 * primordial_local_fnl_R;
-      // printf ("R = %g\n", R);
-      // printf ("2*primordial_local_fnl_R = %g\n", 2*primordial_local_fnl_R);
-
+      /* The user can specify the amount of non-linearities in the initial condition
+      via the zeta function, the gauge-invariant curvature perturbation used by Maldacena
+      2003; see sec. 5.4.2 of http://arxiv.org/abs/1405.2280 for more detail.
+      For the time being, SONG only allows to specify non-gaussianity of the local
+      type, where zeta is equal to 2*fnl_zeta*zeta(k1)*zeta(k2). To use an arbitrary type
+      of non-gaussianity, one could include an arbitrary shape function S(k1,k2,k3) for zeta
+      at this point. Note that the bispectrum and Fisher modules in SONG output results
+      with respect to fnl_phi, the non-linearity in the curvature perturbation phi. The two
+      are related by a factor 3/5, which we include here. */
       double primordial_local_fnl_zeta = 3/5. * ppt2->primordial_local_fnl_phi;
       double zeta = 2 * primordial_local_fnl_zeta;
-      // double R = - zeta - 2*phi_1*phi_2 - psi_1*psi_2/2 - (phi_1*psi_2+phi_2*psi_1);
-      // double R = 2 * (-0 - phi_1*phi_2 - psi_1*psi_2/4 - 0.5*(phi_1*psi_2+phi_2*psi_1));
 
-
-      /* Quadratic part of the anisotropic stresses equation, i.e. phi - psi = - quadrupoles + A */
+      /* Quadratic part of the anisotropic stresses equation, as in eq. 5.71
+      of http://arxiv.org/abs/1405.2280: phi - psi = - quadrupoles + A_quad,  */
       double A_quad = ppw2->pvec_quadsources[ppw2->index_qs2_psi];
     
       /* To compute the initial conditions for the time potential psi, we need the photon
-        quadrupole.  This is obtained directly from Boltzmann equation assuming an infinitely
-        large interaction rate.  (The following equation is equivalent ot eq. C.6 of Pitrou et
-        al 2010) */
-      double I_2_0_quad = 5/8. * (c_minus_12(2,0) * I_1_tilde(1) * I_2_tilde(1) + c_minus_21(2,0) * I_2_tilde(1) * I_1_tilde(1));
+      quadrupole.  This is obtained directly from Boltzmann equation assuming an infinitely
+      large interaction rate, as in eq. 5.57 of http://arxiv.org/abs/1405.2280. Note that
+      the following equation is equivalent ot eq. C.6 of Pitrou et al 2010. */
+      double I_2_0_quad = 5/8. * (c_minus_12(2,0) * I_1_tilde(1) * I_2_tilde(1)
+        + c_minus_21(2,0) * I_2_tilde(1) * I_1_tilde(1));
 
       /* The IC for the neutrino quadrupole come from integrating the dipole & quadrupole
-        equations with H >> anything.  We store the quadratic part of N_2_0 here. */
+      equations with H >> anything.  We store the quadratic part of N_2_0 here, as in eq.
+      5.65 of http://arxiv.org/abs/1405.2280. */
       double N_2_0_quad = 0;
 
       if (pba->has_ur == _TRUE_)
-        N_2_0_quad = 1/3.*(k/Hc_sq)*dN_qs2(1,0) + 1/(2*Hc)*dN_qs2(2,0) + 8/3.*(k_sq/Hc_sq)*psi_1*psi_2;
-
+        N_2_0_quad = 1/3.*(k/Hc_sq)*dN_qs2(1,0) + 1/(2*Hc)*dN_qs2(2,0)
+          + 8/3.*(k_sq/Hc_sq)*psi_1*psi_2;
 
       /* Here we put together the quadratic parts of the radiation quadrupoles */
       double quadrupole_quad = frac_g * I_2_0_quad;
@@ -3291,82 +3297,87 @@ int perturb2_initial_conditions (
         quadrupole_quad += frac_ur * N_2_0_quad;
 
       /* We multiply the quadrupoles by the same factor they are multiplied with in the
-        anisotropic stresses equation. */
+      anisotropic stresses equation. */
       quadrupole_quad *= 3/5.*(Hc_sq/k_sq);
   
-      /* B_quad is crucial in the determination of psi:  psi * (1 + 2/5*frac_nu) = phi + B_quad */
+      /* B_quad (eq. 5.76 of http://arxiv.org/abs/1405.2280) is needed to determine psi:
+      psi * (1 + 2/5*frac_ur) = phi + B_quad */
       double B_quad = A_quad - quadrupole_quad;
     
-      /* The time potential is readily obtained using B_quad */
+      /* The time potential psi is obtained using B_quad, as in eq. 5.75 of
+      http://arxiv.org/abs/1405.2280 */
       double frac_g_factor = 1 + 4/15.*(1-frac_g);
       psi = 1./frac_g_factor * 2/3. * (- zeta + psi_1*psi_2 - 2*phi_1*phi_2 + B_quad);
-      // psi = 1./frac_g_factor * 2/3. * (3/2.*psi_1*psi_2 + phi_1*psi_2 + phi_2*psi_1 + B_quad + R);
-      // double R = 2 * (-0 - phi_1*phi_2 - psi_1*psi_2/4 - 0.5*(phi_1*psi_2+phi_2*psi_1));
-      // double R = 2 * (-0 - phi_1*phi_2 - psi_1*psi_2/4 - 0.5*(phi_1*psi_2+phi_2*psi_1));
-      // double R = - zeta - 2*phi_1*phi_2 - psi_1*psi_2/2 - (phi_1*psi_2+phi_2*psi_1);
 
-      /* The photon quadrupole does not have a purely second-order part at early times (see eq. C.6 of P2010) */
+      /* For standard models of inflation, the photon quadrupole does not have a
+      purely second-order part at early times (see eq. 5.57 of http://arxiv.org/abs/1405.2280
+      or C.6 of P2010) */
       double I_2_0 = I_2_0_quad;
 
       /* Now that we obtained psi, we can compute the purely second-order part of the neutrinos
-        shear, and add it to the quadratic part, which we already computed */
+      shear, and add it to the quadratic part, which we already computed (eq. 5.64 of
+      http://arxiv.org/abs/1405.2280)*/
       double N_2_0 = 0;
 
       if (pba->has_ur == _TRUE_)
         N_2_0 = 2/3.*(k_sq/Hc_sq)*psi + N_2_0_quad;
 
-
-      /* To obtain the initial conditions for phi we need to define S3 = phi-psi, that is
-      given by S3_quad + quadrupoles.  This could also easily obtained as 
-      double S3 = S3_quad + 3*Hc_sq/(5*k_sq)* ((1.-frac_ur)*I_2_0 + frac_ur*N_2_0); */
-      // double rho_quadrupole = 3/5.*(Hc_sq/k_sq) * (frac_g*I_2_0 + frac_ur*N_2_0);
+      /* We obtain the initiali conditions of phi from psi and B_quad, as in eq. 5.77
+      of http://arxiv.org/abs/1405.2280. */
       double rho_quadrupole = rho_g*I_2_0;
       
       if (pba->has_ur == _TRUE_)
         rho_quadrupole += rho_ur*N_2_0;
 
-      y[ppw2->pv->index_pt2_phi] = psi - A_quad + 3/5. * (a_sq/k_sq) * rho_quadrupole;
+      y[ppw2->pv->index_pt2_phi] = (1+2/5.*frac_ur)*psi - B_quad;
+
+      /* Uncomment to use an almost equivalent form, in a fashion similar to what is done
+      in Pitrou et al. 2010. */
+      // y[ppw2->pv->index_pt2_phi] = psi - A_quad + 3/5. * (a_sq/k_sq) * rho_quadrupole;
 
 
+      // -----------------------------------------------------------------------
+      // -                          Velocities & Dipoles                       -
+      // -----------------------------------------------------------------------
 
-      // *****         Velocities & dipoles        ******
-
-      /* Similary to the first-order case, at second-order the velocities of the different matter
-      species are equal at early times.  Such unique velocity can be computed from the longitudinal
-      Einstein equation (G_0i = T_0i) once the time potential psi is known, and assuming that the
-      potentials are constant at early times. */
+      /* Similary to the first-order case, at second-order the velocities of the
+      different matter species are equal at early times.  Such unique velocity
+      can be computed from the longitudinal Einstein equation (G_0i = T_0i) once
+      the time potential psi is known, and assuming that the potentials are constant
+      at early times. */
     
       /* Quadratic terms of the longitudinal equation */
       double L_quad = ppw2->pvec_quadsources[ppw2->index_qs2_phi_prime_longitudinal];
 
-      /* Common matter & radiation velocity (m=0 case, which is the one appearing in the RHS of the
-        longitudinal equation).  Note that here we use the fact that also at first order
-        v_b = v_g = v_cdm = v_ur. */
-
+      /* Common matter & radiation velocity (m=0 case, which is the one appearing in
+      the RHS of the longitudinal equation).  Note that here we use the fact that also
+      at first order v_b = v_g = v_cdm = v_ur. */
       double v_0_adiabatic = 2*(k/Hc)*(psi - L_quad/Hc)
                            - (-k1_0*v_cdm_1)*(3*Omega_m*delta_cdm_2 + 4*Omega_r*delta_g_2)
                            - (-k2_0*v_cdm_2)*(3*Omega_m*delta_cdm_1 + 4*Omega_r*delta_g_1);
 
       v_0_adiabatic *= 1/(3*Omega_m + 4*Omega_r);
 
-    
-      // *** Obtain the dipoles of the various species from the common velocity
-      double I_1_0=0., N_1_0=0., b_1_1_0=0., cdm_1_1_0=0.;
+
+      /* - Obtain the dipoles of the various species from the common velocity */
+      
+      double I_1_0=0, N_1_0=0, b_1_1_0=0, cdm_1_1_0=0;
 
       /* Photon dipole */
       I_1_0 = 4*(v_0_adiabatic + delta_g_1*(-k2_0*v_g_2) + delta_g_2*(-k1_0*v_g_1));
-      
       
       /* Neutrino dipole */
       if (pba->has_ur == _TRUE_) {
 
         N_1_0 = 4*(v_0_adiabatic + delta_ur_1*(-k2_0*v_ur_2) + delta_ur_2*(-k1_0*v_ur_1));
 
-        /* One can also compute the neutrino dipole by directly using its dipole equation, assuming that psi and
-        dN_qs2(1,0) are constant at early times. The two ways of compiting N(1,0) give the same result in the limit
-        where the initial conditions are set at tau=0.  Here we check that the two ways of computing N_1_0 give the
-        same answer to the 10% level.  Note that when N_1_0 is very small, this check is likely to fail but
-        we don't care much about that because... N_1_0 is very small :-)  */
+        /* One can also compute the neutrino dipole by directly using its dipole
+        equation, assuming that psi and dN_qs2(1,0) are constant at early times. The two
+        ways of computing N(1,0) give the same result in the limit where the initial
+        conditions are set at tau=0. Here we check that the two ways of computing N_1_0
+        give the same answer to the 10% level. Note that when N_1_0 is very small, this
+        check is likely to fail but we don't care much about that because... N_1_0 is
+        very small. */
         double N_1_0_boltzmann = 2*(k/Hc)*psi + 8*(k/Hc)*psi_1*psi_2 + 1/Hc*dN_qs2(1,0);
 
         class_test_nothing (fabs(1-N_1_0/N_1_0_boltzmann) > 0.1,
@@ -3376,7 +3387,6 @@ int perturb2_initial_conditions (
 
       } // end of if(has_ur)
 
-
       /* Baryons */
       b_1_1_0 = 3*(v_0_adiabatic + delta_b_1*(-k2_0*v_b_2) + delta_b_2*(-k1_0*v_b_1));
 
@@ -3384,85 +3394,62 @@ int perturb2_initial_conditions (
       if (pba->has_cdm == _TRUE_)
         cdm_1_1_0 = 3*(v_0_adiabatic + delta_cdm_1*(-k2_0*v_cdm_2) + delta_cdm_2*(-k1_0*v_cdm_1));
     
-    
       /* Uncomment to set the primordial velocity to zero */
-      I_1_0 = N_1_0 = b_1_1_0 = cdm_1_1_0 = 0;
+      // I_1_0 = N_1_0 = b_1_1_0 = cdm_1_1_0 = 0;
 
 
-      // ***** MATTER VARIABLES ******
-
-      // *** Photons
-
+      // -----------------------------------------------------------------------
+      // -                              Monopoles                              -
+      // -----------------------------------------------------------------------
 
       /* Photon monopole (like in eq. 3.5b of P2010) */
       double I_0_0 = - 2*psi + 8*psi_1*psi_2;
-      y[ppw2->pv->index_pt2_monopole_g] = I_0_0;
-
-      /* Photon dipole (eq. C.2 of P2010) */
-      y[ppw2->pv->index_pt2_monopole_g + lm(1,0)] = I_1_0;
-
-      /* Photon quadrupole */
-      y[ppw2->pv->index_pt2_monopole_g + lm(2,0)] = I_2_0;
-
-
-
-      // *** Baryons
+      
+      /* Neutrino monopole */
+      double N_0_0 = 0;
+      if (pba->has_ur == _TRUE_)
+        N_0_0 = I_0_0;
 
       /* Baryon monopole (eq. 3.4b of P2010) */
-      y[ppw2->pv->index_pt2_monopole_b] = 3*(I_0_0/4 - delta_g_1*delta_g_2/16);
-                   
-      /* Baryon dipole (eq. 3.2 of P2010) */
+      double b_0_0_0 = 3*(I_0_0/4 - delta_g_1*delta_g_2/16);
+
+      /* CDM monopole */
+      double cdm_0_0_0 = b_0_0_0;
+
+
+      // -----------------------------------------------------------------------
+      // -                               Update y                              -
+      // -----------------------------------------------------------------------      
+
+      /* Photons */
+      y[ppw2->pv->index_pt2_monopole_g] = I_0_0;
+      y[ppw2->pv->index_pt2_monopole_g + lm(1,0)] = I_1_0;
+      y[ppw2->pv->index_pt2_monopole_g + lm(2,0)] = I_2_0;
+
+      /* Baryons */
+      y[ppw2->pv->index_pt2_monopole_b] = b_0_0_0;
       y[ppw2->pv->index_pt2_monopole_b + nlm(1,1,0)] = b_1_1_0;
 
-
-      // *** Cold dark matter
-
+      /* Cold dark matter */
       if (pba->has_cdm == _TRUE_) {
-
-        /* CDM monopole */
-        y[ppw2->pv->index_pt2_monopole_cdm] = y[ppw2->pv->index_pt2_monopole_b];
-
-        /* CDM dipole */
+        y[ppw2->pv->index_pt2_monopole_cdm] = cdm_0_0_0;
         if (ppt->gauge != synchronous)
           y[ppw2->pv->index_pt2_monopole_cdm + nlm(1,1,0)] = cdm_1_1_0;
       }
 
-
-
-      // *** Neutrinos
-
+      /* Neutrinos */
       if (pba->has_ur == _TRUE_) {
-
-        /* Density */
-        y[ppw2->pv->index_pt2_monopole_ur] = I_0_0;
-
-        /* Velocity */
+        y[ppw2->pv->index_pt2_monopole_ur] = N_0_0;
         y[ppw2->pv->index_pt2_monopole_ur + lm(1,0)] = N_1_0;
-
-        /* Shear */                         
         y[ppw2->pv->index_pt2_monopole_ur + lm(2,0)] = N_2_0;
       }           
     
     } // end of scalar modes
-    
+
+
     /* TODO: include initial conditions for m!=0. These are given by the scalar quadratic
     sources only. Make sure to express them in terms of rot_1 and rot_2 because in this
     way you automatically account for the sin(theta_1) rescaling */
-    
-    /* Debug initial conditions */
-    // class_call(perturb2_einstein(
-    //            ppr,
-    //            ppr2,
-    //            pba,
-    //            pth,
-    //            ppt,
-    //            ppt2,
-    //            tau,
-    //            y,
-    //            ppw2),       /* We shall store the metric variables in ppw2->pvecmetric */
-    //        ppt2->error_message,
-    //        ppt2->error_message);    
-    
         
   } // end of if(has_ad)  
   

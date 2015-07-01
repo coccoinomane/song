@@ -1,3 +1,6 @@
+# Ad hoc folder for untracked files
+untracked
+
 # Build directory
 *build/*
 
@@ -21,10 +24,8 @@ print_sources1
 print_sources2
 print_transfers1
 print_transfers2
+print_couplings
 class
-
-# Ad hoc folder for untracked files
-untracked
 
 # Valgrind suppression files
 *.supp

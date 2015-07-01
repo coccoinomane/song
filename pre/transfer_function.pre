@@ -14,12 +14,12 @@
 ## The exact values of k1, k2 and l can be changed by tweaking k_max_custom_song,
 ## k_min_custom_song, l_max_scalars and l_linstep.
 
-# Consider only two l-values
+# Consider only three l-values (l=2, l=502, l=1000)
 l_max_scalars = 1000
 l_linstep = 500
 l_logstep = 999999
 
-# Pick two custom k values
+# Pick two custom k values (k1=0.15, k2=0.1)
 sources2_k_sampling = lin
 k_min_custom_song = 0.1
 k_max_custom_song =  0.15

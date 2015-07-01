@@ -1,3 +1,22 @@
+/** @file perturbations2.h
+ * 
+ * Shortcuts for the perturbations2 module.
+ *
+ * The second-order equations evolved in the perturbations2.c module are
+ * lengthy. In this file we define preprocessor macros that allow
+ * us to write them down in SONG in a human readable way.
+ *
+ * For example, using the macros defined below we can write the polarisation
+ * equations for m=0,1,2 as
+ *
+ *   dE(2,m) = -k*(-d_plus(2,m,m)*E(3,m) - d_zero(2,m,m)*B(2,m))
+ *             - kappa_dot*(E(2,m) + sqrt_6*Pi) ,
+ *
+ * which is a form very similar to the "published" version in eq. 4.146 of
+ * http://arxiv.org/abs/1405.2280.
+ * 
+ */
+
 #ifndef __PERTURBATIONS2_MACROS__
 #define __PERTURBATIONS2_MACROS__
 
