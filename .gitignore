@@ -28,6 +28,3 @@ untracked
 
 # Valgrind suppression files
 *.supp
-
-# Textmate configuration file
-.tm_properties

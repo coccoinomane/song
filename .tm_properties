@@ -1,0 +1,20 @@
+# Configuration file for those using TextMate
+
+TM_MAKE_FILE = '${CWD}/Makefile'
+TM_MAKE_TARGET = 'song'
+
+exclude  = "{*.{rtf,lot,lof,gz,zip,aux,log,blg,fdb*,out,\
+           synctex.gz,pdf,toc,fls,dat,bbl,gp,ilg,ind,idx},\
+           class,song,class.git,doxygen/*,*.html,no_longer*}"
+
+binary   = "{*.{gz,dgraph,ai,gif,icns,ico,jpg,jpeg,m4v,nib,o,pdf,\
+           png,psd,pyc,rtf,scssc,tif,tiff,xib,eps,zip,png},Icon\r}"
+
+softTabs = true
+tabSize = 2
+
+[ *.c ]
+softWrap = true
+
+[ attr.untitled ]
+fileType = 'test.c'
