@@ -1820,8 +1820,8 @@ int perturb2_get_k_lists (
       k = k_next;
 
     }
-    int n_mult = 2;
-    double spacing_fraction = 0.15;
+    int n_mult = 1;
+    double spacing_fraction = 0.10;
     
     /*magnets: here is add a strange sampling in n-tuplets, which should improve the integration of at least fourier power spectra. In general, the ksampling should be compeltely reworked for this.*/
     ppt2->k_size = n_mult*(index_k-1) + 1;

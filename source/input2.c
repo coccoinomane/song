@@ -1342,13 +1342,16 @@ int input2_init (
   ppt2->rescale_quadsources = _TRUE_;
   
   /* Uncomment if you want the output functions to output non-rescaled functions */
-  if ((ppt2->has_early_transfers2_only == _TRUE_) || (ptr2->has_transfers2_only == _TRUE_) /*add magentic field here*/)
+  if ((ppt2->has_early_transfers2_only == _TRUE_) || (ptr2->has_transfers2_only == _TRUE_) || (ppt2->has_magnetic_field == _TRUE_) /*add magentic field here*/) {
     ppt2->rescale_quadsources = _FALSE_;
 
   /* Uncomment if you want the m=0 sources to be computed without the rescaling, when they are
   the only requested sources. */
   // if (ppr2->m_max_2nd_order == 0)
   //   ppt2->rescale_quadsources = _TRUE_;
+
+		printf("deactivated scaling !!\n");
+}
 
   
   // =============================================================================================
