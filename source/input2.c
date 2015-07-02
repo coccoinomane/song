@@ -1103,41 +1103,41 @@ int input2_init (
   // =========================================================================================
 
   /* Rear l_max for the Boltzmann hierarchies */
-  class_read_int("l_max_g_2nd_order", ppr2->l_max_g_song); /* obsolete */
-  class_read_int("l_max_pol_g_2nd_order", ppr2->l_max_pol_g_song); /* obsolete */
-  class_read_int("l_max_ur_2nd_order", ppr2->l_max_ur_song);   /* obsolete */
-  class_read_int("l_max_g_ten_2nd_order", ppr2->l_max_g_ten_song); /* obsolete */
-  class_read_int("l_max_pol_g_ten_2nd_order", ppr2->l_max_pol_g_ten_song); /* obsolete */
+  class_read_int("l_max_g_2nd_order", ppr2->l_max_g); /* obsolete */
+  class_read_int("l_max_pol_g_2nd_order", ppr2->l_max_pol_g); /* obsolete */
+  class_read_int("l_max_ur_2nd_order", ppr2->l_max_ur);   /* obsolete */
+  class_read_int("l_max_g_ten_2nd_order", ppr2->l_max_g_ten); /* obsolete */
+  class_read_int("l_max_pol_g_ten_2nd_order", ppr2->l_max_pol_g_ten); /* obsolete */
   
-  class_read_int("l_max_g_song", ppr2->l_max_g_song);
-  class_read_int("l_max_pol_g_song", ppr2->l_max_pol_g_song);    
-  class_read_int("l_max_ur_song", ppr2->l_max_ur_song);        
-  class_read_int("l_max_g_ten_song", ppr2->l_max_g_ten_song);       
-  class_read_int("l_max_pol_g_ten_song", ppr2->l_max_pol_g_ten_song);            
+  class_read_int("l_max_g_song", ppr2->l_max_g);
+  class_read_int("l_max_pol_g_song", ppr2->l_max_pol_g);    
+  class_read_int("l_max_ur_song", ppr2->l_max_ur);        
+  class_read_int("l_max_g_ten_song", ppr2->l_max_g_ten);       
+  class_read_int("l_max_pol_g_ten_song", ppr2->l_max_pol_g_ten);            
 
   /* Read l_max for the quadratic sources in the Boltzmann hierarchies. If the user specified
   a negative value for one of them, set it to the corresponding l_max_XXX_song (see above).
   Also make sure that each of them is not larger than the corresponding l_max_XXX_song. The
   following lines must go below the definitions of l_max_g_song, etc. */
   class_read_int("l_max_g_quadsources", ppr2->l_max_g_quadsources);
-  if ((ppr2->l_max_g_quadsources<0) || (ppr2->l_max_g_quadsources>ppr2->l_max_g_song))
-    ppr2->l_max_g_quadsources = ppr2->l_max_g_song;
+  if ((ppr2->l_max_g_quadsources<0) || (ppr2->l_max_g_quadsources>ppr2->l_max_g))
+    ppr2->l_max_g_quadsources = ppr2->l_max_g;
 
   class_read_int("l_max_pol_g_quadsources", ppr2->l_max_pol_g_quadsources);
-  if ((ppr2->l_max_pol_g_quadsources<0) || (ppr2->l_max_pol_g_quadsources>ppr2->l_max_pol_g_song))
-    ppr2->l_max_pol_g_quadsources = ppr2->l_max_pol_g_song;
+  if ((ppr2->l_max_pol_g_quadsources<0) || (ppr2->l_max_pol_g_quadsources>ppr2->l_max_pol_g))
+    ppr2->l_max_pol_g_quadsources = ppr2->l_max_pol_g;
 
   class_read_int("l_max_ur_quadsources", ppr2->l_max_ur_quadsources);
-  if ((ppr2->l_max_ur_quadsources<0) || (ppr2->l_max_ur_quadsources>ppr2->l_max_ur_song))
-    ppr2->l_max_ur_quadsources = ppr2->l_max_ur_song;
+  if ((ppr2->l_max_ur_quadsources<0) || (ppr2->l_max_ur_quadsources>ppr2->l_max_ur))
+    ppr2->l_max_ur_quadsources = ppr2->l_max_ur;
 
   class_read_int("l_max_g_ten_quadsources", ppr2->l_max_g_ten_quadsources);
-  if ((ppr2->l_max_g_ten_quadsources<0) || (ppr2->l_max_g_ten_quadsources>ppr2->l_max_g_ten_song))
-    ppr2->l_max_g_ten_quadsources = ppr2->l_max_g_ten_song;
+  if ((ppr2->l_max_g_ten_quadsources<0) || (ppr2->l_max_g_ten_quadsources>ppr2->l_max_g_ten))
+    ppr2->l_max_g_ten_quadsources = ppr2->l_max_g_ten;
 
   class_read_int("l_max_pol_g_ten_quadsources", ppr2->l_max_pol_g_ten_quadsources);
-  if ((ppr2->l_max_pol_g_ten_quadsources<0) || (ppr2->l_max_pol_g_ten_quadsources>ppr2->l_max_pol_g_ten_song))
-    ppr2->l_max_pol_g_ten_quadsources = ppr2->l_max_pol_g_ten_song;
+  if ((ppr2->l_max_pol_g_ten_quadsources<0) || (ppr2->l_max_pol_g_ten_quadsources>ppr2->l_max_pol_g_ten))
+    ppr2->l_max_pol_g_ten_quadsources = ppr2->l_max_pol_g_ten;
 
   /* Read l_max for the line of sight integration */
   class_read_int("l_max_T_los", ppr2->l_max_los_t); /* obsolete */
@@ -1591,11 +1591,11 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
 
   ppr2->m_max_2nd_order=0;
 
-  ppr2->l_max_g_song=8;
-  ppr2->l_max_pol_g_song=8;
-  ppr2->l_max_ur_song=8; 
-  ppr2->l_max_g_ten_song=8;
-  ppr2->l_max_pol_g_ten_song=8;
+  ppr2->l_max_g=8;
+  ppr2->l_max_pol_g=8;
+  ppr2->l_max_ur=8; 
+  ppr2->l_max_g_ten=8;
+  ppr2->l_max_pol_g_ten=8;
 
   ppr2->l_max_g_quadsources=-1;
   ppr2->l_max_pol_g_quadsources=-1;

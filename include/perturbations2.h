@@ -16,8 +16,8 @@
  * Implementations of the tight coupling approximation.
  */
 enum tca2_method {
-  tca2_none,           /**< No TCA approximation */
-  tca2_zero            /**< Zero-order TCA approximation (NOT IMPLEMENTED YET) */
+  tca2_none,               /**< No TCA approximation */
+  tca2_first_order_pitrou  /**< First-order TCA approximation as in http://arxiv.org/abs/1012.0546 */
 };
 
 /**
@@ -481,10 +481,9 @@ struct perturbs2
   // =========================================================================================
 
   
-  /* For simplicity, we store the 2nd-order approximation flags here (in the ppt2 structure) rather
-  than in the precision one.  (This is not the case for the first-order perturbations in CLASS).
-  The following parameters are documented in the declaration of the ppr structure inside the
-  file common.h */
+  /* For simplicity, we store the 2nd-order approximation flags here (in the ppt2
+  structure) rather than in the precision one like CLASS does. See also top of file
+  for more documentation on the approximation methods. */
   int tight_coupling_approximation;
   double tight_coupling_trigger_tau_c_over_tau_h;
   double tight_coupling_trigger_tau_c_over_tau_k;
@@ -500,9 +499,6 @@ struct perturbs2
 
 
 
-
-
-
   // =================================================================================
   // =                        Storage of intermediate results                        =
   // =================================================================================
@@ -515,9 +511,6 @@ struct perturbs2
   /* File that will keep track how how many sources files have been succesfully written */
   FILE * sources_status_file;
   char sources_status_path[_FILENAMESIZE_];
-
-
-
 
 
 
@@ -583,7 +576,7 @@ struct perturb2_workspace
   double k1, k2;
   
   /* Norm of the k3 vector, which is the sum of the k1 and k2 wavemodes. Inside the
-    differential system, we shall call it simply 'k' */
+  differential system, we shall call it simply 'k' */
   double k, k_sq;
   
   /* Cosine of the angles between k1 and k, between k2 and k, and between k1 and k2. These are
@@ -786,8 +779,7 @@ struct perturb2_workspace
   struct perturb2_vector * pv;
 
   /* The interpolation functions background_at_tau(), thermodynamics_at_z(), perturb_sources_at_tau()
-    keep memory of the last point called through the following indices. */
-  int inter_mode;
+  keep memory of the last point called through the following indices. */
   int last_index_back;
   int last_index_thermo;
   int last_index_sources;
@@ -862,79 +854,76 @@ struct perturb2_workspace
 struct perturb2_vector
 {
 
-  // ================================================
-  // =                    Shortcuts                 =
-  // ================================================
+  // ====================================================================================
+  // =                                 Number of equations                              =
+  // ====================================================================================
 
-  /* Note that the number of evolved equations changes during the evaluation of a single (k1,k2,k3) mode.
-  This happens, for example, whenever the approximation scheme changes at some time.  Hence, the following
-  'l_max' and 'n_hierarchy' variables are not related to the particular (k1,k2,k3) mode, but to the
-  time interval. */
-  int l_max_g;                  /* Max 'l' momentum in Boltzmann hierarchy */
-  int l_max_pol_g;              /* Max 'l' momentum in Boltzmann hierarchy */
-  int l_max_ur;                 /* Max 'l' momentum in Boltzmann hierarchy */
-  int n_hierarchy_g;            /* Number of photon temperature hierarchy equations */
-  int n_hierarchy_pol_g;        /* Number of photon polarization hierarchy equations (same for E and B-modes) */  
-  int n_hierarchy_b;            /* Number of baryon hierarchy equations */
-  int n_hierarchy_cdm;          /* Number of cold dark matter hierarchy equations */    
-  int n_hierarchy_ur;           /* Number of neutrino hierarchy equations */
+  /* The number of evolved equations varies during the evolution of the same
+  (k1,k2,k3) wavemode. This happens whenever the approximation scheme changes; this
+  is why we split the integration of a given wavemode in time-intervals. Each time
+  interval will be solved by the evolver separately. The following variables reflect
+  the varying number of evolved equations and will be updated at the beginning of each
+  time-interval by the perturb2_vector_init() function. */
+  int l_max_g;                  /**< Largest multipole evolved in the photon intensity hierarchy */
+  int l_max_pol_g;              /**< Largest multipole evolved in the photon polarisation hierarchies */
+  int l_max_ur;                 /**< Largest multipole evolved in the neutrino hierarchy */
+  int l_max_b;                  /**< Largest multipole evolved in the baryon hierarchy */
+  int l_max_cdm;                /**< Largest multipole evolved in the cold dark matter hierarchy */
+  int n_hierarchy_g;            /**< Number of equations evolved for the photon temperature Boltzmann hierarchy */
+  int n_hierarchy_pol_g;        /**< Number of equations evolved for the photon polarisation (E+B) Boltzmann hierarchy */
+  int n_hierarchy_b;            /**< Number of equations evolved for the baryon Boltzmann hierarchy */
+  int n_hierarchy_cdm;          /**< Number of equations evolved for the cold dark matter Boltzmann hierarchy */
+  int n_hierarchy_ur;           /**< Number of equations evolved for the neutrino Boltzmann hierarchy */
 
-  /* Needed to address the baryon and CDM hierarchies with a loop over n,l,m.
-  For perfect fluids, n_max=l_max=1, otherwise =2. */
-  int n_max_b;                  
-  int l_max_b;
-  int n_max_cdm;
-  int l_max_cdm;
+  /* The massive species like baryons and cold dark matter are described by a set
+  of three parameters (n,l,m) instead of just (l,m). The n parameter arises from the
+  velocity expansion of the distribution function; for massless particles, n is irrelevant
+  because they have unit velocity. These baryon and cdm moments are defined beta-moments,
+  and are a natural way to treat massive particles in the Boltzmann formalism.
+  For more detail, see sec. 5.3.1.3 of http://arxiv.org/abs/1405.2280. See also
+  Lewis and Challinor 2002. */
+  int n_max_b;     /**< Largest velocity moment evolved for the baryon hierarchy;
+                   equal to n_max=1 for a perfect fluid treatment. */
+  int n_max_cdm;   /**< Largest velocity moment evolved for the cold dark matter
+                   hierarchy; equal to n_max=1 for a perfect fluid treatment. */
 
 
+  // ====================================================================================
+  // =                               Evolved perturbations                              =
+  // ====================================================================================
 
-  // ==============================================
-  // = Indices of evolved second-order quantities = 
-  // ==============================================
+  /* Radiation hierarchies */
+  int index_pt2_monopole_g;       /**< Evolution index for photon temperature hierarchy */
+  int index_pt2_monopole_E;       /**< Evolution index for photon E-mode polarization hierarchy */  
+  int index_pt2_monopole_B;       /**< Evolution index for photon B-mode polarization hierarchy */    
+  int index_pt2_monopole_ur;      /**< Evolution index for neutrino hierarchy */
+  
+  /* Matter hierarchies */
+  int index_pt2_monopole_b;       /**< Evolution index for baryon hierarchy */
+  int index_pt2_monopole_cdm;     /**< Evolution index for cold dark matter hierarchy */
 
-  // ***** Photon hierarchies
-  int index_pt2_monopole_g;                   /* Photon temperature hierarchy starts here */
-  int index_pt2_monopole_E;                   /* Photon E-mode polarization hierarchy starts here */  
-  int index_pt2_monopole_B;                   /* Photon B-mode polarization hierarchy starts here */    
+  /* Metric variables */
+  int index_pt2_eta;               /**< Evolution index for synchronous gauge metric perturbation eta */
+  int index_pt2_phi;               /**< Evolution index for Newtonian gauge curvature potential phi */
+  int index_pt2_omega_m1;          /**< Evolution index for Newtonian gauge vector potential omega_[m=1] */
+  int index_pt2_gamma_m2;          /**< Evolution index for Newtonian gauge tensor potential gamma_[m=2] */
+  int index_pt2_gamma_m2_prime;    /**< Evolution index for time derivative of gamma_[m=2] */
 
-  // *** Baryons hierarchy
-  int index_pt2_monopole_b;
+  int pt2_size;         /**< Size of perturbation vector, equival to number of evolved perturbations */
 
-  // ***** Cold dark matter hierarchy
-  int index_pt2_monopole_cdm;
-
-  // ***** Neutrino hierarchy
-  int index_pt2_monopole_ur;
-      
-  // ***** Metric variables
-  int index_pt2_eta;                        /* Synchronous gauge metric perturbation eta */
-  int index_pt2_phi;                        /* Newtonian gauge potential phi */
-  int index_pt2_omega_m1;                   /* Newtonian gauge vector potential omega_[m=1] */
-  int index_pt2_gamma_m2;                   /* Newtonian gauge tensor potential gamma_[m=2] */
-  int index_pt2_gamma_m2_prime;             /* the equation for gamma_[m=2] is a second order DE */
-
-  int pt2_size;                             /* Size of perturbation vector, equivalent to the number of evolved quantities */
-
-  // =================
-  // =    Arrays     =
-  // =================
-
-  /* Array of perturbations to be integrated. It is filled at the end of each iteration of the evolver. */
+  /** Array of perturbations to be integrated. It is filled by the evolver at the end of
+  each time step. */
   double * y;
 
-  /* Vector containing the time-derivative of the pv->y. It is filled by each call of perturb2_derivs. */
+  /** Vector containing the time-derivative of the evolved perturbations contained in y.
+  It is filled by each call of perturb2_derivs(). */
   double * dy;               
 
-  /* Boolean array specifying which perturbations enter in the calculation of the source functions. Only
-    the marked perturbations will be interpolated at the times requested in ppt2->tau_sampling. */
+  /** Boolean array specifying which perturbations enter in the calculation of the
+  source functions. Only the marked perturbations will be interpolated at the
+  times requested in ppt2->tau_sampling. */
   int * used_in_sources;
 
-
-  // =================
-  // =     Misc      =
-  // =================
-
- 
 };
 
 

@@ -24,16 +24,16 @@ needed in bispectra2.c */
 struct precision2
 {
 
-  /* Tolerance for the integration of the 2nd-order system.  This parameter goes
+  /* Tolerance for the integration of the 2nd-order system. This parameter goes
   directly into the evolver as the parameter 'rtol' */
   double tol_perturb_integration_song;
   
   /* How many multipoles should we evolve at second-order? */
-  int l_max_g_song; 
-  int l_max_pol_g_song; 
-  int l_max_ur_song;
-  int l_max_g_ten_song;  
-  int l_max_pol_g_ten_song;
+  int l_max_g; 
+  int l_max_pol_g;
+  int l_max_ur;
+  int l_max_g_ten;  
+  int l_max_pol_g_ten;
 
   /* How many multipoles should we keep in the quadratic sources? */
   int l_max_g_quadsources; 
