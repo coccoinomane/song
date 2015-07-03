@@ -10961,11 +10961,11 @@ int perturb2_save_early_transfers (
   // *** magnetic field
   if (ppt2->has_magnetic_field == _TRUE_) {
   	if (ppr2->compute_m[1] == _TRUE_) {
-  		if (index_tau==0) fprintf(file_tr, format_label, "mag", index_print_tr++);
+  		if (ppw2->n_steps==1) fprintf(file_tr, format_label, "mag", index_print_tr++);
   		else fprintf(file_tr, format_value, mag(1,1));
   	}
   	if (ppr2->compute_m[1] == _TRUE_) {
-  		if (index_tau==0) fprintf(file_tr, format_label, "dipsource", index_print_tr++);
+  		if (ppw2->n_steps==1) fprintf(file_tr, format_label, "dipsource", index_print_tr++);
   		else fprintf(file_tr, format_value, 
   		/* ( I(1,1)*0.25 - delta_g_1*(-k2_m[1+1]*v_g_2) - delta_g_2*(-k1_m[1+1]*v_g_1)
   		 - (b(1,1,1)/3. - delta_b_1*(-k2_m[1+1]*v_b_2) - delta_b_2*(-k1_m[1+1]*v_b_1)) )*/
@@ -10974,12 +10974,12 @@ int perturb2_save_early_transfers (
   	}
   	
   	if (ppr2->compute_m[1] == _TRUE_) {
-  		if (index_tau==0) fprintf(file_tr, format_label, "baryon velocity", index_print_tr++);
+  		if (ppw2->n_steps==1) fprintf(file_tr, format_label, "baryon velocity", index_print_tr++);
   		else fprintf(file_tr, format_value,  	(-k1_m[1+1])*v_b_1);
   	}
   	
   	if (ppr2->compute_m[1] == _TRUE_) {
-  		if (index_tau==0) fprintf(file_tr, format_label, "rho_g", index_print_tr++);
+  		if (ppw2->n_steps==1) fprintf(file_tr, format_label, "rho_g", index_print_tr++);
   		else fprintf(file_tr, format_value,  pvecback[pba->index_bg_rho_g]  );
   	}
   }

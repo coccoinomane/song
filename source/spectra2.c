@@ -7,6 +7,9 @@
 
 #include "spectra2.h"
 
+#ifdef sources
+#undef sources
+#endif
 
 #define sources(INDEX_TAU,INDEX_K_TRIANGULAR) \
   ppt2->sources[index_tp2]\
