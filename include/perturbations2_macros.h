@@ -89,8 +89,8 @@ or to unity if you use X ~ X^(1) + X^(2) instead. This feature is not fully impl
 yet, hence for the time being keep it equal to 2 */
 #define quad_coefficient 2
 
-/* Shortcuts to access the full quadratic sources, as computed by perturb2_quadratic_sources or
-interpolated by perturb2_quadratic_sources_at_tau. */
+/* Shortcuts to access the full quadratic sources, as computed by perturb2_quadratic_sources()
+or interpolated by perturb2_quadratic_sources_at_tau(). */
 #define dI_qs2(l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_g + lm(l,m)]
 #define dE_qs2(l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_E + lm(l,m)]
 #define dB_qs2(l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_B + lm(l,m)]
