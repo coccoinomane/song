@@ -60,11 +60,19 @@ k_scalar_step_transition=0.2
 sources2_k_sampling = smart
 
 ## Moderate-low precision for the second-order k-sampling
+#k_scalar_min_tau0_2nd_order = 0.1
+#k_scalar_max_tau0_over_l_max_2nd_order = 2
+#k_scalar_step_sub_2nd_order = 0.1
+#k_scalar_linstep_super_2nd_order = 0.025
+#k_scalar_logstep_super_2nd_order = 1.8
+#k_scalar_step_transition_2nd_order = 0.2
+
+## Modified moderate-low precision for the second-order k-sampling
 k_scalar_min_tau0_2nd_order = 0.1
-k_scalar_max_tau0_over_l_max_2nd_order = 2
-k_scalar_step_sub_2nd_order = 0.1
-k_scalar_linstep_super_2nd_order = 0.025
-k_scalar_logstep_super_2nd_order = 1.8
+k_scalar_max_tau0_over_l_max_2nd_order = 200
+k_scalar_step_sub_2nd_order = 8.0
+k_scalar_linstep_super_2nd_order = 0.25
+k_scalar_logstep_super_2nd_order = 4.8
 k_scalar_step_transition_2nd_order = 0.2
 
 ## Second-order k-sampling REF.PRE
@@ -97,7 +105,7 @@ k_scalar_step_transition_2nd_order = 0.2
 # ===================================================================
 
 ## Second-order sampling for k3 (lin, log, smart, angle)
-sources2_k3_sampling = smart
+sources2_k3_sampling = log
 k3_size_min = 5
 
 
@@ -114,7 +122,7 @@ transfer2_k_sampling = class
 # ===================================================================
 # =                           Interpolation                         =
 # ===================================================================
-	
+
 ## Interpolation parameters
 quadsources_time_interpolation = cubic
 sources_time_interpolation = linear
@@ -124,7 +132,7 @@ transfers_k1_interpolation = linear
 transfers_k2_interpolation = linear
 
 
-	
+
 # ================================================================================
 # =                              Time sampling                                   =
 # ================================================================================
@@ -139,7 +147,7 @@ perturb_sampling_stepsize_for_quadsources = 0.03
 custom_time_sampling_for_quadsources = no
 custom_tau_ini_quadsources = 0.1                # must be smaller than tau_ini_2nd_order_sources (best: 0.1)
 custom_tau_end_quadsources = 1000                # enter 0 to save sources up to today (best: 550)
-custom_tau_size_quadsources = 1000              
+custom_tau_size_quadsources = 1000
 custom_tau_mode_quadsources = log               # either lin, log or class (best: log)
 
 # Timesampling for the first-order line-of-sight sources
@@ -288,7 +296,7 @@ tight_coupling_trigger_tau_c_over_tau_k_2nd_order = 0.015;
 
 # The RSA substitutes the crazy oscillations of the photon & neutrino moments
 # at late times with their average (see fig. 8 of Blas et al.).
-# To turn off the rsa approximation , set radiation_streaming_approximation = 3. 
+# To turn off the rsa approximation , set radiation_streaming_approximation = 3.
 # This is not very useful, though, since the result will just be a big mess
 # at late times for all photon & neutrino multipoles.  Probably, that won't affect
 # the results, but it is unnecessary to compute all those oscillations, and anyway
@@ -320,7 +328,7 @@ radiation_streaming_trigger_tau_over_tau_k_2nd_order = 200
 
 ## ***   First order  ***
 
-# To turn off the ufa approximation, set it to 3 or increase the ur_fluid_trigger_tau_over_tau_k to 
+# To turn off the ufa approximation, set it to 3 or increase the ur_fluid_trigger_tau_over_tau_k to
 # a very high number (e.g. 10000).
 # If you turn off the ufa, and do not use a high l_max_ur (>100), be prepared to have
 # numerical noise such as the red curve in fig. 6 of Blas et al. 2010.
@@ -367,7 +375,7 @@ tol_ncdm = 1.e-4
 
 # this precision file obtained as follows:
 # - computing adiabatic scalar unlensed ClT only (ndf15 integrator with AMD)
-# - for each precision parameter varied individually, Deltachi2(Planck) between high-precision limit and selected value = 1.e-3  
+# - for each precision parameter varied individually, Deltachi2(Planck) between high-precision limit and selected value = 1.e-3
 
 a_ini_over_a_today_default = 1.e-14
 back_integration_stepsize = 7.e-3
@@ -434,9 +442,3 @@ transfer_cut_threshold_osc=0.005 # with 0.005, more smooth than when smaller for
 transfer_cut_threshold_cl=1.e-8 # not robust if tilted or if one Delta_l(k) oscillation tangents zero
 
 evolver=1
-
-
-
-
-
-
