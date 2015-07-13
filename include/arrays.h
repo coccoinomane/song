@@ -1,5 +1,5 @@
-/** 
- * definitions for module thermodynamics.c 
+/**
+ * definitions for module thermodynamics.c
  */
 
 #ifndef __ARRAYS__
@@ -11,7 +11,7 @@
 #define _SPLINE_EST_DERIV_ 1 /**< spline with estimation of first derivative on both edges */
 
 /**
- * Boilerplate for C++ 
+ * Boilerplate for C++
  */
 #ifdef __cplusplus
 extern "C" {
@@ -96,12 +96,12 @@ extern "C" {
 				      int index_ddydx2,
 				      short spline_mode,
 				      ErrorMsg errmsg);
-       
+
   int array_spline_table_columns(
 		       double * x,
 		       int x_size,
 		       double * y_array,
-		       int y_size,    
+		       int y_size,
 		       double * ddy_array,
 		       short spline_mode,
 		       ErrorMsg errmsg);
@@ -110,7 +110,7 @@ extern "C" {
 		       double * x,
 		       int x_size,
 		       double * y_array,
-		       int y_size, 
+		       int y_size,
 		       double * ddy_array,
 		       short spline_mode,
 		       ErrorMsg errmsg
@@ -128,25 +128,25 @@ extern "C" {
            ErrorMsg errmsg
            );
  	// *** END OF MY MODIFICATIONS ***
-	
-	
+
+
   int array_logspline_table_lines(
 				  double * x,
 				  int x_size,
 				  double * y_array,
-				  int y_size, 
+				  int y_size,
 				  double * ddlny_array,
 				  short spline_mode,
 				  ErrorMsg errmsg
 				  );
-	
+
   int array_spline_table_one_column(
 				    double * x, /* vector of size x_size */
 				    int x_size,
-				    double * y_array, /* array of size x_size*y_size with elements 
+				    double * y_array, /* array of size x_size*y_size with elements
 							 y_array[index_y*x_size+index_x] */
-				    int y_size,    
-				    int index_y,   
+				    int y_size,
+				    int index_y,
 				    double * ddy_array, /* array of size x_size*y_size */
 				    short spline_mode,
 				    ErrorMsg errmsg
@@ -156,10 +156,10 @@ extern "C" {
 				    double * x, /* vector of size x_size */
 				    int x_size,
 				    int x_stop,
-				    double * y_array, /* array of size x_size*y_size with elements 
+				    double * y_array, /* array of size x_size*y_size with elements
 							 y_array[index_y*x_size+index_x] */
-				    int y_size,    
-				    int index_y,   
+				    int y_size,
+				    int index_y,
 				    double * ddlogy_array, /* array of size x_size*y_size */
 				    short spline_mode,
 				    ErrorMsg errmsg
@@ -194,7 +194,7 @@ extern "C" {
 		      int index_y,
 		      int index_int_y_dx,
 		      ErrorMsg errmsg);
-  
+
   int array_integrate_all(
 		      double * array,
 		      int n_columns,
@@ -202,7 +202,7 @@ extern "C" {
 		      int index_x,   /** from 0 to (n_columns-1) */
 		      int index_y,
 		      double * result);
-  
+
   int array_integrate_ratio(
 			    double * array,
 			    int n_columns,
@@ -235,7 +235,7 @@ extern "C" {
 			       double * result,
 			       int result_size, /** from 1 to n_columns */
 			       ErrorMsg errmsg);
-	
+
   int array_interpolate_logspline(
 				  double * x_array,
 				  int n_lines,
@@ -247,7 +247,7 @@ extern "C" {
 				  double * result,
 				  int result_size, /** from 1 to n_columns */
 				  ErrorMsg errmsg);
-	
+
   int array_interpolate_growing_closeby(
 					double * array,
 					int n_columns,
@@ -294,7 +294,7 @@ extern "C" {
 			    double * result,
 			    int result_size, /** from 1 to n_columns_y */
 			    ErrorMsg errmsg);
-  
+
   int array_interpolate_two_bis(
 				double * array_x,
 				int n_columns_x,
@@ -306,27 +306,40 @@ extern "C" {
 				double * result,
 				int result_size, /** from 1 to n_columns_y */
 				ErrorMsg errmsg);
-  
+
   int array_interpolate_spline_one_column(
 					  double * x_array,
 					  int x_size,
-					  double * y_array, /* array of size x_size*y_size with elements 
+					  double * y_array, /* array of size x_size*y_size with elements
 							       y_array[index_y*x_size+index_x] */
-					  int y_size,    
-					  int index_y,   
+					  int y_size,
+					  int index_y,
 					  double * ddy_array, /* array of size x_size*y_size */
 					  double x,   /* input */
 					  double * y, /* output */
 					  ErrorMsg errmsg
 					  );
 
+  int array_interpolate_spline_one_column_derivative(
+                                                     double * x_array,
+                                                     int x_size,
+                                                     double * y_array, /* array of size x_size*y_size with elements
+                                                                          y_array[index_y*x_size+index_x] */
+                                                     int y_size,
+                                                     int index_y,
+                                                     double * ddy_array, /* array of size x_size*y_size */
+                                                     double x,   /* input */
+                                                     double * y, /* output */
+                                                     double *dy,
+                                                     ErrorMsg errmsg
+                                                     );
   int array_interpolate_extrapolate_spline_one_column(
 					  double * x_array,
 					  int x_size,
-					  double * y_array, /* array of size x_size*y_size with elements 
+					  double * y_array, /* array of size x_size*y_size with elements
 							       y_array[index_y*x_size+index_x] */
-					  int y_size,    
-					  int index_y,   
+					  int y_size,
+					  int index_y,
 					  double * ddy_array, /* array of size x_size*y_size */
 					  double x,   /* input */
 					  double * y, /* output */
@@ -337,10 +350,10 @@ extern "C" {
 								   double * x_array,
 								   int x_size,
 								   int x_stop,
-								   double * y_array, /* array of size x_size*y_size with elements 
+								   double * y_array, /* array of size x_size*y_size with elements
 											y_array[index_y*x_size+index_x] */
-								   int y_size,    
-								   int index_y,   
+								   int y_size,
+								   int index_y,
 								   double * ddlogy_array, /* array of size x_size*y_size */
 								   double x,   /* input */
 								   double * y, /* output */
@@ -368,14 +381,14 @@ extern "C" {
 			    ErrorMsg errmsg);
 
   int array_interpolate_cubic_equal(
-				    double x0, 
-				    double dx, 
-				    double *yarray, 
-				    int Nx, 
+				    double x0,
+				    double dx,
+				    double *yarray,
+				    int Nx,
 				  double x,
 				    double * result,
 				    ErrorMsg errmsg);
-    
+
   int array_smooth(double * array,
 		   int n_columns,
 		   int n_lines,
