@@ -84,6 +84,7 @@ enum sources2_k3_sampling {
   lin_k3_sampling,                  /**< Linear k sampling */
   log_k3_sampling,                  /**< Logarithmic k sampling */
   smart_k3_sampling,                /**< k sampling adopted in perturb_get_k3_list */
+  sym_k3_sampling,									/**< k sampling based on transformed symmetric grid */
   theta12_k3_sampling,              /**< Sampling linear in the angle between k1 and k2 */
   theta13_k3_sampling               /**< Sampling linear in the angle between k1 and k3 */
 };

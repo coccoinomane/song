@@ -422,6 +422,10 @@ int input2_init (
     else if ((strcmp(string1,"smart") == 0) || (strcmp(string1,"class") ==0))
       ppt2->k3_sampling = smart_k3_sampling;
 
+
+    else if ((strcmp(string1,"sym") == 0))
+      ppt2->k3_sampling = sym_k3_sampling;
+
     else if (strcmp(string1,"theta_12") == 0)
       ppt2->k3_sampling = theta12_k3_sampling;
 

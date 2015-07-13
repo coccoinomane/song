@@ -1949,6 +1949,29 @@ int perturb2_get_k_lists (
         k3_min, k3_max, index_k1, k1, index_k2, k2);
 
 
+ 			// ---------------------------------------------------------
+      // -           Symmetric sampling								           -
+      // ---------------------------------------------------------
+
+      /* Here we use a grid in transformed quantities k1t,k2t and k3t in which the triangular 
+      condition is trivial. Therefore we can use the full first quadrant and sample k3 as k1 */
+
+      if ((ppt2->k3_sampling == sym_k3_sampling) ) {
+
+        /* The size of the k3 array is the same for every (k1,k2) configuration*/
+        ppt2->k3_size[index_k1][index_k2] = ppt2->k_size;
+        class_alloc (ppt2->k3[index_k1][index_k2], ppt2->k_size*sizeof(double),
+          ppt2->error_message);
+
+        
+        /* Build the grids */
+        
+         
+        ppt2->k3[index_k1][index_k2] = ppt2->k;
+        
+      } // end of sym sampling
+    
+
       // ---------------------------------------------------------
       // -           Linear/logarithmic sampling for k3          -
       // ---------------------------------------------------------
@@ -3000,6 +3023,7 @@ int perturb2_initial_conditions (
   double * y = ppw2->pv->y;
   double k1 = ppw2->k1;
   double k2 = ppw2->k2;
+    
   double k = ppw2->k;
   double k_sq = ppw2->k_sq;
   double mu = ppw2->cosk1k2;
@@ -3077,8 +3101,43 @@ int perturb2_initial_conditions (
       ppt2->error_message);
   }
 
-  /* Interpolate first-order quantities (ppw2->psources_1) */
-  class_call (perturb_song_sources_at_tau (
+  
+  
+  /*sym sampling*/
+  
+  if ((ppt2->k3_sampling == sym_k3_sampling) ) {
+  
+  	class_call (perturb_song_sources_at_tau_and_k (
+                ppr,
+                ppt,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                k1,
+                tau,
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources1),
+    	ppt->error_message,
+    	ppt2->error_message);
+    	
+    	class_call (perturb_song_sources_at_tau_and_k (
+                ppr,
+                ppt,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                k2,
+                tau,
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources2),
+    	ppt->error_message,
+    	ppt2->error_message);
+  
+  }
+  
+  else {
+  	/* Interpolate first-order quantities (ppw2->psources_1) */
+  	class_call (perturb_song_sources_at_tau (
                 ppr,
                 ppt,
                 ppt->index_md_scalars,
@@ -3088,11 +3147,11 @@ int perturb2_initial_conditions (
                 ppt->inter_normal,
                 &(ppw2->last_index_sources),
                 ppw2->pvec_sources1),
-    ppt->error_message,
-    ppt2->error_message);
+    	ppt->error_message,
+    	ppt2->error_message);
 
-  /* Interpolate first-order quantities (ppw2->psources_2) */
-  class_call (perturb_song_sources_at_tau (
+ 		/* Interpolate first-order quantities (ppw2->psources_2) */
+  	class_call (perturb_song_sources_at_tau (
                 ppr,
                 ppt,
                 ppt->index_md_scalars,
@@ -3102,9 +3161,10 @@ int perturb2_initial_conditions (
                 ppt->inter_normal,
                 &(ppw2->last_index_sources),                 
                 ppw2->pvec_sources2),
-    ppt->error_message,
-    ppt2->error_message);  
+    	ppt->error_message,
+    	ppt2->error_message);  
 
+	}
   /* Shortcuts to access the first-order quantities */
   double * pvec_sources1 = ppw2->pvec_sources1;
   double * pvec_sources2 = ppw2->pvec_sources2;
@@ -4728,6 +4788,16 @@ int perturb2_geometrical_corner (
   double k2 = ppw2->k2 = ppt2->k[index_k2];
   double k = ppw2->k = ppt2->k3[index_k1][index_k2][index_k3];
   double k_sq = ppw2->k_sq = k*k;
+
+ 	if ((ppt2->k3_sampling == sym_k3_sampling) ) {
+ 	
+ 		/*in sym sampling the index refers to the transformed k's while k1,k2,k are the actual k's*/
+ 		k1 = ppw2->k1 = (ppt2->k[index_k2] + ppt2->k3[index_k1][index_k2][index_k3])/2.;
+  	k2 = ppw2->k2 = (ppt2->k[index_k1] + ppt2->k3[index_k1][index_k2][index_k3])/2.;
+  	k = ppw2->k = 	(ppt2->k[index_k1] + ppt2->k[index_k2])/2.;
+  	k_sq = ppw2->k_sq = k*k;
+ 	
+ 	}
 
   /* Get the angles */
   double cosk1k2 = ppw2->cosk1k2 = (k_sq - k1*k1 - k2*k2)/(2.*k1*k2);
@@ -7893,28 +7963,93 @@ int perturb2_quadratic_sources (
   /* If the user provides a valid time index (index_tau>=0), use the
   first-order transfer functions in the tabulated values; otherwise interpolate
   them at the desired tau */
+  
+  
+  
   if (index_tau >= 0) { 
 
     tau = ppt->tau_sampling_quadsources[index_tau];
 
-    for (int index_type=0; index_type<qs_size; ++index_type) {
+    if ((ppt2->k3_sampling == sym_k3_sampling) ) {
+  		/*here we could improve as there is no tau interpoaltion needed. However nothng is lost apart from speed as the interpoaltion on the node is exact*/
+  		class_call (perturb_song_sources_at_tau_and_k (
+                ppr,
+                ppt,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                k1,
+                tau,
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources1),
+    		ppt->error_message,
+    		ppt2->error_message);
+    	
+    	class_call (perturb_song_sources_at_tau_and_k (
+                ppr,
+                ppt,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                k2,
+                tau,
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources2),
+    		ppt->error_message,
+    		ppt2->error_message);
+  
+ 	 	}
+  	else {
+    
+    	for (int index_type=0; index_type<qs_size; ++index_type) {
  
-      /* First-order sources in k1 */
-      ppw2->pvec_sources1[index_type] =
-        ppt->quadsources[ppt->index_md_scalars][ppt2->index_ic_first_order*qs_size + index_type]
+      	/* First-order sources in k1 */
+      	ppw2->pvec_sources1[index_type] =
+        	ppt->quadsources[ppt->index_md_scalars][ppt2->index_ic_first_order*qs_size + index_type]
                         [index_tau*ppt->k_size[ppt->index_md_scalars]+ppw2->index_k1];
  
-      /* First-order sources in k2 */
-      ppw2->pvec_sources2[index_type] =
-        ppt->quadsources[ppt->index_md_scalars][ppt2->index_ic_first_order*qs_size + index_type]
+      	/* First-order sources in k2 */
+      	ppw2->pvec_sources2[index_type] =
+        	ppt->quadsources[ppt->index_md_scalars][ppt2->index_ic_first_order*qs_size + index_type]
                         [index_tau*ppt->k_size[ppt->index_md_scalars]+ppw2->index_k2];
+    	}
     }
   }
   /* Interpolate first-order sources at the desired time */
   else {
-        
+      
+    if ((ppt2->k3_sampling == sym_k3_sampling) ) {
+  
+  		class_call (perturb_song_sources_at_tau_and_k (
+                ppr,
+                ppt,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                k1,
+                tau,
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources1),
+    		ppt->error_message,
+    		ppt2->error_message);
+    	
+    		class_call (perturb_song_sources_at_tau_and_k (
+                ppr,
+                ppt,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                k2,
+                tau,
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources2),
+    		ppt->error_message,
+    		ppt2->error_message);
+  
+  	}
+    else {  
     /* Interpolate first-order quantities in tau and k1 (ppw2->psources_1) */
-    class_call (perturb_song_sources_at_tau (
+    	class_call (perturb_song_sources_at_tau (
                  ppr,
                  ppt,
                  ppt->index_md_scalars,
@@ -7924,11 +8059,11 @@ int perturb2_quadratic_sources (
                  ppt->inter_normal,
                  &(ppw2->last_index_sources),
                  ppw2->pvec_sources1),
-       ppt->error_message,
-       ppt2->error_message);
+       	ppt->error_message,
+       	ppt2->error_message);
   
     /* Interpolate first-order quantities in tau and k2 (ppw2->psources_2) */ 
-    class_call (perturb_song_sources_at_tau (
+    	class_call (perturb_song_sources_at_tau (
                  ppr,
                  ppt,
                  ppt->index_md_scalars,
@@ -7938,8 +8073,11 @@ int perturb2_quadratic_sources (
                  ppt->inter_normal,
                  &(ppw2->last_index_sources),                 
                  ppw2->pvec_sources2),
-      ppt->error_message,
-      ppt2->error_message);    
+      	ppt->error_message,
+      	ppt2->error_message); 
+      	
+      }
+  }   
       
     /* Interpolate background-related quantities in tau (pvecback) */
     class_call (background_at_tau(
@@ -7964,7 +8102,7 @@ int perturb2_quadratic_sources (
       pth->error_message,
       ppt2->error_message);
       
-  }
+  
  
   /* Define shorthands */
   double * pvec_sources1 = ppw2->pvec_sources1;
@@ -9119,8 +9257,38 @@ int perturb2_sources (
       error_message);
   }
   
+  if ((ppt2->k3_sampling == sym_k3_sampling) ) {
+  
+  	class_call (perturb_song_sources_at_tau_and_k (
+                ppr,
+                ppt,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                k1,
+                tau,
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources1),
+    	ppt->error_message,
+    	ppt2->error_message);
+    	
+    	class_call (perturb_song_sources_at_tau_and_k (
+                ppr,
+                ppt,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                k2,
+                tau,
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources2),
+    	ppt->error_message,
+    	ppt2->error_message);
+  
+  }
+  else {
   /* Interpolate first-order quantities in tau and k1 (ppw2->psources_1) */
-  class_call (perturb_song_sources_at_tau (
+  	class_call (perturb_song_sources_at_tau (
                 ppr,
                 ppt,
                 ppt->index_md_scalars,
@@ -9130,11 +9298,11 @@ int perturb2_sources (
                 ppt->inter_normal,
                 &(ppw2->last_index_sources),
                 ppw2->pvec_sources1),
-    ppt->error_message,
-    error_message);
+    	ppt->error_message,
+    	error_message);
   
   /* Interpolate first-order quantities in tau and k2 (ppw2->psources_2) */
-  class_call (perturb_song_sources_at_tau (
+ 	 	class_call (perturb_song_sources_at_tau (
                 ppr,
                 ppt,
                 ppt->index_md_scalars,
@@ -9144,9 +9312,9 @@ int perturb2_sources (
                 ppt->inter_normal,
                 &(ppw2->last_index_sources),                 
                 ppw2->pvec_sources2),
-    ppt->error_message,
-    error_message);
-  
+    	ppt->error_message,
+    	error_message);
+  }
   /* Define shorthands */
   double * pvec_sources1 = ppw2->pvec_sources1;
   double * pvec_sources2 = ppw2->pvec_sources2;
@@ -10071,6 +10239,14 @@ int perturb2_print_variables(double tau,
   struct perturb2_workspace * ppw2 = pppaw2->ppw2;
   double k1 = ppt2->k[ppw2->index_k1];  
   double k2 = ppt2->k[ppw2->index_k2];
+  
+  if ((ppt2->k3_sampling == sym_k3_sampling) ) {
+  
+  	k1 = ppw2->k1;
+  	k2 = ppw2->k2;
+  }
+  
+  
   double * pvecback = ppw2->pvecback;
   double * pvecthermo = ppw2->pvecthermo;
   double * pvecmetric = ppw2->pvecmetric;
@@ -10311,7 +10487,37 @@ int perturb2_save_early_transfers (
   }
   
   /* Interpolate first-order quantities (ppw2->psources_1) */
-  class_call (perturb_song_sources_at_tau (
+  if ((ppt2->k3_sampling == sym_k3_sampling) ) {
+  
+  	class_call (perturb_song_sources_at_tau_and_k (
+                ppr,
+                ppt,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                k1,
+                tau,
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources1),
+    	ppt->error_message,
+    	ppt2->error_message);
+    	
+    	class_call (perturb_song_sources_at_tau_and_k (
+                ppr,
+                ppt,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                k2,
+                tau,
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources2),
+    	ppt->error_message,
+    	ppt2->error_message);
+  
+  }
+  else {
+  	class_call (perturb_song_sources_at_tau (
                ppr,
                ppt,
                ppt->index_md_scalars,
@@ -10321,11 +10527,11 @@ int perturb2_save_early_transfers (
                ppt->inter_normal,
                &(ppw2->last_index_sources),
                ppw2->pvec_sources1),
-     ppt->error_message,
-     ppt2->error_message);
+     	ppt->error_message,
+     	ppt2->error_message);
   
   /* Interpolate first-order quantities (ppw2->psources_2) */
-  class_call (perturb_song_sources_at_tau (
+  	class_call (perturb_song_sources_at_tau (
                ppr,
                ppt,
                ppt->index_md_scalars,
@@ -10335,8 +10541,10 @@ int perturb2_save_early_transfers (
                ppt->inter_normal,
                &(ppw2->last_index_sources),                 
                ppw2->pvec_sources2),
-    ppt->error_message,
-    ppt2->error_message);
+    	ppt->error_message,
+    	ppt2->error_message);
+    	
+  }
   
   /* Define shorthands */
   double * pvec_sources1 = ppw2->pvec_sources1;
