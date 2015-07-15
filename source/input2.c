@@ -675,9 +675,9 @@ int input2_init (
   // =                           Perturbations, approximations                          =
   // ====================================================================================
 
-  /* Tight coupling.  Note that, contrary to the 1st order case, we read the approximation settings
-  directly into the ppt2 structure rather than in the precision one.  We do so in order to keep all
-  2nd-order related quantities in the same structure */
+  /* Tight coupling.  Note that, contrary to the 1st order case, we read the approximation
+  settings directly into the ppt2 structure rather than in the precision one.  We do so in
+  order to keep all second-order related quantities in the same structure */
   class_read_int("tight_coupling_approximation_2nd_order",
     ppt2->tight_coupling_approximation); /* obsolete */
   class_read_double("tight_coupling_trigger_tau_c_over_tau_h_2nd_order",  
@@ -725,8 +725,11 @@ int input2_init (
   class_read_double("no_radiation_approximation_rho_m_over_rho_r_song",
     ppt2->no_radiation_approximation_rho_m_over_rho_r);
 
-  class_test(ppt2->ur_fluid_trigger_tau_over_tau_k==ppt2->radiation_streaming_trigger_tau_over_tau_k, errmsg,
-    "please choose different values for precision parameters ur_fluid_trigger_tau_over_tau_k_song and radiation_streaming_trigger_tau_over_tau_k_song, in order to avoid switching two approximation schemes at the same time");
+  class_test(ppt2->ur_fluid_trigger_tau_over_tau_k
+    ==ppt2->radiation_streaming_trigger_tau_over_tau_k, errmsg,
+    "please choose different values for precision parameters\
+ur_fluid_trigger_tau_over_tau_k_song and radiation_streaming_trigger_tau_over_tau_k_song\
+, in order to avoid switching two approximation schemes at the same time");
 
 
   // ====================================================================================
@@ -749,7 +752,8 @@ int input2_init (
       ppt2->phi_prime_eq = longitudinal;
     }
     else {
-      class_stop (errmsg, "phi_prime_equation=%s not supported, choose between poisson and longitudinal",
+      class_stop (errmsg,
+      "phi_prime_equation=%s not supported, choose between poisson and longitudinal",
       string1);
     }
   }
@@ -854,7 +858,8 @@ int input2_init (
         "transfer2_k3_sampling=%s not supported, choose between 'bessel', 'smart' and 'class'.", string1);
   }
 
-  /* If 'transfer2_k3_sampling=class', choose the density of the k3-sampling for the transfer functions */
+  /* If 'transfer2_k3_sampling=class', choose the density of the k3-sampling for
+  the transfer functions */
   class_read_double("k_step_trans_scalars_2nd_order", ppr2->q_linstep_song); /* obsolete */
   class_read_double("q_linstep_song",ppr2->q_linstep_song);
 

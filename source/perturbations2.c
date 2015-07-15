@@ -8156,22 +8156,22 @@ int perturb2_quadratic_sources (
             /* E-modes. Second and third row of eq. 145 of BF2010, without the first-order B-modes. */
             dE_qs2(l,m)  = - 4*phi_prime_1*E_2(l,m) 
                            + E_2_tilde(l+1) * ( k_plus_12(l,m)*k1*(phi_1+psi_1)
-                           + d_plus_22(l,m)*k2*(phi_1+psi_1)  +  4*d_plus_12(l,m)*k1*psi_1  )
+                             + d_plus_22(l,m)*k2*(phi_1+psi_1)  +  4*d_plus_12(l,m)*k1*psi_1  )
                            - E_2_tilde(l-1) * ( k_minus_12(l,m)*k1*(phi_1+psi_1)
-                           + d_minus_22(l,m)*k2*(phi_1+psi_1) +  4*d_minus_12(l,m)*k1*psi_1 )
+                             + d_minus_22(l,m)*k2*(phi_1+psi_1) +  4*d_minus_12(l,m)*k1*psi_1 )
                            /* Symmetrisation */
                            - 4*phi_prime_2*E_1(l,m)
                            + E_1_tilde(l+1) * ( k_plus_21(l,m)*k2*(phi_2+psi_2)
-                           + d_plus_11(l,m)*k1*(phi_2+psi_2)  +  4*d_plus_21(l,m)*k2*psi_2  )
+                             + d_plus_11(l,m)*k1*(phi_2+psi_2)  +  4*d_plus_21(l,m)*k2*psi_2  )
                            - E_1_tilde(l-1) * ( k_minus_21(l,m)*k2*(phi_2+psi_2)
-                           + d_minus_11(l,m)*k1*(phi_2+psi_2) +  4*d_minus_21(l,m)*k2*psi_2 );
+                             + d_minus_11(l,m)*k1*(phi_2+psi_2) +  4*d_minus_21(l,m)*k2*psi_2 );
            
             /* B-modes. Fourth and fifth row of eq. 146 of BF2010 (the other rows contain first-order B-modes) */
             dB_qs2(l,m)  = - E_2_tilde(l) * ( k_zero_12(l,m)*k1*(phi_1+psi_1) + d_zero_22(l,m)*k2*(phi_1+psi_1)
-                           + 4*d_zero_12(l,m)*k1*psi_1 )
+                             + 4*d_zero_12(l,m)*k1*psi_1 )
                            /* Symmetrisation */
                            - E_1_tilde(l) * ( k_zero_21(l,m)*k2*(phi_2+psi_2) + d_zero_11(l,m)*k1*(phi_2+psi_2)
-                           + 4*d_zero_21(l,m)*k2*psi_2 );
+                             + 4*d_zero_21(l,m)*k2*psi_2 );
 
             /* Account for the fact that in BF2010 the Liouville operator appears on the left-hand-side */
             dE_qs2(l,m) *= -1;
@@ -8358,9 +8358,9 @@ int perturb2_quadratic_sources (
     double v_0_2 = -k2*v_b_2;
  
     /* Spherical components of the rotated baryon velocity at first order; it is obtained as 
-    V[m](k1) = rot_1(1,m) * v_0_1.
+      V[m](k1) = rot_1(1,m) * v_0_1.
     Note that this is the same as
-    V[m](k1) = -k1[m] * v(k1)
+      V[m](k1) = -k1[m] * v(k1)
     where v(k1) is just v_b_1 or v_b_2 */
     double V_b_1[3] = {rot_1(1,-1)*v_0_1, rot_1(1,0)*v_0_1, rot_1(1,1)*v_0_1};
     double V_b_2[3] = {rot_2(1,-1)*v_0_2, rot_2(1,0)*v_0_2, rot_2(1,1)*v_0_2};
@@ -8461,7 +8461,7 @@ int perturb2_quadratic_sources (
      * eq. A.55.  The 2 factor is not present in Beneke & Fidler 2011, eq. 2.17 because
      * they adopt a different convention for the perturbative expansion.
      * 
-    */
+     */
  
  
     // *** Monopole
@@ -8475,9 +8475,9 @@ int perturb2_quadratic_sources (
     ppt->quadsources array.  However, if I use the TCA at first order, I get a wierd shape
     for the shear_g at first order, and in general the whole second-order system is
     slowed down.  Hence, the best strategy so far is to just avoid the TCA at first
-    order and evolve the first-order system with unsanely high precision by lowering
+    order and evolve the first-order system with high precision by lowering
     the parameter tol_perturb_integration (1e-10 works perfectly, even though already
-    with 1e-6 the results are good). */
+    with 1e-5 the results are good). */
 
     if (ppr2->compute_m[0] == _TRUE_) {
       double v_g_1    =   ppw2->pvec_sources1[ppt->index_qs_v_g];
@@ -8495,8 +8495,8 @@ int perturb2_quadratic_sources (
         // *** Dipole
         if (l==1) {
   
-          c_1 = 4*V_b_1[(m)+1] - I_1(1,m);
-          c_2 = 4*V_b_2[(m)+1] - I_2(1,m);
+          c_1 = 4*V_b_1[m+1] - I_1(1,m);
+          c_2 = 4*V_b_2[m+1] - I_2(1,m);
  
           dI_qc2(1,m) =  3 * ( c_minus_12(1,m) * v_0_1 * I_2_tilde(0)
                              + c_minus_21(1,m) * v_0_2 * I_1_tilde(0));
@@ -8518,7 +8518,7 @@ int perturb2_quadratic_sources (
           Therefore, we need to subtract from dI_qc2(1,m)=quadcollision_thesis the
           factor 4*delta_b*v_b[m]. If we omit doing so, we will not be able to
           reproduce the tight coupling regime, whereby v_g=v_b before recombination. */
-          dI_qc2(1,m) += -4 * (delta_b_1*V_b_2[(m)+1] + delta_b_2*V_b_1[(m)+1]);
+          dI_qc2(1,m) += -4 * (delta_b_1*V_b_2[m+1] + delta_b_2*V_b_1[m+1]);
 
         }
 
@@ -10047,7 +10047,8 @@ int perturb2_save_early_transfers (
     error_message);
   
   double kappa_dot = pvecthermo[pth->index_th_dkappa];
-  double r = pvecback[pba->index_bg_rho_g]/pvecback[pba->index_bg_rho_b];  
+  double r = pvecback[pba->index_bg_rho_g]/pvecback[pba->index_bg_rho_b];
+  double tau_c = 1/kappa_dot;
   
   /* Interpolate quadratic sources by filling ppw2->pvec_quadsources
   and ppw2->pvec_quadcollision */
@@ -10121,8 +10122,10 @@ int perturb2_save_early_transfers (
   // =                                Newtonian Gauge                                   =
   // ====================================================================================
 
-  double phi, psi, psi_prime, omega_m1_constraint;
-  double psi_1, psi_2, phi_1, phi_2, phi_prime_1, phi_prime_2;
+  double phi=0, psi=0, psi_prime=0;
+  double psi_1=0, psi_2=0, phi_1=0, phi_2=0, phi_prime_1=0, phi_prime_2=0;
+  double omega_m1=0, omega_m1_constraint=0;
+  double gamma_m2=0, gamma_m2_prime=0;
   
   if (ppt->gauge == newtonian) {
 
@@ -10169,6 +10172,8 @@ int perturb2_save_early_transfers (
     This is eq. 3.98 of http://arxiv.org/abs/1405.2280, obtained from the the G^i_0 part
     of Einstein equation.  */
     if (ppr2->compute_m[1] == _TRUE_) {
+
+      omega_m1 = y[ppw2->pv->index_pt2_omega_m1];
   
       /* - Matter part */
 
@@ -10225,6 +10230,16 @@ int perturb2_save_early_transfers (
   
     } // end of vector potential
     
+    
+    /* - Tensor potential */
+    
+    if (ppr2->compute_m[2] == _TRUE_) {
+      
+      gamma_m2 = y[ppw2->pv->index_pt2_gamma_m2];
+      gamma_m2_prime = y[ppw2->pv->index_pt2_gamma_m2_prime];
+      
+    } 
+      
   } // end of if(newtonian gauge)
   
   
@@ -10282,11 +10297,17 @@ int perturb2_save_early_transfers (
 
   double delta_g_1=0, delta_g_2=0, v_g_1=0, v_g_2=0;
   double delta_g=0, pressure_g=0, delta_g_adiab=0;
+  double vv_g=0, vv_g_m[]={0,0,0,0,0};
 
   delta_g_1 = pvec_sources1[ppt->index_qs_delta_g];
   delta_g_2 = pvec_sources2[ppt->index_qs_delta_g];
   v_g_1 = ppw2->pvec_sources1[ppt->index_qs_v_g];
   v_g_2 = ppw2->pvec_sources2[ppt->index_qs_v_g];
+  vv_g = - k1_dot_k2 * v_g_1 * v_g_2;
+  for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+    int m = ppr2->m[index_m];
+    vv_g_m[m+2] = - k1_ten_k2[m+2] * v_g_1 * v_g_2;
+  }
   
   if (ppr2->compute_m[0] == _TRUE_) {
     delta_g = I(0,0) + 8/3.*k1_dot_k2*v_g_1*v_g_2;
@@ -10304,13 +10325,26 @@ int perturb2_save_early_transfers (
   /* - Baryon fluid variables */
 
   double delta_b_1=0, delta_b_2=0, v_b_1=0, v_b_2=0;  
+  double delta_b_1_prime=0, delta_b_2_prime=0;
   double delta_b=0, pressure_b=0;
+  double vv_b=0, vv_b_m[]={0,0,0,0,0};
+  double v_b_1_prime, v_b_2_prime, vv_b_m_prime[]={0,0,0,0,0};
 
   delta_b_1 = pvec_sources1[ppt->index_qs_delta_b];
   delta_b_2 = pvec_sources2[ppt->index_qs_delta_b];
+  delta_b_1_prime = ppw2->pvec_sources1[ppt->index_qs_delta_b_prime];
+  delta_b_2_prime = ppw2->pvec_sources2[ppt->index_qs_delta_b_prime];
   v_b_1 = ppw2->pvec_sources1[ppt->index_qs_v_b];
   v_b_2 = ppw2->pvec_sources2[ppt->index_qs_v_b];
-  
+  v_b_1_prime = ppw2->pvec_sources1[ppt->index_qs_v_b_prime];
+  v_b_2_prime = ppw2->pvec_sources2[ppt->index_qs_v_b_prime];  
+  vv_b = - k1_dot_k2 * v_b_1 * v_b_2;
+  for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+    int m = ppr2->m[index_m];
+    vv_b_m[m+2] = - k1_ten_k2[m+2] * v_b_1 * v_b_2;
+    vv_b_m_prime[m+2] = - k1_ten_k2[m+2] * (v_b_1*v_b_2_prime + v_b_2*v_b_1_prime);
+  }
+
   if (ppr2->compute_m[0] == _TRUE_) {
     delta_b = b(0,0,0) + 2*k1_dot_k2*v_b_1*v_b_2;
     pressure_b = 1/3. * ( ppw2->b_200 + 2*k1_dot_k2*v_b_1*v_b_2  );
@@ -10489,23 +10523,174 @@ int perturb2_save_early_transfers (
 
   /* The following limits are useful to check the behaviour of the differential
   system at early times, when the initial conditions are set */
-  double I_2_0_analytical, v_0_adiabatic, slip;
-  
-  /* - Photon quadrupole in tight coupling (TCA0) */
-  
-  if (ppr2->compute_m[0] == _TRUE_) {
 
-    /* Eq. 5.57 of http://arxiv.org/abs/1405.2280, equivalent of eq. C.6 of P2010.
-    The equation comes from the fact that the shear in tight coupling in of order
-    tau_c=1/kappa_dot, which is effectively zero well before recombination. It can 
-    also be written as I_2_0(TCA0) = -10 (vv)[m] which in SONG should be written as
-    20*k1_ten_k2[2]*v_g_1*v_g_2; the sign flip comes from the fact that in SONG
-    we use u=iv. */
-    I_2_0_analytical = 5/8. * (c_minus_12(2,0) * I_1_tilde(1) * I_2_tilde(1) +
-                               c_minus_21(2,0) * I_2_tilde(1) * I_1_tilde(1));
+
+  /* - Polarisation quadrupole in tight coupling */
+
+  /* Compute the polarisation quadrupole for the E and B-modes during tight
+  coupling. In doing so, we also compute the Pi[m] factor which appears in the
+  collision term for the intensity and E-polarisation quadrupoles; see eq.
+  4.145 of http://arxiv.org/abs/1405.2280. It is defined as
+      Pi[m] = (I(2,m) - sqrt_6*E(2,m))/10. */
+
+  double Pi[] = {0,0,0,0,0};
+  double Pi_tca0[] = {0,0,0,0,0};
+  double Pi_tca1[] = {0,0,0,0,0};
+  double E_2_tca1[] = {0,0,0,0,0};
+  
+  if (ppt2->has_polarization2 == _TRUE_) {
+  
+    for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+
+      int m = ppr2->m[index_m];
+
+      /* Pi factor as computed by SONG. If the tight coupling approximation
+      is turned on, this will match Pi_tca1[m+2] up to terms of order
+      O(tau_c)^2. */
+      Pi[m+2] = 0.1 * (I(2,m) - sqrt_6*E(2,m));
+
+      /* Quadratic part of the collision term of the E-mode quadrupole */
+      double quadC_E_2_M = dE_qc2(2,m)/kappa_dot;
+
+      /* Quadratic part of the Liouville term for the E-mode quadrupole.
+      We reverse the sign because in SONG the Liouville term is on the right hand
+      side, while in our reference for the TCA equations it is on the left hand
+      side. */
+      double quadL_E_2_M = - (dE_qs2(2,m)-dE_qc2(2,m));
+
+      /* Tight coupling formula (first order in tau_c) for the Pi factor.
+      The last term is negligible because O(tau_c). The first two in TCA0
+      are just proportional to the velocity squared; the full expression
+      in TCA0 is simply given by vv[m]. */
+      Pi_tca1[m+2] = 0.25 * (
+        I(2,m) - sqrt_6*(quadC_E_2_M - tau_c*quadL_E_2_M) /* use the numerical value of I(2,m) */
+        // I_2_tca1[m+2] - sqrt_6*(quadC_E_2_M - tau_c*quadL_E_2_M)
+      );
+
+      /* The TCA0 expression for Pi is simply given by -vv[m], because its part are
+      I(2,m)=-10*vv[m] and dE_qc2(2,m)=-sqrt(6)*vv[m]. */
+      Pi_tca0[m+2] = -2*vv_b_m[m+2];
+      
+      /* The expression for the polarisation quadrupole is very simple when
+      expressed in terms of Pi */
+      E_2_tca1[m+2] = -sqrt(6)*Pi_tca1[m+2]
+                      + quadC_E_2_M
+                      - tau_c*quadL_E_2_M;
+      
+      /* In terms of the quadrupole: */
+      // E_2_tca1[m+2] = -sqrt(6)/4*I(2,m)
+      //                 + 5/2.*quadC_E_2_M
+      //                 - 5/2.*tau_c*quadL_E_2_M;
+
+    }
   }
   
+  
+  /* - Photon quadrupole in tight coupling */
+  
+  double I_2_tca0[] = {0,0,0,0,0};
+  double sigma_g_tca1[] = {0,0,0,0,0};
+  double sigma_g_tca1_part1[] = {0,0,0,0,0};
+  double sigma_g_tca1_part2[] = {0,0,0,0,0};
+  double I_2_tca1[] = {0,0,0,0,0};
+  double sigma_g_prime[] = {0,0,0,0,0};
+  
+  for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+
+    int m = ppr2->m[index_m];
+
+    /* Valid at TCA0 */
+    sigma_g_prime[m+2] = -2/15. * dI(2,m) - 8/3. * vv_b_m_prime[m+2];
+
+    /* If we assume tau_c->0 (TCA0), then the photon quadrupole is quadratic in the
+    photon velocity: I(2,m)=-10*vv[m]. This follows from the fact that the quadratic
+    part of the dipole collision term, dI_qc2(1,m)/kappa_dot, in TCA0 is equal to
+    -9*vv[m]. For a derivation, see Eq. 5.57 of http://arxiv.org/abs/1405.2280,
+    which is equivalent to eq. C.6 of P2010. The formula implies that the shear in
+    is of the same order of tau_c, which is effectively zero well before recombination.*/
+    I_2_tca0[m+2] = -20*vv_g_m[m+2];
+
+    /* Quadratic part of the collision term for E-modes and intensity */
+    double quadC_I_2_M = dI_qc2(2,m)/kappa_dot;
+    double quadC_E_2_M = 0;
+    if (ppt2->has_polarization2 == _TRUE_)
+      quadC_E_2_M = dE_qc2(2,m)/kappa_dot;
+
+    /* Quadratic part of the Liouville term for E-modes and intensity.
+    We reverse the sign because in SONG the Liouville term is on the right hand
+    side, while in our reference for the TCA equations it is on the left hand
+    side. */
+    double quadL_I_2_M = - (dI_qs2(2,m)-dI_qc2(2,m));
+    double quadL_E_2_M = 0;
+    if (ppt2->has_polarization2 == _TRUE_)
+      quadL_E_2_M = - (dE_qs2(2,m)-dE_qc2(2,m));
+
+    /* Purely second order part of the quadrupole in TCA1. Using CLASS variables,
+      sigma_g = -3/4 * sigma_g[0]
+      theta_g = - k * u_g[0] = - k * I(1,m)/4
+      c_minus(2,0,0) = 2/3
+    the formula reduces to the one implemented in CLASS,
+      sigma_g = 8/45 * tau_c * sigma_g */
+    sigma_g_tca1[m+2] = 8/45. * tau_c * (-k*I(1,m)*c_minus(2,m,m) - 4*(m==2?gamma_m2_prime:0));
+    
+    /* The quadratic part is a combination of Liouville terms, collision terms and
+    velocity squared terms. Here we add the terms that are not explicitly multiplied
+    by a tau_c factor, but are nonetheless of order tau_c. This is the case because
+    quadC_I_2_M = -9 vv[m] + O(tau_c) and quadC_E_2_M = -vv[m] + O(tau_c). */
+    sigma_g_tca1[m+2] += 8/45. * (-quadC_I_2_M + sqrt_6/4*quadC_E_2_M - 15*vv_g_m[m+2]);
+
+    /* Here we add the quadratic terms that are multiplied by tau_c. Note that in the
+    derivative term we exchange the photon velocity with the baryon velocity, using
+    the fact that the whole expression is multiplied by tau_c. */
+    sigma_g_tca1[m+2] += 8/45. * tau_c * (quadL_I_2_M - sqrt_6/4*quadL_E_2_M - 20*vv_b_m_prime[m+2]);
+    double sigma_g_ebbasta = sigma_g_tca1[m+2];
+    
+    /* The quadrupole is obtained by adding a velocity squared term */
+    I_2_tca1[m+2] = -15/2.*sigma_g_tca1[m+2] - 20*vv_g_m[m+2];
+
+    /* Cheat and use Pi */
+    sigma_g_tca1[m+2] = -2/15. *
+      (
+        Pi_tca1[m+2] + quadC_I_2_M + 20 * vv_g_m[m+2]
+        -tau_c * (- 20*vv_b_m_prime[m+2] - k*I(1,m)*c_minus(2,m,m) - 4*(m==2?gamma_m2_prime:0) + quadL_I_2_M)
+      );
+    double sigma_g_of_pi = sigma_g_tca1[m+2];
+
+    /* Cheat and invert the formula Pi=(I_2M - sqrt_6*E_2M)/10 */
+    // I_2_tca1[m+2] = 10*Pi_tca1[m+2] + sqrt_6*E_2_tca1[m+2];
+    // sigma_g_tca1[m+2] = -2/15. * I_2_tca1[m+2] - 8/3. * vv_g_m[m+2];
+    
+    /* Cheat and use E_2M */
+    // sigma_g_tca1[m+2] = -4/27. *
+    //   (
+    //     quadC_I_2_M + 18 * vv_g_m[m+2] - sqrt_6/10*E_2_tca1[m+2]
+    //     -tau_c * (-20*vv_b_m_prime[m+2] - k*I(1,m)*c_minus(2,m,m) - 4*(m==2?gamma_m2_prime:0) + quadL_I_2_M)
+    //   );
+    // double sigma_g_of_e = sigma_g_tca1[m+2];
+    
+    sigma_g_tca1_part1[m+2] = sigma_g_ebbasta;
+    sigma_g_tca1_part2[m+2] = sigma_g_of_pi;
+    
+    /* In absence of polarisation, we take the expression of sigma_g as a function of
+    Pi, and expand Pi as I(2,m)/10=(-15/2*sigma_g[m] - 10*vv[m])/10 */
+    if (ppt2->has_polarization2 == _FALSE_) {
+
+      sigma_g_tca1[m+2] = -4/27. *
+        (
+          quadC_I_2_M + 18 * vv_g_m[m+2]
+          -tau_c * (-20*vv_b_m_prime[m+2] - k*I(1,m)*c_minus(2,m,m) - 4*(m==2?gamma_m2_prime:0) + quadL_I_2_M)
+        );
+
+      sigma_g_tca1_part1[m+2] =  -4/27. * tau_c * (quadL_I_2_M);
+      sigma_g_tca1_part2[m+2] =  -4/27. * tau_c * (-20*vv_b_m_prime[m+2] - k*I(1,m)*c_minus(2,m,m));
+    }
+    
+  }
+  
+  
   /* - Adiabatic velocity at early times */
+
+  double v_0_adiabatic = 0;
 
   if (ppr2->compute_m[0] == _TRUE_) {
 
@@ -10517,15 +10702,19 @@ int perturb2_save_early_transfers (
     v_0_adiabatic *= 1/(3*Omega_m + 4*Omega_r);
   }
   
+  
   /* - Velocity slip */
   
-  /* Compute the velocity slip V[m]=v_b[m] - v_g[m] using the formalism in Pitrou
-  2011 ("The tight-coupling approximation for baryon acoustic oscillations").
+  /* Compute the velocity slip V[m] = v_b[m] - v_g[m] using the formalism in
+  Pitrou 2011 ("The tight-coupling approximation for baryon acoustic oscillations").
+  The expression matches the one in eq. 13, with the addition of extra
+  quadratic terms.
+  
   Note that all velocities below are multiplied by the imaginary factor; what
   we really compute is u=i*v. This is why the terms quadratic in v, such as
   (vv)[m] and v^i*v_i have their sign reversed with respect to the formula */
   
-  double V[] = {0,0,0};
+  double V_slip[] = {0,0,0};
   
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
 
@@ -10545,78 +10734,73 @@ int perturb2_save_early_transfers (
     double quadL_b_m_dipole = - (db_qs2(1,1,m)-db_qc2(1,1,m));
     double quadL_g_m_dipole = - (dI_qs2(1,m)-dI_qc2(1,m));
 
-    /* Derive the quadratic part of the Liouville term of the baryon velocity */
+    /* The velocity slip V=v_b-v_g depends on the difference between
+    the quadratic Liouville terms for the baryon (quadL_b_m) and photon
+    (quadL_g_m) velocities. For this purpose, we cannot directly use the Liouville
+    term computed in SONG, that is, we cannot simply take the difference
+    quadL_b_m_dipole - quadL_g_m_dipole. The reason is that the latter are computed
+    with respect to the dipoles (b_11m and I_1_m) rather than the velocities. First,
+    we have to perform the dipole->velocity transformations in eq. 4.46 of
+    http://arxiv.org/abs/1405.2280, that is
+      b(1,1,m) = 3 u_b[m] + 3 * u_b[m] * delta_b[m]
+      I(1,m) = 4 u_g[m] + 4 * u_g[m] * delta_g[m],
+    where u[m] is the fluid velocity times the imaginary factor. After applying
+    this transformation, a bunch of extra quadratic terms arises, together with
+    a 1/3 factor for baryons and 1/4 for photons. Here we write down the difference
+    between the baryon and photon Liouville terms considering these extra quadratic
+    contributions. We also enforce the TCA0 at zero order, v_b=v_g and
+    delta_b=3/4*delta_g. In this way we get rid of the velocity-squared terms
+    which arise from the conversion of the monopole and quadrupole to the density
+    contrast and shear, respectively. */
     double v_b_1_m = -k1_m[m+1]*v_b_1;
     double v_b_2_m = -k2_m[m+1]*v_b_2;
-    double delta_b_1_prime = ppw2->pvec_sources1[ppt->index_qs_delta_b_prime];
-    double delta_b_2_prime = ppw2->pvec_sources2[ppt->index_qs_delta_b_prime];
-    double v_b_1_prime_m = -k1_m[m+1]*ppw2->pvec_sources1[ppt->index_qs_v_b_prime];
-    double v_b_2_prime_m = -k2_m[m+1]*ppw2->pvec_sources2[ppt->index_qs_v_b_prime];
+    double v_b_1_prime_m = -k1_m[m+1]*v_b_1_prime;
+    double v_b_2_prime_m = -k2_m[m+1]*v_b_2_prime;
     double delta_v_prime_b_m = delta_b_1_prime*v_b_2_m + delta_b_2_prime*v_b_1_m
                              + delta_b_1*v_b_2_prime_m + delta_b_2*v_b_1_prime_m;
-    double vv_b_m = k1_ten_k2[m+2] * v_b_1 * v_b_2; /* sign reversed because it is uu_b_m */
-    double vv_b = k1_dot_k2 * v_b_1 * v_b_2; /* sign reversed because it is uu_b */
-    double quadL_b_m =
-      quadL_b_m_dipole/3
-      + delta_v_prime_b_m
-      + Hc * (v_b_1_m*delta_b_2 + v_b_2_m*delta_b_1)
-      - 2*k/3 * (15/2.*c_plus(1,m,m)*vv_b_m + c_minus(1,m,m)*vv_b); /* 2 factor from p. exp. */
-
-    /* Derive the quadratic part of the Liouville term of the photon velocity */
     double delta_v_prime_g_m = four_thirds * delta_v_prime_b_m; /* enforce TCA0 */
-    double vv_g_m = vv_b_m; /* enforce TCA0 */
-    double vv_g = vv_b; /* enforce TCA0 */
-    double quadL_g_m =
-      quadL_g_m_dipole/4
-      + delta_v_prime_g_m
-      - 2*k * (5/2.*c_plus(1,m,m)*vv_g_m + 1/3.*c_minus(1,m,m)*vv_g); /* 2 factor from p. exp. */
-    
-    /* The difference between quadL_b_m and quadL_g_m can be simplified by
-    enforcing the TCA0 at first order: v_b=v_g and delta_b=3/4*delta_g.
-    In this way you get rid of all velocity^2 terms.
-    The expression below is what you obtain if you do so, and should match
-    quadL_b_m-quadL_g_m as long as tight coupling holds. */
+
     double Q_L_diff =
       quadL_b_m_dipole/3 - quadL_g_m_dipole/4
-      - delta_v_prime_g_m/4
-      + Hc * 3/4. * (v_g_1_m*delta_g_2 + v_g_2_m*delta_g_1);
+      - delta_v_prime_g_m/4 /* from dipole->vel. transf. of dipole derivatives */
+      + Hc * (v_b_1_m*delta_b_2 + v_b_2_m*delta_b_1); /* from dipole->vel. transf. of Hc*b(11m) */
 
     /* Expression for the velocity slip V = v_b-v_g in TCA1 */
     double R = 3/(4*r);
-    double tau_c = 1/kappa_dot;
-    double v_g_m = I(1,m)/4 - (v_g_1_m*delta_g_2 + v_g_2_m*delta_g_1);
     double v_b_m = b(1,1,m)/3 - (v_b_1_m*delta_b_2 + v_b_2_m*delta_b_1);
     double omega_m1 = (m==1?y[ppw2->pv->index_pt2_omega_m1]:0);
-    V[m+1] = - quadC_g_m
-             - R/(1+R)*tau_c * (
-                Hc*(v_b_m+(m==1?omega_m1:0))
-                + k/4*(m==0?delta_g:0)
-                + Q_L_diff
-             );
 
-    /* This sign combination leads to cancellations */
-    // double Q_L_diff = - (db_qs2(1,1,m)-db_qc2(1,1,m))/3
-    //                 + (dI_qs2(1,m)-dI_qc2(1,m))/4
-    //                 - delta_v_prime_g_m/4
-    //                 + Hc * 3/4. * (v_g_1_m*delta_g_2 + v_g_2_m*delta_g_1)
-    //                 + 13/3. * k * c_plus(1,m,m) * vv_g_m;
+    V_slip[m+1] = - quadC_g_m
+                  - R/(1+R)*tau_c * (
+                     Hc*(v_b_m+(m==1?omega_m1:0))
+                     + k/4*(m==0?delta_g:0)
+                     + Q_L_diff
+                  );
+     
+    /* Debug - Compute the Liouville difference Q_L_diff explicitely as
+    quadL_b_m-quadL_g_m. The resulting quantity should match Q_L_diff. */
+    // /* Derive the quadratic part of the Liouville term of the baryon velocity */
+    // double quadL_b_m =
+    //   quadL_b_m_dipole/3
+    //   + delta_v_prime_b_m
+    //   + Hc * (v_b_1_m*delta_b_2 + v_b_2_m*delta_b_1)
+    //   - 2*k/3 * (15/2.*c_plus(1,m,m)*vv_b_m[m+2] + c_minus(1,m,m)*vv_b); /* 2 factor from p. exp. */
     //
-    // /* Expression for the velocity slip V = v_b-v_g in TCA1 */
-    // double R = 3/(4*r);
-    // double tau_c = 1/kappa_dot;
-    // double v_g_m = I(1,m)/4 - (v_g_1_m*delta_g_2 + v_g_2_m*delta_g_1);
-    // double v_b_m = b(1,1,m)/3 - (v_b_1_m*delta_b_2 + v_b_2_m*delta_b_1);
-    // double omega_m1 = (m==1?y[ppw2->pv->index_pt2_omega_m1]:0);
-    // V[m+1] = -quadC_g_m
-    //         - R/(1+R)*tau_c * (
-    //             Hc*(v_b_m+(m==1?omega_m1:0))
-    //             - k/4*(m==0?delta_g:0)
-    //             + Q_L_diff /* Minus sign because SONG places the Liouville term
-    //                        on the right hand side of the equation for dI */
-    //         );
+    // /* Derive the quadratic part of the Liouville term of the photon velocity. */
+    // double quadL_g_m =
+    //   quadL_g_m_dipole/4
+    //   + delta_v_prime_g_m
+    //   - 2*k * (5/2.*c_plus(1,m,m)*vv_g_m[m+2] + 1/3.*c_minus(1,m,m)*vv_g); /* 2 factor from p. exp. */
+    //
+    // /* Compute the difference between the two quadratic Liouville terms, and print the
+    // ratio with Q_L_diff to output */
+    // double Q_L_diff_explicit = quadL_b_m - quadL_g_m;
+    //
+    // fprintf (stderr, "%17.7g %17.7g %17.7g %17.7g\n",
+    //   tau, Q_L_diff_explicit/Q_L_diff, Q_L_diff, Q_L_diff_explicit);
     
   }
-  
+
 
 
   // ====================================================================================
@@ -10632,8 +10816,8 @@ int perturb2_save_early_transfers (
   int index_print_qs = 1;
   
   /* Choose how label & values should be formatted */
-  char format_label[64] = "%13s(%02d) ";
-  char format_value[64] = "%+17e ";      
+  char format_label[64] = "%16s(%02d) ";
+  char format_value[64] = "%+20e ";      
   char buffer[64];
   
   /* Print some info to file */
@@ -10788,24 +10972,80 @@ int perturb2_save_early_transfers (
   // ------------------------------------------------------------------------------------
   // -                             Early universe limits                                -
   // ------------------------------------------------------------------------------------
-  
+
+  /* Adiabatic velocity */
   if (ppr2->compute_m[0] == _TRUE_) {
-    // I_2_0_analytical
-    if (ppw2->n_steps==1) fprintf(file_tr, format_label, "I_2_0_an", index_print_tr++);
-    else fprintf(file_tr, format_value, I_2_0_analytical);
-  
-    // Adiabatic velocity
     if (ppw2->n_steps==1) fprintf(file_tr, format_label, "v_0_adiab", index_print_tr++);
     else fprintf(file_tr, format_value, v_0_adiabatic);
   }    
-  /* Velocity slip */
+  /* Velocity slip (TCA1) */
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     int m = ppr2->m[index_m];
     sprintf(buffer, "V_slip_m%d", m);
     if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-    else fprintf(file_tr, format_value, V[m+1]);
+    else fprintf(file_tr, format_value, V_slip[m+1]);
   }
-    
+  /* Photon quadrupole (TCA0) */
+  for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+    int m = ppr2->m[index_m];
+    sprintf(buffer, "I_2_%d_tca0", m);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
+    else fprintf(file_tr, format_value, I_2_tca0[m+2]);    
+  }
+  /* Photon quadrupole (TCA1) */
+  for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+    int m = ppr2->m[index_m];
+    sprintf(buffer, "I_2_%d_tca1", m);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
+    else fprintf(file_tr, format_value, I_2_tca1[m+2]);    
+  }
+  /* Photon shear (TCA1) */
+  for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+    int m = ppr2->m[index_m];
+    sprintf(buffer, "sigma_g_m%d_tca1", m);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
+    else fprintf(file_tr, format_value, sigma_g_tca1[m+2]);    
+  }
+  for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+    int m = ppr2->m[index_m];
+    sprintf(buffer, "sigma_g_ebbasta", m);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
+    else fprintf(file_tr, format_value, sigma_g_tca1_part1[m+2]);    
+  }
+  for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+    int m = ppr2->m[index_m];
+    sprintf(buffer, "sigma_g_of_pi", m);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
+    else fprintf(file_tr, format_value, sigma_g_tca1_part2[m+2]);    
+  }
+  for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+    int m = ppr2->m[index_m];
+    sprintf(buffer, "sigma_g_m%d_prime", m);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
+    else fprintf(file_tr, format_value, sigma_g_prime[m+2]);    
+  }
+  /* E-modes quadrupole (TCA1) */
+  if (ppt2->has_polarization2 == _TRUE_) {
+    for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+      int m = ppr2->m[index_m];
+      sprintf(buffer, "E_2_%d_tca1", m);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
+      else fprintf(file_tr, format_value, E_2_tca1[m+2]);
+    }
+  }
+  /* Pi factor (TCA1) */
+  if (ppt2->has_polarization2 == _TRUE_) {
+    for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+      int m = ppr2->m[index_m];
+      sprintf(buffer, "pi_m%d", m);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
+      else fprintf(file_tr, format_value, Pi[m+2]);
+      sprintf(buffer, "pi_m%d_tca1", m);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
+      else fprintf(file_tr, format_value, Pi_tca1[m+2]);
+    }
+  }
+
   
   // ------------------------------------------------------------------------------------
   // -                                  Fluid limit                                     -
@@ -10831,6 +11071,16 @@ int perturb2_save_early_transfers (
     if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
     else fprintf(file_tr, format_value,
       b(1,1,m)/3. - delta_b_1*(-k2_m[m+1]*v_b_2) - delta_b_2*(-k1_m[m+1]*v_b_1));
+  }
+  // velocity_b_prime[m]
+  for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+    int m = ppr2->m[index_m];
+    sprintf(buffer, "vel_b_m%d_prime", m);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
+    else fprintf(file_tr, format_value,
+      db(1,1,m)/3.
+        - delta_b_1_prime*(-k2_m[m+1]*v_b_2) - delta_b_2_prime*(-k1_m[m+1]*v_b_1)
+        - delta_b_1*(-k2_m[m+1]*v_b_2_prime) - delta_b_2*(-k1_m[m+1]*v_b_1_prime));
   }
   // sigma_b[m]
   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
@@ -10889,6 +11139,16 @@ int perturb2_save_early_transfers (
     if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
     else fprintf(file_tr, format_value,
       I(1,m)*0.25 - delta_g_1*(-k2_m[m+1]*v_g_2) - delta_g_2*(-k1_m[m+1]*v_g_1));
+  }
+  // velocity_g_prime[m], enforcing TCA0
+  for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+    int m = ppr2->m[index_m];
+    sprintf(buffer, "vel_g_m%d_prime", m);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
+    else fprintf(file_tr, format_value,
+      dI(1,m)*0.25
+        - four_thirds*delta_b_1_prime*(-k2_m[m+1]*v_g_2) - four_thirds*delta_b_2_prime*(-k1_m[m+1]*v_g_1)
+        - delta_g_1*(-k2_m[m+1]*v_b_2_prime) - delta_g_2*(-k1_m[m+1]*v_b_1_prime));
   }
   // sigma_g[m]
   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
@@ -11020,6 +11280,20 @@ int perturb2_save_early_transfers (
         else {
          fprintf(file_tr, format_value, E(l,m));
          fprintf(file_qs, format_value, dE_qs2(l,m));
+        }
+      }
+    }
+   
+    /* E-mode polarization derivatives */
+    for (int l=2; l<=l_max_pol_g; ++l) {
+      for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+        int m = ppr2->m[index_m];
+        sprintf(buffer, "dE_%d_%d", l, m);
+        if (ppw2->n_steps==1) {
+         fprintf(file_tr, format_label, buffer, index_print_tr++);
+        }
+        else {
+         fprintf(file_tr, format_value, dE(l,m));
         }
       }
     }
