@@ -11738,3 +11738,97 @@ int perturb2_store_sources_to_disk(
 
 #undef sources
 
+//* This should not be here and be moved to class eventually. Also bispline might be the way to go here or some other fancy method. For now I am just using linear interpolation in k, followed by whatever is selected for eta */
+
+int perturb_song_sources_at_tau_and_k (  
+             struct precision * ppr,
+             struct perturbs * ppt,
+             int index_mode,
+             int index_ic,
+             double k,
+             double tau,
+             short intermode,
+             int * last_index,
+             double * psource){
+  
+  int index_k; /*Index left of k*/
+  
+  int inf = 0;
+  int sup = ppt->k_size[index_mode] - 1;
+  int mid, i;
+  double * k_vec = ppt->k[index_mode];
+
+    if (k_vec[inf] < k_vec[sup]){
+
+      while (sup-inf > 1) {
+
+        mid = (int)(0.5*(inf+sup));
+
+        if (k < k_vec[mid])
+          sup = mid;
+        else
+          inf = mid;
+      }
+    }
+    else {
+      while (sup-inf > 1) {
+
+        mid = (int)(0.5*(inf+sup));
+
+        if (k > k_vec[mid])
+          sup = mid;
+        else
+          inf = mid;
+      }
+    }
+
+    index_k = mid-1;
+    double k_right = k_vec[index_k+1];
+    double step = k_right - k_vec[index_k];
+		double a = (k_right - k)/step;  
+  	int qs_size = ppt->qs_size[index_mode];
+  	
+  	double * source_left;
+  	double * source_right;
+  	
+  	class_alloc(source_left,qs_size*sizeof(double),ppt->error_message);
+  	class_alloc(source_right,qs_size*sizeof(double),ppt->error_message);
+  	
+  	class_call (perturb_song_sources_at_tau (
+                ppr,
+                ppt,
+                index_mode,
+                index_ic,
+                index_k,
+                tau,
+                intermode,
+                last_index,
+                source_left),
+    	ppt->error_message,
+    	ppt->error_message);
+    	
+    class_call (perturb_song_sources_at_tau (
+                ppr,
+                ppt,
+                index_mode,
+                index_ic,
+                index_k+1,
+                tau,
+                intermode,
+                last_index,
+                source_right),
+    	ppt->error_message,
+    	ppt->error_message);
+                
+   	for (int index_type=0; index_type<qs_size; ++index_type) {
+ 	
+                      
+    	psource[index_type] = a*source_left[index_type] + (1-a)*source_right[index_type];
+   
+  	}
+  	
+  	free(source_left);
+  	free(source_right);
+  	return _SUCCESS_;
+
+}

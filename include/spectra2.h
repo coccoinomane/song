@@ -79,6 +79,21 @@ int spectra2_interpolate_sources_in_k(
       double * sources_k_spline,
       double * interpolated_sources_in_k
       );
+      
+
+int spectra2_interpolate_sources_in_k2(
+      struct precision * ppr,
+      struct precision2 * ppr2,
+      struct perturbs * ppt,
+      struct perturbs2 * ppt2,
+      struct spectra2 * psp2,
+      int index_kt1,
+      int index_kt3,
+      int index_tp2,
+      double * k_grid,
+      double * sources_k_spline,
+      double * interpolated_sources_in_k
+      );
 
 int spectra2_get_k3_size (
       struct precision * ppr,

@@ -1344,6 +1344,17 @@ struct perturb2_parameters_and_workspace {
          int index_k1
          );
 
+int perturb_song_sources_at_tau_and_k (  
+             struct precision * ppr,
+             struct perturbs * ppt,
+             int index_mode,
+             int index_ic,
+             double k,
+             double tau,
+             short intermode,
+             int * last_index,
+             double * psource);
+
 
 #ifdef __cplusplus
   }
