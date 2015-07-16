@@ -902,33 +902,51 @@ int spectra2_interpolate_sources_in_k2(
         ppt2->tau_size*(index_k1+1),
         sizeof(double),
         psp2->error_message);
+  
+  double * derivs;
+ 
+
+	class_calloc (
+      derivs,
+        ppt2->tau_size*(index_k1+1),
+        sizeof(double),
+        psp2->error_message);
+    
    
-        	
+  double * subk;
+  
+  class_calloc (
+      subk,
+        (index_k1+1),
+        sizeof(double),
+        psp2->error_message);      	
 				
 	for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2){
+		subk[index_k2] = ppt2->k[index_k2];
 		for (index_tau = 0; index_tau < ppt2->tau_size; index_tau++){
 				rsources[index_tau*(index_k1+1) + index_k2] = sources(index_tau,index_k3);
-			}
+		}
 	}
 	
 	
-  if (ppr2->sources_k3_interpolation == cubic_interpolation) {
+  if (ppr2->sources_k3_interpolation == cubic_interpolation && index_k1> 3) {
 
-	 				 
-
-
+	
+        
     class_call (array_spline_table_columns (
-                  ppt2->k,
+                  subk,
                   (index_k1+1),
                   rsources,
                   ppt2->tau_size,
-                  sources_k_spline,
+                  derivs,
                   _SPLINE_EST_DERIV_,
                   psp2->error_message),
          psp2->error_message,
          psp2->error_message);
   }
  
+
+  free(subk);
   // =======================================================
   // =                    Interpolation                    =
   // =======================================================
@@ -963,19 +981,19 @@ int spectra2_interpolate_sources_in_k2(
     	
       
     /* Interpolate for each value of conformal time */
-    	if (ppr2->sources_k3_interpolation == linear_interpolation) {
+    	if (ppr2->sources_k3_interpolation == linear_interpolation ||  index_k1 <= 3) {
       	for (index_tau = 0; index_tau < ppt2->tau_size; index_tau++)
        	 interpolated_sources_in_k[index_k_sp*ppt2->tau_size + index_tau] = 
        	   a * rsources[index_tau*(index_k1+1) + index_k] + b * rsources[index_tau*(index_k1+1) + index_k+1];
     	}
-    	else if (ppr2->sources_k3_interpolation == cubic_interpolation) {
+    	else if (ppr2->sources_k3_interpolation == cubic_interpolation && index_k1 > 3) {
      	 for (index_tau = 0; index_tau < ppt2->tau_size; index_tau++)
      	   interpolated_sources_in_k[index_k_sp*ppt2->tau_size + index_tau] = 
      	     a * rsources[index_tau*(index_k1+1) + index_k] + b * rsources[index_tau*(index_k1+1) + index_k+1]
-      	    + ((a*a*a-a) * sources_k_spline[index_tau*(index_k1+1) + index_k]
-      	    +(b*b*b-b) * sources_k_spline[index_tau*(index_k1+1) + index_k+1])*h*h/6.0;
+      	    + ((a*a*a-a) * derivs[index_tau*(index_k1+1) + index_k]
+      	    +(b*b*b-b) * derivs[index_tau*(index_k1+1) + index_k+1])*h*h/6.0;
     	}
-    	index_tau = 250;
+    
    } 
   } // end of for (index_k_tr)
 
@@ -984,7 +1002,7 @@ int spectra2_interpolate_sources_in_k2(
 		
 
 	free(rsources);
- 
+ 	free(derivs);
  
   return _SUCCESS_;
   
