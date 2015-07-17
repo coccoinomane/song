@@ -10703,10 +10703,10 @@ int perturb2_save_early_transfers (
   /* - Velocity slip */
   
   /* Compute the velocity slip V[m] = v_b[m] - v_g[m] using the formalism in
-  Pitrou 2011 ("The tight-coupling approximation for baryon acoustic oscillations").
-  I take the formula from eq. 16 of my TCA notes. The expression matches the one in
-  eq. 13 of that reference, with the addition of extra quadratic terms and a 
-  (suspicious) switched sign for delta_g. 
+  Pitrou 2011 (http://arxiv.org/abs/1012.0546). I take the formula from
+  eq. 16 of my TCA notes. The expression matches the one in eq. 13 of Pitrou
+  2011, with the (expected) addition of some quadratic terms and a (suspicious)
+  switch of sign for delta_g. 
   
   Note that in order to deal with real quantities, we compute U[m]=i*V[m] rather
   than V[m]. */
@@ -10717,11 +10717,15 @@ int perturb2_save_early_transfers (
 
     int m = ppr2->m[index_m];
 
-    /* Quadratic part of the collision term of the photon velocity */
+    /* Quadratic part of the collision term of the photon velocity;
+    see eq. 3b of my TCA notes. */
     double u_g_1_m = -k1_m[m+1]*v_g_1;
     double u_g_2_m = -k2_m[m+1]*v_g_2;
+    double u_b_1_m = -k1_m[m+1]*v_b_1;
+    double u_b_2_m = -k2_m[m+1]*v_b_2;
     double quadC_u_g_m = quadC_I_1M/4
-                       - (u_g_1_m*delta_g_2 + u_g_2_m*delta_g_1)/4;
+                       + (u_b_1_m*delta_b_2 + u_b_2_m*delta_b_1)
+                       - (u_g_1_m*delta_g_2 + u_g_2_m*delta_g_1);
 
     /* The velocity slip V=v_b-v_g depends on the difference between the quadratic
     Liouville terms for the baryon (quadL_v_b_m) and photon (quadL_v_g_m) velocities.
@@ -10735,8 +10739,6 @@ int perturb2_save_early_transfers (
     a 1/3 factor for baryons and 1/4 for photons; see eq. 13b of my TCA notes for
     the full formula, which we write down here. Note that the we got rid of the
     velocity-squared terms. */
-    double u_b_1_m = -k1_m[m+1]*v_b_1;
-    double u_b_2_m = -k2_m[m+1]*v_b_2;
     double u_b_1_prime_m = -k1_m[m+1]*v_b_1_prime;
     double u_b_2_prime_m = -k2_m[m+1]*v_b_2_prime;
     double delta_u_prime_b_m = delta_b_1_prime*u_b_2_m + delta_b_2_prime*u_b_1_m
@@ -10748,7 +10750,8 @@ int perturb2_save_early_transfers (
       - delta_u_prime_g_m/4 /* from dipole->vel. transf. of dipole derivatives */
       + Hc * (u_b_1_m*delta_b_2 + u_b_2_m*delta_b_1); /* from dipole->vel. transf. of Hc*b(11m) */
 
-    /* Expression for the velocity slip V = v_b-v_g in TCA1 */
+    /* Expression for the velocity slip V = v_b-v_g in TCA1. The full derivation of 
+    the formula can be found in my TCA notes (eq. 16). */
     double R = 3/(4*r);
     double u_b_m = b(1,1,m)/3 - (u_b_1_m*delta_b_2 + u_b_2_m*delta_b_1);
     double omega_m1 = (m==1?y[ppw2->pv->index_pt2_omega_m1]:0);
