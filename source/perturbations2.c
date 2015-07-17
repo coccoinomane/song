@@ -4564,6 +4564,16 @@ int perturb2_approximations (
       // printf ("a, a_eq, ratio = %g, %g, %g\n", a, pba->a_eq, a/pba->a_eq);
     }
   }
+  
+
+  // ========================================================================================
+  // =                                Compatibility checks                                  =
+  // ========================================================================================
+
+  class_test ((ppw2->approx[ppw2->index_ap2_nra]==(int)nra_on)
+    && (ppw2->approx[ppw2->index_ap2_tca] = (int)tca_on),
+    ppt2->error_message,
+    "The TCA and NRA approximations can't be turned on at the same time.");
 
   return _SUCCESS_;
 }
@@ -5814,6 +5824,9 @@ int perturb2_vector_init (
       
     }
   } // end of if (nra_on)
+  
+  /* If the tight coupling approximation is turned on, all moments with l>1 do not
+  need to be evolved */
 
 
   /* We shall increment this index to count the equations to evolve */
@@ -10531,6 +10544,7 @@ int perturb2_save_early_transfers (
   double quadC_I_1M=0, quadL_I_1M=0;
   double quadC_I_2M=0, quadL_I_2M=0;
   double quadC_E_2M=0, quadL_E_2M=0;
+  double quadC_B_2M=0, quadL_B_2M=0;
   double quadL_b_11M=0;
 
   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
@@ -10540,8 +10554,10 @@ int perturb2_save_early_transfers (
     /* Quadratic part of the collision term for the multipoles */
     quadC_I_1M = dI_qc2(1,m)/kappa_dot;
     quadC_I_2M = dI_qc2(2,m)/kappa_dot;
-    if (ppt2->has_polarization2 == _TRUE_)
+    if (ppt2->has_polarization2 == _TRUE_) {
       quadC_E_2M = dE_qc2(2,m)/kappa_dot;
+      quadC_B_2M = dB_qc2(2,m)/kappa_dot;
+    }
 
     /* Quadratic part of the Liouville term for the multipoles.
     We reverse the sign because in SONG the Liouville term is on the right hand
@@ -10550,8 +10566,10 @@ int perturb2_save_early_transfers (
     quadL_b_11M = - (db_qs2(1,1,m)-db_qc2(1,1,m));
     quadL_I_1M = - (dI_qs2(1,m)-dI_qc2(1,m));
     quadL_I_2M = - (dI_qs2(2,m)-dI_qc2(2,m));
-    if (ppt2->has_polarization2 == _TRUE_)
-      quadL_E_2M = - (dE_qs2(2,m)-dE_qc2(2,m));
+    if (ppt2->has_polarization2 == _TRUE_) {
+      quadL_E_2M = - (dE_qs2(2,m)-dE_qc2(2,m)); /* O(tau_c), see eq. 4.153 */
+      quadL_B_2M = - (dB_qs2(2,m)-dB_qc2(2,m)); /* O(tau_c), see eq. 4.156 */
+    }
   }
  
   /* - Photon quadrupole in tight coupling */
@@ -10593,7 +10611,9 @@ int perturb2_save_early_transfers (
 
     /* Here we add the quadratic terms that are multiplied by tau_c. Note that in the
     derivative term we exchange the photon velocity with the baryon velocity, using
-    the fact that the whole expression is multiplied by tau_c. */
+    the fact that the whole expression is multiplied by tau_c. Note also that
+    the term in quadL_E_2M could be be omitted because quadL_E_2M is O(tau_c)
+    (see eq. 4.153 of http://arxiv.org/abs/1405.2280). */
     sigma_g_tca1[m+2] += 8/45. * tau_c * (quadL_I_2M - sqrt_6/4*quadL_E_2M - 20*vv_b_m_prime[m+2]);
 
     /* Cheat and use Pi (eq. 25 of TCA notes) */
@@ -10634,13 +10654,14 @@ int perturb2_save_early_transfers (
   /* Compute the polarisation quadrupole for the E and B-modes during tight
   coupling. In doing so, we also compute the Pi[m] factor which appears in the
   collision term for the intensity and E-polarisation quadrupoles; see eq.
-  4.145 of http://arxiv.org/abs/1405.2280. It is defined as
-      Pi[m] = (I(2,m) - sqrt_6*E(2,m))/10. */
+  4.145 of http://arxiv.org/abs/1405.2280. The Pi factor is defined
+  as Pi[m] = (I(2,m) - sqrt_6*E(2,m))/10. */
 
   double Pi[] = {0,0,0,0,0};
   double Pi_tca0[] = {0,0,0,0,0};
   double Pi_tca1[] = {0,0,0,0,0};
   double E_2_tca1[] = {0,0,0,0,0};
+  double B_2_tca1[] = {0,0,0,0,0};
   
   if (ppt2->has_polarization2 == _TRUE_) {
   
@@ -10662,7 +10683,10 @@ int perturb2_save_early_transfers (
       Pi_tca1[m+2] = (I_2_tca1[m+2] - sqrt_6*(quadC_E_2M - tau_c*quadL_E_2M))/4;
 
       /* Use the Boltzmann equation for the quadrupole in TCA1 to obtain the 
-      polarisation quadrupole in terms of Pi (eq. 31 of my TCA notes). */
+      polarisation quadrupole in terms of Pi (eq. 31 of my TCA notes). Note
+      that quadL_E_2M, the quadratic part of the Liouville term for polarisation,
+      is O(tau_c) and could be omitted without altering the result (see eq. 4.153
+      of http://arxiv.org/abs/1405.2280). */
       E_2_tca1[m+2] = -sqrt(6)*Pi_tca1[m+2]
                       + quadC_E_2M
                       - tau_c*quadL_E_2M;
@@ -10677,6 +10701,13 @@ int perturb2_save_early_transfers (
       // E_2_tca1[m+2] = -sqrt(6)/4*I_2_tca1[m+2]
       //                 + 5/2.*quadC_E_2M
       //                 - 5/2.*tau_c*quadL_E_2M;
+
+      /* The collisionless equation for the B-mode quadrupole (eq. 4.147) contains
+      only terms that are O(tau_c). For example, the quadratic part of the Liouville term
+      (eq. 4.156) only contains the E-mode quadrupole, which is O(tau_c). Therefore, the
+      value of B_2M up to O(tau_c)^2 is obtained by equating the collision term to zero,
+      as you would do for a TCA0 approximation. */
+      B_2_tca1[m+2] = quadC_B_2M;
 
     }
   }
@@ -10770,7 +10801,7 @@ int perturb2_save_early_transfers (
     //   quadL_b_11M/3
     //   + delta_u_prime_b_m
     //   + Hc * (u_b_1_m*delta_b_2 + u_b_2_m*delta_b_1)
-    //   - 2*k/3 * (15/2.*c_plus(1,m,m)*vv_b_m[m+2] + c_minus(1,m,m)*vv_b); /* 2 factor from p. exp. */
+    //   - 2*k/3 * (15/2.*c_plus(1,m,m)*<p></p>[m+2] + c_minus(1,m,m)*vv_b); /* 2 factor from p. exp. */
     //
     // /* Derive the quadratic part of the Liouville term of the photon velocity. */
     // double quadL_u_g_m =
@@ -10999,6 +11030,15 @@ int perturb2_save_early_transfers (
       sprintf(buffer, "E_2_%d_tca1", m);
       if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
       else fprintf(file_tr, format_value, E_2_tca1[m+2]);
+    }
+  }
+  /* B-modes quadrupole (TCA1) */
+  if (ppt2->has_polarization2 == _TRUE_) {
+    for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+      int m = ppr2->m[index_m];
+      sprintf(buffer, "B_2_%d_tca1", m);
+      if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
+      else fprintf(file_tr, format_value, B_2_tca1[m+2]);
     }
   }
   /* Pi factor (TCA1) */
