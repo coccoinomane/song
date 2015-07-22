@@ -144,11 +144,10 @@ int perturb2_init (
     - Compute and store in ppt->sources the line-of-sight sources needed to compute
       the first-order transfer functions (not the C_l's).
 
-    SONG overrides the functions that are normally called to determine the wavemode
-    (ppt->k) and time sampling (ppt->tau_sampling_quadsources) in perturb_init(),
-    that is, perturb_timesampling_for_sources() and perturb_get_k_list(). Instead,
-    SONG determines the two domains with two functions of its own, that is
-    perturb2_get_k_lists() and perturb2_timesampling_for_sources(). */
+    The k-sampling for the first-order perturbations (ppt->k) has been already determined
+    in perturb2_get_k_lists() and matches the one for the second-order sources (ppt2->k).
+    Similarly, their time sampling (ppt->tau_sampling_quadsources) has been computed
+    in perturb2_timesampling_for_sources().  */
 
   class_call (perturb_init (
                 ppr,
@@ -2159,16 +2158,22 @@ int perturb2_get_k_lists (
 
 /**
  *
- * Define the time sampling for the source terms; tau stands for conformal time.
+ * Define the sampling in conformal time tau for the line of sight sources and
+ * for the quadratic sources.
  *
  * In detail, this function does:
  *  
  *  -# Define the time sampling for the line of sight sources in ppt2->tau_sampling.
+ *     For the CMB, these are the sources that will be integrated over time in the
+ *     transfer2.c module to obtain today's value of the transfer functions.
  *
  *  -# Define the time sampling for the quadratic sources in ppt->tau_sampling_quadsources,
- *     so that it can be later passed to the first-order perturbations.c module.
+ *     so that it can be later passed to the first-order perturbations.c module. The
+ *     quadratic sources are quadratic combinations of first-order perturbations that
+ *     enter the second-order differential system as sources.
  *
- *  -# Allocate the (k1, k2, k3, tau) levels of ppt2->sources.
+ *  -# Allocate the (k1, k2, k3, tau) levels of ppt2->sources, the array where we shall
+ *     store the line-of-sight sources.
  *
  *  TODO: streamline code, using realloc like CLASS.
  */
@@ -2187,12 +2192,13 @@ int perturb2_timesampling_for_sources (
   double *pvecback, *pvecthermo;
   class_alloc (pvecback, pba->bg_size*sizeof(double), ppt2->error_message);
   class_alloc (pvecthermo, pth->th_size*sizeof(double), ppt2->error_message);
+  double a, Hc, kappa_dot;
   int dump;
 
 
-  // ==================================================================
-  // =                 Custom 2nd-order time sampling                 =
-  // ==================================================================
+  // =====================================================================================
+  // =                              Custom sources sampling                              =
+  // =====================================================================================
   
   /* If the user specified a custom time-sampling through the parameter files, just use that */
   if (ppt2->has_custom_timesampling == _TRUE_) {
@@ -2218,23 +2224,26 @@ int perturb2_timesampling_for_sources (
   } // end of if (has_custom_timesampling)
 
 
-  // ==================================================================
-  // =                Standard 2nd-order time sampling                =
-  // ==================================================================
 
-  /* General case where we integrate the system up to today.  This is the case when the user asked to include the
-  metric or lensing terms in the line-of-sight integral, which are important all the way up to today.  
-  We use the same time-sampling technique as in standard CLASS, who is optimized to sample the visibility
-  function and the late ISW regime. For details, please refer to the function perturb_timesampling_for_sources. */
+  // =====================================================================================
+  // =                             Standard sources sampling                             =
+  // =====================================================================================
+
+  /* General case where we integrate the system up to today.  This is the case when the
+  user asked to include the metric or lensing terms in the line-of-sight integral, which
+  are important all the way up to today. We use the same time-sampling technique as in
+  standard CLASS, who is optimized to sample the visibility function and the late ISW regime.
+  For details, please refer to the function perturb_timesampling_for_sources(). */
   
   else {
 
+    // -----------------------------------------------------------------------------
+    // -                           Find sampling size                              -
+    // -----------------------------------------------------------------------------
 
-    // ******            Determine size of ppt2->tau_sampling              *******
-
-
-    /* Using bisection, search time tau such that the ratio of thermo to Hubble time scales
-    tau_c/tau_h=aH/kappa' is equal to start_sources_at_tau_c_over_tau_h */  
+    /* Using bisection, search time tau such that the ratio of the Compton to Hubble
+    time scales, tau_c/tau_h=aH/kappa_dot, is equal to
+    ppt2->start_sources_at_tau_c_over_tau_h */
 
     /* The lower limit for the first sampling point is when the universe stops being opaque */
     double tau_lower = pth->tau_ini;
@@ -2247,21 +2256,29 @@ int perturb2_timesampling_for_sources (
                  pvecback),
       pba->error_message,
       ppt2->error_message);
+
+    a = pvecback[pba->index_bg_a];
+    Hc = a*pvecback[pba->index_bg_H];
   
     class_call (thermodynamics_at_z(pba,
                   pth,
-                  1./pvecback[pba->index_bg_a]-1.,  /* redshift z=1/a-1 */
+                  1/a-1,
                   pth->inter_normal,
                   &dump,
                   pvecback,
                   pvecthermo),
       pth->error_message,
       ppt2->error_message);
+
+    kappa_dot = pvecthermo[pth->index_th_dkappa];
   
-    class_test (pvecback[pba->index_bg_a]*pvecback[pba->index_bg_H]/pvecthermo[pth->index_th_dkappa] > 
-      ppr->start_sources_at_tau_c_over_tau_h,
+    class_test (
+      Hc/kappa_dot > ppr->start_sources_at_tau_c_over_tau_h,
       ppt2->error_message,
-      "your choice of initial time for computing sources is inappropriate: it corresponds to an earlier time than the one at which the integration of thermodynamical variables started (tau=%g). You should increase either 'start_sources_at_tau_c_over_tau_h' or 'recfast_z_initial'\n",
+      "your choice of initial time for computing sources is inappropriate: it corresponds\
+ to an earlier time than the one at which the integration of thermodynamical variables\
+ started (tau=%g). You should increase either 'start_sources_at_tau_c_over_tau_h' or\
+ 'recfast_z_initial'\n",
       tau_lower);
      
     /* The upper limit is when the visibility function peaks */
@@ -2275,21 +2292,26 @@ int perturb2_timesampling_for_sources (
                   pvecback),
       pba->error_message,
       ppt2->error_message);
-  
+
+    a = pvecback[pba->index_bg_a];
+    Hc = a*pvecback[pba->index_bg_H];      
+
     class_call (thermodynamics_at_z(pba,
                   pth,
-                  1./pvecback[pba->index_bg_a]-1.,  /* redshift z=1/a-1 */
+                  1/a-1,
                   pth->inter_normal,
                   &dump,
                   pvecback,
                   pvecthermo),
       pth->error_message,
       ppt2->error_message);
+      
+    kappa_dot = pvecthermo[pth->index_th_dkappa];
 
-    class_test (pvecback[pba->index_bg_a]*pvecback[pba->index_bg_H]/pvecthermo[pth->index_th_dkappa] <
-      ppr->start_sources_at_tau_c_over_tau_h,
+    class_test (Hc/kappa_dot < ppr->start_sources_at_tau_c_over_tau_h,
       ppt2->error_message,
-      "your choice of initial time for computing sources is inappropriate: it corresponds to a time after recombination. You should decrease 'start_sources_at_tau_c_over_tau_h'\n");
+      "your choice of initial time for computing sources is inappropriate: it corresponds\
+ to a time after recombination. You should decrease 'start_sources_at_tau_c_over_tau_h'\n");
     
     double tau_mid = 0.5*(tau_lower + tau_upper);
   
@@ -2304,9 +2326,12 @@ int perturb2_timesampling_for_sources (
         pba->error_message,
         ppt2->error_message);
     
+      a = pvecback[pba->index_bg_a];
+      Hc = a*pvecback[pba->index_bg_H];      
+
       class_call (thermodynamics_at_z(pba,
                     pth,
-                    1./pvecback[pba->index_bg_a]-1.,  /* redshift z=1/a-1 */
+                    1/a-1,
                     pth->inter_normal,
                     &dump,
                     pvecback,
@@ -2314,17 +2339,14 @@ int perturb2_timesampling_for_sources (
         pth->error_message,
         ppt2->error_message);
     
+      kappa_dot = pvecthermo[pth->index_th_dkappa];
     
-      if (pvecback[pba->index_bg_a]*pvecback[pba->index_bg_H]/pvecthermo[pth->index_th_dkappa] > 
-        ppr->start_sources_at_tau_c_over_tau_h)
-
+      if (Hc/kappa_dot > ppr->start_sources_at_tau_c_over_tau_h)
         tau_upper = tau_mid;
-
       else
         tau_lower = tau_mid;
 
       tau_mid = 0.5*(tau_lower + tau_upper);
-    
     }
 
     double tau_ini = tau_mid;
@@ -2399,7 +2421,9 @@ int perturb2_timesampling_for_sources (
 
 
 
-    // ******            Fill  ppt2->tau_sampling              *******
+    // -----------------------------------------------------------------------------
+    // -                           Fill time sampling                              -
+    // -----------------------------------------------------------------------------
 
     /* First sampling point = when the universe stops being opaque */
     counter = 0;
@@ -2427,8 +2451,6 @@ int perturb2_timesampling_for_sources (
         pth->error_message,
         ppt2->error_message);
 
-
-
       /* Variation rate of thermodynamics variables */
       double rate_thermo = pvecthermo[pth->index_th_rate];
 
@@ -2446,37 +2468,34 @@ int perturb2_timesampling_for_sources (
       /* Compute inverse rate */
       timescale_source = 1./timescale_source;
 
-      class_test(fabs(ppr2->perturb_sampling_stepsize_song*timescale_source/tau) < ppr->smallest_allowed_variation,
-           ppt2->error_message,
-           "integration step =%e < machine precision : leads either to numerical error or infinite loop", ppr2->perturb_sampling_stepsize_song*timescale_source);
+      class_test(
+        fabs(ppr2->perturb_sampling_stepsize_song*timescale_source/tau)
+          < ppr->smallest_allowed_variation,
+        ppt2->error_message,
+        "time step=%e < machine precision: will lead to infinite loop",
+        ppr2->perturb_sampling_stepsize_song*timescale_source);
 
       tau = tau + ppr2->perturb_sampling_stepsize_song*timescale_source; 
       counter++;
       ppt2->tau_sampling[counter] = tau;
 
-      /* Some debug - print out time sampling for the 2nd-order line of sight sources together with
-      the visibility function. */
-      // fprintf(stderr, "%10d %11g %11g\n", counter, ppt2->tau_sampling[counter], pvecthermo[pth->index_th_g]);
+      /* Debug - Print out time sampling for the 2nd-order line of sight sources
+      together with the visibility function. */
+      // fprintf (stderr, "%10d %11g %11g\n",
+      //   counter, ppt2->tau_sampling[counter], pvecthermo[pth->index_th_g]);
 
     }
 
     /* Last sampling point = exactly today */
     ppt2->tau_sampling[counter] = pba->conformal_age;
-    
-
-    /* If we are only interested into the scattering sources of the line-of-sight integral, then
-    we can stop integrating the  system just after recombination.  In this case, we cut
-    the standard time-sampling at some suitable time, which we define as the time when the
-    visibility function is 'ppt2->recombination_max_to_end_ratio' times smaller than its maximum
-    value. */
 
   } // end of if (has_custom_timesampling == _FALSE_)
 
 
 
-  // =================================================================================
-  // =                                 Recombination                                 =
-  // =================================================================================
+  // ====================================================================================
+  // =                                  Recombination                                   =
+  // ====================================================================================
 
   /* Find the time when recombination ends, and store the corresponding time index
   into ppt2->index_tau_end_of_recombination */
@@ -2502,9 +2521,9 @@ int perturb2_timesampling_for_sources (
 
 
 
-  // =======================================================================================
-  // =                               Allocate sources array                                =
-  // =======================================================================================
+  // ====================================================================================
+  // =                             Allocate sources array                               =
+  // ====================================================================================
 
   /* Loop over types, k1, k2, and k3.  For each combination of them, allocate the tau level. */
 
@@ -2524,11 +2543,9 @@ int perturb2_timesampling_for_sources (
 
 
 
-
-
-  // ======================================================================
-  // =                Custom quadratic sources time sampling              =
-  // ======================================================================
+  // =====================================================================================
+  // =                           Custom quadsources sampling                             =
+  // =====================================================================================
 
   /* If the user specified a custom time-sampling through the parameter files, just use that */
   if (ppt->has_custom_timesampling_for_quadsources == _TRUE_) {
@@ -2556,9 +2573,10 @@ int perturb2_timesampling_for_sources (
   } // end of if (has_custom_timesampling_for_quadsources==_TRUE_)
 
 
-  // ======================================================================
-  // =              Standard quadratic sources time sampling              =
-  // ======================================================================
+
+  // =====================================================================================
+  // =                          Standard quadsources sampling                            =
+  // =====================================================================================
 
   else {
   
@@ -2724,9 +2742,10 @@ maybe by using the bisection technique applied to k_min");
     "the requested final time for the sampling of the 2nd-order sources is too high.");
 
 
-  // =============================================================================
-  // =                         Print important information                       =
-  // =============================================================================
+
+  // =====================================================================================
+  // =                                   Print info                                      =
+  // =====================================================================================
 
   /* Print info on k1-k2 sampling */
   if (ppt2->perturbations2_verbose > 0) {
@@ -3430,9 +3449,10 @@ int perturb2_initial_conditions (
 
       /* Photons */
       y[ppw2->pv->index_pt2_monopole_g] = I_0_0;
-      y[ppw2->pv->index_pt2_monopole_g + lm(1,0)] = I_1_0;
-      if (ppw2->approx[ppw2->index_ap2_tca] == (int)tca_off)
+      if (ppw2->approx[ppw2->index_ap2_tca] == (int)tca_off) {
+        y[ppw2->pv->index_pt2_monopole_g + lm(1,0)] = I_1_0;
         y[ppw2->pv->index_pt2_monopole_g + lm(2,0)] = I_2_0;
+      }
 
       /* Baryons */
       y[ppw2->pv->index_pt2_monopole_b] = b_0_0_0;
@@ -3460,10 +3480,9 @@ int perturb2_initial_conditions (
     way you automatically account for the sin(theta_1) rescaling */
         
   } // end of if(has_ad)  
-  
 
-  
   return _SUCCESS_;
+
 }
 
 
@@ -4464,6 +4483,9 @@ int perturb2_approximations (
   /* Recombination time scale, same as mean free time of a photon */
   double tau_c = 1/kappa_dot;
 
+  /* Initialise the number of active approximations */
+  ppw2->n_active_approximations = 0;
+
   /* Uncomment to always turn off all approximations and be done with it */
   // ppw2->approx[ppw2->index_ap2_tca] = (int)tca_off;
   // ppw2->approx[ppw2->index_ap2_rsa] = (int)rsa_off;
@@ -4483,6 +4505,7 @@ int perturb2_approximations (
   else if ((tau_c/tau_h < ppt2->tight_coupling_trigger_tau_c_over_tau_h) &&
            (tau_c/tau_k < ppt2->tight_coupling_trigger_tau_c_over_tau_k)) {
     ppw2->approx[ppw2->index_ap2_tca] = (int)tca_on;
+    ppw2->n_active_approximations++;
   }
   else {
     ppw2->approx[ppw2->index_ap2_tca] = (int)tca_off;
@@ -4500,6 +4523,7 @@ int perturb2_approximations (
   //     (ppr->radiation_streaming_approximation != rsa_none)) {
   //
   //   ppw2->approx[ppw2->index_ap2_rsa] = (int)rsa_on;
+  //   ppw2->n_active_approximations++;
   // }
   // else {
   //   ppw2->approx[ppw2->index_ap2_rsa] = (int)rsa_off;
@@ -4511,6 +4535,7 @@ int perturb2_approximations (
   //       (ppr->ur_fluid_approximation != ufa_none)) {
   //
   //     ppw2->approx[ppw2->index_ap2_ufa] = (int)ufa_on;
+  //     ppw2->n_active_approximations++;
   //   }
   //   else {
   //     ppw2->approx[ppw2->index_ap2_ufa] = (int)ufa_off;
@@ -4527,6 +4552,7 @@ int perturb2_approximations (
   //       (ppr->ncdm_fluid_approximation != ncdmfa_none)) {
   //
   //     ppw2->approx[ppw2->index_ap2_ncdmfa] = (int)ncdmfa_on;
+  //     ppw2->n_active_approximations++;
   //   }
   //   else {
   //     ppw2->approx[ppw2->index_ap2_ncdmfa] = (int)ncdmfa_off;
@@ -4553,6 +4579,7 @@ int perturb2_approximations (
   else {
     if ((a/pba->a_eq) > ppt2->no_radiation_approximation_rho_m_over_rho_r) {
       ppw2->approx[ppw2->index_ap2_nra] = (int)nra_on;
+      ppw2->n_active_approximations++;
       /* Debug - Check that the NRA approximation is turned on when we want */
       // printf ("a, a_eq, ratio = %g, %g, %g\n", a, pba->a_eq, a/pba->a_eq);
     }
@@ -4567,6 +4594,10 @@ int perturb2_approximations (
     && (ppw2->approx[ppw2->index_ap2_tca]==(int)tca_on),
     ppt2->error_message,
     "The TCA and NRA approximations can't be turned on at the same time.");
+    
+  class_test (ppw2->n_active_approximations>1,
+    ppt2->error_message,
+    "So far SONG only supports one active approximation at the same time");
 
   return _SUCCESS_;
 }
@@ -5232,7 +5263,41 @@ int perturb2_wavemode_info (
 
 
 
-/* TODO: add documentation */
+/**
+ * Solve the second-order differential system for the considered wavemodes (k1,k2,k3).
+ *
+ * This function is called in the loop over the three wavemodes (k1,k2,k3). It calls
+ * the differential evolver over the different time intervals; in turn the evolver
+ * evolves the second-order perturbations and stores the line of sight sources
+ * in the ppt2->sources array.
+ *
+ * In detail, this function does:
+ *
+ * -# Compute important geometrical quantities related to the wavemodes and 
+ *    the coupling coefficients entering the Boltzmann equation, in 
+ *    perturb2_geometrical_corner().
+ *
+ * -# Determine the time when to start evolving the system for the considered
+ *    wavemode set.
+ *
+ * -# Determine which approximations will be activated for the current
+ *    wavemode, and based on them split the integration range in several
+ *    time intervals, via perturb2_find_approximation_number() and
+ *    perturb2_find_approximation_switches().
+ *
+ * -# Tabulate the terms quadratic in the first-order perturbations that
+ *    enter the second-order differential system, in view of later interpolation,
+ *    in perturb2_quadratic_sources_for_k1k2k().
+ *
+ * -# Loop over the integration intervals and for each of them determine which
+ *    equations to evolve and set their initial condition, in
+ *    perturb2_vector_init().
+ *
+ * -# Finally, for each time interval solve the system by calling the differential
+ *    solver, which is either an implicit solver (evolver_ndf15) or an explicit 
+ *    Runge-Kutta one (evolver_rk). By default, SONG uses the former.
+ *
+ */
 int perturb2_solve (
         struct precision * ppr,
         struct precision2 * ppr2,
@@ -5246,7 +5311,6 @@ int perturb2_solve (
         struct perturb2_workspace * ppw2
         )
 {
-          
 
   // ====================================================================================
   // =                                 Update workspace                                 =
@@ -5333,7 +5397,8 @@ int perturb2_solve (
   The smaller the parameters, the earlier the starting time. */
   double tau_ini;
   
-  /* - Automatically determine the starting integration time for this wavemode */
+  /* - If the user did not specify a custom value for tau_ini, determine it automatically */
+
   if (ppt2->tau_start_evolution == 0) {
   
     /* Using bisection, compute minimum value of tau for which this wavenumber is integrated.
@@ -5342,6 +5407,10 @@ int perturb2_solve (
 
     /* Initial time will be at least the first time in the background table */
     double tau_lower = pba->tau_table[0];
+
+    /* TODO: tau_lower should start from the maximum value of tau_ini_1 and tau_ini_2.
+    To find those times, we first need to store them in the perturbations.c module.
+    Then take care also of ppt->tau_sampling_quadsources[0]. */
 
     /* Test that tau_lower is early enough to satisfy the conditions imposed by
     ppr2->start_small_k_at_tau_c_over_tau_h_song and ppr2->start_large_k_at_tau_h_over_tau_k.
@@ -5453,7 +5522,9 @@ to at least %g, or decrease 'a_ini_over_a_today_default'\n",
   
   } // end of if(ppt2->tau_start_evolution==0)
   
-  /* - Use a common starting time for regardless of the wavemode */
+  /* - If the user specified a custom value for tau_ini, use it as a common starting time 
+  regardless of the wavemode */
+  
   else {
   
     tau_ini = ppt2->tau_start_evolution;
@@ -5721,6 +5792,10 @@ where we start to sample the 1st-order quantities");
  *    perturb2_initial_conditions() function. Otherwise, they are just 
  *    copied from the last step of the previous time interval.
  *
+ * The evolver makes a call to perturb2_derivs() right before calling this
+ * function, meaning that all the quantities in the ppw2 workspace are up to
+ * date with the time tau.
+ *
  * For mode detail on this function, especially on old_approx, refer to the
  * documentation of perturb_vector_init() in perturbations.c.
  *
@@ -5761,6 +5836,12 @@ int perturb2_vector_init (
 
   /* Shortcut to the active approximation schemes */
   int * new_approx = ppw2->approx;  
+
+  /* By default, evolve a closure relation for each of the massless species 
+  in order to reduce the numerical noise. */
+  ppv->use_closure_g = _TRUE_;
+  ppv->use_closure_pol_g = _TRUE_;
+  ppv->use_closure_ur = _TRUE_;
 
 
   // ====================================================================================
@@ -5848,12 +5929,15 @@ int perturb2_vector_init (
 
       ppv->l_max_g = -1;
       ppv->n_hierarchy_g = 0;
+      ppv->use_closure_g = _FALSE_;
       
       ppv->l_max_pol_g = -1;
       ppv->n_hierarchy_pol_g = 0;
+      ppv->use_closure_pol_g = _FALSE_;
       
       ppv->l_max_ur = -1;
       ppv->n_hierarchy_ur = 0;
+      ppv->use_closure_ur = _FALSE_;
     }
     
     /* Treat the relativistic species as perfect fluid (only monopole and dipole) if
@@ -5862,12 +5946,15 @@ int perturb2_vector_init (
 
       ppv->l_max_g = 1;
       ppv->n_hierarchy_g = size_l_indexm (ppv->l_max_g, ppt2->m, ppt2->m_size);
-
+      ppv->use_closure_g = _FALSE_;
+    
       ppv->l_max_pol_g = 1;
       ppv->n_hierarchy_pol_g = size_l_indexm (ppv->l_max_pol_g, ppt2->m, ppt2->m_size);
+      ppv->use_closure_pol_g = _FALSE_;
       
       ppv->l_max_ur = 1; 
       ppv->n_hierarchy_ur = size_l_indexm (ppv->l_max_ur, ppt2->m, ppt2->m_size);
+      ppv->use_closure_ur = _FALSE_;
       
       /* Note that 'size_l_indexm' will return 0 if we are only computing m-values larger
       than 1. This is perfectly fine, as we do not evolve anything in that case. */
@@ -5877,15 +5964,17 @@ int perturb2_vector_init (
   
   
   /* If the tight coupling approximation is turned on, we only need to evolve the photon
-  monopole and dipole, as all other moments, including polarisation, can be computed
-  analytically. */
+  monopole and the baryon monopole and dipole, as all other moments, including polarisation,
+  can be computed analytically. */
   if (new_approx[ppw2->index_ap2_tca] == (int)tca_on) {
 
-    ppv->l_max_g = 1;
+    ppv->l_max_g = 0;
     ppv->n_hierarchy_g = size_l_indexm (ppv->l_max_g, ppt2->m, ppt2->m_size);
+    ppv->use_closure_g = _FALSE_;
 
     ppv->l_max_pol_g = -1;
     ppv->n_hierarchy_pol_g = size_l_indexm (ppv->l_max_pol_g, ppt2->m, ppt2->m_size);
+    ppv->use_closure_pol_g = _FALSE_;
 
   } // end of if (tca_on)
 
@@ -6122,7 +6211,7 @@ int perturb2_vector_init (
     
 
   // ====================================================================================
-  // =                        Time-interval initial conditions                          =
+  // =                       Approximations initial conditions                          =
   // ====================================================================================    
 
   /* Connect the last time-step of the previous time interval with the first time
@@ -6159,7 +6248,6 @@ int perturb2_vector_init (
 
           y_new[ppv->index_pt2_monopole_b + nlm(n,l,m)] =
             y_old[ppw2->pv->index_pt2_monopole_b + nlm(n,l,m)];
-          
         }
       }
     }
@@ -6179,7 +6267,6 @@ int perturb2_vector_init (
 
             y_new[ppv->index_pt2_monopole_cdm + nlm(n,l,m)] =
               y_old[ppw2->pv->index_pt2_monopole_cdm + nlm(n,l,m)];
-          
           }
         }
       }
@@ -6218,9 +6305,14 @@ int perturb2_vector_init (
       if (ppt2->perturbations2_verbose>2)
         printf_log("     * switching off tight-coupling approximation at tau=%g\n", tau);
 
+      /* Propagate the intensity dipole using the TCA relations */
+      for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+        int m = ppt2->m[index_m];
+        y_new[ppv->index_pt2_monopole_g + lm(1,m)] = ppw2->I_1m_tca1[m]; /* Intensity quadrupole */
+      }
+
       /* Propagate the quadrupoles using the TCA relations */
       for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
-
         int m = ppt2->m[index_m];
 
         y_new[ppv->index_pt2_monopole_g + lm(2,m)] = ppw2->I_2m_tca1[m]; /* Intensity quadrupole */
@@ -6603,44 +6695,50 @@ int perturb2_derivs (
   double kappa_dot = pvecthermo[pth->index_th_dkappa];
 
 
-  /* Interpolate quadratic sources filling ppw2->pvec_quadsources */
-  // if (ppt2->has_quadratic_sources == _TRUE_) {
-  //   class_call (perturb2_quadratic_sources_at_tau(
-  //                ppr,
-  //                ppr2,
-  //                ppt,
-  //                ppt2,
-  //                tau,
-  //                interpolate_total,
-  //                ppw2
-  //                ),
-  //     ppt2->error_message,
-  //     error_message);
-  // }
-
-  /* Compute the quadratic sources directly without using interpolatoin.
-  Good to reduce the numerical noise. */
+  /* Interpolate quadratic sources from the precomputed table. This is quick
+  but might lead to some numerical noise when the perturbations are very small.
+  Comment and use perturb2_quadratic_sources() below instead to reduce the noise
+  at the expense of speed. Note that when using interpolation the quadratic
+  sources of the collision term (pvec_quadcollision) will not be available. */
   if (ppt2->has_quadratic_sources == _TRUE_) {
-    class_call (perturb2_quadratic_sources(
-                  ppr,
-                  ppr2,
-                  pba,
-                  pth,
-                  ppt,
-                  ppt2,
-                  -1,
-                  tau,
-                  compute_total_and_collision,
-                  ppw2->pvec_quadsources,
-                  ppw2->pvec_quadcollision,
-                  ppw2
-                  ),
+    class_call (perturb2_quadratic_sources_at_tau(
+                 ppr,
+                 ppr2,
+                 ppt,
+                 ppt2,
+                 tau,
+                 interpolate_total,
+                 ppw2
+                 ),
       ppt2->error_message,
       error_message);
   }
+
+  /* Uncomment to compute the quadratic sources directly without using
+  interpolatoin. Good to reduce the numerical noise, but it is likely to
+  slightly increase the computation time. It also computes the quadratic
+  sources for the collision term. */
+  // if (ppt2->has_quadratic_sources == _TRUE_) {
+  //   class_call (perturb2_quadratic_sources(
+  //                 ppr,
+  //                 ppr2,
+  //                 pba,
+  //                 pth,
+  //                 ppt,
+  //                 ppt2,
+  //                 -1,
+  //                 tau,
+  //                 compute_total_and_collision,
+  //                 ppw2->pvec_quadsources,
+  //                 ppw2->pvec_quadcollision,
+  //                 ppw2
+  //                 ),
+  //     ppt2->error_message,
+  //     error_message);
+  // }
   
   /* Set the perturbations that are influenced by approximations */
-  class_call (perturb2_update_workspace(
+  class_call (perturb2_workspace_at_tau(
                 ppr,
                 ppr2,
                 pba,
@@ -6718,7 +6816,6 @@ int perturb2_derivs (
       metric_euler = k*psi;  
       metric_shear = 0.;
     }
-
   }
 
   // ===========================================================================================
@@ -6728,22 +6825,28 @@ int perturb2_derivs (
   int l_max_g = ppw2->pv->l_max_g;
   int l_max_pol_g = ppw2->pv->l_max_pol_g;
   int l_max_ur = ppw2->pv->l_max_ur;
+  int l_max_b = ppw2->pv->l_max_b;
+  int l_max_cdm = ppw2->pv->l_max_cdm;
 
+  double * I_1m = &(ppw2->I_1m[0]);
   double * I_2m = &(ppw2->I_2m[0]);
   double * E_2m = &(ppw2->E_2m[0]);
   double * B_2m = &(ppw2->B_2m[0]);
   double * b_22m = &(ppw2->b_22m[0]);
   double b_200 = ppw2->b_200;
 
-  // ---------------------------------------
-  // -          Photon temperature         -
-  // ---------------------------------------
+
+  // -----------------------------------------------------------------------------------------
+  // -                                  Photon temperature                                   -
+  // -----------------------------------------------------------------------------------------
 
   /* - Monopole equation */
 
-  if (l_max_g > -1)
-    if (ppr2->compute_m[0] == _TRUE_)
-      dI(0,0) = -four_thirds * (k*I(1,0)*0.25 + metric_continuity);
+  if (l_max_g > -1) {
+    if (ppr2->compute_m[0] == _TRUE_) {
+      dI(0,0) = -four_thirds * (k*I_1m[0]/4 + metric_continuity);
+    }
+  }
   
 
   /* - Dipole equation */
@@ -6784,7 +6887,7 @@ int perturb2_derivs (
 
       /* The free streaming term is k*(2/3*I(1,0)-3/7*I(3,0)) for m=0 and
       k*(sqrt(3)/3*I(1,1)-sqrt(8)/7*I(3,1)) for m=1 */
-      dI(2,m) = k * (c_minus(2,m,m)*I(1,m) - c_plus(2,m,m)*I(3,m))
+      dI(2,m) = k * (c_minus(2,m,m)*I_1m[m] - c_plus(2,m,m)*I(3,m))
                 - kappa_dot*(I_2m[m] - Pi);
     
       /* Tensor metric contribution */
@@ -6815,16 +6918,12 @@ int perturb2_derivs (
 
   /* - Closure relation */
 
-  /* We apply the closure relation only when there is no approximation scheme active, i.e. when
-  the number of equations evolved is equal to the default number */
-    
-  if (l_max_g == ppw2->l_max_g) {
+  /* For the last multipole, we evolve a different equation to avoid numerical
+  reflection. We take this closure relation from eq. D.1 of Pitrou et al. 2010. */
 
+  if (ppw2->pv->use_closure_g == _TRUE_) {
     int l = l_max_g;
-
-    /* We take the closure relation from eq. D.1 of Pitrou et al. 2010. */
     for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
-
       int m = ppt2->m[index_m];
 
       double c_pre =  (m==0 ?  (2*l+1)/(2*l-1.) : sqrt((double)(l + abs(m))/(l - abs(m))) * (2*l+1)/(2*l-1.) );
@@ -6844,14 +6943,15 @@ int perturb2_derivs (
 
 
 
-
-  // ----------------------------------------
-  // -          Photon polarization         -
-  // ----------------------------------------
+  // -----------------------------------------------------------------------------------------
+  // -                                     Polarisation                                      -
+  // -----------------------------------------------------------------------------------------
 
   if (ppt2->has_polarization2 == _TRUE_) {
   
-    /* E-mode and B-mode polarization do not have monopole nor dipole */  
+    /* Set the monopole and dipole to zero. The hierarchies for the E-modes and B-modes
+    start from the quadrupole, we keep the monopole and dipole to keep the structure
+    of SONG simpler. */  
     if (l_max_pol_g > -1)
       if (ppr2->compute_m[0] == _TRUE_)
         dE(0,0) = dB(0,0) = 0;
@@ -6862,18 +6962,14 @@ int perturb2_derivs (
         dE(1,m) = dB(1,m) = 0;
       }
     }
-  
 
 
-    // ********  Photon E-mode polarization hierarchy *******
-  
-    /* We are going to use the equation in the first two lines of eq. 2.19
-    in Beneke, Fidler & Klingmuller (2011), hereafter BFK */
+    /* - E-modes quadrupole */
 
-    // *** Quadrupole
+    /* For the E-modes, we use eq. 4.146 of http://arxiv.org/abs/1405.2280, which is based
+    on the first two lines of eq. 2.19 of Beneke, Fidler & Klingmuller (2011), hereafter
+    BFK */
 
-    /* The quadrupole needs to be treated separately because it has an extra contribution
-    in its collision term that couples polarization to temperature, which we call Pi. */
     if (l_max_pol_g > 1) {
       for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
         int m = ppt2->m[index_m];
@@ -6884,10 +6980,8 @@ int perturb2_derivs (
     }
 
 
-    // *** l>2 moments
+    /* - E-modes higher moments */
     
-    /* First line of eq. 2.19 of BFK.  Note that the B(l,m) term that couples E-modes and
-    B-modes is non-zero only for m!=0. */
     for (int l=3; l<=l_max_pol_g; ++l) {
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
         int m = ppt2->m[index_m];
@@ -6898,12 +6992,12 @@ int perturb2_derivs (
     }
     
 
-    // ********  Photon B-mode polarization hierarchy *********
+    /* - B-modes moments */
 
-    /* We are going to use the equation in the first line of eq. 2.20 in BFK.
-      Note that the B-modes are always zero for m=0, and that they only couple to E-modes. */
+    /* For the B-modes, we use the equation in the first line of eq. 2.20 in BFK.
+    Note that the B-modes are always zero for m=0, and that they only couple
+    to E-modes. */
 
-    // *** All moments
     for (int l=2; l<=l_max_pol_g; ++l) {
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
         int m = ppt2->m[index_m];
@@ -6914,20 +7008,15 @@ int perturb2_derivs (
     }
 
 
+    /* - Closure relations */
 
+    /* For the last multipole, we evolve a different equation to avoid numerical
+    reflection. We take this closure relation from the real & imaginary parts of
+    eq. D.2 of Pitrou et al. (2010), hereafter P2010. */
 
-
-    // *** B-modes and E-modes closure relation
-
-    /* We apply the closure relation only when there is no approximation scheme active, i.e. when
-    the number of equations evolved is equal to the default number */
-    if (l_max_pol_g == ppw2->l_max_pol_g) {
-
+    if (ppw2->pv->use_closure_pol_g == _TRUE_) {
       int l = l_max_pol_g;
-      
-      /* We take the closure relation from the real & imaginary parts of eq. D.2 of Pitrou et al. (2010), hereafter P2010 */
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
-
         int m = ppt2->m[index_m];
 
         double c_pre =  sqrt(1-(((double)m)*m)/(l*l) * (l+2)/(l-2.)) * (2*l+1)/(2*l-1.);
@@ -6940,9 +7029,7 @@ int perturb2_derivs (
     } // end of if(l_max_pol_g == ppw2->l_max_pol_g)
 
 
-
-
-    // *** Add E-mode and B-mode quadratic terms.
+    /* - Add quadratic terms */
     
     if (ppt2->has_quadratic_sources == _TRUE_) {
       for (int l=2; l<=MIN(ppr2->l_max_pol_g_quadsources,l_max_pol_g); ++l) {
@@ -6961,22 +7048,24 @@ int perturb2_derivs (
 
       
       
-  // -------------------------------------------------------
-  // -              Ultra Relativistic Neutrinos           -
-  // -------------------------------------------------------
+  // -----------------------------------------------------------------------------------------
+  // -                                     Neutrinos                                         -
+  // -----------------------------------------------------------------------------------------
+
+  /* The neutrinos obey the same Boltzmann hierarchy as the photons' one, with kappa_dot 
+  set to zero. */
 
   if (pba->has_ur == _TRUE_) {
 
-
-    /* The neutrinos obey the same Boltzmann hierarchy as the photons' one, with kappa_dot set to zero */
-
-    // *** Monopole
+    /* - Monopole */
+    
     if (l_max_ur > -1)
       if (ppr2->compute_m[0] == _TRUE_)
         dN(0,0) = -four_thirds * (k*N(1,0)*0.25 + metric_continuity);
   
 
-    // *** Dipole
+    /* - Dipole */
+    
     if (l_max_ur > 0) {
       
       for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
@@ -6995,8 +7084,8 @@ int perturb2_derivs (
       }
     }
 
+    /* - Higher moments */
 
-    // *** Neutrino higher moments
     for (int l=2; l<=l_max_ur; ++l) {
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
       
@@ -7007,23 +7096,23 @@ int perturb2_derivs (
       }
     }
 
-    /* Tensor metric contribution */
+
+    /* - Tensor metric contribution */
+    
     if (l_max_ur > 1)
       if (ppr2->compute_m[2] == _TRUE_)
         dN(2,2) += 4 * gamma_m2_prime;
 
 
-    // *** Neutrino closure relation
+    /* - Closure relation */
 
-    /* We apply the closure relation only when there is no approximation scheme active, i.e. when
-    the number of equations evolved is equal to the default number */
-    if (l_max_ur == ppw2->l_max_ur) {
-  
+    /* For the last multipole, we evolve a different equation to avoid numerical
+    reflection. We take this closure relation from eq. D.1 of Pitrou et al. 2010
+    without the kappa_dot term. */
+
+    if (ppw2->pv->use_closure_ur == _TRUE_) {
       int l = l_max_ur;
-  
-      /* We take the closure relation from eq. D.1 of Pitrou et al. 2010. */
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
-
         int m = ppt2->m[index_m];
   
         double c_pre =  (m==0 ?  (2*l+1)/(2*l-1.) : sqrt((double)(l + abs(m))/(l - abs(m))) * (2*l+1)/(2*l-1.) );
@@ -7034,8 +7123,7 @@ int perturb2_derivs (
     } // end of if(l_max_ur == ppw2->l_max_ur)
     
 
-
-    // *** Add neutrino quadratic terms
+    /* - Add quadratic terms */
 
     if (ppt2->has_quadratic_sources == _TRUE_)
       for (int l=0; l<=MIN(ppr2->l_max_ur_quadsources,l_max_ur); ++l)
@@ -7045,18 +7133,18 @@ int perturb2_derivs (
   }  // end of if(has_ur)
 
 
-  // ---------------------------------------
-  // -                Baryons              -
-  // ---------------------------------------
+  // -----------------------------------------------------------------------------------------
+  // -                                       Baryons                                         -
+  // -----------------------------------------------------------------------------------------
 
-
-  // *** Baryon monopole
+  /* - Baryon monopole */
   
-  if (ppr2->compute_m[0] == _TRUE_)
-    db(0,0,0) = - (k*b(1,1,0)*one_third + metric_continuity) - Hc*b_200;
+  if (l_max_b > -1)
+    if (ppr2->compute_m[0] == _TRUE_)
+      db(0,0,0) = - (k*b(1,1,0)*one_third + metric_continuity) - Hc*b_200;
 
   
-  // *** Baryon dipole
+  /* - Baryon dipole */
 
   /* The baryon collision term for the monopole and dipole is the same as the photon's,
   multiplied by -r = -rho_g/rho_b. This can be seen by enforcing the conservation of
@@ -7079,131 +7167,139 @@ int perturb2_derivs (
   (delta and velocity), there would have been a -R = -4/3 rho_g/rho_b factor instead, and
   two additional terms quadratic in the photon and baryon velocities. */
 
-  for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+  if (l_max_b > 0) {
     
-    int m = ppt2->m[index_m];
+    for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     
-    /* With respect to the photon dipole, there is an extra damping term given by
-    -Hc*dipole. The free streaming term is k*(b(0,0)-2/5*b(2,0)) for m=0 and
-    -k*sqrt(3)/5*b(2,1) for m=1. The collision term is the same as the photon
-    dipole's, multiplied by r=-rho_g/rho_b. This is eq. 5.16 of
-    http://arxiv.org/abs/1405.2280. */
-    db(1,1,m) = - Hc * b(1,1,m)
-                + k * (c_minus(1,m,m)*b_200 - c_plus(1,m,m)*b_22m[m])
-                - r * ppw2->C_1m[m];
+      int m = ppt2->m[index_m];
     
-    /* Scalar metric contribution */
-    if (m==0)
-      db(1,1,m) += 3 * metric_euler;
+      /* With respect to the photon dipole, there is an extra damping term given by
+      -Hc*dipole. The free streaming term is k*(b(0,0)-2/5*b(2,0)) for m=0 and
+      -k*sqrt(3)/5*b(2,1) for m=1. The collision term is the same as the photon
+      dipole's, multiplied by r=-rho_g/rho_b. This is eq. 5.16 of
+      http://arxiv.org/abs/1405.2280. */
+      db(1,1,m) = - Hc * b(1,1,m)
+                  + k * (c_minus(1,m,m)*b_200 - c_plus(1,m,m)*b_22m[m])
+                  - r * ppw2->C_1m[m];
+    
+      /* Scalar metric contribution */
+      if (m==0)
+        db(1,1,m) += 3 * metric_euler;
 
-    /* Vector metric contribution - see Beneke and Fidler 2011 (eq. A.10) */
-    if (m==1)
-      db(1,1,m) += - 3 * (omega_m1_prime + Hc*omega_m1);
-
+      /* Vector metric contribution - see Beneke and Fidler 2011 (eq. A.10) */
+      if (m==1)
+        db(1,1,m) += - 3 * (omega_m1_prime + Hc*omega_m1);
+    }
   }
 
 
 
-  // *** Baryon "pressure"
+  /* - Baryon "pressure" */
   
   /* The (2,0,0) moment is exponentially suppressed in absence of quadratic sources */
-  if (ppr2->compute_m[0] == _TRUE_)
-    if (ppt2->has_perfect_baryons == _FALSE_)
-      db(2,0,0) = - 2*Hc*b(2,0,0);
+  if (l_max_b > -1)
+    if (ppr2->compute_m[0] == _TRUE_)
+      if (ppt2->has_perfect_baryons == _FALSE_)
+        db(2,0,0) = - 2*Hc*b(2,0,0);
   
 
-  // *** Baryon quadrupole
+  /* - Baryon quadrupole */
   
   /* The (2,2,m) moments are exponentially suppressed in absence of quadratic sources */
-  for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m)
-    if (ppt2->has_perfect_baryons == _FALSE_)
-      db(2,2,ppt2->m[index_m]) = - 2*Hc*b(2,2,ppt2->m[index_m]);
+  if (l_max_b > 1)
+    for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m)
+      if (ppt2->has_perfect_baryons == _FALSE_)
+        db(2,2,ppt2->m[index_m]) = - 2*Hc*b(2,2,ppt2->m[index_m]);
 
 
   // *** Add baryon quadratic sources
 
   if (ppt2->has_quadratic_sources == _TRUE_) {
     for (int n=0; n <= ppw2->pv->n_max_b; ++n) {
-      for (int l=0; l <= ppw2->pv->l_max_b; ++l) {
-    
+      for (int l=0; l <= l_max_b; ++l) {
         if ((l!=n) && (l!=0)) continue;
         if ((l==0) && (n%2!=0)) continue;
         if (ppt2->has_perfect_baryons == _TRUE_)
           if ((n>1)||(l>1)) continue;
-        
         for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
-
           int m = ppr2->m[index_m];
           db(n,l,m) += db_qs2(n,l,m);
+        }
+      }
+    }
+  }
 
-  }}}}
 
-
-  // ----------------------------------------------
-  // -               Cold Dark Matter             -
-  // ----------------------------------------------
+  // -----------------------------------------------------------------------------------------
+  // -                                    Cold Dark Matter                                   -
+  // -----------------------------------------------------------------------------------------
 
   if (pba->has_cdm == _TRUE_) {
 
-    // *** CDM monopole
+    /* - CDM monopole */
   
-    if (ppr2->compute_m[0] == _TRUE_)
-      dcdm(0,0,0) = - (k*cdm(1,1,0)*one_third + metric_continuity) - Hc*ppw2->cdm_200;
+    if (l_max_cdm > -1)
+      if (ppr2->compute_m[0] == _TRUE_)
+        dcdm(0,0,0) = - (k*cdm(1,1,0)*one_third + metric_continuity) - Hc*ppw2->cdm_200;
     
   
-    // *** CDM dipole
+    /* - CDM dipole */
 
-    for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+    if (l_max_cdm > 0) {
+
+      for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     
-      int m = ppt2->m[index_m];
+        int m = ppt2->m[index_m];
     
-      dcdm(1,1,m) = - Hc * cdm(1,1,m)
-                    + k * (c_minus(1,m,m)*ppw2->cdm_200 - c_plus(1,m,m)*ppw2->cdm_22m[m]);
+        dcdm(1,1,m) = - Hc * cdm(1,1,m)
+                      + k * (c_minus(1,m,m)*ppw2->cdm_200 - c_plus(1,m,m)*ppw2->cdm_22m[m]);
 
-      /* Scalar metric contribution */
-      if (m==0)
-        dcdm(1,1,m) += 3 * metric_euler;
+        /* Scalar metric contribution */
+        if (m==0)
+          dcdm(1,1,m) += 3 * metric_euler;
 
-      /* Vector metric contribution - see Beneke and Fidler 2011 (eq. A.10) */
-      if (m==1)
-        dcdm(1,1,m) += - 3 * (omega_m1_prime + Hc*omega_m1);
-
+        /* Vector metric contribution - see Beneke and Fidler 2011 (eq. A.10) */
+        if (m==1)
+          dcdm(1,1,m) += - 3 * (omega_m1_prime + Hc*omega_m1);
+      }
     }
 
 
-    // *** CDM "pressure"
+    /* - CDM "pressure" */
 
     /* The (2,0,0) moment is exponentially suppressed in absence of quadratic sources */
-    if (ppr2->compute_m[0] == _TRUE_)
-      if (ppt2->has_perfect_cdm == _FALSE_)
-        dcdm(2,0,0) = - 2*Hc*cdm(2,0,0);
+    if (l_max_cdm > -1)
+      if (ppr2->compute_m[0] == _TRUE_)
+        if (ppt2->has_perfect_cdm == _FALSE_)
+          dcdm(2,0,0) = - 2*Hc*cdm(2,0,0);
 
 
-    // *** CDM quadrupole
+    /* CDM quadrupole */
 
     /* The (2,2,m) moments are exponentially suppressed in absence of quadratic sources */
     /* TODO: Should we add here (and for baryons) the tensor potential? */
-    for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m)
-      if (ppt2->has_perfect_cdm == _FALSE_)
-        dcdm(2,2,ppt2->m[index_m]) = - 2*Hc*cdm(2,2,ppt2->m[index_m]);
+    if (l_max_cdm > 1)
+      for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m)
+        if (ppt2->has_perfect_cdm == _FALSE_)
+          dcdm(2,2,ppt2->m[index_m]) = - 2*Hc*cdm(2,2,ppt2->m[index_m]);
       
 
-    // *** Add CDM quadratic sources
+    /* - Add CDM quadratic sources */
+    
     if (ppt2->has_quadratic_sources == _TRUE_) {
       for (int n=0; n <= ppw2->pv->n_max_cdm; ++n) {
-        for (int l=0; l <= ppw2->pv->l_max_cdm; ++l) {
-    
+        for (int l=0; l <= l_max_cdm; ++l) {    
           if ((l!=n) && (l!=0)) continue;
           if ((l==0) && (n%2!=0)) continue;
           if (ppt2->has_perfect_cdm == _TRUE_)
             if ((n>1)||(l>1)) continue;
-        
           for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
-            
             int m = ppr2->m[index_m];
             dcdm(n,l,m) += dcdm_qs2(n,l,m);
-
-    }}}}
+          }
+        }
+      }
+    }
 
   } // end of if(cdm)
   
@@ -7335,7 +7431,7 @@ int perturb2_einstein (
   
   if (ppr2->compute_m[0] == _TRUE_) {
     rho_monopole           =  rho_g*I(0,0);
-    rho_dipole             =  rho_g*I(1,0);
+    rho_dipole             =  rho_g*ppw2->I_1m[0];
     rho_quadrupole         =  rho_g*ppw2->I_2m[0];
   }
 
@@ -7495,7 +7591,7 @@ int perturb2_einstein (
     //       ppw2->pvecmetric[ppw2->index_mt2_phi_prime],
     //       ppw2->pvecmetric[ppw2->index_mt2_phi_prime_poisson],
     //       ppw2->pvecmetric[ppw2->index_mt2_phi_prime_longitudinal],
-    //       0.5 * (a_sq/k) * rho_g*I(1,0),
+    //       0.5 * (a_sq/k) * rho_g*ppw2->I_2m[0];
     //       0.5 * (a_sq/k) * rho_b*b_110
     //       );
     //   }
@@ -7595,7 +7691,7 @@ int perturb2_einstein (
  * -# thermodynamics_at_z()
  *
  */
-int perturb2_update_workspace (
+int perturb2_workspace_at_tau (
        struct precision * ppr,
        struct precision2 * ppr2,
        struct background * pba,
@@ -7685,10 +7781,16 @@ int perturb2_update_workspace (
   // -                                  Tight coupling                                      -
   // ----------------------------------------------------------------------------------------
 
-  /* If the tight coupling approximation is turned off, then the photon quadrupoles
-  are evolved normally and can be accessed with the macros I(l,m), E(l,m) and B(l,m). */
+  /* If the tight coupling approximation is turned off, then the photon dipole and
+  quadrupoles are evolved normally and can be accessed with the macros I(l,m), E(l,m)
+  and B(l,m). */
   
   if (ppw2->approx[ppw2->index_ap2_tca] == (int)tca_off) {
+
+    for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+      int m = ppt2->m[index_m];
+      ppw2->I_1m[m] = I(1,m);
+    }
     
     for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
       int m = ppt2->m[index_m];
@@ -7730,6 +7832,11 @@ int perturb2_update_workspace (
       ppt2->error_message);
 
     /* Tell SONG to use the TCA values rather than the evolved ones */
+    for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+      int m = ppt2->m[index_m];
+      ppw2->I_1m[m] = ppw2->I_1m_tca1[m];
+    }
+
     for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
       int m = ppt2->m[index_m];
       ppw2->I_2m[m] = ppw2->I_2m_tca1[m];
@@ -7859,7 +7966,7 @@ int perturb2_fluid_variables (
 
 
   /* - Interpolate first order densities and velocities */
-  
+  /* THESE TWO CALLS CAN BE REMOVED IF WE KEEP QUADRATIC_SOURCES IN DERIVS */ 
   class_call (perturb_song_sources_at_tau (
                ppr,
                ppt,
@@ -7900,7 +8007,7 @@ int perturb2_fluid_variables (
   double delta_g_1 = ppw2->delta_g_1 = ppw2->pvec_sources1[ppt->index_qs_delta_g];
   double delta_g_2 = ppw2->delta_g_2 = ppw2->pvec_sources2[ppt->index_qs_delta_g];
   double v_dot_v_g = ppw2->v_dot_v_g = - k1_dot_k2 * vpot_g_1 * vpot_g_2;
-  
+      
   if (ppr2->compute_m[0] == _TRUE_) {
     ppw2->delta_g = I(0,0) - 8/3.*v_dot_v_g;
     ppw2->pressure_g = ppw2->delta_g/3;
@@ -7915,7 +8022,7 @@ int perturb2_fluid_variables (
     int m = ppr2->m[index_m];
     ppw2->u_g_1[m] = -k1_m[m+1]*vpot_g_1;
     ppw2->u_g_2[m] = -k2_m[m+1]*vpot_g_2;
-    ppw2->u_g[m] = I(1,m)/4 - delta_g_1*ppw2->u_g_2[m] - delta_g_2*ppw2->u_g_1[m];
+    ppw2->u_g[m] = ppw2->I_1m[m]/4 - delta_g_1*ppw2->u_g_2[m] - delta_g_2*ppw2->u_g_1[m];
   }
 
   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
@@ -8071,11 +8178,13 @@ int perturb2_fluid_variables (
  * The function compute the following perturbations:
  *
  * - ppw2->U_slip_tca1[m]:     difference between the baryon and photon velocity u_b[m]-u_g[m].
+ * - ppw2->I_1m_tca1[m]:   photon intensity dipole up to order O(tau_c)^2.
  * - ppw2->I_2m_tca0[m]:   photon intensity quadrupole up to order O(tau_c).
  * - ppw2->I_2m_tca1[m]:   photon intensity quadrupole up to order O(tau_c)^2.
- * - shear_g_tca1[m]:     photon shear up to order O(tau_c)^2.
- * - Pi_tca0[m]:          factor Pi=(I(2,m)-sqrt_6*E(2,m))/10 up to order O(tau_c).
- * - Pi_tca1[m]:          factor Pi=(I(2,m)-sqrt_6*E(2,m))/10 up to order O(tau_c)^2.
+ * - ppw2->shear_g_tca1[m]:     photon shear up to order O(tau_c)^2.
+ * - ppw2->C_1m_tca1[m]:     photon dipole collision term up to order O(tau_c)^2.
+ * - ppw2->Pi_tca0[m]:          factor Pi=(I(2,m)-sqrt_6*E(2,m))/10 up to order O(tau_c).
+ * - ppw2->Pi_tca1[m]:          factor Pi=(I(2,m)-sqrt_6*E(2,m))/10 up to order O(tau_c)^2.
  * - ppw2->E_2m_tca1[m]:   photon E-mode polarisation quadrupole up to order O(tau_c)^2.
  * - ppw2->B_2m_tca1[m]:   photon B-mode polarisation quadrupole up to order O(tau_c)^2.
  *
@@ -8146,11 +8255,33 @@ int perturb2_tca_variables (
   double delta_g_2 = ppw2->delta_g_2;
   
 
-  /* - Interpolate the quadratic collision term */
-  
-  /* Here we interpolate the quadratic collision term at the current time tau.
-  We assume that the full quadratic part of the Boltzmann equation has been
-  already interpolated */
+  /* - Extract the quadratic collision term */
+
+  if (ppt2->has_quadratic_sources == _TRUE_) {
+    class_call (perturb2_quadratic_sources(
+                  ppr,
+                  ppr2,
+                  pba,
+                  pth,
+                  ppt,
+                  ppt2,
+                  -1,
+                  tau,
+                  compute_only_collision,
+                  ppw2->pvec_quadsources,
+                  ppw2->pvec_quadcollision,
+                  ppw2
+                  ),
+      ppt2->error_message,
+      ppt2->error_message);
+  }
+
+  /* Uncomment to obtain the collision term by interpolating the precomputed
+  table. Interpolating the quadratic sources is quicker, but in the case of
+  the TCA quantities it leads to a slower convergence in the differential system;
+  in other words, it takes more time steps to evolve the system. The loss in
+  convergence speed roughly balances the loss from computing the sources; we choose
+  the latter option because it is more precise. */
 
   // if (ppt2->has_quadratic_sources == _TRUE_) {
   //   class_call(perturb2_quadratic_sources_at_tau(
@@ -8162,28 +8293,6 @@ int perturb2_tca_variables (
   //                interpolate_collision,
   //                ppw2
   //                ),
-  //     ppt2->error_message,
-  //     ppt2->error_message);
-  // }
-  
-  /* If we compute the quadratic collision term instead of interpolating it,
-  the differential system seems to converge much quicker. The gain in convergence
-  speed could also balance the loss of time in computing the sources */
-  // if (ppt2->has_quadratic_sources == _TRUE_) {
-  //   class_call (perturb2_quadratic_sources(
-  //                 ppr,
-  //                 ppr2,
-  //                 pba,
-  //                 pth,
-  //                 ppt,
-  //                 ppt2,
-  //                 -1,
-  //                 tau,
-  //                 compute_total_and_collision,
-  //                 ppw2->pvec_quadsources,
-  //                 ppw2->pvec_quadcollision,
-  //                 ppw2
-  //                 ),
   //     ppt2->error_message,
   //     ppt2->error_message);
   // }
@@ -8226,143 +8335,6 @@ int perturb2_tca_variables (
   }
  
 
-  /* - Photon quadrupole in tight coupling */
-  
-  for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
-
-    int m = ppr2->m[index_m];
-
-    /* The photon quadrupole is quadratic in the photon velocity:
-      I(2,m) = -10*vv[m] + O(tau_c).
-    This follows from the fact that the quadratic part of the quadrupole collision
-    term, dI_qc2(2,m)/kappa_dot, is equal to -9*vv[m]+O(tau_c). For a derivation,
-    see Eq. 5.57 of http://arxiv.org/abs/1405.2280, which is equivalent to eq.
-    C.6 of P2010. An important consequence is that the shear shear_g is is of
-    order tau_c; it follows from the relation between the quadrupole and
-    the shear:
-      I(2,m) = -15/2*shear_g[m] - 10 vv[m]. */
-    ppw2->I_2m_tca0[m] = -20*v_ten_v_g[m];
-
-    /* We now proceed to compute the photon shear in tight coupling up to
-    terms O(tau_c), following eq. 37 of my TCA notes. Here we write the
-    purely second order part of the shear in TCA1. Using CLASS variables,
-      shear_g = -3/4 * shear_g[0]
-      theta_g = - k * u_g[0] = - k * I(1,m)/4
-      c_minus(2,0,0) = 2/3
-    the formula reduces to the one implemented in CLASS, that is,
-      shear_g = 8/45 * tau_c * shear_g */
-    double gamma_m2_prime = (m==2?y[ppw2->pv->index_pt2_gamma_m2_prime]:0);
-    ppw2->shear_g_tca1[m] = 8/45. * tau_c * (-k*I(1,m)*c_minus(2,m,m) - 4*(m==2?gamma_m2_prime:0));
-    
-    /* The quadratic part is a combination of Liouville terms, collision terms and
-    velocity squared terms. Here we add the terms that are not explicitly multiplied
-    by a tau_c factor, but are nonetheless of order tau_c. This is the case because
-    quadC_I_2M = -9 vv[m] + O(tau_c) and quadC_E_2M = -vv[m] + O(tau_c). */
-    ppw2->shear_g_tca1[m] += 8/45. * (-quadC_I_2M + sqrt_6/4*quadC_E_2M - 15*v_ten_v_g[m]);
-
-    /* Here we add the quadratic terms that are multiplied by tau_c. Note that in the
-    derivative term we exchange the photon velocity with the baryon velocity, using
-    the fact that the whole expression is multiplied by tau_c. Note also that
-    the term in quadL_E_2M could be be omitted because quadL_E_2M is O(tau_c)
-    (see eq. 4.153 of http://arxiv.org/abs/1405.2280). */
-    ppw2->shear_g_tca1[m] += 8/45. * tau_c * (quadL_I_2M - sqrt_6/4*quadL_E_2M - 20*v_ten_v_b_prime[m]);
-
-    /* Cheat and use Pi (eq. 25 of TCA notes) */
-    // double Pi = 0.1 * (I(2,m) - sqrt_6*E(2,m));
-    // ppw2->shear_g_tca1[m] = -2/15. *
-    //   (
-    //     Pi + quadC_I_2M + 20 * ppw2->v_ten_v_g[m]
-    //     -tau_c * (- 20*v_ten_v_b_prime[m] - k*I(1,m)*c_minus(2,m,m) - 4*(m==2?gamma_m2_prime:0) + quadL_I_2M)
-    //   );
-
-    /* Cheat and use E_2M (eq. 25b of TCA notes) */
-    // ppw2->shear_g_tca1[m] = -4/27. *
-    //   (
-    //     quadC_I_2M + 18 * v_ten_v_g[m] - sqrt_6/10*E(2,m)
-    //     -tau_c * (-20*v_ten_v_b_prime[m] - k*I(1,m)*c_minus(2,m,m) - 4*(m==2?gamma_m2_prime:0) + quadL_I_2M)
-    //   );
-    
-
-    /* In absence of polarisation, we take the expression of shear_g as a function of
-    Pi, expand Pi as I_2M/10=-3/4*shear_m-vv_m and then solve the equation for shear_m
-    (eq. 25b of TCA notes, with E_2M set to zero). */
-    if (ppt2->has_polarization2 == _FALSE_) {
-
-      ppw2->shear_g_tca1[m] = -4/27. * (
-          quadC_I_2M + 18*v_ten_v_g[m]
-          -tau_c * (-20*v_ten_v_b_prime[m] - k*I(1,m)*c_minus(2,m,m)
-                    - 4*(m==2?gamma_m2_prime:0) + quadL_I_2M));
-    }
-
-    /* The quadrupole is obtained by adding a velocity squared term
-    (eq. 4.48 of http://arxiv.org/abs/1405.2280) */
-    ppw2->I_2m_tca1[m] = -15/2.*ppw2->shear_g_tca1[m] - 20*v_ten_v_g[m];
-
-    /* When we called the perturb2_fluid_variables() function above we did not
-    know yet what was the value of the quadrupole. Now that we do, we update
-    the ppw2->shear_g field. */
-    if (ppw2->approx[ppw2->index_ap2_tca] == (int)tca_off)
-      ppw2->shear_g[m] = -2/15.*I(2,m) - 8/3.*v_ten_v_g[m];
-    else
-      ppw2->shear_g[m] = ppw2->shear_g_tca1[m];
-    
-  }
-  
-  
-  /* - Polarisation quadrupole in tight coupling */
-
-  /* Compute the polarisation quadrupole for the E and B-modes during tight
-  coupling. In doing so, we also compute the Pi[m] factor which appears in the
-  collision term for the intensity and E-polarisation quadrupoles; see eq.
-  4.145 of http://arxiv.org/abs/1405.2280. The Pi factor is defined
-  as Pi[m] = (I(2,m) - sqrt_6*E(2,m))/10. */
-  
-  if (ppt2->has_polarization2 == _TRUE_) {
-  
-    for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
-
-      int m = ppr2->m[index_m];
-
-      /* The TCA0 expression for Pi is simply given by -vv[m], because its parts are
-      I(2,m)=-10*vv[m] and dE_qc2(2,m)=-sqrt(6)*vv[m]. */
-      ppw2->Pi_tca0[m] = -2*v_ten_v_b[m];
-
-      /* Tight coupling formula (first order in tau_c) for the Pi factor (eq.
-      33 of my TCA notes). The last term (quadL) is negligible because it is
-      of order O(tau_c). The first two in TCA0 are just proportional to the
-      velocity squared; the full expression in TCA0 is simply given by -vv[m]. */
-      ppw2->Pi_tca1[m] = (ppw2->I_2m_tca1[m] - sqrt_6*(quadC_E_2M - tau_c*quadL_E_2M))/4;
-
-      /* Use the Boltzmann equation for the quadrupole in TCA1 to obtain the 
-      polarisation quadrupole in terms of Pi (eq. 31 of my TCA notes). Note
-      that quadL_E_2M, the quadratic part of the Liouville term for polarisation,
-      is O(tau_c) and could be omitted without altering the result (see eq. 4.153
-      of http://arxiv.org/abs/1405.2280). */
-      ppw2->E_2m_tca1[m] = -sqrt(6)*ppw2->Pi_tca1[m]
-                          + quadC_E_2M
-                          - tau_c*quadL_E_2M;
-          
-      /* Invert the relation defining Pi to obtain the polarisation quadrupole
-      from the intensity quadrupole. Note that this method leads to a cancellation
-      because E_2M=O(tau_c) while I_2M=O(1).  */
-      // ppw2->E_2m_tca1[m] = (ppw2->I_2m_tca1[m] - 10*ppw2->Pi_tca1[m])/sqrt_6;
-      
-      /* Another way to express the polarisation quadrupole is in terms of the
-      intensity quadrupole (eq. 32 of my TCA notes). */
-      // ppw2->E_2m_tca1[m] = -sqrt(6)/4*ppw2->I_2m_tca1[m]
-      //                 + 5/2.*quadC_E_2M
-      //                 - 5/2.*tau_c*quadL_E_2M;
-
-      /* The collisionless equation for the B-mode quadrupole (eq. 4.147) contains
-      only terms that are O(tau_c). For example, the quadratic part of the Liouville term
-      (eq. 4.156) only contains the E-mode quadrupole, which is O(tau_c). Therefore, the
-      value of B_2M up to O(tau_c)^2 is obtained by equating the collision term to zero,
-      as you would do for a TCA0 approximation. */
-      ppw2->B_2m_tca1[m] = (m!=0 ? quadC_B_2M : 0);
-
-    }
-  }
-  
   /* - Velocity slip */
   
   /* Compute the velocity slip V[m] = v_b[m] - v_g[m] using the formalism in
@@ -8428,6 +8400,20 @@ int perturb2_tca_variables (
                             + quadL_diff
                          );
 
+    /* During the TCA regime, we do not evolve the photon intensity dipole but
+    we obtain it from the velocity slip as v_g[m] = v_b[m] - V[m]. */
+    ppw2->u_g_tca1[m] = u_b[m] - ppw2->U_slip_tca1[m];
+    ppw2->I_1m_tca1[m] = 4 * (ppw2->u_g_tca1[m] + delta_g_1*u_g_2[m] + delta_g_2*u_g_1[m]);
+
+    /* When we called the perturb2_fluid_variables() function above we did not
+    know yet what was the value of the dipole. Now that we do, we update
+    the ppw2->u_g[m] field. */
+    if (ppw2->approx[ppw2->index_ap2_tca] == (int)tca_off)
+      ppw2->u_g[m] = I(1,m)/4 - delta_g_1*u_g_2[m] - delta_g_2*u_g_1[m];
+    else
+      ppw2->u_g[m] = ppw2->u_g_tca1[m];
+
+
     /* The collision term could also be written as: */
     // ppw2->C_1m_tca1[m] = 4 * kappa_dot * (
     //                        + ppw2->U_slip_tca1[m]
@@ -8457,6 +8443,144 @@ int perturb2_tca_variables (
     // fprintf (stderr, "%17.7g %17.7g %17.7g %17.7g\n",
     //   tau, quadL_diff_explicit/quadL_diff, quadL_diff, quadL_diff_explicit);
     
+  }
+  
+
+  /* - Photon quadrupole in tight coupling */
+  
+  for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+
+    int m = ppr2->m[index_m];
+
+    /* The photon quadrupole is quadratic in the photon velocity:
+      I(2,m) = -10*vv[m] + O(tau_c).
+    This follows from the fact that the quadratic part of the quadrupole collision
+    term, dI_qc2(2,m)/kappa_dot, is equal to -9*vv[m]+O(tau_c). For a derivation,
+    see Eq. 5.57 of http://arxiv.org/abs/1405.2280, which is equivalent to eq.
+    C.6 of P2010. An important consequence is that the shear shear_g is is of
+    order tau_c; it follows from the relation between the quadrupole and
+    the shear:
+      I(2,m) = -15/2*shear_g[m] - 10 vv[m]. */
+    ppw2->I_2m_tca0[m] = -20*v_ten_v_g[m];
+
+    /* We now proceed to compute the photon shear in tight coupling up to
+    terms O(tau_c), following eq. 37 of my TCA notes. Here we write the
+    purely second order part of the shear in TCA1. Using CLASS variables,
+      shear_g = -3/4 * shear_g[0]
+      theta_g = - k * u_g[0] = - k * I(1,m)/4
+      c_minus(2,0,0) = 2/3
+    the formula reduces to the one implemented in CLASS, that is,
+      shear_g = 8/45 * tau_c * shear_g */
+    double gamma_m2_prime = (m==2?y[ppw2->pv->index_pt2_gamma_m2_prime]:0);
+    ppw2->shear_g_tca1[m] = 8/45. * tau_c * (-k*ppw2->I_1m_tca1[m]*c_minus(2,m,m) - 4*(m==2?gamma_m2_prime:0));
+    
+    /* The quadratic part is a combination of Liouville terms, collision terms and
+    velocity squared terms. Here we add the terms that are not explicitly multiplied
+    by a tau_c factor, but are nonetheless of order tau_c. This is the case because
+    quadC_I_2M = -9 vv[m] + O(tau_c) and quadC_E_2M = -vv[m] + O(tau_c). */
+    ppw2->shear_g_tca1[m] += 8/45. * (-quadC_I_2M + sqrt_6/4*quadC_E_2M - 15*v_ten_v_g[m]);
+
+    /* Here we add the quadratic terms that are multiplied by tau_c. Note that in the
+    derivative term we exchange the photon velocity with the baryon velocity, using
+    the fact that the whole expression is multiplied by tau_c. Note also that
+    the term in quadL_E_2M could be be omitted because quadL_E_2M is O(tau_c)
+    (see eq. 4.153 of http://arxiv.org/abs/1405.2280). */
+    ppw2->shear_g_tca1[m] += 8/45. * tau_c * (quadL_I_2M - sqrt_6/4*quadL_E_2M - 20*v_ten_v_b_prime[m]);
+
+    /* Cheat and use Pi (eq. 25 of TCA notes) */
+    // double Pi = 0.1 * (I(2,m) - sqrt_6*E(2,m));
+    // ppw2->shear_g_tca1[m] = -2/15. *
+    //   (
+    //     Pi + quadC_I_2M + 20 * ppw2->v_ten_v_g[m]
+    //     -tau_c * (- 20*v_ten_v_b_prime[m] - k*I(1,m)*c_minus(2,m,m) - 4*(m==2?gamma_m2_prime:0) + quadL_I_2M)
+    //   );
+
+    /* Cheat and use E_2M (eq. 25b of TCA notes) */
+    // ppw2->shear_g_tca1[m] = -4/27. *
+    //   (
+    //     quadC_I_2M + 18 * v_ten_v_g[m] - sqrt_6/10*E(2,m)
+    //     -tau_c * (-20*v_ten_v_b_prime[m] - k*I(1,m)*c_minus(2,m,m) - 4*(m==2?gamma_m2_prime:0) + quadL_I_2M)
+    //   );
+    
+
+    /* In absence of polarisation, we take the expression of shear_g as a function of
+    Pi, expand Pi as I_2M/10=-3/4*shear_m-vv_m and then solve the equation for shear_m
+    (eq. 25b of TCA notes, with E_2M set to zero). */
+    if (ppt2->has_polarization2 == _FALSE_) {
+
+      ppw2->shear_g_tca1[m] = -4/27. * (
+          quadC_I_2M + 18*v_ten_v_g[m]
+          -tau_c * (-20*v_ten_v_b_prime[m] - k*ppw2->I_1m[m]*c_minus(2,m,m)
+                    - 4*(m==2?gamma_m2_prime:0) + quadL_I_2M));
+    }
+
+    /* The quadrupole is obtained by adding a velocity squared term
+    (eq. 4.48 of http://arxiv.org/abs/1405.2280) */
+    ppw2->I_2m_tca1[m] = -15/2.*ppw2->shear_g_tca1[m] - 20*v_ten_v_g[m];
+
+    /* When we called the perturb2_fluid_variables() function above we did not
+    know yet what was the value of the quadrupole. Now that we do, we update
+    the ppw2->shear_g[m] field. */
+    if (ppw2->approx[ppw2->index_ap2_tca] == (int)tca_off)
+      ppw2->shear_g[m] = -2/15.*I(2,m) - 8/3.*v_ten_v_g[m];
+    else
+      ppw2->shear_g[m] = ppw2->shear_g_tca1[m];
+    
+  }
+  
+  
+  /* - Polarisation quadrupole in tight coupling */
+
+  /* Compute the polarisation quadrupole for the E and B-modes during tight
+  coupling. In doing so, we also compute the Pi[m] factor which appears in the
+  collision term for the intensity and E-polarisation quadrupoles; see eq.
+  4.145 of http://arxiv.org/abs/1405.2280. The Pi factor is defined
+  as Pi[m] = (I(2,m) - sqrt_6*E(2,m))/10. */
+  
+  if (ppt2->has_polarization2 == _TRUE_) {
+  
+    for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+
+      int m = ppr2->m[index_m];
+
+      /* The TCA0 expression for Pi is simply given by -vv[m], because its parts are
+      I(2,m)=-10*vv[m] and dE_qc2(2,m)=-sqrt(6)*vv[m]. */
+      ppw2->Pi_tca0[m] = -2*v_ten_v_b[m];
+
+      /* Tight coupling formula (first order in tau_c) for the Pi factor (eq.
+      33 of my TCA notes). The last term (quadL) is negligible because it is
+      of order O(tau_c). The first two in TCA0 are just proportional to the
+      velocity squared; the full expression in TCA0 is simply given by -vv[m]. */
+      ppw2->Pi_tca1[m] = (ppw2->I_2m_tca1[m] - sqrt_6*(quadC_E_2M - tau_c*quadL_E_2M))/4;
+
+      /* Use the Boltzmann equation for the quadrupole in TCA1 to obtain the 
+      polarisation quadrupole in terms of Pi (eq. 31 of my TCA notes). Note
+      that quadL_E_2M, the quadratic part of the Liouville term for polarisation,
+      is O(tau_c) and could be omitted without altering the result (see eq. 4.153
+      of http://arxiv.org/abs/1405.2280). */
+      ppw2->E_2m_tca1[m] = -sqrt(6)*ppw2->Pi_tca1[m]
+                          + quadC_E_2M
+                          - tau_c*quadL_E_2M;
+          
+      /* Invert the relation defining Pi to obtain the polarisation quadrupole
+      from the intensity quadrupole. Note that this method leads to a cancellation
+      because E_2M=O(tau_c) while I_2M=O(1).  */
+      // ppw2->E_2m_tca1[m] = (ppw2->I_2m_tca1[m] - 10*ppw2->Pi_tca1[m])/sqrt_6;
+      
+      /* Another way to express the polarisation quadrupole is in terms of the
+      intensity quadrupole (eq. 32 of my TCA notes). */
+      // ppw2->E_2m_tca1[m] = -sqrt(6)/4*ppw2->I_2m_tca1[m]
+      //                 + 5/2.*quadC_E_2M
+      //                 - 5/2.*tau_c*quadL_E_2M;
+
+      /* The collisionless equation for the B-mode quadrupole (eq. 4.147) contains
+      only terms that are O(tau_c). For example, the quadratic part of the Liouville term
+      (eq. 4.156) only contains the E-mode quadrupole, which is O(tau_c). Therefore, the
+      value of B_2M up to O(tau_c)^2 is obtained by equating the collision term to zero,
+      as you would do for a TCA0 approximation. */
+      ppw2->B_2m_tca1[m] = (m!=0 ? quadC_B_2M : 0);
+
+    }
   }
 
 
@@ -8532,7 +8656,7 @@ int perturb2_compute_psi_prime(
   else {
     /* For the time derivative of the quadrupole in TCA1, we use the usual Boltzmann
     equation with I(3,0)=0. We also use c_minus(2,0,0)=2/3 */
-    double dI_20 = 2/3.*k*I(1,0) - kappa_dot*(ppw2->I_2m_tca1[0] - ppw2->Pi_tca1[0]);
+    double dI_20 = 2/3.*k*ppw2->I_1m_tca1[0] - kappa_dot*(ppw2->I_2m_tca1[0] - ppw2->Pi_tca1[0]);
     rho_quadrupole_prime = rho_g * dI_20;
   }
 
@@ -8796,7 +8920,11 @@ int perturb2_quadratic_sources (
   double * k1_ten_k1 = ppw2->k1_ten_k1;
   double * k2_ten_k2 = ppw2->k2_ten_k2;
  
-  /* Variables related to the multipole expansion */
+  /* Variables related to the multipole expansion. We use the ppw2->l_max
+  which is fixed and does not depend on the approximation scheme. This means
+  that we will compute quadratic sources for all multipoles even if the 
+  tight coupling approximation is turned on. This part might be optimised
+  (TODO). */
   int lm_extra = ppt2->lm_extra;
   int l_max_g = ppw2->l_max_g;
   int l_max_pol_g = ppw2->l_max_pol_g;
@@ -9924,7 +10052,7 @@ int perturb2_sources (
   double * pvec_sources2 = ppw2->pvec_sources2;
   
   /* Set the perturbations that are influenced by approximations */
-  class_call (perturb2_update_workspace(
+  class_call (perturb2_workspace_at_tau(
                 ppr,
                 ppr2,
                 pba,
@@ -10934,7 +11062,7 @@ int perturb2_save_early_transfers (
           ErrorMsg error_message
           )
 {
-
+  
   /* Shortcuts for the structures */
   struct perturb2_parameters_and_workspace * pppaw2 = parameters_and_workspace;
   struct precision * ppr = pppaw2->ppr;
@@ -11048,7 +11176,7 @@ int perturb2_save_early_transfers (
     error_message);
 
   /* Set the perturbations that are influenced by approximations */
-  class_call (perturb2_update_workspace(
+  class_call (perturb2_workspace_at_tau(
                 ppr,
                 ppr2,
                 pba,
@@ -11143,7 +11271,7 @@ int perturb2_save_early_transfers (
       double rho_g, rho_b, rho_cdm, rho_ur, rho_dipole_m1, rho_dipole_1, rho_dipole_2;
   
       rho_g = ppw2->pvecback[pba->index_bg_rho_g];
-      rho_dipole_m1        =  rho_g*I(1,1);
+      rho_dipole_m1        =  rho_g*ppw2->I_1m[1];
       rho_dipole_1         =  rho_g*I_1_tilde(1);
       rho_dipole_2         =  rho_g*I_2_tilde(1);
   
@@ -11395,8 +11523,8 @@ int perturb2_save_early_transfers (
   int index_print_qs = 1;
   
   /* Choose how label & values should be formatted */
-  char format_label[64] = "%16s(%02d) ";
-  char format_value[64] = "%+20e ";      
+  char format_label[64] = "%20s(%02d) ";
+  char format_value[64] = "%+22.11e ";
   char buffer[64];
   
   /* Print some info to file */
@@ -11563,6 +11691,20 @@ int perturb2_save_early_transfers (
     sprintf(buffer, "U_slip_tca1_m%d", m);
     if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
     else fprintf(file_tr, format_value, ppw2->U_slip_tca1[m]);
+  }
+  /* Photon velocity (TCA1) */
+  for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+    int m = ppr2->m[index_m];
+    sprintf(buffer, "u_g_tca1_m%d", m);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
+    else fprintf(file_tr, format_value, ppw2->u_g_tca1[m]);
+  }
+  /* Photon dipole (TCA1) */
+  for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+    int m = ppr2->m[index_m];
+    sprintf(buffer, "I_1_%d_tca1", m);
+    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
+    else fprintf(file_tr, format_value, ppw2->I_1m_tca1[m]);
   }
   /* Dipole collision term (TCA1) */
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
@@ -11821,7 +11963,9 @@ int perturb2_save_early_transfers (
         fprintf(file_qs, format_label, buffer, index_print_qs++);
       }
       else {
-        if (l==2)
+        if (l==1)
+          fprintf(file_tr, format_value, ppw2->I_1m[m]);
+        else if (l==2)
           fprintf(file_tr, format_value, ppw2->I_2m[m]);
         else
           fprintf(file_tr, format_value, I(l,m));

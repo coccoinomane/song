@@ -27,5 +27,6 @@ print_transfers2
 print_couplings
 class
 
-# Valgrind suppression files
+# Valgrind related files
 *.supp
+*.dSYM

@@ -205,4 +205,18 @@ ppt2->c_minus are used */
 #define k_zero_11(l,m)  ppw2->k_zero_product_11[lm(l,m)]  
 #define k_zero_22(l,m)  ppw2->k_zero_product_22[lm(l,m)]
 
+
+// ------------------------------------------------------------------------------------
+// -                                 Debug shortcuts                                  -
+// ------------------------------------------------------------------------------------
+                              
+#define printf_k_debug(args...) {                                   \
+  if((ppw2->index_k1==ppt2->index_k1_debug) &&                      \
+     (ppw2->index_k2==ppt2->index_k2_debug) &&                      \
+     (ppw2->index_k3==ppt2->index_k3_debug)) {                      \
+    printf (args);                                                  \
+  }                                                                 \
+}
+
+
 #endif

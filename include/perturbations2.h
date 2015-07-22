@@ -855,6 +855,10 @@ struct perturb2_workspace
   int index_ap2_ufa;   /**< Index for the ultra-relativistic fluid approximation in the array ppw2->approx */
   int index_ap2_nra;   /**< Index for the no-radiation approximation in the array ppw2->approx */
 
+  int n_active_approximations; /**< Number of approximations active for the current (k1,k2,k3) and time tau */
+
+  double I_1m_tca1[2];     /**< value of the photon intensity dipole in the tight coupling approximations, neglecting O(tau_c)^2 terms */
+  double u_g_tca1[2];      /**< value of the photon velocity u_g[m]=i*v_g[m] in the tight coupling approximations, neglecting O(tau_c)^2 terms */
   double I_2m_tca0[3];     /**< value of the photon quadrupole in the tight coupling approximations, neglecting O(tau_c) terms */
   double I_2m_tca1[3];     /**< value of the photon quadrupole in the tight coupling approximations, neglecting O(tau_c)^2 terms */
   double shear_g_tca1[3];  /**< value of the photon shear in the tight coupling approximations, neglecting O(tau_c)^2 terms */
@@ -866,6 +870,7 @@ struct perturb2_workspace
   double C_1m_tca1[2];     /**< value of the purely second-order part of the photon dipole collision term,
                            C_1m = kappa_dot * (4/3*b_11m-I_1m), in the tight coupling approximations, neglecting O(tau_c)^2 terms */
 
+  double I_1m[3];      /**< The intensity dipole fed to the evolver (depends on TCA) */
   double I_2m[3];      /**< The intensity quadrupole fed to the evolver (depends on TCA) */
   double E_2m[3];      /**< The E-polarisation quadrupole fed to the evolver (depends on TCA) */
   double B_2m[3];      /**< The B-polarisation quadrupole fed to the evolver (depends on TCA) */
@@ -957,6 +962,9 @@ struct perturb2_vector
   int n_max_cdm;   /**< Largest velocity moment evolved for the cold dark matter
                    hierarchy; equal to n_max=1 for a perfect fluid treatment. */
 
+  short use_closure_g; /**< Should we use the closure relations for the photon intensity? Usually turned off if an approximation is turned on. */
+  short use_closure_pol_g; /**< Should we use the closure relations for the polarisation? Usually turned off if an approximation is turned on. */
+  short use_closure_ur; /**< Should we use the closure relations for the neutrinos? Usually turned off if an approximation is turned on. */
 
   // ====================================================================================
   // =                               Evolved perturbations                              =
@@ -1223,7 +1231,7 @@ struct perturb2_parameters_and_workspace {
          struct perturb2_workspace * ppw2
          );
 
-    int perturb2_update_workspace (
+    int perturb2_workspace_at_tau (
            struct precision * ppr,
            struct precision2 * ppr2,
            struct background * pba,
