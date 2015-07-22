@@ -288,17 +288,18 @@ no_radiation_approximation_rho_m_over_rho_r_song = 100
 # - Tight coupling approximation - */
 # -------------------------------- */
 
-## First order.
+## TCA at first order.
 ## In SONG, we have added the option to turn off the tight coupling 
 ## approximation by setting the below parameter to 6.
-tight_coupling_approximation = 6
+tight_coupling_approximation = 5
 tight_coupling_trigger_tau_c_over_tau_h = 0.015
 tight_coupling_trigger_tau_c_over_tau_k = 0.01
 
-## Second order (NOT IMPLEMENTED YET)
-tight_coupling_approximation_song = 0
-tight_coupling_trigger_tau_c_over_tau_h_song = 0.020;
-tight_coupling_trigger_tau_c_over_tau_k_song = 0.015;
+## TCA at second order. Set to zero for no TCA, to one for the
+## TCA1 scheme in Pitrou 2011, adapted to second order.
+tight_coupling_approximation_song = 1
+tight_coupling_trigger_tau_c_over_tau_h_song = 0.01;
+tight_coupling_trigger_tau_c_over_tau_k_song = 0.007;
 
 
 # ------------------------------------- */
