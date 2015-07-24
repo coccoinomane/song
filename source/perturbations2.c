@@ -35,7 +35,7 @@
  *
  * Created by Guido W. Pettinari on 01.01.2011 based on perturbations.c by the
  * CLASS team (http://class-code.net/).
- * Last modified by Guido W. Pettinari on 04.06.2015.
+ * Last modified by Guido W. Pettinari on 24.07.2015.
  */
 
 
@@ -102,9 +102,10 @@ int perturb2_init (
     printf("Computing second-order perturbations\n");
 
 
-  // =======================================================================================
-  // =                               Indices and samplings                                 =
-  // =======================================================================================
+
+  // ====================================================================================
+  // =                              Indices and samplings                               =
+  // ====================================================================================
 
   /** - determine which sources need to be computed and their k-sampling */
 
@@ -132,8 +133,9 @@ int perturb2_init (
     ppt2->error_message);
 
 
+
   // =====================================================================================
-  // =                              Solve 1st-order system                               =
+  // =                             Solve first-order system                              =
   // =====================================================================================
 
   /** - Run the first-order perturbations module in order to:
@@ -166,45 +168,6 @@ int perturb2_init (
       
     return _SUCCESS_;
   }
-
-
-  // ---------------------------------------------------------------------
-  // -                    Adjust 1st-order time sampling                 -
-  // ---------------------------------------------------------------------
-  
-  /* The first-order time-sampling for the line-of-sight sources in CLASS goes all
-  the way to today.  At second-order, we might be interested in recombination effects
-  only, and thus set an upper limit on the time sampling. Since we want to consider
-  the same effects at first and second order, we adapt the end time of the first-order
-  time sampling (ppt->tau_sampling) to the second-order one (ppt2->tau_sampling) */
-  
-  if (ppt2->match_final_time_los == _TRUE_) {
-
-    if (ppt->tau_sampling[ppt->tau_size-1] != ppt2->tau_sampling[ppt2->tau_size-1]) {
-  
-      /* Test that CLASS sampling actually goes all the way to today */
-      class_test (ppt->tau_sampling[ppt->tau_size-1] < pba->conformal_age,
-        ppt2->error_message,
-        "something went wrong: CLASS time sampling does not reach today");
-  
-  
-      /* Find the index of ppt->tau_sampling corresponding to the last element of ppt2->tau_sampling */
-      int index_tau = ppt->tau_size-1;
-      while (ppt->tau_sampling[index_tau] > ppt2->tau_sampling[ppt2->tau_size-1]) --index_tau;
-      ppt->tau_size = index_tau + 1;
-  
-      /* Some debug */
-      // for (index_tau=0; index_tau < ppt->tau_size; ++index_tau) {
-      //   printf("%13d %13g\n", index_tau, ppt->tau_sampling[index_tau]);
-      // }
-  
-      if (ppt2->perturbations2_verbose > 1)
-        printf("     * adjusted 1st-order LOS sources time sampling: %d times in the range tau=(%g,%g)\n",
-          ppt->tau_size, ppt->tau_sampling[0], ppt->tau_sampling[ppt->tau_size-1]);
-        
-    } // end of if(ppt->tau_sampling[ppt->tau_size-1] != ppt2->tau_sampling[ppt2->tau_size-1])
-  } // end of if(match_final_time_los)
-
 
 
   /* Print some info to screen */
@@ -285,16 +248,16 @@ int perturb2_init (
 
     /* Initialize each workspace */
     class_call_parallel(perturb2_workspace_init(
-              ppr,
-              ppr2,
-              pba,
-              pth,
-              ppt,
-              ppt2,
-              pppw2[thread]
-              ),
-          ppt2->error_message,
-          ppt2->error_message);
+                          ppr,
+                          ppr2,
+                          pba,
+                          pth,
+                          ppt,
+                          ppt2,
+                          pppw2[thread]
+                          ),
+      ppt2->error_message,
+      ppt2->error_message);
     
   } // end of parallel region
   
@@ -334,18 +297,18 @@ int perturb2_init (
       for (int index_k3 = 0; index_k3 < ppt2->k3_size[index_k1][index_k2]; ++index_k3) {
 
           class_call_parallel (perturb2_solve (
-                ppr,
-                ppr2,
-                pba,
-                pth,
-                ppt,
-                ppt2,
-                index_k1,
-                index_k2,
-                index_k3,
-                pppw2[thread]),
-              ppt2->error_message,
-              ppt2->error_message);
+                                 ppr,
+                                 ppr2,
+                                 pba,
+                                 pth,
+                                 ppt,
+                                 ppt2,
+                                 index_k1,
+                                 index_k2,
+                                 index_k3,
+                                 pppw2[thread]),
+            ppt2->error_message,
+            ppt2->error_message);
 
       }  // end of for (index_k3)
 
@@ -384,8 +347,8 @@ int perturb2_init (
     #endif
     
     class_call_parallel(perturb2_workspace_free(ppt2,pba,pppw2[thread]),
-        ppt2->error_message,
-        ppt2->error_message);
+      ppt2->error_message,
+      ppt2->error_message);
     
   } if (abort == _TRUE_) return _FAILURE_; /* end of parallel region */
 
@@ -499,14 +462,19 @@ int perturb2_load_sources_from_disk(
 {
  
   /* Allocate memory to keep the line-of-sight sources */
-  class_call (perturb2_allocate_k1_level(ppt2, index_k1), ppt2->error_message, ppt2->error_message);
+  class_call (perturb2_allocate_k1_level(ppt2, index_k1),
+    ppt2->error_message,
+    ppt2->error_message);
   
   /* Open file for reading */
-  class_open (ppt2->sources_files[index_k1], ppt2->sources_paths[index_k1], "rb", ppt2->error_message);
+  class_open (ppt2->sources_files[index_k1],
+    ppt2->sources_paths[index_k1], "rb",
+    ppt2->error_message);
 
   /* Print some debug */
   if (ppt2->perturbations2_verbose > 2)
-    printf("     * reading line-of-sight source for index_k1=%d from '%s' ... \n", index_k1, ppt2->sources_paths[index_k1]);
+    printf("     * reading line-of-sight source for index_k1=%d from '%s' ... \n",
+      index_k1, ppt2->sources_paths[index_k1]);
   
   for (int index_type = 0; index_type < ppt2->tp2_size; ++index_type) {
   
@@ -635,7 +603,7 @@ int perturb2_indices_of_perturbs(
     "synchronous gauge is not supported at second order yet");
 
   /* Curvature at second order not supported yet. You can comment the following check
-  and use a curved first order on a flat second order, but the results would obviously be
+  and use a curved first order on a flat second order, but the results would be
   inconsistent. */
   class_test (pba->sgnK != 0,
     ppt2->error_message,
@@ -645,7 +613,7 @@ int perturb2_indices_of_perturbs(
   class_test (
     (ppr2->l_max_los_p<2) || (ppr2->l_max_los_p<2),
     ppt2->error_message,
-    "in order to compute polarisation (l_min=2), you need to specify l_max_los_p>1 and l_max_los_p>1");
+    "specify l_max_los_p>1 for polarisation");
     
   /* Check that the m-list is within bounds */
   class_test (
@@ -653,47 +621,58 @@ int perturb2_indices_of_perturbs(
     (ppr2->m_max_2nd_order > ppr2->l_max_g) ||
     (ppr2->m_max_2nd_order > ppr2->l_max_pol_g) ||
     (ppr2->m_max_2nd_order > ppr2->l_max_ur),
-    ppt2->error_message, "all entries in modes_2nd_order should be between 0 and l_max.");
+    ppt2->error_message,
+    "all entries in modes_song should be between 0 and l_max.");
 
-  /* Make sure that we compute enough first-order multipoles to solve the second-order system
-  (must be below the initialisation of ppt2->lm_extra). */
+  /* Make sure that we compute enough first-order multipoles to solve the
+  second-order system (must be below the initialisation of ppt2->lm_extra). */
   class_test ((ppr2->l_max_g+ppt2->lm_extra) > ppr->l_max_g,
     ppt2->error_message,
-    "insufficient number of first-order multipoles. Please set 'l_max_g' smaller or equal than 'l_max_g + %d'", ppt2->lm_extra);
+    "insufficient number of first-order multipoles; set 'l_max_g'\
+ smaller or equal than 'l_max_g + %d'",
+    ppt2->lm_extra);
 
   if (ppt2->has_polarization2 == _TRUE_)
     class_test ((ppr2->l_max_pol_g+ppt2->lm_extra) > ppr->l_max_pol_g,
       ppt2->error_message,
-      "insufficient number of first-order multipoles. Please set 'l_max_pol_g' smaller or equal than 'l_max_pol_g + %d'", ppt2->lm_extra);
+      "insufficient number of first-order multipoles; set 'l_max_pol_g'\
+ smaller or equal than 'l_max_pol_g + %d'",
+      ppt2->lm_extra);
     
   if (pba->Omega0_ur != 0)
     class_test ((ppr2->l_max_ur+ppt2->lm_extra) > ppr->l_max_ur,
       ppt2->error_message,
-      "insufficient number of first-order multipoles. Please set 'l_max_ur' smaller or equal than 'l_max_ur + %d'", ppt2->lm_extra);
+      "insufficient number of first-order multipoles; set 'l_max_ur'\
+ smaller or equal than 'l_max_ur + %d'",
+      ppt2->lm_extra);
 
-  /* Make sure that the number of sources kept in the line of sight integration is smaller than the number of
-  evolved 2nd-order multipoles */
+  /* Make sure that the number of sources kept in the line of sight integration
+  is smaller than the number of evolved 2nd-order multipoles */
   if (ppt2->has_cmb_temperature)
     class_test (ppr2->l_max_los_t > ppr2->l_max_g,
       ppt2->error_message,
-      "you chose to compute more line-of-sight sources than evolved multipoles at first order. Make sure that l_max_los_t is smaller or equal than l_max_g.");
+      "you chose to compute more line-of-sight sources than evolved multipoles\
+ at first order. Make sure that l_max_los_t is smaller or equal than l_max_g.");
 
   if ((ppt2->has_cmb_polarization_e == _TRUE_) || (ppt2->has_cmb_polarization_b == _TRUE_))
     class_test (ppr2->l_max_los_p > ppr2->l_max_pol_g,
       ppt2->error_message,
-      "you chose to compute more line-of-sight sources than evolved multipoles at first order. Make sure that l_max_los_p is smaller or equal than l_max_pol_g.");
+      "you chose to compute more line-of-sight sources than evolved multipoles\
+at first order. Make sure that l_max_los_p is smaller or equal than l_max_pol_g.");
 
-  /* Make sure that the number of quadratic sources kept in the line of sight integration is smaller than the number of
-  available 1st-order multipoles */
+  /* Make sure that the number of quadratic sources kept in the line of sight integration
+  is smaller than the number of available 1st-order multipoles */
   if (ppt2->has_cmb_temperature)
     class_test (ppr2->l_max_los_quadratic_t > ppr->l_max_g,
       ppt2->error_message,
-      "you chose to compute more line-of-sight quadratic sources than evolved multipoles at first order. Make sure that l_max_los_quadratic_t is smaller or equal than l_max_g.");
+      "you chose to compute more line-of-sight quadratic sources than evolved multipoles\
+ at first order. Make sure that l_max_los_quadratic_t is smaller or equal than l_max_g.");
 
   if ((ppt2->has_cmb_polarization_e == _TRUE_) || (ppt2->has_cmb_polarization_b == _TRUE_))
     class_test (ppr2->l_max_los_quadratic_p > ppr->l_max_pol_g,
       ppt2->error_message,
-      "you chose to compute more line-of-sight quadratic sources than evolved multipoles at first order. Make sure that l_max_los_quadratic_p is smaller or equal than l_max_pol_g.");
+      "you chose to compute more line-of-sight quadratic sources than evolved multipoles\
+ at first order. Make sure that l_max_los_quadratic_p is smaller or equal than l_max_pol_g.");
 
 
   // ======================================================================================
@@ -1943,7 +1922,8 @@ int perturb2_get_k_lists (
         }
        
       } // end of lin/log sampling
-    
+
+
       // ---------------------------------------------------------
       // -               Linear sampling for the angle           -
       // ---------------------------------------------------------
@@ -1984,7 +1964,8 @@ int perturb2_get_k_lists (
         }
        
       } // end of theta13 sampling
-    
+
+
       // ------------------------------------------------------------
       // -                   Smart sampling for k3                  -
       // ------------------------------------------------------------
@@ -2057,14 +2038,14 @@ int perturb2_get_k_lists (
             ppt2->k3[index_k1][index_k2][index_k3+1] = ppt2->k[index_k3_min+index_k3];
           
           ppt2->k3[index_k1][index_k2][ppt2->k3_size[index_k1][index_k2]-1] = k3_max;
-          
+
           /* Shift the starting point of the array if we included k3_min twice */
           if (ppt2->k3[index_k1][index_k2][0] == ppt2->k3[index_k1][index_k2][1]) {
             for (int index_k3=0; index_k3 < (ppt2->k3_size[index_k1][index_k2]-1); ++index_k3)
               ppt2->k3[index_k1][index_k2][index_k3] = ppt2->k3[index_k1][index_k2][index_k3+1];
             ppt2->k3_size[index_k1][index_k2]--;
           }
-          
+
           /* Decrease the size of the array if we included k3_max twice */
           int k3_size = ppt2->k3_size[index_k1][index_k2];
           if (ppt2->k3[index_k1][index_k2][k3_size-1] == ppt2->k3[index_k1][index_k2][k3_size-2])
@@ -2075,8 +2056,7 @@ int perturb2_get_k_lists (
           // class_alloc (ppt2->k3[index_k1][index_k2], ppt2->k3_size[index_k1][index_k2]*sizeof(double), ppt2->error_message);
           // for (index_k3=0; index_k3 < n_triangular; ++index_k3)
           //   ppt2->k3[index_k1][index_k2][index_k3] = ppt2->k[index_k3_min+index_k3];
-          
-          
+
         } // end of conditions of k3_size
   
       } // end of smart sampling
@@ -2099,6 +2079,16 @@ int perturb2_get_k_lists (
     } // end of for (index_k2)
 
   } // end of for (index_k1)
+
+
+  /* Set minimum and maximum k-values ever used in SONG */
+  ppt2->k_min = ppt2->k3[0][0][0];
+  ppt2->k_max = ppt2->k3[ppt2->k_size-1][ppt2->k_size-1]
+                  [ppt2->k3_size[ppt2->k_size-1][ppt2->k_size-1]];
+                        
+  class_test ((ppt2->k_min==0) || (ppt2->k_max==0),
+    ppt2->error_message,
+    "found vanishing k value");
 
 
 
@@ -2175,7 +2165,6 @@ int perturb2_get_k_lists (
  *  -# Allocate the (k1, k2, k3, tau) levels of ppt2->sources, the array where we shall
  *     store the line-of-sight sources.
  *
- *  TODO: streamline code, using realloc like CLASS.
  */
 
 int perturb2_timesampling_for_sources (
@@ -2192,7 +2181,7 @@ int perturb2_timesampling_for_sources (
   double *pvecback, *pvecthermo;
   class_alloc (pvecback, pba->bg_size*sizeof(double), ppt2->error_message);
   class_alloc (pvecthermo, pth->th_size*sizeof(double), ppt2->error_message);
-  double a, Hc, kappa_dot;
+  double a, Hc, H_prime, kappa_dot, timescale_source;
   int dump;
 
 
@@ -2200,17 +2189,19 @@ int perturb2_timesampling_for_sources (
   // =                              Custom sources sampling                              =
   // =====================================================================================
   
-  /* If the user specified a custom time-sampling through the parameter files, just use that */
+  /* The user can specify a time sampling for the sources via the parameter file,
+  by providing a start time, and end time and a sampling method (linear or
+  logarithmic). */
+  
   if (ppt2->has_custom_timesampling == _TRUE_) {
 
     ppt2->tau_size = ppt2->custom_tau_size;
-
-    /* If the user set the custom end-time to 0, we assume that he wants to compute the sources
-      all the way to today */
-    ppt2->custom_tau_end = (ppt2->custom_tau_end == 0 ? pba->conformal_age : ppt2->custom_tau_end);
-
-    /* Allocate and fill ppt2->timesampling using the custom settings */
     class_alloc (ppt2->tau_sampling, ppt2->tau_size*sizeof(double), ppt2->error_message);
+    
+    /* If the user set the custom end-time to 0, we assume that he wants to compute
+    the sources all the way to today */
+    if (ppt2->custom_tau_end == 0)
+      ppt2->custom_tau_end = pba->conformal_age;
   
     /* Linear sampling */
     if (ppt2->custom_tau_mode == lin_tau_sampling) {
@@ -2220,112 +2211,86 @@ int perturb2_timesampling_for_sources (
     else if (ppt2->custom_tau_mode == log_tau_sampling) {
       log_space(ppt2->tau_sampling, ppt2->custom_tau_ini, ppt2->custom_tau_end, ppt2->tau_size);
     }
-
-  } // end of if (has_custom_timesampling)
+  }
 
 
 
   // =====================================================================================
-  // =                             Standard sources sampling                             =
+  // =                            Standard sources sampling                              =
   // =====================================================================================
 
-  /* General case where we integrate the system up to today.  This is the case when the
-  user asked to include the metric or lensing terms in the line-of-sight integral, which
-  are important all the way up to today. We use the same time-sampling technique as in
-  standard CLASS, who is optimized to sample the visibility function and the late ISW regime.
-  For details, please refer to the function perturb_timesampling_for_sources(). */
+  /* Determine the time sampling of the line of sight sources using the same algorithm
+  as in standard CLASS, whereby the sampling is denser where the perturbations evolve
+  faster, based on the visibility function and on the Hubble rate. For details, please
+  refer to CLASS function perturb_timesampling_for_sources(). With respect to that
+  function, we use the same parameter to determine the starting time
+  (ppr->start_sources_at_tau_c_over_tau_h) but a different parameter to determine the
+  sampling frequency (ppr2->perturb_sampling_stepsize_song rather than
+  ppr2->perturb_sampling_stepsize_song). */
   
   else {
 
     // -----------------------------------------------------------------------------
-    // -                           Find sampling size                              -
+    // -                            Find first point                               -
     // -----------------------------------------------------------------------------
 
-    /* Using bisection, search time tau such that the ratio of the Compton to Hubble
-    time scales, tau_c/tau_h=aH/kappa_dot, is equal to
-    ppt2->start_sources_at_tau_c_over_tau_h */
+    double tau_ini;
 
-    /* The lower limit for the first sampling point is when the universe stops being opaque */
-    double tau_lower = pth->tau_ini;
+    /* Using bisection, search the time such that the ratio between the Hubble
+    time-scale tau_h = 1/aH and the Compton time-scale 1/kappa_dot is equal to
+    ppt2->start_sources_at_tau_c_over_tau_h. Usually, this parameter is about
+    0.01, which means that we start sampling the sources in the tight coupling
+    regime (tau_c<<tau_h), where the visibility function is still small.  */
 
-    class_call (background_at_tau(pba,
-                 tau_lower, 
-                 pba->short_info, 
-                 pba->inter_normal, 
-                 &dump, 
-                 pvecback),
-      pba->error_message,
-      ppt2->error_message);
+    if (ppt2->has_cmb == _TRUE_) {
 
-    a = pvecback[pba->index_bg_a];
-    Hc = a*pvecback[pba->index_bg_H];
+      double tau_lower = pth->tau_ini;
+
+      class_call (background_at_tau(pba,
+                   tau_lower, 
+                   pba->short_info, 
+                   pba->inter_normal, 
+                   &dump, 
+                   pvecback),
+        pba->error_message,
+        ppt2->error_message);
+
+      a = pvecback[pba->index_bg_a];
+      Hc = a*pvecback[pba->index_bg_H];
   
-    class_call (thermodynamics_at_z(pba,
-                  pth,
-                  1/a-1,
-                  pth->inter_normal,
-                  &dump,
-                  pvecback,
-                  pvecthermo),
-      pth->error_message,
-      ppt2->error_message);
+      class_call (thermodynamics_at_z(pba,
+                    pth,
+                    1/a-1,
+                    pth->inter_normal,
+                    &dump,
+                    pvecback,
+                    pvecthermo),
+        pth->error_message,
+        ppt2->error_message);
 
-    kappa_dot = pvecthermo[pth->index_th_dkappa];
+      kappa_dot = pvecthermo[pth->index_th_dkappa];
   
-    class_test (
-      Hc/kappa_dot > ppr->start_sources_at_tau_c_over_tau_h,
-      ppt2->error_message,
-      "your choice of initial time for computing sources is inappropriate: it corresponds\
+      class_test (
+        Hc/kappa_dot > ppr->start_sources_at_tau_c_over_tau_h,
+        ppt2->error_message,
+        "your choice of initial time for computing sources is inappropriate: it corresponds\
  to an earlier time than the one at which the integration of thermodynamical variables\
  started (tau=%g). You should increase either 'start_sources_at_tau_c_over_tau_h' or\
  'recfast_z_initial'\n",
-      tau_lower);
+        tau_lower);
      
-    /* The upper limit is when the visibility function peaks */
-    double tau_upper = pth->tau_rec;
+      /* The upper limit is when the visibility function peaks */
+      double tau_upper = pth->tau_rec;
     
-    class_call (background_at_tau(pba,
-                  tau_upper, 
-                  pba->short_info, 
-                  pba->inter_normal, 
-                  &dump, 
-                  pvecback),
-      pba->error_message,
-      ppt2->error_message);
-
-    a = pvecback[pba->index_bg_a];
-    Hc = a*pvecback[pba->index_bg_H];      
-
-    class_call (thermodynamics_at_z(pba,
-                  pth,
-                  1/a-1,
-                  pth->inter_normal,
-                  &dump,
-                  pvecback,
-                  pvecthermo),
-      pth->error_message,
-      ppt2->error_message);
-      
-    kappa_dot = pvecthermo[pth->index_th_dkappa];
-
-    class_test (Hc/kappa_dot < ppr->start_sources_at_tau_c_over_tau_h,
-      ppt2->error_message,
-      "your choice of initial time for computing sources is inappropriate: it corresponds\
- to a time after recombination. You should decrease 'start_sources_at_tau_c_over_tau_h'\n");
-    
-    double tau_mid = 0.5*(tau_lower + tau_upper);
-  
-    while (tau_upper - tau_lower > ppr->tol_tau_approx) {
-
       class_call (background_at_tau(pba,
-                    tau_mid, 
+                    tau_upper, 
                     pba->short_info, 
                     pba->inter_normal, 
                     &dump, 
                     pvecback),
         pba->error_message,
         ppt2->error_message);
-    
+
       a = pvecback[pba->index_bg_a];
       Hc = a*pvecback[pba->index_bg_H];      
 
@@ -2338,29 +2303,74 @@ int perturb2_timesampling_for_sources (
                     pvecthermo),
         pth->error_message,
         ppt2->error_message);
-    
+      
       kappa_dot = pvecthermo[pth->index_th_dkappa];
-    
-      if (Hc/kappa_dot > ppr->start_sources_at_tau_c_over_tau_h)
-        tau_upper = tau_mid;
-      else
-        tau_lower = tau_mid;
 
-      tau_mid = 0.5*(tau_lower + tau_upper);
+      class_test (Hc/kappa_dot < ppr->start_sources_at_tau_c_over_tau_h,
+        ppt2->error_message,
+        "your choice of initial time for computing sources is inappropriate: it corresponds\
+ to a time after recombination. You should decrease 'start_sources_at_tau_c_over_tau_h'\n");
+    
+      double tau_mid = 0.5*(tau_lower + tau_upper);
+  
+      while (tau_upper - tau_lower > ppr->tol_tau_approx) {
+
+        class_call (background_at_tau(pba,
+                      tau_mid, 
+                      pba->short_info, 
+                      pba->inter_normal, 
+                      &dump, 
+                      pvecback),
+          pba->error_message,
+          ppt2->error_message);
+    
+        a = pvecback[pba->index_bg_a];
+        Hc = a*pvecback[pba->index_bg_H];      
+
+        class_call (thermodynamics_at_z(pba,
+                      pth,
+                      1/a-1,
+                      pth->inter_normal,
+                      &dump,
+                      pvecback,
+                      pvecthermo),
+          pth->error_message,
+          ppt2->error_message);
+    
+        kappa_dot = pvecthermo[pth->index_th_dkappa];
+    
+        if (Hc/kappa_dot > ppr->start_sources_at_tau_c_over_tau_h)
+          tau_upper = tau_mid;
+        else
+          tau_lower = tau_mid;
+
+        tau_mid = 0.5*(tau_lower + tau_upper);
+      }
+
+      tau_ini = tau_mid;
     }
 
-    double tau_ini = tau_mid;
+    /* If the CMB is not requested, just start sampling the perturbations at
+    recombination time */
+
+    else {
+      
+      tau_ini = pth->tau_rec;
+
+    } // end of if(has_cmb)
 
     int counter = 1;
 
-    /* The next sampling point is determined by the lowest of two timescales: the time variation of the
-    visibility function, and the acceleration parameter.  Schematically:
+    /* The next sampling point is determined by the lowest of two timescales: the time
+    variation of the visibility function and the acceleration parameter. Schematically:
       
-      next sampling point = previous + ppr2->perturb_sampling_stepsize_song * timescale_source, where:
+      next = previous + ppr2->perturb_sampling_stepsize_song * timescale_source
+    
+    where:
 
+      timescale_source = 1 / (1/timescale_source1 + 1/timescale_source2)
       timescale_source1 = g/g_dot
-      timescale_source2 = 1/sqrt |2*a_dot_dot/a - Hc^2|
-      timescale_source = 1 / (1/timescale_source1 + 1/timescale_source2) */
+      timescale_source2 = 1/sqrt |2*a_dot_dot/a - Hc^2| */
 
     double tau = tau_ini;
 
@@ -2375,6 +2385,10 @@ int perturb2_timesampling_for_sources (
         pba->error_message,
         ppt2->error_message);
 
+      a = pvecback[pba->index_bg_a];
+      Hc = a*pvecback[pba->index_bg_H];
+      H_prime = pvecback[pba->index_bg_H_prime];
+
       class_call (thermodynamics_at_z(pba,
                     pth,
                     1./pvecback[pba->index_bg_a]-1.,  /* redshift z=1/a-1 */
@@ -2385,27 +2399,49 @@ int perturb2_timesampling_for_sources (
         pth->error_message,
         ppt2->error_message);
 
-      /* Variation rate of thermodynamics variables */
-      double rate_thermo = pvecthermo[pth->index_th_rate];
+      kappa_dot = pvecthermo[pth->index_th_dkappa];
+
+      /* If the CMB is requested, the time sampling needs to be denser at recombination
+      and when the ISW effect is important */ 
+
+      if (ppt2->has_cmb == _TRUE_) {
+
+        /* Variation rate of thermodynamics variables */
+        double rate_thermo = pvecthermo[pth->index_th_rate];
     
-      /* Variation rate of metric due to late ISW effect (important at late times) */
-      double a_prime_over_a = pvecback[pba->index_bg_H] * pvecback[pba->index_bg_a];
-      double a_primeprime_over_a = pvecback[pba->index_bg_H_prime] * pvecback[pba->index_bg_a] + 2*a_prime_over_a*a_prime_over_a;
-      double rate_isw_squared = fabs (2*a_primeprime_over_a - a_prime_over_a*a_prime_over_a);
+        /* Variation rate of metric due to late ISW effect (important at late times) */
+        double a_primeprime_over_a = a*H_prime + 2*Hc*Hc;
+        double rate_isw_squared = fabs (2*a_primeprime_over_a - Hc*Hc);
 
-      /* Compute rate */
-      double timescale_source = sqrt(rate_thermo*rate_thermo + rate_isw_squared);
+        /* Compute rate */
+        timescale_source = sqrt(rate_thermo*rate_thermo + rate_isw_squared);
 
+      }
+    
+      /* If the CMB is not requested, we use as sampling frequency the conformal Hubble
+      rate aH, which is the natural time scale of the differential system. Since 1/aH is
+      propotional to the conformal time tau, this sampling roughly corresponds to a logarithmic
+      sampling in tau. */
+    
+      else {
 
+        /* Variation rate given by Hubble time */
+        timescale_source = Hc;
+
+      }
+    
       /* Check it is non-zero */
-      class_test(timescale_source == 0., ppt2->error_message, "null evolution rate, integration is diverging");
+      class_test(timescale_source == 0., ppt2->error_message,
+        "null evolution rate, integration is diverging");
 
       /* Compute inverse rate */
-      timescale_source = 1./timescale_source;
+      timescale_source = 1/timescale_source;
 
-      class_test(fabs(ppr2->perturb_sampling_stepsize_song*timescale_source/tau) < ppr->smallest_allowed_variation,
+      class_test(
+        fabs(ppr2->perturb_sampling_stepsize_song*timescale_source/tau)
+          < ppr->smallest_allowed_variation,
         ppt2->error_message,
-        "integration step =%e < machine precision : leads either to numerical error or infinite loop",
+        "integration step =%e < machine precision: leads to infinite loop",
         ppr2->perturb_sampling_stepsize_song*timescale_source);
 
       tau = tau + ppr2->perturb_sampling_stepsize_song * timescale_source; 
@@ -2413,10 +2449,8 @@ int perturb2_timesampling_for_sources (
 
     }
 
-    /* Infer total number of time steps, ppt2->tau_size */
+    /* Total number of time steps */
     ppt2->tau_size = counter;
-
-    /* Allocate array of time steps, ppt2->tau_sampling[index_tau] */
     class_alloc (ppt2->tau_sampling, ppt2->tau_size * sizeof(double), ppt2->error_message);
 
 
@@ -2441,9 +2475,13 @@ int perturb2_timesampling_for_sources (
         pba->error_message,
         ppt2->error_message);
 
+      a = pvecback[pba->index_bg_a];
+      Hc = a*pvecback[pba->index_bg_H];
+      H_prime = pvecback[pba->index_bg_H_prime];
+
       class_call (thermodynamics_at_z(pba,
                     pth,
-                    1./pvecback[pba->index_bg_a]-1.,  /* redshift z=1/a-1 */
+                    1/a-1,
                     pth->inter_normal,
                     &dump,
                     pvecback,
@@ -2451,39 +2489,35 @@ int perturb2_timesampling_for_sources (
         pth->error_message,
         ppt2->error_message);
 
-      /* Variation rate of thermodynamics variables */
-      double rate_thermo = pvecthermo[pth->index_th_rate];
+      kappa_dot = pvecthermo[pth->index_th_dkappa];
 
-      /* Variation rate of metric due to late ISW effect (important at late times) */
-      double a_prime_over_a = pvecback[pba->index_bg_H] * pvecback[pba->index_bg_a];
-      double a_primeprime_over_a = pvecback[pba->index_bg_H_prime] * pvecback[pba->index_bg_a] + 2*a_prime_over_a*a_prime_over_a;
-      double rate_isw_squared = fabs(2*a_primeprime_over_a - a_prime_over_a*a_prime_over_a);
+      if (ppt2->has_cmb == _TRUE_) {
 
-      /* Compute rate */
-      double timescale_source = sqrt(rate_thermo*rate_thermo + rate_isw_squared);
+        /* Variation rate of thermodynamics variables */
+        double rate_thermo = pvecthermo[pth->index_th_rate];
+    
+        /* Variation rate of metric due to late ISW effect (important at late times) */
+        double a_primeprime_over_a = a*H_prime + 2*Hc*Hc;
+        double rate_isw_squared = fabs (2*a_primeprime_over_a - Hc*Hc);
 
-      /* Check it is non-zero */
-      class_test(timescale_source == 0., ppt2->error_message, "null evolution rate, integration is diverging");
+        /* Compute rate */
+        timescale_source = sqrt(rate_thermo*rate_thermo + rate_isw_squared);
+
+      }
+
+      else {
+
+        /* Variation rate given by Hubble time */
+        timescale_source = Hc;
+
+      }
 
       /* Compute inverse rate */
-      timescale_source = 1./timescale_source;
-
-      class_test(
-        fabs(ppr2->perturb_sampling_stepsize_song*timescale_source/tau)
-          < ppr->smallest_allowed_variation,
-        ppt2->error_message,
-        "time step=%e < machine precision: will lead to infinite loop",
-        ppr2->perturb_sampling_stepsize_song*timescale_source);
+      timescale_source = 1/timescale_source;
 
       tau = tau + ppr2->perturb_sampling_stepsize_song*timescale_source; 
       counter++;
       ppt2->tau_sampling[counter] = tau;
-
-      /* Debug - Print out time sampling for the 2nd-order line of sight sources
-      together with the visibility function. */
-      // fprintf (stderr, "%10d %11g %11g\n",
-      //   counter, ppt2->tau_sampling[counter], pvecthermo[pth->index_th_g]);
-
     }
 
     /* Last sampling point = exactly today */
@@ -2547,17 +2581,20 @@ int perturb2_timesampling_for_sources (
   // =                           Custom quadsources sampling                             =
   // =====================================================================================
 
-  /* If the user specified a custom time-sampling through the parameter files, just use that */
+  /* The user can specify a time sampling for the quadratic sources via the parameter
+  file, by providing a start time, and end time and a sampling method (linear or
+  logarithmic). */
+
   if (ppt->has_custom_timesampling_for_quadsources == _TRUE_) {
 
     ppt->tau_size_quadsources = ppt->custom_tau_size_quadsources;
-
-    /* If the user set the custom end-time to 0, we assume that he wants to compute the sources
-      all the way to today */
-    ppt->custom_tau_end_quadsources = (ppt->custom_tau_end_quadsources == 0 ? pba->conformal_age : ppt->custom_tau_end_quadsources);
-
-    /* Allocate and fill ppt->tau_sampling_quadsources using the custom settings */
-    class_alloc (ppt->tau_sampling_quadsources, ppt->tau_size_quadsources*sizeof(double), ppt2->error_message);
+    class_alloc (ppt->tau_sampling_quadsources, ppt->tau_size_quadsources*sizeof(double),
+      ppt2->error_message);
+    
+    /* If the user set the custom end-time to 0, we assume that he wants to compute
+    the quadratic sources all the way to today */
+    if (ppt->custom_tau_end_quadsources == 0)
+      ppt->custom_tau_end_quadsources = pba->conformal_age;
   
     /* Linear sampling */
     if (ppt->custom_tau_mode_quadsources == lin_tau_sampling) {
@@ -2569,8 +2606,7 @@ int perturb2_timesampling_for_sources (
       log_space(ppt->tau_sampling_quadsources, ppt->custom_tau_ini_quadsources,
         ppt->custom_tau_end_quadsources, ppt->tau_size_quadsources);
     }
-      
-  } // end of if (has_custom_timesampling_for_quadsources==_TRUE_)
+  }
 
 
 
@@ -2578,40 +2614,75 @@ int perturb2_timesampling_for_sources (
   // =                          Standard quadsources sampling                            =
   // =====================================================================================
 
+  /* Determine the time sampling of the quadratic sources using a simple step based
+  on the Hubble rate. The quadratic sources are just first-order perturbations as a
+  function of time. Unlike the line-of-sight sources, they do not involve the sharply
+  changing visibility function. Therefore, we sample them using as time step the
+  inverse Hubble rate, 1/Hc=1/(aH), weighted by the parameter 
+  ppr2->perturb_sampling_stepsize_quadsources. */
+
   else {
+
+    // -----------------------------------------------------------------------------
+    // -                         Find first & last point                           -
+    // -----------------------------------------------------------------------------
   
-    // ******      Determine size of ppt->tau_sampling_quadsources     *******
+    /* The quadratic sources are needed to close the second-order system. Therefore,
+    they need to be sampled from the very start of the system evolution. The system
+    is evolved once for each wavemode triplet; for each triplet there is a different
+    evolution start time. Here we take the smallest of these starting times,
+    corresponding to the highest k, and set the quadratic sources sampling to start
+    at that time. */
 
-    /* Determine how many sample points we need for the quadratic sources, based on the parameter
-    ppr->perturb_sampling_stepsize_quadsources. */
+    double tau_ini_quadsources;
 
-    /* We start sampling the quadratic sources at the time when we start to evolve the second-order
-    system.  */
-    class_test (ppt2->tau_start_evolution == 0,
+    class_call (perturb2_start_time_evolution (
+                  ppr,
+                  ppr2,
+                  pba,
+                  pth,
+                  ppt,
+                  ppt2,
+                  ppt2->k_max,
+                  &tau_ini_quadsources),
       ppt2->error_message,
-      "a variable starting integration time is not supported yet. To implement it,\
-you should first determine a starting integration time for the first-order system,\
-maybe by using the bisection technique applied to k_min");
-
-    double tau_ini_quadsources = MIN (ppt2->tau_sampling[0], ppt2->tau_start_evolution);
+      ppt2->error_message);
   
-    /* We stop sampling the quadratic sources when we do not need the second-order sources */
+    /* Make sure that we start evolving the system before we start storing
+    the perturbations. */
+    tau_ini_quadsources = MIN (tau_ini_quadsources, ppt2->tau_sampling[0]);
+
+    /* The user might have specified a custom start time for the evolution
+    of the second-order system; if so, use it also to determine the
+    starting time of the quadratic sources. */
+    if (ppr2->custom_tau_start_evolution != 0)
+      tau_ini_quadsources = ppr2->custom_tau_start_evolution;
+  
+    /* The last point in the time sampling of the qudratic sources has to be the
+    last time we are interested in at second-order */
     double tau_end_quadsources = ppt2->tau_sampling[ppt2->tau_size-1];
 
+
+    // -----------------------------------------------------------------------------
+    // -                           Find sampling size                              -
+    // -----------------------------------------------------------------------------
+
     /* In order to determine the next sampling point, we do similarly to what is done 
-      in the first-order CLASS: we determine a timescale for the evolution and choose
-      the next sample point at a given time based on that timescale at that time.  The
-      timescale we choose is 1/aH as it is the evolution timescale of the system.
-      Schematically, we shall choose the next point as:    
-      
-        next sampling point = previous + ppr->perturb_sampling_stepsize_quadsources * 1/aH
-      
-       It is interesting to note that, as 1/aH is proportional to tau, the above sampling is
-       basically a logarithmic sampling.  The sampling becomes more dense during matter
-       domination because the coefficient between aH and 1/tau is larger than the same
-       coefficient during radiation domination. */
+    in the first-order CLASS: we determine a timescale for the evolution and choose
+    the next sample point at a given time based on that timescale at that time. The
+    timescale we choose is 1/aH as it is the evolution timescale of the system.
+    Schematically, we shall choose the next point as:
+    
+      next = previous + ppr->perturb_sampling_stepsize_quadsources * (1/aH)
+    
+    It is interesting to note that, since 1/aH is proportional to tau, this sampling
+    is basically a logarithmic sampling.  The sampling becomes more dense during matter
+    domination because the coefficient between aH and 1/tau is larger than the same
+    coefficient during radiation domination. */
+
     double tau = tau_ini_quadsources;
-    int dump=0, counter=1;
+
+    int counter=1;
 
     while (tau < tau_end_quadsources) {
 
@@ -2624,48 +2695,36 @@ maybe by using the bisection technique applied to k_min");
                     pvecback),
         pba->error_message,
         ppt2->error_message);
- 
-      class_call (thermodynamics_at_z(pba,
-                    pth,
-                    1./pvecback[pba->index_bg_a]-1.,  /* redshift z=1/a-1 */
-                    pth->inter_normal,
-                    &dump,
-                    pvecback,
-                    pvecthermo),
-        pth->error_message,
-        ppt2->error_message);
 
+      /* We set the variation rate as the Hubble time */
+      double timescale_source = pvecback[pba->index_bg_H]*pvecback[pba->index_bg_a];
 
-      /* We set the variation rate as given by the Hubble time */
-      double a_prime_over_a = pvecback[pba->index_bg_H] * pvecback[pba->index_bg_a];
-      double timescale_source = a_prime_over_a;
+      class_test (timescale_source == 0., ppt2->error_message,
+        "null evolution rate, integration is diverging");
 
-      /* Check it is non-zero */
-      class_test (timescale_source == 0., ppt2->error_message, "null evolution rate, integration is diverging");
+      /* Compute inverse rate */
+      timescale_source = 1/timescale_source;
 
-      /* compute inverse rate */
-      timescale_source = 1./timescale_source;
-
-      class_test(fabs(ppr->perturb_sampling_stepsize_quadsources*timescale_source/tau) < ppr->smallest_allowed_variation,
-           ppt2->error_message,
-           "integration step =%e < machine precision : leads either to numerical error or infinite loop",
-           ppr->perturb_sampling_stepsize_quadsources*timescale_source);
+      class_test(
+        fabs(ppr->perturb_sampling_stepsize_quadsources*timescale_source/tau)
+          < ppr->smallest_allowed_variation,
+        ppt2->error_message,
+        "time step =%e < machine precision: leads to infinite loop",
+        ppr->perturb_sampling_stepsize_quadsources*timescale_source);
 
       tau = tau + ppr->perturb_sampling_stepsize_quadsources * timescale_source; 
       ++counter;
+    }
 
-    } // end of cycle on times
-
-    /* Infer total number of time steps, ppt->tau_size_quadsources */
+    /* Total number of time steps */
     ppt->tau_size_quadsources = counter;
-
-    /* Allocate array of time steps, ppt->tau_sampling_quadsources[index_tau] */
-    class_alloc (ppt->tau_sampling_quadsources, ppt->tau_size_quadsources * sizeof(double), ppt2->error_message);
-
+    class_alloc (ppt->tau_sampling_quadsources, ppt->tau_size_quadsources*sizeof(double),
+      ppt2->error_message);
 
 
-
-    // ******      Fill ppt->tau_sampling_quadsources     *******
+    // -----------------------------------------------------------------------------
+    // -                           Fill time sampling                              -
+    // -----------------------------------------------------------------------------
     
     counter = 0;
     ppt->tau_sampling_quadsources[counter] = tau_ini_quadsources;
@@ -2682,62 +2741,45 @@ maybe by using the bisection technique applied to k_min");
         pba->error_message,
         ppt2->error_message);
   
-      class_call (thermodynamics_at_z(pba,
-                    pth,
-                    1./pvecback[pba->index_bg_a]-1.,  /* redshift z=1/a-1 */
-                    pth->inter_normal,
-                    &dump,
-                    pvecback,
-                    pvecthermo),
-        pth->error_message,
-        ppt2->error_message);
-  
-      double a_prime_over_a = pvecback[pba->index_bg_H] * pvecback[pba->index_bg_a];
-      double timescale_source = a_prime_over_a;
-  
-      /* Check it is non-zero */
-      class_test(timescale_source == 0., ppt2->error_message, "null evolution rate, integration is diverging");
-  
+      /* We set the variation rate as the Hubble time */
+      double timescale_source = pvecback[pba->index_bg_H]*pvecback[pba->index_bg_a];
+
       /* Compute inverse rate */
-      timescale_source = 1./timescale_source;
-  
-      class_test(fabs(ppr->perturb_sampling_stepsize_quadsources*timescale_source/tau) < ppr->smallest_allowed_variation,
-           ppt2->error_message,
-           "integration step =%e < machine precision : leads either to numerical error or infinite loop",ppr->perturb_sampling_stepsize_quadsources*timescale_source);
+      timescale_source = 1/timescale_source;
   
       tau = tau + ppr->perturb_sampling_stepsize_quadsources*timescale_source; 
-      counter++;
-      ppt->tau_sampling_quadsources[counter] = tau;
-  
+      ++counter;
+      ppt->tau_sampling_quadsources[counter] = tau;  
     }
   
-    /* The last sampling point is the last sampling point of the second-order sources */
+    /* The last sampling point is the last sampling point of the second-order
+    sources */
     ppt->tau_sampling_quadsources[counter] = tau_end_quadsources;
   
   } // end of if(has_custom_timesampling_for_quadsources==_FALSE_)
 
-  /* Some debug - print the time sampling for the quadratic sources */
-  // {
-  //   int index_tau;
-  //   for (index_tau=0; index_tau < ppt->tau_size_quadsources; ++index_tau)
-  //     printf("%12d %17.7g\n", index_tau, ppt->tau_sampling_quadsources[index_tau]);
-  // }
-
-  /* Some debug - print the time sampling for the 2nd-order LOS sources */
+  /* Debug - print the time sampling for the line of sight sources */
   // {
   //   int index_tau;
   //   for (index_tau=0; index_tau < ppt2->tau_size; ++index_tau)
   //     printf("%12d %17.7g\n", index_tau, ppt2->tau_sampling[index_tau]);
   // }
 
+  /* Debug - print the time sampling for the quadratic sources */
+  // {
+  //   int index_tau;
+  //   for (index_tau=0; index_tau < ppt->tau_size_quadsources; ++index_tau)
+  //     printf("%12d %17.7g\n", index_tau, ppt->tau_sampling_quadsources[index_tau]);
+  // }
 
-  /* Check that the time range chosen to sample the 2nd-order sources is compatible with the
-    range we chosen to compute the 1st-order ones */
+  /* Check that the time range chosen to sample the 2nd-order sources is compatible
+  with the range we chosen to compute the 1st-order ones */
   class_test(ppt2->tau_sampling[0] < ppt->tau_sampling_quadsources[0],
     ppt2->error_message,
     "the requested initial time for the sampling of the 2nd-order sources is too low.");
 
-  class_test(ppt2->tau_sampling[ppt2->tau_size-1] > ppt->tau_sampling_quadsources[ppt->tau_size_quadsources-1],
+  class_test(ppt2->tau_sampling[ppt2->tau_size-1] >
+      ppt->tau_sampling_quadsources[ppt->tau_size_quadsources-1],
     ppt2->error_message,
     "the requested final time for the sampling of the 2nd-order sources is too high.");
 
@@ -2813,6 +2855,170 @@ maybe by using the bisection technique applied to k_min");
 
   return _SUCCESS_;
   
+}
+
+
+
+/**
+ * Determine when to start evolving the differential system for the wavemode
+ * k and output the corresponding conformal time to tau_ini.
+ *
+ * The start time is determined using bisection with the same algorithm of 
+ * CLASS. The starting time is determined using the same two criteria that
+ * we used for the initial conditions, namely:
+ *
+ * - The considered wavemode should still be in tight coupling regime.
+ * - The considered wavemode is still outside the horizon.
+ *
+ * The strictness of the two criteria is controlled by the following parameters:
+ *
+ *  - ppr2->start_small_k_at_tau_c_over_tau_h_song, which determines the start
+ *    time using the ratio between the Compton interaction rate and the Hubble
+ *    time.
+ *    
+ *  - ppr2->start_large_k_at_tau_h_over_tau_k_song, which determines the start
+ *    time using the ratio between the Hubble time and the scale of the
+ *    considered wavemode.
+ *
+ * The smaller the parameters, the earlier the starting time.
+ */
+
+int perturb2_start_time_evolution (
+        struct precision * ppr,
+        struct precision2 * ppr2,
+        struct background * pba,
+        struct thermo * pth,
+        struct perturbs * ppt,
+        struct perturbs2 * ppt2,
+        double k,
+        double * tau_ini
+        )
+{
+  
+  /* Temporary arrays used to store background and thermodynamics quantities */
+  double *pvecback, *pvecthermo;
+  class_alloc (pvecback, pba->bg_size*sizeof(double), ppt2->error_message);
+  class_alloc (pvecthermo, pth->th_size*sizeof(double), ppt2->error_message);
+  int dump;
+
+  /* Lower limit on tau_ini is the first time in the background table */
+  double tau_lower = pba->tau_table[0];
+
+  /* Test that tau_lower is early enough to satisfy the conditions imposed
+  on kappa_dot and on k/aH by the user */
+
+  class_call (background_at_tau(pba,
+                tau_lower, 
+                pba->normal_info, 
+                pba->inter_normal, 
+                &dump, 
+                pvecback),
+    pba->error_message,
+    ppt2->error_message);
+
+  double a = pvecback[pba->index_bg_a];
+  double Hc = a*pvecback[pba->index_bg_H];
+
+  class_call (thermodynamics_at_z(pba,
+                pth,
+                1/a-1,
+                pth->inter_normal,
+                &dump,
+                pvecback,
+                pvecthermo),
+    pth->error_message,
+    ppt2->error_message);
+
+  double kappa_dot = pvecthermo[pth->index_th_dkappa];
+
+  /* Ratio of expansion rate to interaction rate. When it is much smaller than one,
+  we are deep in the tight coupling regime. */
+  double tau_c_over_tau_h = Hc/kappa_dot;
+  
+  /* Ratio of wavemode scale to expansion rate. When it is much smaller than one,
+  the mode is well outside the horizon */
+  double tau_h_over_tau_k = k/Hc;
+
+  class_test (tau_c_over_tau_h > ppr2->start_small_k_at_tau_c_over_tau_h_song,
+    ppt2->error_message,
+    "your choice of initial time for integrating wavenumbers at 2nd-order is\
+ inappropriate: it corresponds to a time before that at which the background has\
+ been integrated. You should increase 'start_small_k_at_tau_c_over_tau_h_song' up\
+ to at least %g, or decrease 'a_ini_over_a_today_default'\n", 
+    tau_c_over_tau_h);
+
+  class_test (tau_h_over_tau_k > ppr2->start_large_k_at_tau_h_over_tau_k_song,
+    ppt2->error_message,
+    "your choice of initial time for integrating wavenumbers at 2nd-order is\
+ inappropriate: it corresponds to a time before that at which the background has\
+ been integrated. You should increase 'start_large_k_at_tau_h_over_tau_k_song' up\
+ to at least %g, or decrease 'a_ini_over_a_today_default'\n",
+    ppt2->k[ppt2->k_size-1]/Hc);
+
+  /* Upper limit on tau_ini is when we start sampling the sources */
+  double tau_upper = ppt2->tau_sampling[0];
+  double tau_mid = 0.5*(tau_lower + tau_upper);
+
+
+  /* - Start bisection */
+  
+  while ((tau_upper - tau_lower)/tau_lower > ppr->tol_tau_approx) {
+
+    /* Interpolate background quantities */
+    class_call (background_at_tau(pba,
+          tau_mid, 
+          pba->normal_info, 
+          pba->inter_normal, 
+          &dump, 
+          pvecback),
+       pba->error_message,
+       ppt2->error_message);
+
+    a = pvecback[pba->index_bg_a];
+    Hc = a*pvecback[pba->index_bg_H];
+
+    /* Interpolate thermodynamical quantities */
+    class_call (thermodynamics_at_z(pba,
+                  pth,
+                  1/a-1,
+                  pth->inter_normal,
+                  &dump,
+                  pvecback,
+                  pvecthermo),
+      pth->error_message,
+      ppt2->error_message);
+
+    kappa_dot = pvecthermo[pth->index_th_dkappa];
+
+    tau_h_over_tau_k = k/Hc;
+    tau_c_over_tau_h = Hc/kappa_dot;
+
+    /* Check that the two conditions are fulfilled */
+    if ((tau_c_over_tau_h > ppr2->start_small_k_at_tau_c_over_tau_h_song) ||
+        (tau_h_over_tau_k > ppr2->start_large_k_at_tau_h_over_tau_k_song)) {
+      tau_upper = tau_mid;
+    }
+    else {
+      tau_lower = tau_mid;
+    }
+
+    tau_mid = 0.5*(tau_lower + tau_upper);
+    
+    /* Some debug */
+    // printf("tau_lower = %g\n", tau_lower);
+    // printf("tau_upper = %g\n", tau_upper);
+    // printf("tau_mid = %g\n", tau_mid);
+    // printf("\n");
+  
+  } // end of bisection
+  
+  *tau_ini = tau_mid;
+  
+  free (pvecback);
+  free (pvecthermo);
+
+  return _SUCCESS_;
+
 }
 
 
@@ -2955,14 +3161,20 @@ int perturb2_end_of_recombination (
 /**
  * Compute initial conditions for the second-order system.
  * 
+ * The initial conditions in SONG are set deep in the radiation era, when the
+ * considered mode (k1,k2,k3) is in the tight coupling regime and outside the
+ * horizon. Please refer to sec. 5.4 of http://arxiv.org/abs/1405.2280 for more
+ * details on the initial conditions (including non-Gaussianity) and for a
+ * complete derivation of the initial conditions at second order.
+ *
  * This function is called once for each k-triplet (k1,k2,k3) by perturb2_vector_init(),
  * which in turn is called by perturb2_solve(); it fills the ppw2->pv->y array. It is
  * assumed here that all values have been set previously to zero, only non-zero values
  * are set here.
  *
  * Important: mind which approximations are turned on when this function is called.
- * Usually, the tight-coupling approximation is turned on at early times, meaning that any
- * attempt to overwrite quantities that are not evolved if tca=on will result in a
+ * Usually, the tight-coupling approximation is turned on at early times, meaning that
+ * any attempt to overwrite quantities that are not evolved if tca=on will result in a
  * segmentation fault or, even worse, in unpredictable behaviour.
  */
 int perturb2_initial_conditions (
@@ -3405,7 +3617,7 @@ int perturb2_initial_conditions (
 
         class_test_nothing (fabs(1-N_1_0/N_1_0_boltzmann) > 0.1,
           ppt2->error_message,
-          "consistency check on initial conditions failed (%.5g != %.5g), diff=%g try evolving from earlier on",
+          "consistency check failed (%.5g!=%.5g), diff=%g try evolving from earlier on",
           N_1_0, N_1_0_boltzmann, fabs(1-N_1_0/N_1_0_boltzmann));
 
       } // end of if(has_ur)
@@ -4344,23 +4556,27 @@ different approximations coincide, or one approx is reversible\n",
 
         if ((interval_approx[index_switch-1][ppw2->index_ap2_tca]==(int)tca_on) && 
             (interval_approx[index_switch][ppw2->index_ap2_tca]==(int)tca_off))
-          fprintf(stdout, "     \\ will switch off tight-coupling approximation at tau = %g\n",
+          printf_log_if (ppt2->perturbations2_verbose, 3,
+            "      \\ will switch off tight-coupling approximation at tau = %g\n",
             interval_limit[index_switch]);
   
         if ((interval_approx[index_switch-1][ppw2->index_ap2_rsa]==(int)rsa_off) && 
             (interval_approx[index_switch][ppw2->index_ap2_rsa]==(int)rsa_on))
-          fprintf(stdout, "     \\ will switch on radiation streaming approximation at tau = %g\n",
+          printf_log_if (ppt2->perturbations2_verbose, 3,
+            "      \\ will switch on radiation streaming approximation at tau = %g\n",
             interval_limit[index_switch]);
   
         if (pba->has_ur == _TRUE_)
           if ((interval_approx[index_switch-1][ppw2->index_ap2_ufa]==(int)ufa_off) && 
               (interval_approx[index_switch][ppw2->index_ap2_ufa]==(int)ufa_on))
-            fprintf(stdout, "     \\ will switch on ur fluid approximation at tau = %g\n",
+            printf_log_if (ppt2->perturbations2_verbose, 3,
+            "      \\ will switch on ur fluid approximation at tau = %g\n",
               interval_limit[index_switch]);
 
         if ((interval_approx[index_switch-1][ppw2->index_ap2_nra]==(int)nra_off) && 
             (interval_approx[index_switch][ppw2->index_ap2_nra]==(int)nra_on))
-          fprintf(stdout, "     \\ will switch on no-radiation approximation at tau = %g\n",
+          printf_log_if (ppt2->perturbations2_verbose, 3,
+            "      \\ will switch on no-radiation approximation at tau = %g\n",
             interval_limit[index_switch]);
 
       } // end of if(verbose)
@@ -5056,7 +5272,7 @@ int perturb2_geometrical_corner (
       k1, k2, k, cosk1k2, index_k1, index_k2, index_k3);
 
   /* Print some advanced information about the wavemodes */
-  if (ppt2->perturbations2_verbose > 3) {
+  if (ppt2->perturbations2_verbose > 4) {
     
     printf("     * Geometrical quantities associated with the mode:\n");
     printf("       %12.9s%12.9s%12.9s%12.9s%12.9s%12.9s%12.9s\n",
@@ -5366,11 +5582,13 @@ int perturb2_solve (
   /* Initialise the counter of time steps in the differential system */
   ppw2->n_steps = 0;
   
-  /* Reset the counter that keeps track of the number of calls of the function perturb2_derivs */
+  /* Reset the counter that keeps track of the number of calls of the
+  function perturb2_derivs() */
   ppw2->derivs_count = 0;
 
-  /* Overall structure containing all parameters, to be passed to the evolver which, in
-  turn, will pass it to the perturb2_derivs() and perturb2_sources() functions. */
+  /* Overall structure containing all parameters, to be passed to the evolver
+  which, in turn, will pass it to the perturb2_derivs() and perturb2_sources()
+  functions. */
   struct perturb2_parameters_and_workspace ppaw2;
   ppaw2.ppr = ppr;
   ppaw2.ppr2 = ppr2;
@@ -5385,169 +5603,50 @@ int perturb2_solve (
   // =                               Determine tau_ini                                  =
   // ====================================================================================
   
-  /** Determine when to start evolving the differential system for the current 
-  wavemode (k1,k2,k). The starting time tau_ini should be early enough to respect
-  the following two criteria:
-  - tau_ini should not be too close to recombination,
-  - the considered wavemode is well outside the horizon.
-  The strictness of the two criteria is controlled by the following
-  parameters:
-  - ppr2->start_small_k_at_tau_c_over_tau_h_song
-  - ppr2->start_large_k_at_tau_h_over_tau_k_song
-  The smaller the parameters, the earlier the starting time. */
-  double tau_ini;
+  /* Determine when to start evolving the differential system for the current wavemode
+  and store the conformal time value in ppw2->tau_start_evolution. Do it automatically
+  if the user specified tau_start_evolution==0. */
   
-  /* - If the user did not specify a custom value for tau_ini, determine it automatically */
+  if (ppr2->custom_tau_start_evolution == 0) {
 
-  if (ppt2->tau_start_evolution == 0) {
-  
-    /* Using bisection, compute minimum value of tau for which this wavenumber is integrated.
-    The actual starting time of integration will be the minimum between the number we find
-    here and ppt2->tau_sampling[0]. */
-
-    /* Initial time will be at least the first time in the background table */
-    double tau_lower = pba->tau_table[0];
-
-    /* TODO: tau_lower should start from the maximum value of tau_ini_1 and tau_ini_2.
-    To find those times, we first need to store them in the perturbations.c module.
-    Then take care also of ppt->tau_sampling_quadsources[0]. */
-
-    /* Test that tau_lower is early enough to satisfy the conditions imposed by
-    ppr2->start_small_k_at_tau_c_over_tau_h_song and ppr2->start_large_k_at_tau_h_over_tau_k.
-    To use CLASS1 words: check that this initial time is indeed OK given imposed conditions on kappa'
-    and on k/aH. */
-
-    class_call (background_at_tau(pba,
-                  tau_lower, 
-                  pba->normal_info, 
-                  pba->inter_normal, 
-                  &(ppw2->last_index_back), 
-                  ppw2->pvecback),
-      pba->error_message,
-      ppt2->error_message);
-
-
-    class_call (thermodynamics_at_z(pba,
+    class_call (perturb2_start_time_evolution (
+                  ppr,
+                  ppr2,
+                  pba,
                   pth,
-                  1./ppw2->pvecback[pba->index_bg_a]-1.,
-                  pth->inter_normal,
-                  &(ppw2->last_index_thermo),
-                  ppw2->pvecback,
-                  ppw2->pvecthermo),
-      pth->error_message,
+                  ppt,
+                  ppt2,
+                  MAX(MAX(k1,k2),k),
+                  &ppw2->tau_start_evolution),
+      ppt2->error_message,
       ppt2->error_message);
+  }
   
-    /* Variables that simplify the notation */
-    double aH = ppw2->pvecback[pba->index_bg_a]*ppw2->pvecback[pba->index_bg_H];
-    double tau_c_over_tau_h = aH/ppw2->pvecthermo[pth->index_th_dkappa];
-    double tau_h_over_tau_k = MAX(MAX(k1,k2),k)/aH;
-  
-    class_test (tau_c_over_tau_h > ppr2->start_small_k_at_tau_c_over_tau_h_song,
-      ppt2->error_message,
-      "your choice of initial time for integrating wavenumbers at 2nd-order is\
-inappropriate: it corresponds to a time before that at which the background has\
-been integrated. You should increase 'start_small_k_at_tau_c_over_tau_h_song' up\
-to at least %g, or decrease 'a_ini_over_a_today_default'\n", 
-      tau_c_over_tau_h);
-  
-    class_test (tau_h_over_tau_k > ppr2->start_large_k_at_tau_h_over_tau_k_song,
-      ppt2->error_message,
-      "your choice of initial time for integrating wavenumbers at 2nd-order is\
-inappropriate: it corresponds to a time before that at which the background has\
-been integrated. You should increase 'start_large_k_at_tau_h_over_tau_k_song' up\
-to at least %g, or decrease 'a_ini_over_a_today_default'\n",
-      ppt2->k[ppt2->k_size-1]/aH);
-
-    
-    /* We have to start integrating the system earlier with respect to when we need the sources */
-    double tau_upper = ppt2->tau_sampling[0];
-    double tau_mid = 0.5*(tau_lower + tau_upper);
-  
-    /* Print the result for the bisection for these wavemodes (to be paired with
-    the debug line soon out of this cycle */
-    // printf("*** Bisection for k1 = %8.2g,  k2 = %8.2g,  k3 = %8.2g:   ", k1, k2, k);
-    // printf("tau_lower = %8.2g, tau_upper = %8.2g, ", tau_lower, tau_upper);
-
-    /* - Start bisection */
-    
-    while ((tau_upper - tau_lower)/tau_lower > ppr->tol_tau_approx) {
-
-      /* Interpolate background quantities */
-      class_call (background_at_tau(pba,
-            tau_mid, 
-            pba->normal_info, 
-            pba->inter_normal, 
-            &(ppw2->last_index_back), 
-            ppw2->pvecback),
-         pba->error_message,
-         ppt2->error_message);
-
-      aH = ppw2->pvecback[pba->index_bg_a]*ppw2->pvecback[pba->index_bg_H];
-      tau_h_over_tau_k = MAX(k1,k2)/aH;
-
-      /* Interpolate thermodynamical quantities */
-      class_call (thermodynamics_at_z(pba,
-                    pth,
-                    1/ppw2->pvecback[pba->index_bg_a]-1,  /* redshift z=1./a-1 */
-                    pth->inter_normal,
-                    &(ppw2->last_index_thermo),
-                    ppw2->pvecback,
-                    ppw2->pvecthermo),
-        pth->error_message,
-        ppt2->error_message);
-
-      tau_c_over_tau_h = aH/ppw2->pvecthermo[pth->index_th_dkappa];
-
-      /* Check that the two conditions on (aH/kappa') and (aH/k) are fulfilled */
-      if ((tau_c_over_tau_h > ppr2->start_small_k_at_tau_c_over_tau_h_song) ||
-          (tau_h_over_tau_k > ppr2->start_large_k_at_tau_h_over_tau_k_song)) {
-
-        tau_upper = tau_mid;
-      }
-      else {
-        tau_lower = tau_mid;
-      }
-
-      tau_mid = 0.5*(tau_lower + tau_upper);
-      
-      /* Some debug */
-      // printf("tau_lower = %g\n", tau_lower);
-      // printf("tau_upper = %g\n", tau_upper);
-      // printf("tau_mid = %g\n", tau_mid);
-      // printf("\n");
-    
-    } // end of bisection
-    
-    tau_ini = tau_mid;
-  
-  } // end of if(ppt2->tau_start_evolution==0)
-  
-  /* - If the user specified a custom value for tau_ini, use it as a common starting time 
-  regardless of the wavemode */
+  /* If the user specified a custom value for ppr2->custom_tau_start_evolution, use
+  it as a common starting time  regardless of the wavemode */
   
   else {
   
-    tau_ini = ppt2->tau_start_evolution;
-
-    /* The initial integration time should be smaller than the lowest time
-    were we need to sample the line-of-sight sources */    
-    tau_ini = MIN(tau_ini, ppt2->tau_sampling[0]);
+    ppw2->tau_start_evolution = ppr2->custom_tau_start_evolution;
   
-  } // end of if(ppt2->tau_start_evolution!=0)
-
-
-  /* Print information on the starting integration time */
-  if (ppt2->perturbations2_verbose > 3)
-    printf("     * we shall start to evolve this wavemode at tau=%g\n", tau_ini);
-
+  }
 
   /* The starting integration time should be larger than the minimum time for which
   we sampled the first-order system */
-  class_test (tau_ini < ppt->tau_sampling_quadsources[0],
+  class_test (ppw2->tau_start_evolution < ppt->tau_sampling_quadsources[0],
     ppt2->error_message,
     "tau_ini for the second-order system should be larger than the time\
-where we start to sample the 1st-order quantities");
+ where we start to sample the 1st-order quantities");
 
+  /* The initial integration time should be smaller than the lowest time
+  were we need to sample the line-of-sight sources */    
+  class_test (ppw2->tau_start_evolution > ppt2->tau_sampling[0],
+    ppt2->error_message,
+    "tau_ini shoud be larger than first point in the sources time sampling");
+
+  /* Print information on the starting integration time */
+  printf_log_if (ppt2->perturbations2_verbose, 3,
+    "     * evolution starts at tau=%g\n", ppw2->tau_start_evolution);
 
 
   // ====================================================================================
@@ -5580,7 +5679,7 @@ where we start to sample the 1st-order quantities");
                ppt,
                ppt2,
                ppw2,
-               tau_ini,
+               ppw2->tau_start_evolution,
                ppt2->tau_sampling[ppt2->tau_size-1],
                &interval_number,
                interval_number_of),
@@ -5608,7 +5707,7 @@ where we start to sample the 1st-order quantities");
                 ppt,
                 ppt2,
                 ppw2,
-                tau_ini,
+                ppw2->tau_start_evolution,
                 ppt2->tau_sampling[ppt2->tau_size-1],
                 ppr->tol_tau_approx,
                 interval_number,
@@ -6301,9 +6400,6 @@ int perturb2_vector_init (
     // ==================================================================================
 
     if ((old_approx[ppw2->index_ap2_tca] == (int)tca_on) && (new_approx[ppw2->index_ap2_tca] == (int)tca_off)) {
-
-      if (ppt2->perturbations2_verbose>2)
-        printf_log("     * switching off tight-coupling approximation at tau=%g\n", tau);
 
       /* Propagate the intensity dipole using the TCA relations */
       for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
@@ -11092,7 +11188,10 @@ int perturb2_save_early_transfers (
 
   /* Update the number of steps in the differential system */
   ppw2->n_steps++;
-  printf ("ppw2->n_steps = %d\n", ppw2->n_steps);
+
+  /* Debug - Investigate how many steps are needed to evolve the current mode.
+  If it exceeds 5000 steps, you should probably be suspicious. */
+  // printf ("ppw2->n_steps = %d\n", ppw2->n_steps);
 
   // ======================================================================================
   // =                          Interpolate needed quantities                             =

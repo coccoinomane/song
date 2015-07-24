@@ -451,6 +451,8 @@ struct perturbs2
   double * k;                                 /* Array containing the magnitudes of the k1 and k2 wavemodes */
   int k_size;                                 /* Size of ppt2->k for what concerns the k1 and k2 sampling */
                                                                   
+  double k_min;     /**< minimum k used at second-order */
+  double k_max;     /**< maximum k used at second-order */
                                                                   
   enum sources2_k3_sampling k3_sampling;      /* lin, log or default CLASS sampling for ppt2->k3? */
   double *** k3;
@@ -467,17 +469,14 @@ struct perturbs2
   // =                                 Time sampling                                   =
   // ===================================================================================
 
-  double * tau_sampling; /**< array with the time values where the line-of-sight sources will
-                              be computed */
+  double * tau_sampling; /**< array with the time values where the line-of-sight sources
+                         will be computed */
   int tau_size; /**< number of entries in tau_sampling */
 
   int index_tau_end_of_recombination; /**< index in tau_sampling that marks the end of
-                                        recombination */
+                                      recombination */
 
-  /* Time at which the second-order system will start being evolved */
-  double tau_start_evolution;
-
-  /* Value of g/g(tau_rec) when to stop sampling the line of sight sources, where g is the
+  /** Value of g/g(tau_rec) when to stop sampling the line of sight sources, where g is the
   visibility function. For example, if set to 100, then the last conformal time where
   we will sample the sources will satisfy g(tau)/g(tau_rec)=100. This parameter is overridden
   when the user asks for ISW or other late-time effects, because in that case the sampling
@@ -590,6 +589,16 @@ struct perturb2_workspace
 {
 
   // =============================================================================================
+  // =                                    Evolution variables                                    =
+  // =============================================================================================
+  
+  struct perturb2_vector * pv;  /**< Pointer to vector of integrated perturbations and their time-derivatives. */
+
+  double tau_start_evolution; /**< Conformal time when we start evolving the current wavemode */
+  
+  
+  
+  // =============================================================================================
   // =                                    Geometric variables                                    =
   // =============================================================================================
   
@@ -696,7 +705,7 @@ struct perturb2_workspace
 
 
   // =============================================================================================
-  // =                                       Metric indices                                      =
+  // =                                      Metric indices                                       =
   // =============================================================================================
 
   /* All possible useful indices for those metric perturbations which are not integrated
@@ -798,14 +807,13 @@ struct perturb2_workspace
   double * pvec_sources2;       /**< interpolated values of the first-order perturbations in k2 and tau; filled by
                                 the perturbations.c function perturb_song_sources_at_tau() */
 
-  struct perturb2_vector * pv;  /**< Pointer to vector of integrated perturbations and their time-derivatives. */
-
   int last_index_back;         /**< Keep track of the row where we last accessed the background table, useful to
                                speed up the interpolation performed by background_at_tau() */
   int last_index_thermo;       /**< Keep track of the row where we last accessed the thermodynamics table, useful to
                                speed up the interpolation performed by thermodynamics_at_z() */
   int last_index_sources;      /**< Keep track of the row where we last accessed the ppt->quadsources table, useful to
                                speed up the interpolation performed by perturb_song_sources_at_tau() */
+
 
 
   // =============================================================================================
@@ -1069,6 +1077,17 @@ struct perturb2_parameters_and_workspace {
            struct perturbs * ppt,
            struct perturbs2 * ppt2
            );
+
+    int perturb2_start_time_evolution (
+            struct precision * ppr,
+            struct precision2 * ppr2,
+            struct background * pba,
+            struct thermo * pth,
+            struct perturbs * ppt,
+            struct perturbs2 * ppt2,
+            double k,
+            double * tau_ini
+            );
 
     int perturb2_end_of_recombination (
           struct precision * ppr,

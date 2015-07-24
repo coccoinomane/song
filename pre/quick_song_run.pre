@@ -109,12 +109,12 @@ transfers_k2_interpolation = linear
 # ================================================================================
 
 ## When to start evolving the second-order system? Set to zero to choose automatically.
-tau_start_evolution_song = 1
+tau_start_evolution_song = 0
 
 ## If the above is zero, use the following parameters to determine when to start
 ## integrating the system. Decrease them to start earlier.
-start_small_k_at_tau_c_over_tau_h_song = 0.004
-start_large_k_at_tau_h_over_tau_k_song = 0.15
+start_small_k_at_tau_c_over_tau_h_song = 0.001
+start_large_k_at_tau_h_over_tau_k_song = 0.04
 
 ## Time sampling of the quadratic sources (overridden if using custom time sampling
 ## for quadsources)
@@ -292,14 +292,14 @@ no_radiation_approximation_rho_m_over_rho_r_song = 100
 ## In SONG, we have added the option to turn off the tight coupling 
 ## approximation by setting the below parameter to 6.
 tight_coupling_approximation = 5
-tight_coupling_trigger_tau_c_over_tau_h = 0.015
-tight_coupling_trigger_tau_c_over_tau_k = 0.01
+tight_coupling_trigger_tau_c_over_tau_h = 0.01
+tight_coupling_trigger_tau_c_over_tau_k = 0.007
 
 ## TCA at second order. Set to zero for no TCA, to one for the
 ## TCA1 scheme in Pitrou 2011, adapted to second order.
 tight_coupling_approximation_song = 1
-tight_coupling_trigger_tau_c_over_tau_h_song = 0.01;
-tight_coupling_trigger_tau_c_over_tau_k_song = 0.007;
+tight_coupling_trigger_tau_c_over_tau_h_song = 0.01
+tight_coupling_trigger_tau_c_over_tau_k_song = 0.007
 
 
 # ------------------------------------- */

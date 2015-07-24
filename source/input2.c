@@ -282,8 +282,8 @@ int input2_init (
   // =                           Perturbations, time sampling                           =
   // ====================================================================================
 
-  class_read_double("tau_start_evolution_2nd_order", ppt2->tau_start_evolution); /* obsolete */
-  class_read_double("tau_start_evolution_song", ppt2->tau_start_evolution);
+  class_read_double("tau_start_evolution_2nd_order", ppr2->custom_tau_start_evolution); /* obsolete */
+  class_read_double("tau_start_evolution_song", ppr2->custom_tau_start_evolution);
 
   class_read_double("recombination_max_to_end_ratio", ppt2->recombination_max_to_end_ratio);
 
@@ -1212,7 +1212,7 @@ ur_fluid_trigger_tau_over_tau_k_song and radiation_streaming_trigger_tau_over_ta
   for (i=0; i < (ppr2->m_size-1); ++i)
     class_test (ppr2->m[i] >= ppr2->m[i+1],
       errmsg,
-      "the m-list provided  in 'modes_2nd_order' is not strictly ascending");
+      "the m-list provided  in modes_song is not strictly ascending");
 
   /* Maximum 'm' that will be computed */
   ppr2->m_max_2nd_order = ppr2->m[ppr2->m_size-1];
@@ -1220,12 +1220,13 @@ ur_fluid_trigger_tau_over_tau_k_song and radiation_streaming_trigger_tau_over_ta
   /* Check that the m's are positive */
   class_test (ppr2->m[0] < 0,
     errmsg,
-    "the m-list provided in 'modes_2nd_order' has negative numbers in it");
+    "the m-list provided in modes_song has negative numbers in it");
 
   /* Check that m_max is smaller than limit */  
   class_test (ppr2->m_max_2nd_order > (_MAX_NUM_AZIMUTHAL_-1),
     errmsg,
-    "the maximum value of the azimuthal number 'm' cannot exceed %d, please choose 'modes_2nd_order' accordingly",
+    "the maximum value of m cannot exceed %d, please choose modes_song\
+ accordingly or increase the macro _MAX_NUM_AZIMUTHAL_",
     _MAX_NUM_AZIMUTHAL_);
 
   /* Find out the index in ppr2->m corresponding to a given m. */
@@ -1503,8 +1504,6 @@ int input2_default_params (
 
   /* - Time sampling */
 
-  ppt2->tau_start_evolution = 1;
-
   ppt2->recombination_max_to_end_ratio = 1000;
 
   ppt2->has_custom_timesampling = _FALSE_;
@@ -1620,6 +1619,7 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   // =                            Time samplings                          =
   // ======================================================================
 
+  ppr2->custom_tau_start_evolution = 0;
   ppr2->perturb_sampling_stepsize_song = 0.4;
   ppr2->start_small_k_at_tau_c_over_tau_h_song = 0.0015;  /* decrease to start earlier in time */
   ppr2->start_large_k_at_tau_h_over_tau_k_song = 0.07;    /* decrease to start earlier in time */
