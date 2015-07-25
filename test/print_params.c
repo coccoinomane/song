@@ -220,13 +220,9 @@ int main(int argc, char **argv) {
   printf("\tpr2.l_max_g = %d\n", pr2.l_max_g);
   printf("\tpr2.l_max_pol_g = %d\n", pr2.l_max_pol_g);
   printf("\tpr2.l_max_ur = %d\n", pr2.l_max_ur);
-  printf("\tpr2.l_max_g_ten = %d\n", pr2.l_max_g_ten);
-  printf("\tpr2.l_max_pol_g_ten = %d\n", pr2.l_max_pol_g_ten);
   printf("\tpr2.l_max_g_quadsources = %d\n", pr2.l_max_g_quadsources);
   printf("\tpr2.l_max_pol_g_quadsources = %d\n", pr2.l_max_pol_g_quadsources);
   printf("\tpr2.l_max_ur_quadsources = %d\n", pr2.l_max_ur_quadsources);
-  printf("\tpr2.l_max_g_ten_quadsources = %d\n", pr2.l_max_g_ten_quadsources);
-  printf("\tpr2.l_max_pol_g_ten_quadsources = %d\n", pr2.l_max_pol_g_ten_quadsources);
   printf("\tpr2.l_max_los_t = %d\n", pr2.l_max_los_t);
   printf("\tpr2.l_max_los_quadratic_t = %d\n", pr2.l_max_los_quadratic_t);
   printf("\tpr2.l_max_los_p = %d\n", pr2.l_max_los_p);

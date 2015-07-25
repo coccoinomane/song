@@ -10,10 +10,10 @@
 #ifndef __COMMON2__
 #define __COMMON2__
 
-#define _SONG_VERSION_ "v1.0-beta1"
+#define _SONG_VERSION_ "v1.0-beta2"
 
-/* Maximum number of azimuthal numbers that can be computed. We set it so that the
-factorial of 'm' never overflows, assuming a limit of 10^30. The factorial of m is
+/** Maximum number of azimuthal numbers that can be computed. We set it so that the
+factorial of m never overflows, assuming a limit of 10^30. The factorial of m is
 needed in bispectra2.c */
 #define _MAX_NUM_AZIMUTHAL_ 14
 
@@ -24,60 +24,65 @@ needed in bispectra2.c */
 struct precision2
 {
 
-  /* Tolerance for the integration of the 2nd-order system. This parameter goes
-  directly into the evolver as the parameter 'rtol' */
+  /** Tolerance for the integration of the second-order system. This parameter goes
+  directly into the evolver as the parameter rtol */
   double tol_perturb_integration_song;
+
+
+  // ====================================================================================
+  // =                                   Multipoles                                     =
+  // ====================================================================================
+
+  int l_max_g;         /**< Number of multipoles to evolve for the photon intensity */
+  int l_max_pol_g;     /**< Number of multipoles to evolve for the photon polarisation */
+  int l_max_ur;        /**< Number of multipoles to evolve for the neutrinos */
+  int l_max_boltzmann; /**< Maximum number of multipoles to evolve at second order for a species  */
+
+  int l_max_g_quadsources;      /**< Number of multipoles to include in the quadratic part of the Boltzmann hierarchy for the photon intensity. Set to -1 to include all quadratic sources up to ppr2->l_max_g. */
+  int l_max_pol_g_quadsources;  /**< Number of multipoles to include in the quadratic part of the Boltzmann hierarchy for the photon polarisation. Set to -1 to include all quadratic sources up to ppr2->l_max_pol_g. */
+  int l_max_ur_quadsources;     /**< Number of multipoles to include in the quadratic part of the Boltzmann hierarchy for the neutrinos. Set to -1 to include all quadratic sources up to ppr2->l_max_ur. */
   
-  /* How many multipoles should we evolve at second-order? */
-  int l_max_g; 
-  int l_max_pol_g;
-  int l_max_ur;
-  int l_max_g_ten;  
-  int l_max_pol_g_ten;
+  int l_max_los_t;  /**< Number of multipoles to keep in the line of sight sources for the photon intensity */
+  int l_max_los_p;  /**< Number of multipoles to keep in the line of sight sources for the photon polarisation */
+  int l_max_los;    /**< Maximum number of multipoles to keep in the line of sight sources for any species */
 
-  /* How many multipoles should we keep in the quadratic sources? */
-  int l_max_g_quadsources; 
-  int l_max_pol_g_quadsources; 
-  int l_max_ur_quadsources;
-  int l_max_g_ten_quadsources;  
-  int l_max_pol_g_ten_quadsources;
-  int m_max_quadsources;
-  
-  /* How many multipoles should we keep in the line of sight integration? */
-  int l_max_los_t;          
-  int l_max_los_p;
-  int l_max_los;
+  int l_max_los_quadratic_t;  /**< Number of multipoles to keep in the quadratic part of line of sight sources for the photon intensity */
+  int l_max_los_quadratic_p;  /**< Number of multipoles to keep in the quadratic part of line of sight sources for the photon polarisation */
+  int l_max_los_quadratic;    /**< Maximum number of multipoles to keep in the quadratic part of the line of sight sources for any species */
 
-  int l_max_los_quadratic_t;
-  int l_max_los_quadratic_p;
-  int l_max_los_quadratic;
-
-  /* Array containing the 'm' values for which we need to solve the system.
-  m=0 -> scalar modes
-  m=1 -> vector modes
-  m=2 -> tensor modes  */
+  /** Array containing the 'm' values for which we need to solve the system.
+  m=0  ->  scalar modes
+  m=1  ->  vector modes
+  m=2  ->  tensor modes
+  m=3+ ->  no name because the metric does not have these modes */
   int m[_MAX_NUM_AZIMUTHAL_];
-  int m_size;
-  
-  /* Maximum 'm' contained in ppr2->m */
-  int m_max_2nd_order;
+  int m_size; /**< Number of azimuthal modes to evolve */
+  int m_max_2nd_order;  /**< Maximum m contained in ppr2->m */
 
-  /* Logical array of size ppr2->m_max_2nd_order. If m is contained in ppr2->m,
-  then ppr2->compute[m] == _TRUE_ */
-  int compute_m[_MAX_NUM_AZIMUTHAL_];
+  /** Logical array of size ppr2->m_max_2nd_order; if compute_m[M]==_TRUE_, then SONG will solve
+  the Boltzmann equation for that azimuthal mode M. In other words, if M is contained in ppr2->m,
+  then ppr2->compute[m] == _TRUE_. */
+  int compute_m[_MAX_NUM_AZIMUTHAL_];  
 
-  /* ppr2->index_m[M] contains the index of 'M' inside ppr2->m. If M is not contained
-  in ppr2->m, then ppr2->index_m[M]=-1. */
+  /** If the azimuthal mode M is in the list of modes computed by SONG, ppr2->m, then
+  ppr2->index_m[M] is the index of M inside ppr2->m. Otherwise, ppr2->index_m[M]=-1. */
   int index_m[_MAX_NUM_AZIMUTHAL_];
     
-  /* index_m_max[l] is the maximum allowed m (in ppr2->m) for a given l */
+  /** For a given multipole L, ppr2->index_m_max[L] is index in ppr2->m associated to the
+  maximum allowed M in ppr2->m. For example, if SONG is going to compute scalar (m=0) and
+  tensor (m=2) modes, then:
+    - ppr2->index_m_max[0]=0
+    - ppr2->index_m_max[1]=0
+    - ppr2->index_m_max[2]=1
+    - ppr2->index_m_max[L]=1 for L>2.
+  This array is used to loop over l and m. */
   int * index_m_max;
 
 
 
-  // ==============================
-  // =       Time samplings       =
-  // ==============================
+  // ====================================================================================
+  // =                                 Time samplings                                   =
+  // ====================================================================================
   
   /** Time at which the second-order system will start being evolved. By default it
   is zero, which means that the start time will be determined automatically. */
@@ -106,9 +111,9 @@ struct precision2
 
 
 
-  // ==================================
-  // =           k1-k2 sampling       =
-  // ==================================
+  // ====================================================================================
+  // =                                   k1-k2 sampling                                 =
+  // ====================================================================================
 
   /* Parameters for the k-sampling at second order, using the same algorithm as CLASS */
 
@@ -121,38 +126,38 @@ struct precision2
 
   /* Parameters for the k-sampling at second order, using a linear or logarithmic sampling */
 
-  double k_min_custom;
-  double k_max_custom;
-  int k_size_custom;
+  double k_min_custom; /**< User-provided minimum value for the wavemode k (in ppt2->k); ignored unless ppt2->k_sampling==lin_k_sampling or log_k_sampling */
+  double k_max_custom; /**< User-provided maximum value for the wavemode k (in ppt2->k); ignored unless ppt2->k_sampling==lin_k_sampling or log_k_sampling */
+  int k_size_custom; /**< User-provided size of the k vector ppt2->k; ignored unless ppt2->k_sampling==lin_k_sampling or log_k_sampling */
 
 
 
-  // ====================================
-  // =           k3 sampling            =
-  // ====================================
+  // ====================================================================================
+  // =                                    k3 sampling                                   =
+  // ====================================================================================
 
-  int k3_size_min; /**< Minimum number of grid points for any (k1,k2) pair,
-                      used when 'k3_sampling' is set to smart */
-  int k3_size;     /**< Fixed number of grid points for any (k1,k2) pair,
-                      used when 'k3_sampling' is set to lin or log */
-  double q_linstep_song; /**< Upper bound on linear sampling step in k space for the transfer functions,
-                            in units of one period of acoustic oscillation (2*pi/(tau0-tau_rec)) */
-
-
-
-  // ========================================
-  // =            Interpolations            =
-  // ========================================
-
-  /* How to interpolate the sources in the line of sight integral? */
-  enum interpolation_methods sources_time_interpolation;
-  enum interpolation_methods sources_k3_interpolation;
+  int k3_size_min;        /**< Minimum number of grid points for any (k1,k2) pair,
+                          used when 'k3_sampling' is set to smart */
+  int k3_size;            /**< Fixed number of grid points for any (k1,k2) pair,
+                          used when 'k3_sampling' is set to lin or log */
+  double q_linstep_song;  /**< Upper bound on linear sampling step in k space for the
+                          transfer functions, in units of one period of acoustic oscillation,
+                          2*pi/(tau0-tau_rec) */
 
 
 
-	// =============================
-	// =       Bessels       =
-	// =============================
+  // ====================================================================================
+  // =                                   Interpolation                                  =
+  // ====================================================================================
+
+  enum interpolation_methods sources_time_interpolation; /**< Method for the time-interpolation of the line of sight sources */
+  enum interpolation_methods sources_k3_interpolation;   /**< Method for the k3-interpolation of the line of sight sources */
+
+
+
+  // ====================================================================================
+	// =                                      Bessels                                     =
+  // ====================================================================================
 
   double bessel_j_cut_song;  /* Value of j_l1(x) below which it is approximated by zero (in the region x << l) */
 	double bessel_J_cut_song;	/* Value of J_Llm(x) below which it is approximated by zero (in the region x << l) */
@@ -160,18 +165,9 @@ struct precision2
 
 
 
-	// ==========================
-	// =       Bispectrum       =
-	// ==========================
-
-
-
-
-
-
-	// ==========================
-	// =           Misc         =
-	// ==========================
+  // ====================================================================================
+	// =                                        Misc                                      =
+  // ====================================================================================
 
   ErrorMsg error_message;         /**< Zone for writing error messages */
   short store_transfers_to_disk;  /**< Should we store the transfer functions to disk? */

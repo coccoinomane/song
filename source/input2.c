@@ -1111,14 +1111,19 @@ ur_fluid_trigger_tau_over_tau_k_song and radiation_streaming_trigger_tau_over_ta
   class_read_int("l_max_g_2nd_order", ppr2->l_max_g); /* obsolete */
   class_read_int("l_max_pol_g_2nd_order", ppr2->l_max_pol_g); /* obsolete */
   class_read_int("l_max_ur_2nd_order", ppr2->l_max_ur);   /* obsolete */
-  class_read_int("l_max_g_ten_2nd_order", ppr2->l_max_g_ten); /* obsolete */
-  class_read_int("l_max_pol_g_ten_2nd_order", ppr2->l_max_pol_g_ten); /* obsolete */
   
   class_read_int("l_max_g_song", ppr2->l_max_g);
   class_read_int("l_max_pol_g_song", ppr2->l_max_pol_g);    
   class_read_int("l_max_ur_song", ppr2->l_max_ur);        
-  class_read_int("l_max_g_ten_song", ppr2->l_max_g_ten);       
-  class_read_int("l_max_pol_g_ten_song", ppr2->l_max_pol_g_ten);            
+
+  /* Compute the maximum l_max for the Boltzmann hierarchy */
+  ppr2->l_max_boltzmann = 0;  
+  ppr2->l_max_boltzmann = MAX (ppr2->l_max_boltzmann, ppr2->l_max_g);
+  if (ppt2->has_polarization2 == _TRUE_)
+    ppr2->l_max_boltzmann = MAX (ppr2->l_max_boltzmann, ppr2->l_max_pol_g);
+  if (pba->Omega0_ur!=0)
+    ppr2->l_max_boltzmann = MAX (ppr2->l_max_boltzmann, ppr2->l_max_ur);
+
 
   /* Read l_max for the quadratic sources in the Boltzmann hierarchies. If the user specified
   a negative value for one of them, set it to the corresponding l_max_XXX_song (see above).
@@ -1135,14 +1140,6 @@ ur_fluid_trigger_tau_over_tau_k_song and radiation_streaming_trigger_tau_over_ta
   class_read_int("l_max_ur_quadsources", ppr2->l_max_ur_quadsources);
   if ((ppr2->l_max_ur_quadsources<0) || (ppr2->l_max_ur_quadsources>ppr2->l_max_ur))
     ppr2->l_max_ur_quadsources = ppr2->l_max_ur;
-
-  class_read_int("l_max_g_ten_quadsources", ppr2->l_max_g_ten_quadsources);
-  if ((ppr2->l_max_g_ten_quadsources<0) || (ppr2->l_max_g_ten_quadsources>ppr2->l_max_g_ten))
-    ppr2->l_max_g_ten_quadsources = ppr2->l_max_g_ten;
-
-  class_read_int("l_max_pol_g_ten_quadsources", ppr2->l_max_pol_g_ten_quadsources);
-  if ((ppr2->l_max_pol_g_ten_quadsources<0) || (ppr2->l_max_pol_g_ten_quadsources>ppr2->l_max_pol_g_ten))
-    ppr2->l_max_pol_g_ten_quadsources = ppr2->l_max_pol_g_ten;
 
   /* Read l_max for the line of sight integration */
   class_read_int("l_max_T_los", ppr2->l_max_los_t); /* obsolete */
@@ -1252,12 +1249,16 @@ ur_fluid_trigger_tau_over_tau_k_song and radiation_streaming_trigger_tau_over_ta
   ppt2->has_vectors = ppr2->compute_m[1];
   ppt2->has_tensors = ppr2->compute_m[2];
 
-  /* The largest l where the Bessel functions will be needed. The first term (pbs->l_max) is the
-  maximum multipole we shall compute the bispectra in. The second term represent the additional
-  l's where we need to the Bessel functions in order to compute the projection functions
-  (ppr2->l_max_los) and the bispectrum integral (ppr2->m_max_2nd_order). This line must be after
-  setting ppr2->l_max_los. */
+  /* The largest l that will be needed by SONG. The first term (pbs->l_max) is the maximum
+  multipole we shall compute the spectra and bispectra in. The second term represent
+  the additional l's where we need to the Bessel functions in order to compute the projection
+  functions (ppr2->l_max_los) and the bispectrum integral (ppr2->m_max_2nd_order). This line
+  must be after setting ppr2->l_max_los and ppr2->l_max_boltzmann. */
   int l_max = pbs->l_max + MAX (ppr2->l_max_los, ppr2->m_max_2nd_order);
+  
+  /* In some debug scenarion, we will need to evolve a lot of Boltzmann moments, more than
+  the maximum l for the C_l */
+  l_max = MAX (l_max, ppr2->l_max_boltzmann);
 
   /* Determine for each l (starting from 0) the position of its maximum m in ppr2->m. The resulting
   array ppr2->index_m_max will be used throughout the code to cycle through the m's allowed for a given l. */
@@ -1598,13 +1599,9 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   ppr2->l_max_g=8;
   ppr2->l_max_pol_g=8;
   ppr2->l_max_ur=8; 
-  ppr2->l_max_g_ten=8;
-  ppr2->l_max_pol_g_ten=8;
 
   ppr2->l_max_g_quadsources=-1;
   ppr2->l_max_pol_g_quadsources=-1;
-  ppr2->l_max_g_ten_quadsources=-1;
-  ppr2->l_max_pol_g_ten_quadsources=-1;
   ppr2->l_max_ur_quadsources=-1;
 
   ppr2->l_max_los_t=ppr2->l_max_los_quadratic_t=2;
