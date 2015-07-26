@@ -27,6 +27,8 @@ enum tca2_method {
  */
 enum rsa2_method {
   rsa2_none,          /**< No RSA approximation */
+  rsa2_MD,            /**< RSA approximation assuming no collisions (i.e. no reionisation effects) */
+  rsa2_MD_with_reio   /**< RSA approximation including collisions up to first-order in tau_c=1/kappa_dot (i.e. "first-order" reionisation) */
 };
 
 /**
@@ -518,6 +520,7 @@ struct perturbs2
 
   int radiation_streaming_approximation;
   double radiation_streaming_trigger_tau_over_tau_k;
+  double radiation_streaming_trigger_tau_c_over_tau;
 
   int ur_fluid_approximation;
   double ur_fluid_trigger_tau_over_tau_k;

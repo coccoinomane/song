@@ -702,6 +702,18 @@ int input2_init (
     ppt2->radiation_streaming_approximation);
   class_read_double("radiation_streaming_trigger_tau_over_tau_k_song",
    ppt2->radiation_streaming_trigger_tau_over_tau_k);
+  class_read_double("radiation_streaming_trigger_tau_c_over_tau_song",
+   ppt2->radiation_streaming_trigger_tau_c_over_tau);
+   
+   /* CLASS parameter radiation_streaming_trigger_tau_c_over_tau is used
+   not only in the perturbations.c module, but also in the thermodynamics
+   module to compute the start of the free-streaming regime. This value
+   in the pth structure, in turn, will affect the starting time of the
+   second-order RSA. In order to avoid discrepancies, we set the first
+   CLASS value of radiation_streaming_trigger_tau_c_over_tau to match
+   the SONG one. */
+   ppr->radiation_streaming_trigger_tau_c_over_tau
+     = ppt2->radiation_streaming_trigger_tau_c_over_tau;
 
   /* Ultra relativistic fluid approximation */
   class_read_int("ur_fluid_approximation_2nd_order",
@@ -1490,6 +1502,7 @@ int input2_default_params (
   
   ppt2->radiation_streaming_approximation = rsa2_none;
   ppt2->radiation_streaming_trigger_tau_over_tau_k = 45;
+  ppt2->radiation_streaming_trigger_tau_c_over_tau = 5;
   
   ppt2->ur_fluid_approximation = ufa2_none;
   ppt2->ur_fluid_trigger_tau_over_tau_k = 15;

@@ -4689,9 +4689,6 @@ int perturb2_approximations (
          )
 {
 
-  /* Compute Fourier mode time scale */
-  double tau_k = 1./MAX(ppw2->k,MAX(ppw2->k1,ppw2->k2));
-
   /* Interpolate background quantities */
   int dump;
   class_call (background_at_tau(
@@ -4740,13 +4737,17 @@ int perturb2_approximations (
   // =                              Tight coupling approximation                            =
   // ========================================================================================
 
+  /* We start using the TCA approximation only when our time criterion is matched
+  by all three wavemodes (k1,k2,k) separately */
+  double tau_k_tca = 1./MAX(ppw2->k,MAX(ppw2->k1,ppw2->k2));
+
   /* Always turn the TCA off if the user asked for tca2_none  */
   if (ppt2->tight_coupling_approximation == tca2_none) {
     ppw2->approx[ppw2->index_ap2_tca] = (int)tca_off;
   }
   /* Otherwise, check whether tight-coupling approximation should be on */
   else if ((tau_c/tau_h < ppt2->tight_coupling_trigger_tau_c_over_tau_h) &&
-           (tau_c/tau_k < ppt2->tight_coupling_trigger_tau_c_over_tau_k)) {
+           (tau_c/tau_k_tca < ppt2->tight_coupling_trigger_tau_c_over_tau_k)) {
     ppw2->approx[ppw2->index_ap2_tca] = (int)tca_on;
     ppw2->n_active_approximations++;
   }
@@ -4759,19 +4760,36 @@ int perturb2_approximations (
   // =                              Free streaming approximation                            =
   // ========================================================================================
 
-  /* TO BE IMPLEMENTED YET */
+  /* We start using the RSA approximation only when our time criterion is matched
+  by all three wavemodes (k1,k2,k) separately. TODO: experiment. */
+  double tau_k_rsa = 1./MIN(ppw2->k,MIN(ppw2->k1,ppw2->k2));
 
-  // if ((tau/tau_k > ppr->radiation_streaming_trigger_tau_over_tau_k) &&
-  //     (tau > pth->tau_free_streaming) &&
-  //     (ppr->radiation_streaming_approximation != rsa_none)) {
-  //
-  //   ppw2->approx[ppw2->index_ap2_rsa] = (int)rsa_on;
-  //   ppw2->n_active_approximations++;
-  // }
-  // else {
-  //   ppw2->approx[ppw2->index_ap2_rsa] = (int)rsa_off;
-  // }
-  //
+  if ((tau/tau_k_rsa > ppt2->radiation_streaming_trigger_tau_over_tau_k) &&
+      (tau > pth->tau_free_streaming) && /* we activate the RSA only after photon decoupling */
+      (ppt2->radiation_streaming_approximation != rsa_none)) {
+
+    ppw2->approx[ppw2->index_ap2_rsa] = (int)rsa_on;
+    ppw2->n_active_approximations++;
+  }
+  else {
+    ppw2->approx[ppw2->index_ap2_rsa] = (int)rsa_off;
+  }
+
+
+  // ========================================================================================
+  // =                       Ultra relativistic fluid approximation                         =
+  // ========================================================================================
+
+  // NOT IMPLEMENTED YET
+
+  /* The UFA is basically radiation streaming for neutrinos. The condition for triggering it
+  is essentially the same: turn it on only if the wavemode is well inside the horizon.
+  The difference between RSA and UFA relies in the fact that neutrinos do not care
+  about recombination, hence the UFA can be turned on also during or before recombination.
+  We shall use the UFA for the regime close to photon decoupling and the RSA (which is
+  more economic) after that until today. This is the same approach of CLASS; see 
+  Blas, Lesgourgues & Tram 2011 for a complete reference. */
+
   // if (pba->has_ur == _TRUE_) {
   //
   //   if ((tau/tau_k > ppr->ur_fluid_trigger_tau_over_tau_k) &&
@@ -4784,23 +4802,6 @@ int perturb2_approximations (
   //     ppw2->approx[ppw2->index_ap2_ufa] = (int)ufa_off;
   //   }
   // }
-  //
-  // /* The UFA is basically radiation streaming for neutrinos. The condition for triggering it
-  // is essentially the same: turn it on only if the wavemode is well inside the horizon. 
-  // The difference between RSA and UFA relies in the fact that neutrinos do not care
-  // about recombination, hence the UFA can be turned on also during or before recombination */
-  // if (pba->has_ncdm == _TRUE_) {
-  //
-  //   if ((tau/tau_k > ppr->ncdm_fluid_trigger_tau_over_tau_k) &&
-  //       (ppr->ncdm_fluid_approximation != ncdmfa_none)) {
-  //
-  //     ppw2->approx[ppw2->index_ap2_ncdmfa] = (int)ncdmfa_on;
-  //     ppw2->n_active_approximations++;
-  //   }
-  //   else {
-  //     ppw2->approx[ppw2->index_ap2_ncdmfa] = (int)ncdmfa_off;
-  //   }
-  // }
 
 
   // ========================================================================================
@@ -4808,9 +4809,9 @@ int perturb2_approximations (
   // ========================================================================================
   
   /* Treat radiation as a perfect fluid after equality, when its contribution to the
-  total density becomes negligible. This is the poor man's version of the free streaming
-  approximation, meant to reduce the execution time rather than to compute the photon
-  monopole and dipole quickly. */
+  total density becomes negligible. This is the poor man's version of the radiation
+  streaming approximation, meant to reduce the execution time rather than to compute
+  the photon monopole and dipole quickly. */
 
   /* Always turn the NRA off if the user asked for nra_none  */
   if (ppt2->no_radiation_approximation == nra2_none) {
@@ -4841,7 +4842,13 @@ int perturb2_approximations (
     ppt2->error_message,
     "tau=%g: the TCA and NRA approximations can't be turned on at the same time.",
     tau);
-    
+
+  class_test ((ppw2->approx[ppw2->index_ap2_nra]==(int)nra_on)
+    && (ppw2->approx[ppw2->index_ap2_rsa]==(int)rsa_on),
+    ppt2->error_message,
+    "tau=%g: the RSA and NRA approximations can't be turned on at the same time.",
+    tau);
+
   class_test (ppw2->n_active_approximations>1,
     ppt2->error_message,
     "tau=%g: so far SONG only supports one active approximation at the same time.",
@@ -12293,33 +12300,33 @@ int perturb2_save_early_transfers (
   
   /* - Time derivatives of the neutrino multipoles (careful with RSA or NRA )*/
   
-  if (pba->has_ur == _TRUE_) {
-  
-    int l_max_ur = MIN(ppw2->l_max_ur, ppt2->l_max_debug);
-  
-    for (int l=0; l<=l_max_ur; ++l) {
-      for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
-        int m = ppr2->m[index_m];
-        sprintf(buffer, "dN_%d_%d", l, m);
-        if (ppw2->n_steps==1) {
-          fprintf(file_tr, format_label, buffer, index_print_tr++);
-          fprintf(file_qs, format_label, buffer, index_print_qs++);
-        }
-        else {
-          if ((ppw2->approx[ppw2->index_ap2_nra] == (int)nra_on)
-            ||(ppw2->approx[ppw2->index_ap2_rsa] == (int)rsa_on)
-            ||(ppw2->approx[ppw2->index_ap2_ufa] == (int)ufa_on)) {
-            fprintf(file_tr, format_value, 0);
-            fprintf(file_qs, format_value, 0);  
-          }
-          else {
-            fprintf(file_tr, format_value, dy[ppw2->pv->index_pt2_monopole_ur + lm(l,m)]);
-            fprintf(file_qs, format_value, ppw2->pvec_d_quadsources[ppw2->index_qs2_monopole_ur + lm(l,m)]);
-          }
-        }
-      }
-    }
-  }  // end of if(has_ur)
+  // if (pba->has_ur == _TRUE_) {
+  //
+  //   int l_max_ur = MIN(ppw2->l_max_ur, ppt2->l_max_debug);
+  //
+  //   for (int l=0; l<=l_max_ur; ++l) {
+  //     for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+  //       int m = ppr2->m[index_m];
+  //       sprintf(buffer, "dN_%d_%d", l, m);
+  //       if (ppw2->n_steps==1) {
+  //         fprintf(file_tr, format_label, buffer, index_print_tr++);
+  //         fprintf(file_qs, format_label, buffer, index_print_qs++);
+  //       }
+  //       else {
+  //         if ((ppw2->approx[ppw2->index_ap2_nra] == (int)nra_on)
+  //           ||(ppw2->approx[ppw2->index_ap2_rsa] == (int)rsa_on)
+  //           ||(ppw2->approx[ppw2->index_ap2_ufa] == (int)ufa_on)) {
+  //           fprintf(file_tr, format_value, 0);
+  //           fprintf(file_qs, format_value, 0);
+  //         }
+  //         else {
+  //           fprintf(file_tr, format_value, dy[ppw2->pv->index_pt2_monopole_ur + lm(l,m)]);
+  //           fprintf(file_qs, format_value, ppw2->pvec_d_quadsources[ppw2->index_qs2_monopole_ur + lm(l,m)]);
+  //         }
+  //       }
+  //     }
+  //   }
+  // }  // end of if(has_ur)
 
   
   // ------------------------------------------------------------------------------------
