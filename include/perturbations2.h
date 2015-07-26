@@ -94,9 +94,14 @@ enum sources2_k3_sampling {
  * perturb2_quadratic_sources_at_tau() functions.
  */
 enum quadratic_source_interpolation {
-  interpolate_total,             /**< Interpolate the quadratic part of the full Boltzmann equation
-                                 (collision term + Liouville term) */
-  interpolate_collision      /**< Interpolate the quadratic part of the collision term */
+  interpolate_total,         /**< Interpolate the quadratic part of the full Boltzmann equation
+                             (collision term + Liouville term) */
+  interpolate_collision,     /**< Interpolate the quadratic part of the collision term */
+
+  interpolate_d_total,       /**< Interpolate the conformal time derivative of the quadratic part of
+                             the full Boltzmann equation (collision term + Liouville term) */
+  interpolate_d_collision    /**< Interpolate the conformal time derivative of the quadratic part of
+                             the collision term */
 };
 
 /**
@@ -739,15 +744,27 @@ struct perturb2_workspace
                                SONG to solve the differential system for the current wavemode.
                                Indexed as ppw2->quadsources_table[index_qs2_XXX][index_tau] */
 
+  double ** d_quadsources_table;  /**< First-order time derivative of quadsources_table,
+                                  needed for some approximations */
+
   double ** dd_quadsources_table; /**< Second-order time derivative of quadsources_table,
                                   needed for spline interpolation */
+  
+  double ** ddd_quadsources_table; /**< Third-order time derivative of quadsources_table,
+                                  needed for spline interpolation of the first-derivative */
   
   double ** quadcollision_table; /**< Table that will contain the quadratic part of the collision
                                  term. Needed to compute the tight coupling approximation.
                                  Indexed as ppw2->quadsources_table[index_qs2_XXX][index_tau] */
 
+  double ** d_quadcollision_table; /**< First-order time derivative of quadcollision_table,
+                                   needed for some approximations */
+
   double ** dd_quadcollision_table; /**< Second-order time derivative of quadcollision_table,
                                     needed for spline interpolation */
+
+  double ** ddd_quadcollision_table; /**< Third-order time derivative of quadcollision_table,
+                                   needed for spline interpolation of the first-derivative */
   
   int qs2_size; /**< Number of quadratic sources used in SONG, and size of ppw2->quadsources_table
                 and ppw2->pvec_quadsources */
@@ -796,11 +813,13 @@ struct perturb2_workspace
   // =                                      Time interpolation                                   =
   // =============================================================================================
 
-  double * pvecback;            /**< interpolated values of the background quantitites at the current time tau */
-  double * pvecthermo;          /**< interpolated values of the thermodynamics quantitites at the current time tau */
-  double * pvecmetric;          /**< interpolated values of the metric quantitites at the current time tau */
-  double * pvec_quadsources;    /**< interpolated values of the quadratic sources at the current time tau */
-  double * pvec_quadcollision;  /**< interpolated values of the quadratic collisional sources at the current time tau */
+  double * pvecback;              /**< interpolated values of the background quantitites at the current time tau */
+  double * pvecthermo;            /**< interpolated values of the thermodynamics quantitites at the current time tau */
+  double * pvecmetric;            /**< interpolated values of the metric quantitites at the current time tau */
+  double * pvec_quadsources;      /**< interpolated values of the quadratic sources at the current time tau */
+  double * pvec_quadcollision;    /**< interpolated values of the quadratic collisional sources at the current time tau */
+  double * pvec_d_quadsources;    /**< interpolated values of the conformal-time derivatives of the quadratic sources at the current time tau */
+  double * pvec_d_quadcollision;  /**< interpolated values of the conformal-time derivatives of the quadratic collisional sources at the current time tau */
 
   double * pvec_sources1;       /**< interpolated values of the first-order perturbations in k1 and tau; filled by
                                 the perturbations.c function perturb_song_sources_at_tau() */

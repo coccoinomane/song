@@ -2759,18 +2759,12 @@ int perturb2_timesampling_for_sources (
   } // end of if(has_custom_timesampling_for_quadsources==_FALSE_)
 
   /* Debug - print the time sampling for the line of sight sources */
-  // {
-  //   int index_tau;
-  //   for (index_tau=0; index_tau < ppt2->tau_size; ++index_tau)
-  //     printf("%12d %17.7g\n", index_tau, ppt2->tau_sampling[index_tau]);
-  // }
+  // for (int index_tau=0; index_tau < ppt2->tau_size; ++index_tau)
+  //   printf("%12d %17.7g\n", index_tau, ppt2->tau_sampling[index_tau]);
 
   /* Debug - print the time sampling for the quadratic sources */
-  // {
-  //   int index_tau;
-  //   for (index_tau=0; index_tau < ppt->tau_size_quadsources; ++index_tau)
-  //     printf("%12d %17.7g\n", index_tau, ppt->tau_sampling_quadsources[index_tau]);
-  // }
+  // for (int index_tau=0; index_tau < ppt->tau_size_quadsources; ++index_tau)
+  //   fprintf(stderr, "%12d %17.7g\n", index_tau, ppt->tau_sampling_quadsources[index_tau]);
 
   /* Check that the time range chosen to sample the 2nd-order sources is compatible
   with the range we chosen to compute the 1st-order ones */
@@ -2844,9 +2838,11 @@ int perturb2_timesampling_for_sources (
     
     printf("     * 2nd-order line-of-sight sources time sampling:\n");
     printf("       %d times in the range tau=(%g,%g), a=(%.2e,%.2e), log10(a/a_eq)=(%.3g,%.3g)\n",
-      ppt2->tau_size, ppt2->tau_sampling[0], ppt2->tau_sampling[ppt2->tau_size-1], a_ini, a_end, y_ini, y_end);
+      ppt2->tau_size, ppt2->tau_sampling[0], ppt2->tau_sampling[ppt2->tau_size-1],
+      a_ini, a_end, y_ini, y_end);
     printf("     * quadratic sources time sampling: %d times in the range tau=(%g,%g)\n",
-      ppt->tau_size_quadsources, ppt->tau_sampling_quadsources[0], ppt->tau_sampling_quadsources[ppt->tau_size_quadsources-1]);
+      ppt->tau_size_quadsources, ppt->tau_sampling_quadsources[0],
+      ppt->tau_sampling_quadsources[ppt->tau_size_quadsources-1]);
         
   }
 
@@ -4007,9 +4003,9 @@ int perturb2_workspace_init_quadratic_sources (
   // -                    Quadratic sources                  -
   // ---------------------------------------------------------
   
-  /* Allocate the tables that will contain the quadratic sources for all types and for all the times
-  in ppt->tau_sampling_quadsources.  They all have two levels, for example:
-  ppw2->quadsources_table[index_qs2_type][index_tau]. */
+  /* Allocate the tables that will contain the quadratic sources for all types and
+  for all the times in ppt->tau_sampling_quadsources.  They all have two levels,
+  for example: ppw2->quadsources_table[index_qs2_type][index_tau]. */
   class_calloc (ppw2->quadsources_table, ppw2->qs2_size, sizeof(double), ppt2->error_message);  
   for (index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
     class_calloc (ppw2->quadsources_table[index_qs2], ppt->tau_size_quadsources, sizeof(double), ppt2->error_message);
@@ -4018,7 +4014,16 @@ int perturb2_workspace_init_quadratic_sources (
   for (index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
     class_calloc (ppw2->quadcollision_table[index_qs2], ppt->tau_size_quadsources, sizeof(double), ppt2->error_message);
 
-  /* Allocate the arrays that will contain the second-derivative of the table arrays, in view of
+  /* Allocate the arrays that will contain the first derivative of the table arrays */
+  class_calloc (ppw2->d_quadsources_table, ppw2->qs2_size, sizeof(double), ppt2->error_message);  
+  for (index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
+    class_calloc (ppw2->d_quadsources_table[index_qs2], ppt->tau_size_quadsources, sizeof(double), ppt2->error_message);
+
+  class_calloc (ppw2->d_quadcollision_table, ppw2->qs2_size, sizeof(double), ppt2->error_message);  
+  for (index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
+    class_calloc (ppw2->d_quadcollision_table[index_qs2], ppt->tau_size_quadsources, sizeof(double), ppt2->error_message);
+
+  /* Allocate the arrays that will contain the second derivative of the table arrays, in view of
   spline interpolation */
   class_calloc (ppw2->dd_quadsources_table, ppw2->qs2_size, sizeof(double), ppt2->error_message);  
   for (index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
@@ -4028,10 +4033,22 @@ int perturb2_workspace_init_quadratic_sources (
   for (index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
     class_calloc (ppw2->dd_quadcollision_table[index_qs2], ppt->tau_size_quadsources, sizeof(double), ppt2->error_message);
 
+  /* Allocate the arrays that will contain the third derivative of the table arrays, in view of
+  spline interpolation of the first derivative */
+  class_calloc (ppw2->ddd_quadsources_table, ppw2->qs2_size, sizeof(double), ppt2->error_message);  
+  for (index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
+    class_calloc (ppw2->ddd_quadsources_table[index_qs2], ppt->tau_size_quadsources, sizeof(double), ppt2->error_message);
+
+  class_calloc (ppw2->ddd_quadcollision_table, ppw2->qs2_size, sizeof(double), ppt2->error_message);  
+  for (index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
+    class_calloc (ppw2->ddd_quadcollision_table[index_qs2], ppt->tau_size_quadsources, sizeof(double), ppt2->error_message);
+
   /* Allocate the temporary arrays that will contain the interpolated values of the quadratic sources
   contained in the above tables, at a certain time */
   class_calloc (ppw2->pvec_quadsources, ppw2->qs2_size, sizeof(double), ppt2->error_message);
   class_calloc (ppw2->pvec_quadcollision, ppw2->qs2_size, sizeof(double), ppt2->error_message);
+  class_calloc (ppw2->pvec_d_quadsources, ppw2->qs2_size, sizeof(double), ppt2->error_message);
+  class_calloc (ppw2->pvec_d_quadcollision, ppw2->qs2_size, sizeof(double), ppt2->error_message);
 
 
   // -----------------------------------------------------------
@@ -4124,18 +4141,28 @@ int perturb2_workspace_free (
   /* Free quadratic sources temporary arrays */
   free(ppw2->pvec_quadsources);
   free(ppw2->pvec_quadcollision);
+  free(ppw2->pvec_d_quadsources);
+  free(ppw2->pvec_d_quadcollision);
 
   /* Free quadratic sources table */
   for (int index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2) {
     free (ppw2->quadsources_table[index_qs2]);
+    free (ppw2->d_quadsources_table[index_qs2]);
     free (ppw2->dd_quadsources_table[index_qs2]);
+    free (ppw2->ddd_quadsources_table[index_qs2]);
     free (ppw2->quadcollision_table[index_qs2]);
+    free (ppw2->d_quadcollision_table[index_qs2]);
     free (ppw2->dd_quadcollision_table[index_qs2]);
+    free (ppw2->ddd_quadcollision_table[index_qs2]);
   }
   free (ppw2->quadsources_table);
+  free (ppw2->d_quadsources_table);  
   free (ppw2->dd_quadsources_table);  
+  free (ppw2->ddd_quadsources_table);  
   free (ppw2->quadcollision_table);
+  free (ppw2->d_quadcollision_table);  
   free (ppw2->dd_quadcollision_table);  
+  free (ppw2->ddd_quadcollision_table);  
   
 
   /* Free coupling coefficient products */
@@ -8843,8 +8870,12 @@ int perturb2_compute_psi_prime(
   * The following arrays will be filled:
   * - ppw2->quadsources_table[index_qs2][index_tau] 
   * - ppw2->quadcollision_table[index_qs2][index_tau] 
+  * - ppw2->d_quadsources_table[index_qs2][index_tau] 
+  * - ppw2->d_quadcollision_table[index_qs2][index_tau] 
   * - ppw2->dd_quadsources_table[index_qs2][index_tau] 
   * - ppw2->dd_quadcollision_table[index_qs2][index_tau] 
+  * - ppw2->ddd_quadsources_table[index_qs2][index_tau] 
+  * - ppw2->ddd_quadcollision_table[index_qs2][index_tau] 
   *
   */
 int perturb2_quadratic_sources_for_k1k2k (
@@ -8913,11 +8944,13 @@ int perturb2_quadratic_sources_for_k1k2k (
 
   } // end of for (index_tau)
 
-  /* Compute second-order derivatives of the quadratic sources in view of spline interpolation */
+  /* Compute second-order derivatives of the quadratic sources in view of spline
+  interpolation. */
   if (ppr->quadsources_time_interpolation == cubic_interpolation) {
 
-    class_call (spline_sources_derivs_two_levels (
-                  ppt->tau_sampling_quadsources, /* vector of size tau_size_quadsources */
+    /* Quadratic sources (Liouville + collision) */
+    class_call (spline_derivs_two_levels (
+                  ppt->tau_sampling_quadsources,
                   ppt->tau_size_quadsources,
                   ppw2->quadsources_table,
                   ppw2->qs2_size,
@@ -8929,8 +8962,9 @@ int perturb2_quadratic_sources_for_k1k2k (
       ppt2->error_message,
       ppt2->error_message);
 
-    class_call (spline_sources_derivs_two_levels (
-                  ppt->tau_sampling_quadsources, /* vector of size tau_size_quadsources */
+    /* Collision sources */
+    class_call (spline_derivs_two_levels (
+                  ppt->tau_sampling_quadsources,
                   ppt->tau_size_quadsources,
                   ppw2->quadcollision_table,
                   ppw2->qs2_size,
@@ -8943,7 +8977,69 @@ int perturb2_quadratic_sources_for_k1k2k (
       ppt2->error_message);
 
   } // end of if(cubic_interpolation)
-    
+
+  
+  /* Compute first derivative of the quadratic sources */
+  for (int index_qs2=0; index_qs2 < ppw2->qs2_size; ++index_qs2) {
+
+    /* Quadratic sources (Liouville + collision) */
+    class_call (array_spline_derive_table_lines(
+                  ppt->tau_sampling_quadsources,
+                  ppt->tau_size_quadsources,
+                  ppw2->quadsources_table[index_qs2],
+                  ppw2->dd_quadsources_table[index_qs2],
+                  1,
+                  ppw2->d_quadsources_table[index_qs2],
+                  ppt2->error_message),
+      ppt2->error_message,
+      ppt2->error_message);
+
+    /* Collision sources */
+    class_call (array_spline_derive_table_lines(
+                  ppt->tau_sampling_quadsources,
+                  ppt->tau_size_quadsources,
+                  ppw2->quadcollision_table[index_qs2],
+                  ppw2->dd_quadcollision_table[index_qs2],
+                  1,
+                  ppw2->d_quadcollision_table[index_qs2],
+                  ppt2->error_message),
+      ppt2->error_message,
+      ppt2->error_message);
+  }
+
+
+  /* Compute third derivative of the quadratic sources (Liouville + collision) */
+  if (ppr->quadsources_time_interpolation == cubic_interpolation) {
+
+    /* Quadratic sources (Liouville + collision) */
+    class_call (spline_derivs_two_levels (
+                  ppt->tau_sampling_quadsources,
+                  ppt->tau_size_quadsources,
+                  ppw2->d_quadsources_table,
+                  ppw2->qs2_size,
+                  ppw2->ddd_quadsources_table,
+                  _SPLINE_EST_DERIV_,
+                  // _SPLINE_NATURAL_,
+                  ppt2->error_message
+                  ),
+      ppt2->error_message,
+      ppt2->error_message);
+
+    /* Collision sources */
+    class_call (spline_derivs_two_levels (
+                  ppt->tau_sampling_quadsources,
+                  ppt->tau_size_quadsources,
+                  ppw2->d_quadcollision_table,
+                  ppw2->qs2_size,
+                  ppw2->ddd_quadcollision_table,
+                  _SPLINE_EST_DERIV_,
+                  // _SPLINE_NATURAL_,
+                  ppt2->error_message
+                  ),
+      ppt2->error_message,
+      ppt2->error_message);
+  }
+
   return _SUCCESS_;
 
 }
@@ -9046,6 +9142,10 @@ int perturb2_quadratic_sources (
   them at the desired tau */
   if (index_tau >= 0) { 
 
+    class_test (index_tau >= ppt->tau_size_quadsources,
+      ppt2->error_message,
+      "time index cannot be larger than size of time array for quadsources");
+    
     tau = ppt->tau_sampling_quadsources[index_tau];
 
     for (int index_type=0; index_type<qs_size; ++index_type) {
@@ -9569,7 +9669,7 @@ int perturb2_quadratic_sources (
       
               /* Account for the fact that in BF2010 the Liouville operator appears on the left-hand-side */
               dN_qs2(l,m) *= -1;
-      
+
             } // end of for (index_m)
           } // end of for (l)
         } // end of if(has_ur) 
@@ -10133,10 +10233,10 @@ int perturb2_sources (
                   ppr,
                   ppr2,
                   pba,
-                  pth,            
+                  pth,
                   ppt,
                   ppt2,
-                  -1, 
+                  -1,
                   tau,
                   compute_total_and_collision,
                   ppw2->pvec_quadsources,
@@ -10367,8 +10467,8 @@ int perturb2_sources (
 
     sources(ppt2->index_tp2_T) = g * psi * psi;
 
-		return _SUCCESS_;
-	}
+    return _SUCCESS_;
+  }
 
   
   // -------------------------------------------------------------------------------
@@ -11243,9 +11343,12 @@ int perturb2_save_early_transfers (
   double r = pvecback[pba->index_bg_rho_g]/pvecback[pba->index_bg_rho_b];
   double tau_c = 1/kappa_dot;
 
-  /* Interpolate quadratic sources by filling ppw2->pvec_quadsources
-  and ppw2->pvec_quadcollision */
   if (ppt2->has_quadratic_sources == _TRUE_) {
+
+    /* Compute quadratic sources and store them in ppw2->pvec_quadsources and
+    ppw2->pvec_quadcollision. Also interpolate the first-order perturbations
+    in k1 and k2, and store the result in ppw2->pvec_sources1 and
+    ppw2->pvec_sources2. */
     class_call (perturb2_quadratic_sources(
                   ppr,
                   ppr2,
@@ -11262,6 +11365,34 @@ int perturb2_save_early_transfers (
                   ),
       ppt2->error_message,
       error_message);
+
+    /* Interpolate the time derivative of the total quadratic sources
+    and store it in ppw2->pvec_d_quadsources */
+    class_call(perturb2_quadratic_sources_at_tau(
+                 ppr,
+                 ppr2,
+                 ppt,
+                 ppt2,
+                 tau,
+                 interpolate_d_total,
+                 ppw2
+                 ),
+      ppt2->error_message,
+      ppt2->error_message);
+
+    /* Interpolate the time derivative of the collisional quadratic sources
+    and store it in ppw2->pvec_d_quadcollision */
+    class_call(perturb2_quadratic_sources_at_tau(
+                 ppr,
+                 ppr2,
+                 ppt,
+                 ppt2,
+                 tau,
+                 interpolate_d_collision,
+                 ppw2
+                 ),
+      ppt2->error_message,
+      ppt2->error_message);
   }
 
   /* Compute densities, velocities and shear */
@@ -11310,7 +11441,19 @@ int perturb2_save_early_transfers (
     ppt2->error_message,
     error_message);
 
-  
+  // double * dy;
+  // class_alloc (dy, ppw2->pv->pt2_size*sizeof(double), ppt2->error_message);
+  //
+  // class_call (perturb2_derivs (
+  //               tau,
+  //               y,
+  //               dy,
+  //               parameters_and_workspace,
+  //               error_message
+  //               ),
+  //   ppt2->error_message,
+  //   ppt2->error_message);
+
   
   // ====================================================================================
   // =                                Newtonian Gauge                                   =
@@ -12137,17 +12280,47 @@ int perturb2_save_early_transfers (
         int m = ppr2->m[index_m];
         sprintf(buffer, "N_%d_%d", l, m);
         if (ppw2->n_steps==1) {
-         fprintf(file_tr, format_label, buffer, index_print_tr++);
-         fprintf(file_qs, format_label, buffer, index_print_qs++);
+          fprintf(file_tr, format_label, buffer, index_print_tr++);
+          fprintf(file_qs, format_label, buffer, index_print_qs++);
         }
         else {
-         fprintf(file_tr, format_value, N(l,m));
-         fprintf(file_qs, format_value, dN_qs2(l,m));
+          fprintf(file_tr, format_value, N(l,m));
+          fprintf(file_qs, format_value, dN_qs2(l,m));
         }
       }
     }
   }  // end of if(has_ur)
   
+  /* - Time derivatives of the neutrino multipoles (careful with RSA or NRA )*/
+  
+  if (pba->has_ur == _TRUE_) {
+  
+    int l_max_ur = MIN(ppw2->l_max_ur, ppt2->l_max_debug);
+  
+    for (int l=0; l<=l_max_ur; ++l) {
+      for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+        int m = ppr2->m[index_m];
+        sprintf(buffer, "dN_%d_%d", l, m);
+        if (ppw2->n_steps==1) {
+          fprintf(file_tr, format_label, buffer, index_print_tr++);
+          fprintf(file_qs, format_label, buffer, index_print_qs++);
+        }
+        else {
+          if ((ppw2->approx[ppw2->index_ap2_nra] == (int)nra_on)
+            ||(ppw2->approx[ppw2->index_ap2_rsa] == (int)rsa_on)
+            ||(ppw2->approx[ppw2->index_ap2_ufa] == (int)ufa_on)) {
+            fprintf(file_tr, format_value, 0);
+            fprintf(file_qs, format_value, 0);  
+          }
+          else {
+            fprintf(file_tr, format_value, dy[ppw2->pv->index_pt2_monopole_ur + lm(l,m)]);
+            fprintf(file_qs, format_value, ppw2->pvec_d_quadsources[ppw2->index_qs2_monopole_ur + lm(l,m)]);
+          }
+        }
+      }
+    }
+  }  // end of if(has_ur)
+
   
   // ------------------------------------------------------------------------------------
   // -                             Background & misc                                    -
@@ -12406,6 +12579,16 @@ int perturb2_quadratic_sources_at_tau_linear(
     result = ppw2->pvec_quadcollision;    
     size = ppw2->qs2_size;
   }
+  else if (what_to_interpolate == interpolate_d_total) {
+    table = ppw2->d_quadsources_table;
+    result = ppw2->pvec_d_quadsources;
+    size = ppw2->qs2_size;
+  }
+  else if (what_to_interpolate == interpolate_d_collision) {
+    table = ppw2->d_quadcollision_table;
+    result = ppw2->pvec_d_quadcollision;    
+    size = ppw2->qs2_size;
+  }
   else {
     class_stop (ppt2->error_message,
       "what_to_interpolate=%d not supported",
@@ -12453,13 +12636,25 @@ int perturb2_quadratic_sources_at_tau_spline (
     result = ppw2->pvec_quadcollision;    
     size = ppw2->qs2_size;
   }
+  else if (what_to_interpolate == interpolate_d_total) {
+    table = ppw2->d_quadsources_table;
+    dd_table = ppw2->ddd_quadsources_table;
+    result = ppw2->pvec_d_quadsources;
+    size = ppw2->qs2_size;
+  }
+  else if (what_to_interpolate == interpolate_d_collision) {
+    table = ppw2->d_quadcollision_table;
+    dd_table = ppw2->ddd_quadcollision_table;
+    result = ppw2->pvec_d_quadcollision;    
+    size = ppw2->qs2_size;
+  }
   else {
     class_stop (ppt2->error_message,
       "what_to_interpolate=%d not supported",
       what_to_interpolate);
   }
 
-  class_call (spline_sources_interpolate_two_levels (
+  class_call (spline_interpolate_two_levels (
            ppt->tau_sampling_quadsources,
            ppt->tau_size_quadsources,
            table,

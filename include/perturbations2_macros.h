@@ -214,7 +214,7 @@ ppt2->c_minus are used */
   if((ppw2->index_k1==ppt2->index_k1_debug) &&                      \
      (ppw2->index_k2==ppt2->index_k2_debug) &&                      \
      (ppw2->index_k3==ppt2->index_k3_debug)) {                      \
-    printf (args);                                                  \
+    fprintf (args);                                                 \
   }                                                                 \
 }
 
