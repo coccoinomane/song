@@ -16,8 +16,8 @@
  * Implementations of the tight coupling approximation.
  */
 enum tca2_method {
-  tca2_none,           /**< No TCA approximation */
-  tca2_zero            /**< Zero-order TCA approximation (NOT IMPLEMENTED YET) */
+  tca2_none,               /**< No TCA approximation */
+  tca2_first_order_pitrou  /**< First-order TCA approximation as in http://arxiv.org/abs/1012.0546 */
 };
 
 /**
@@ -88,6 +88,32 @@ enum sources2_k3_sampling {
   theta12_k3_sampling,              /**< Sampling linear in the angle between k1 and k2 */
   theta13_k3_sampling               /**< Sampling linear in the angle between k1 and k3 */
 };
+
+
+/**
+ * Which quadratic sources should we interpolate? Options for the 
+ * perturb2_quadratic_sources_at_tau() functions.
+ */
+enum quadratic_source_interpolation {
+  interpolate_total,             /**< Interpolate the quadratic part of the full Boltzmann equation
+                                 (collision term + Liouville term) */
+  interpolate_collision      /**< Interpolate the quadratic part of the collision term */
+};
+
+/**
+ * Which quadratic sources should we compute? Options for the
+ * perturb2_quadratic_sources() function.
+ */
+enum quadratic_source_computation {
+  compute_total_and_collision,  /**< compute the quadratic part of the full Boltzmann equation
+                                (collision term + Liouville term) in pvec_quadsources and that
+                                of the collision term alone in pvec_quadcollision. */
+  compute_only_liouville,       /**< compute only the quadratic part of the Liouville term in
+                                pvec_quadsources */
+  compute_only_collision        /**< compute only the quadratic part of the collision term in 
+                                pvec_quadcollision */
+};
+
 
 
 // ---------------------------------------------------------------------------------
@@ -334,7 +360,6 @@ struct perturbs2
   // =                                  Multipoles                                =
   // ==============================================================================
 
-
   /*  Array containing the 'm' values for which we need to solve the system.
      m=0 -> scalar modes
      m=1 -> vector modes
@@ -430,6 +455,8 @@ struct perturbs2
   double * k;                                 /* Array containing the magnitudes of the k1 and k2 wavemodes */
   int k_size;                                 /* Size of ppt2->k for what concerns the k1 and k2 sampling */
                                                                   
+  double k_min;     /**< minimum k used at second-order */
+  double k_max;     /**< maximum k used at second-order */
                                                                   
   enum sources2_k3_sampling k3_sampling;      /* lin, log or default CLASS sampling for ppt2->k3? */
   double *** k3;
@@ -446,17 +473,14 @@ struct perturbs2
   // =                                 Time sampling                                   =
   // ===================================================================================
 
-  double * tau_sampling; /**< array with the time values where the line-of-sight sources will
-                              be computed */
+  double * tau_sampling; /**< array with the time values where the line-of-sight sources
+                         will be computed */
   int tau_size; /**< number of entries in tau_sampling */
 
   int index_tau_end_of_recombination; /**< index in tau_sampling that marks the end of
-                                        recombination */
+                                      recombination */
 
-  /* Time at which the second-order system will start being evolved */
-  double tau_start_evolution;
-
-  /* Value of g/g(tau_rec) when to stop sampling the line of sight sources, where g is the
+  /** Value of g/g(tau_rec) when to stop sampling the line of sight sources, where g is the
   visibility function. For example, if set to 100, then the last conformal time where
   we will sample the sources will satisfy g(tau)/g(tau_rec)=100. This parameter is overridden
   when the user asks for ISW or other late-time effects, because in that case the sampling
@@ -483,12 +507,10 @@ struct perturbs2
   // =========================================================================================
   // =                                    Approximations                                     =
   // =========================================================================================
-
   
-  /* For simplicity, we store the 2nd-order approximation flags here (in the ppt2 structure) rather
-  than in the precision one.  (This is not the case for the first-order perturbations in CLASS).
-  The following parameters are documented in the declaration of the ppr structure inside the
-  file common.h */
+  /* For simplicity, we store the 2nd-order approximation flags here (in the ppt2
+  structure) rather than in the precision one like CLASS does. See also top of file
+  for more documentation on the approximation methods. */
   int tight_coupling_approximation;
   double tight_coupling_trigger_tau_c_over_tau_h;
   double tight_coupling_trigger_tau_c_over_tau_k;
@@ -504,9 +526,6 @@ struct perturbs2
 
 
 
-
-
-
   // =================================================================================
   // =                        Storage of intermediate results                        =
   // =================================================================================
@@ -519,9 +538,6 @@ struct perturbs2
   /* File that will keep track how how many sources files have been succesfully written */
   FILE * sources_status_file;
   char sources_status_path[_FILENAMESIZE_];
-
-
-
 
 
 
@@ -565,7 +581,6 @@ struct perturbs2
 
 
 
-
 /**
  * Workspace containing, among other things, the value at a given time
  * of all background/perturbed quantitites, as well as their indices.
@@ -577,61 +592,74 @@ struct perturbs2
 struct perturb2_workspace 
 {
 
+  // =============================================================================================
+  // =                                    Evolution variables                                    =
+  // =============================================================================================
+  
+  struct perturb2_vector * pv;  /**< Pointer to vector of integrated perturbations and their time-derivatives. */
 
-  // ***************       Geometrical Variables       *********************
+  double tau_start_evolution; /**< Conformal time when we start evolving the current wavemode */
   
-  /* Wavemodes for which we are solving the differential system. */
-  int index_k1;
-  int index_k2;
-  int index_k3;
-  double k1, k2;
   
-  /* Norm of the k3 vector, which is the sum of the k1 and k2 wavemodes. Inside the
-    differential system, we shall call it simply 'k' */
-  double k, k_sq;
+  
+  // =============================================================================================
+  // =                                    Geometric variables                                    =
+  // =============================================================================================
+  
+  int index_k1;   /**< index in ppt->k of the k1 wavemode currently being evolved */
+  int index_k2;   /**< index in ppt->k of the k2 wavemode currently being evolved */
+  int index_k3;   /**< index in ppt->k3[index_k1][index_k2] of the k3 wavemode currently being evolved */
+  double k1;      /**< magnitude of the k1 wavemode currently being evolved */
+  double k2;      /**< magnitude of the k2 wavemode currently being evolved */
+  double k;       /**< magnitude of the k3 vector currently being evolved */
+  double k_sq;    /**< square of the magnitude of the k3 vector currently being evolved */
   
   /* Cosine of the angles between k1 and k, between k2 and k, and between k1 and k2. These are
   obtained assuming the vector k is aligned with the zenith (z axis) */
-  double cosk1k, cosk2k, cosk1k2, sink1k, sink2k;
+  double cosk1k;   /**< cosine of the angle between k1 and k, assuming k is aligned with the z axis */
+  double cosk2k;   /**< cosine of the angle between k2 and k, assuming k is aligned with the z axis */
+  double cosk1k2;  /**< cosine of the angle between k1 and k2, assuming k is aligned with the z axis */
+  double sink1k;   /**< sine of the angle between k1 and k, assuming k is aligned with the z axis */
+  double sink2k;   /**< sine of the angle between k2 and k, assuming k is aligned with the z axis */
   
-  /* Angles between k and k1, and k and k2 */
-  double theta_1, theta_2;
+  double theta_1;  /**< angle between k and k1 in radians */
+  double theta_2;  /**< angle between k and k2 in radians */
 
-  /* Scalar products between the three wavemodes */
-  double k1_dot_k2;                    /* scalarProduct(k1,k2) */
-  double k1_dot_k2_rescaled;
+  /* Spherical components of the wavemodes; they are computed as k[m] = xi[m]_i k^i,
+  where xi[m]^i is the spherical basis described in sec. A.3.1 of
+  http://arxiv.org/abs/1405.2280 (see also Beneke & Fidler 2010, eqs. 68
+  and A.12) */
+  double k1_m[3];  /**< spherical components of the k1 wavemode, defined as k1_m[m+1] = xi[m]_i k1^i */
+  double k2_m[3];  /**< spherical components of the k2 wavemode, defined as k2_m[m+1] = xi[m]_i k2^i */
 
-  /* Spherical components of the wavemodes.  These are obtained using k[m] = xi[m]_i k^i,
-  where xi[m]^i is the spherical basis (see Beneke & Fidler 2010, eqs. 68 and A.12) */
-  double k1_m[3];                           /* The m-th component is given by k1_m[m+1] */
-  double k2_m[3];                           /* The m-th component is given by k2_m[m+1] */
+  double k1_dot_k2;           /**< scalar products between the k1 and k2 vectors: k1_i k2^i */
 
   /* Tensorial product between k1 and k2, that is, X[0]^ij k1_i k2_j, where
   X[0]^ij is the projection matrix.  It appears in the (2,2,m) hierachy for
-  cold matter, and in general whenever one wants to convert tensor equations
-  into m=0,1,2 multipoles. It is also present when converting beta-moments to
-  fluid variables. Use k1_ten_k2[m+2] to access the m-th component. */
-  double k1_ten_k2[5];
-  double k1_ten_k1[5];
-  double k2_ten_k2[5];
+  cold matter, and in general whenever one wants to convert quadrupoles
+  to fluid variables. */
+  double k1_ten_k2[5];  /**< tensorial product between k1 and k2, defined as k1_ten_k2[m+2] = X[0]^ij k1_i k2_j */
+  double k1_ten_k1[5];  /**< tensorial product between k1 and k1, defined as k1_ten_k1[m+2] = X[0]^ij k1_i k1_j */
+  double k2_ten_k2[5];  /**< tensorial product between k2 and k2, defined as k2_ten_k2[m+2] = X[0]^ij k2_i k2_j */
+
+  /* Rotation coefficients needed to implement the scalar linear perturbations
+  into our second-order system. These arrays depend on the (l,m) multipole considered
+  and on the cosine of the angle between k and either k1 or k2. They are indexed as
+  ppw2->rotation_1[lm_quad(l,m)]. */
+  double *rotation_1;           /**< Rotation coefficients for k1, indexed as ppw2->rotation_1[lm_quad(l,m)] */
+  double *rotation_2;           /**< Rotation coefficients for k2, indexed as ppw2->rotation_2[lm_quad(l,m)] */
+  double *rotation_1_minus;     /**< Rotation coefficients for k1 (negative m's), indexed as ppw2->rotation_1_minus[lm_quad(l,m)] */
+  double *rotation_2_minus;     /**< Rotation coefficients for k2 (negative m's), indexed as ppw2->rotation_2_minus[lm_quad(l,m)] */
 
 
-  /* Array containing the rotation coefficients needed to relate the first-order quantities
-   (computed in the module perturbations.c) to our second-order system.  These factors depend
-   on the lm multipole considered and on the cosine of the angle between k and either k1 or k2. */
-  double *rotation_1;                         /* Rotation factors for k1 */
-  double *rotation_2;                         /* Rotation factors for k2 */
-  double *rotation_1_minus;                   /* Rotation factors for k1 (negative m's) */
-  double *rotation_2_minus;                   /* Rotation factors for k2 (negative m's) */
-
-
-
-  // *** Inner products weighted by the coupling coefficients
+  // =============================================================================================
+  // =                                  Coupling coefficients                                    =
+  // =============================================================================================
 
   /* Sum over 'm' of the coupling coefficients (c_minus, c_plus, c_zero, etc.) with the rotation
-    coefficients defined above.  It is not strictly necessary to precompute these product arrays,
-    but it saves a lot of computational time as they do not depend on time and can be computed
-    once for each wavemode-set we evolve */
+  coefficients defined above.  It is not strictly necessary to precompute these product arrays,
+  but it saves a lot of computational time as they do not depend on time and can be computed
+  once for each wavemode-set we evolve */
   
   /* Intensity couplings */
   double * c_minus_product_12;
@@ -647,7 +675,6 @@ struct perturb2_workspace
   double * r_minus_product_21;
   double * r_plus_product_12;
   double * r_plus_product_21;
-
 
   /* E-mode polarization couplings */
   double * d_minus_product_12;
@@ -667,7 +694,6 @@ struct perturb2_workspace
   double * k_minus_product_22;
   double * k_plus_product_11;
   double * k_plus_product_22;
-
   
   /* B-mode polarization couplings */
   double * d_zero_product_12;
@@ -682,35 +708,53 @@ struct perturb2_workspace
 
 
 
-  // ******************            Indices for the metric          *********************
+  // =============================================================================================
+  // =                                      Metric indices                                       =
+  // =============================================================================================
 
   /* All possible useful indices for those metric perturbations which are not integrated
-  over time, but just inferred from Einstein equations (_mt_" stands for "metric") */
+  over time, but just inferred from Einstein equations (_mt2_" stands for "metric at
+  second order"). See sec. 3.3 of http://arxiv.org/abs/1405.2280 for details on the
+  metric variables used by SONG. */
 
   /* Newtonian gauge */
-  int index_mt2_psi;                      /* psi in newtonian gauge */
-  int index_mt2_phi_prime;                /* (d phi/d tau) in newtonian gauge, will set to be equal to one of the below indices. */
-  int index_mt2_phi_prime_poisson;        /* (d phi/d tau) in newtonian gauge, using the Poisson equation */
-  int index_mt2_phi_prime_longitudinal;   /* (d phi/d tau) in newtonian gauge, using the longitudinal equation */
-  int index_mt2_omega_m1_prime;           /* vector mode of the metric in Newtonian gauge */
-  int index_mt2_gamma_m2_prime_prime;     /* tensor mode of the metric in Newtonian gauge */           
-
+  int index_mt2_psi;                      /**< psi in newtonian gauge */
+  int index_mt2_phi_prime;                /**< (d phi/d tau) in newtonian gauge, will set to be equal to one of the below indices. */
+  int index_mt2_phi_prime_poisson;        /**< (d phi/d tau) in newtonian gauge, using the Poisson equation */
+  int index_mt2_phi_prime_longitudinal;   /**< (d phi/d tau) in newtonian gauge, using the longitudinal equation */
+  int index_mt2_omega_m1_prime;           /**< vector mode of the metric in Newtonian gauge */
+  int index_mt2_gamma_m2_prime_prime;     /**< tensor mode of the metric in Newtonian gauge */           
 
   /* Synchronous gauge */
-  int index_mt2_h_prime;     /**< h' (wrt conf. time) in synchronous gauge */
-  int index_mt2_h_prime_prime; /**< h'' (wrt conf. time) in synchronous gauge */
-  int index_mt2_eta_prime;   /**< eta' (wrt conf. time) in synchronous gauge */
-  int index_mt2_alpha_prime; /**< (d \f$ \alpha \f$/d conf.time) in synchronous gauge, where \f$ \alpha = (h' + 6 \eta') / (2 k^2) \f$ */
+  int index_mt2_h_prime;         /**< (d h/d tau) in synchronous gauge */
+  int index_mt2_h_prime_prime;   /**< (d^2 h/d tau^2) in synchronous gauge */
+  int index_mt2_eta_prime;       /**< (d eta/d tau) in synchronous gauge */
+  int index_mt2_alpha_prime;     /**< (d alpha/d tau) in synchronous gauge, where alpha=(h'+6 eta')/(2 k^2) */
 
-  int mt2_size;              /**< size of metric perturbation vector */
+  int mt2_size;                  /**< size of metric perturbation vector */
 
  
 
+  // =============================================================================================
+  // =                                     Quadratic sources                                     =
+  // =============================================================================================
 
+  double ** quadsources_table; /**< Table that will contain all the quadratic sources needed by
+                               SONG to solve the differential system for the current wavemode.
+                               Indexed as ppw2->quadsources_table[index_qs2_XXX][index_tau] */
 
-  // ******************            Indices for the quadratic sources          *********************
+  double ** dd_quadsources_table; /**< Second-order time derivative of quadsources_table,
+                                  needed for spline interpolation */
+  
+  double ** quadcollision_table; /**< Table that will contain the quadratic part of the collision
+                                 term. Needed to compute the tight coupling approximation.
+                                 Indexed as ppw2->quadsources_table[index_qs2_XXX][index_tau] */
 
-  int qs2_size;
+  double ** dd_quadcollision_table; /**< Second-order time derivative of quadcollision_table,
+                                    needed for spline interpolation */
+  
+  int qs2_size; /**< Number of quadratic sources used in SONG, and size of ppw2->quadsources_table
+                and ppw2->pvec_quadsources */
 
   /* Quadratic sources for the metric, Newtonian gauge */
   int index_qs2_psi;
@@ -754,83 +798,113 @@ struct perturb2_workspace
   int l_max_ur;
   int n_hierarchy_ur;
   
+
+
+  // =============================================================================================
+  // =                                      Time interpolation                                   =
+  // =============================================================================================
+
+  double * pvecback;            /**< interpolated values of the background quantitites at the current time tau */
+  double * pvecthermo;          /**< interpolated values of the thermodynamics quantitites at the current time tau */
+  double * pvecmetric;          /**< interpolated values of the metric quantitites at the current time tau */
+  double * pvec_quadsources;    /**< interpolated values of the quadratic sources at the current time tau */
+  double * pvec_quadcollision;  /**< interpolated values of the quadratic collisional sources at the current time tau */
+
+  double * pvec_sources1;       /**< interpolated values of the first-order perturbations in k1 and tau; filled by
+                                the perturbations.c function perturb_song_sources_at_tau() */
+  double * pvec_sources2;       /**< interpolated values of the first-order perturbations in k2 and tau; filled by
+                                the perturbations.c function perturb_song_sources_at_tau() */
+
+  int last_index_back;         /**< Keep track of the row where we last accessed the background table, useful to
+                               speed up the interpolation performed by background_at_tau() */
+  int last_index_thermo;       /**< Keep track of the row where we last accessed the thermodynamics table, useful to
+                               speed up the interpolation performed by thermodynamics_at_z() */
+  int last_index_sources;      /**< Keep track of the row where we last accessed the ppt->quadsources table, useful to
+                               speed up the interpolation performed by perturb_song_sources_at_tau() */
+
+
+
+  // =============================================================================================
+  // =                                    Fluid variables                                        =
+  // =============================================================================================
+
+  //@{
+  /** Photon fluid variables; filled & explained in perturb2_fluid_variables() */
+  double delta_g_1, delta_g_2, u_g_1[2], u_g_2[2];
+  double v_dot_v_g, v_ten_v_g[3];
+  double delta_g, delta_g_adiab, u_g[2], pressure_g, shear_g[3];
+  //@}
+
+  //@{
+  /** Baryon fluid variables; filled & explained in perturb2_fluid_variables() */
+  double delta_b_1, delta_b_2, delta_b_1_prime, delta_b_2_prime;
+  double u_b_1[2], u_b_2[2], u_b_1_prime[2], u_b_2_prime[2];
+  double v_dot_v_b, v_ten_v_b[3], v_ten_v_b_prime[3];
+  double delta_b, u_b[2], pressure_b, shear_b[3];
+  //@}
+
+  //@{
+  /** Cold dark matter fluid variables; filled & explained in perturb2_fluid_variables() */
+  double delta_cdm_1, delta_cdm_2, u_cdm_1[2], u_cdm_2[2];
+  double v_dot_v_cdm, v_ten_v_cdm[3];
+  double delta_cdm, u_cdm[2], pressure_cdm, shear_cdm[3];
+  //@}
   
-  // ******************            Indices for the source terms          *********************
+  //@{
+  /** Ultra relativistic species fluid variables; filled & explained in perturb2_fluid_variables() */
+  double delta_ur_1, delta_ur_2, u_ur_1[2], u_ur_2[2];
+  double v_dot_v_ur, v_ten_v_ur[3];
+  double delta_ur, u_ur[2], pressure_ur, shear_ur[3];
+  //@}
   
-  /* Indices for the ppw2->source_term_table, used to perform the integration by parts of the line-of-sight sources.
-  We shall temporarily store in ppw2->source_term_table the results obtained from the differential system.
-  We cannot use the ppt2->sources array for this task, as we don't want to keep these intermediate results. The
-  advantage of using this buffer array ppw2->source_term_table is that we can obtain its derivatives once the evolution
-  of the system is over. */
-   
-  int st2_size;                       /* Number of variables stored in pptw->source_term_table */ 
-
-  double * source_term_table;         /* Indexed as source_term_table[index_tau*ppw2->st2_size+index_st2] */
 
 
-  // ******************            Tables for the quadratic sources          *********************
+  // =============================================================================================
+  // =                                    Approximations                                         =
+  // =============================================================================================
 
-  double ** quadsources_table;
-
-  /* These tables will contain the second-derivatives of the aboves, in view of spline interpolation */
-  double ** dd_quadsources_table;
-
-
-
-  // *****************         Arrays Filled at Each Evolution Step         ************************
-
-  double * pvecback;                           /* Background quantitites */
-  double * pvecthermo;                         /* Thermodynamics quantitites */
-  double * pvecmetric;                         /* Metric quantitites */
-  double * pvec_quadsources;                   /* Quadratic sources */
-  double * pvec_quadcollision;                 /* Quadratic collisional sources */
-
-  /* 1st-order perturbations in k1 and k2.  They are filled at each call of
-  'perturb2_quadratic_sources' and 'perturb2_initial_conditions' */
-  double * pvec_sources1;       
-  double * pvec_sources2;
-
-  /* Pointer to vector of integrated perturbations and their time-derivatives. */
-  struct perturb2_vector * pv;
-
-  /* The interpolation functions background_at_tau(), thermodynamics_at_z(), perturb_sources_at_tau()
-    keep memory of the last point called through the following indices. */
-  int inter_mode;
-  int last_index_back;
-  int last_index_thermo;
-  int last_index_sources;
-
-
-
-  // ************************  Approximations  *******************************
-
-  /* Approximations used at a given time */
-
-  int index_ap2_tca;         /* Index for tight-coupling approximation */
-  int index_ap2_rsa;         /* Index for radiation streaming approximation */
-  int index_ap2_ufa;         /* Index for ultra-relativistic fluid approximation */
-  int index_ap2_nra;         /* Index for no-radiation approximation */
-                              
-  int * approx;             /* Array of approximation flags holding at a given time: approx[index_ap] */
-  int ap2_size;              /* Number of relevant approximations for a given mode */
-
-
-
-
-
-  // **********************  Baryon and CDM fluids   **************************
+  int * approx;        /**< Logical array of active approximations at a given time: approx[ppw2->index_ap2_XXX] */
+  int ap2_size;        /**< Number of possible approximation schemes and size of ppw2->approx */
   
-  /* Value of the n=2 beta-moments for the baryon and CDM fluids, assuming they are perfect fluids */
-  double b_200;
-  double b_22m[3];
-  double cdm_200;
-  double cdm_22m[3];
+  int index_ap2_tca;   /**< Index for the tight-coupling approximation in the array ppw2->approx */
+  int index_ap2_rsa;   /**< Index for the radiation streaming approximation in the array ppw2->approx */
+  int index_ap2_ufa;   /**< Index for the ultra-relativistic fluid approximation in the array ppw2->approx */
+  int index_ap2_nra;   /**< Index for the no-radiation approximation in the array ppw2->approx */
+
+  int n_active_approximations; /**< Number of approximations active for the current (k1,k2,k3) and time tau */
+
+  double I_1m_tca1[2];     /**< value of the photon intensity dipole in the tight coupling approximations, neglecting O(tau_c)^2 terms */
+  double u_g_tca1[2];      /**< value of the photon velocity u_g[m]=i*v_g[m] in the tight coupling approximations, neglecting O(tau_c)^2 terms */
+  double I_2m_tca0[3];     /**< value of the photon quadrupole in the tight coupling approximations, neglecting O(tau_c) terms */
+  double I_2m_tca1[3];     /**< value of the photon quadrupole in the tight coupling approximations, neglecting O(tau_c)^2 terms */
+  double shear_g_tca1[3];  /**< value of the photon shear in the tight coupling approximations, neglecting O(tau_c)^2 terms */
+  double Pi_tca0[3];       /**< value of the Pi factor in the tight coupling approximations, neglecting O(tau_c) terms */
+  double Pi_tca1[3];       /**< value of the Pi factor in the tight coupling approximations, neglecting O(tau_c)^2 terms */
+  double E_2m_tca1[3];     /**< value of the E-mode quadrupole in the tight coupling approximations, neglecting O(tau_c)^2 terms */
+  double B_2m_tca1[3];     /**< value of the B-mode quadrupole in the tight coupling approximations, neglecting O(tau_c)^2 terms */
+  double U_slip_tca1[2];   /**< value of the velocity slip U[m]=u_b[m]-u_g[m] in the tight coupling approximations, neglecting O(tau_c)^2 terms */
+  double C_1m_tca1[2];     /**< value of the purely second-order part of the photon dipole collision term,
+                           C_1m = kappa_dot * (4/3*b_11m-I_1m), in the tight coupling approximations, neglecting O(tau_c)^2 terms */
+
+  double I_1m[3];      /**< The intensity dipole fed to the evolver (depends on TCA) */
+  double I_2m[3];      /**< The intensity quadrupole fed to the evolver (depends on TCA) */
+  double E_2m[3];      /**< The E-polarisation quadrupole fed to the evolver (depends on TCA) */
+  double B_2m[3];      /**< The B-polarisation quadrupole fed to the evolver (depends on TCA) */
+  double C_1m[2];      /**< value of the purely second-order part of the photon dipole collision term,
+                       C_1m = kappa_dot * (4/3*b_11m-I_1m) */
+  double b_200;        /**< The baryon "pressure" fed to the evolver (depends on perfect fluid approximation) */
+  double b_22m[3];     /**< The baryon quadrupole fed to the evolver (depends on perfect fluid approximation) */
+  double cdm_200;      /**< The CDM "pressure" fed to the evolver (depends on perfect fluid approximation) */
+  double cdm_22m[3];   /**< The CDM quadrupole fed to the evolver (depends on perfect fluid approximation) */
 
 
-  // **********************         Debug parameters         *************************
 
-  int derivs_count;   /**< Counter to keep track of how many times the function perturb2_derivs has been called
-                           for the considered set of (k1,k2,k3). */
+  // =============================================================================================
+  // =                                           Debug                                           =
+  // =============================================================================================
+  
+  int derivs_count;   /**< Counter to keep track of how many times the function perturb2_derivs
+                      has been called for the considered set of (k1,k2,k3). */
 
   /** Function used to output intermediate values from the differential system.  This
   function will be given as an argument to 'generic_evolver' and is  used only for debug
@@ -839,15 +913,16 @@ struct perturb2_workspace
   to the one requested through ppt2->index_k1_debug, ppt2->index_k2_debug and
   ppt2->index_k3_debug. This function will be called for each time step in the
   differential system. */
-  int (*print_function)(double x, double y[], double dy[], void *parameters_and_workspace, ErrorMsg error_message);
+  int (*print_function)(double x, double y[], double dy[],
+    void *parameters_and_workspace, ErrorMsg error_message);
   
   /** String that contains information on the wavemode that is being currently integrated.
   such information is printed to the debug files if ppt2->perturbations2_verbose is high
   enough */
   char info [4096];
 
-  long int n_steps;   /**< Number of steps taken by the differential system so far for the active (k1,k2,k3) mode.
-                           Computed only if has_debug_files==_TRUE_ */
+  long int n_steps;   /**< Number of steps taken by the differential system so far for the active
+                      (k1,k2,k3) mode. Computed only if has_debug_files==_TRUE_. */
 
 };
 
@@ -870,83 +945,86 @@ struct perturb2_workspace
 struct perturb2_vector
 {
 
-  // ================================================
-  // =                    Shortcuts                 =
-  // ================================================
-
-  /* Note that the number of evolved equations changes during the evaluation of a single (k1,k2,k3) mode.
-  This happens, for example, whenever the approximation scheme changes at some time.  Hence, the following
-  'l_max' and 'n_hierarchy' variables are not related to the particular (k1,k2,k3) mode, but to the
-  time interval. */
-  int l_max_g;                  /* Max 'l' momentum in Boltzmann hierarchy */
-  int l_max_pol_g;              /* Max 'l' momentum in Boltzmann hierarchy */
-  int l_max_ur;                 /* Max 'l' momentum in Boltzmann hierarchy */
-  int n_hierarchy_g;            /* Number of photon temperature hierarchy equations */
-  int n_hierarchy_pol_g;        /* Number of photon polarization hierarchy equations (same for E and B-modes) */  
-  int n_hierarchy_b;            /* Number of baryon hierarchy equations */
-  int n_hierarchy_cdm;          /* Number of cold dark matter hierarchy equations */    
-  int n_hierarchy_ur;           /* Number of neutrino hierarchy equations */
-
-  /* Needed to address the baryon and CDM hierarchies with a loop over n,l,m.
-  For perfect fluids, n_max=l_max=1, otherwise =2. */
-  int n_max_b;                  
-  int l_max_b;
-  int n_max_cdm;
-  int l_max_cdm;
-
-
-
-  // ==============================================
-  // = Indices of evolved second-order quantities = 
-  // ==============================================
-
-  // ***** Photon hierarchies
-  int index_pt2_monopole_g;                   /* Photon temperature hierarchy starts here */
-  int index_pt2_monopole_E;                   /* Photon E-mode polarization hierarchy starts here */  
-  int index_pt2_monopole_B;                   /* Photon B-mode polarization hierarchy starts here */    
-
-  // *** Baryons hierarchy
-  int index_pt2_monopole_b;
-
-  // ***** Cold dark matter hierarchy
-  int index_pt2_monopole_cdm;
-
-  // ***** Neutrino hierarchy
-  int index_pt2_monopole_ur;
-      
-  // ***** magnetic fields
-  
-  int index_pt2_monopole_mag;    
-  
-  // ***** Metric variables
-  int index_pt2_eta;                        /* Synchronous gauge metric perturbation eta */
-  int index_pt2_phi;                        /* Newtonian gauge potential phi */
-  int index_pt2_omega_m1;                   /* Newtonian gauge vector potential omega_[m=1] */
-  int index_pt2_gamma_m2;                   /* Newtonian gauge tensor potential gamma_[m=2] */
-  int index_pt2_gamma_m2_prime;             /* the equation for gamma_[m=2] is a second order DE */
-
-  int pt2_size;                             /* Size of perturbation vector, equivalent to the number of evolved quantities */
-
-  // =================
-  // =    Arrays     =
-  // =================
-
-  /* Array of perturbations to be integrated. It is filled at the end of each iteration of the evolver. */
-  double * y;
-
-  /* Vector containing the time-derivative of the pv->y. It is filled by each call of perturb2_derivs. */
-  double * dy;               
-
-  /* Boolean array specifying which perturbations enter in the calculation of the source functions. Only
-    the marked perturbations will be interpolated at the times requested in ppt2->tau_sampling. */
-  int * used_in_sources;
-
-
-  // =================
-  // =     Misc      =
-  // =================
 
  
+  // ====================================================================================
+  // =                                 Number of equations                              =
+  // ====================================================================================
+
+  /* The number of evolved equations varies during the evolution of the same
+  (k1,k2,k3) wavemode. This happens whenever the approximation scheme changes; this
+  is why we split the integration of a given wavemode in time-intervals. Each time
+  interval will be solved by the evolver separately. The following variables reflect
+  the varying number of evolved equations and will be updated at the beginning of each
+  time-interval by the perturb2_vector_init() function. */
+  int l_max_g;                  /**< Largest multipole evolved in the photon intensity hierarchy */
+  int l_max_pol_g;              /**< Largest multipole evolved in the photon polarisation hierarchies */
+  int l_max_ur;                 /**< Largest multipole evolved in the neutrino hierarchy */
+  int l_max_b;                  /**< Largest multipole evolved in the baryon hierarchy */
+  int l_max_cdm;                /**< Largest multipole evolved in the cold dark matter hierarchy */
+  int n_hierarchy_g;            /**< Number of equations evolved for the photon temperature Boltzmann hierarchy */
+  int n_hierarchy_pol_g;        /**< Number of equations evolved for the photon polarisation (E+B) Boltzmann hierarchy */
+  int n_hierarchy_b;            /**< Number of equations evolved for the baryon Boltzmann hierarchy */
+  int n_hierarchy_cdm;          /**< Number of equations evolved for the cold dark matter Boltzmann hierarchy */
+  int n_hierarchy_ur;           /**< Number of equations evolved for the neutrino Boltzmann hierarchy */
+
+  /* The massive species like baryons and cold dark matter are described by a set
+  of three parameters (n,l,m) instead of just (l,m). The n parameter arises from the
+  velocity expansion of the distribution function; for massless particles, n is irrelevant
+  because they have unit velocity. These baryon and cdm moments are defined beta-moments,
+  and are a natural way to treat massive particles in the Boltzmann formalism.
+  For more detail, see sec. 5.3.1.3 of http://arxiv.org/abs/1405.2280. See also
+  Lewis and Challinor 2002. */
+  int n_max_b;     /**< Largest velocity moment evolved for the baryon hierarchy;
+                   equal to n_max=1 for a perfect fluid treatment. */
+  int n_max_cdm;   /**< Largest velocity moment evolved for the cold dark matter
+                   hierarchy; equal to n_max=1 for a perfect fluid treatment. */
+
+  short use_closure_g; /**< Should we use the closure relations for the photon intensity? Usually turned off if an approximation is turned on. */
+  short use_closure_pol_g; /**< Should we use the closure relations for the polarisation? Usually turned off if an approximation is turned on. */
+  short use_closure_ur; /**< Should we use the closure relations for the neutrinos? Usually turned off if an approximation is turned on. */
+
+  // ====================================================================================
+  // =                               Evolved perturbations                              =
+  // ====================================================================================
+
+  /* Radiation hierarchies */
+  int index_pt2_monopole_g;       /**< Evolution index for photon temperature hierarchy */
+  int index_pt2_monopole_E;       /**< Evolution index for photon E-mode polarization hierarchy */  
+  int index_pt2_monopole_B;       /**< Evolution index for photon B-mode polarization hierarchy */    
+  int index_pt2_monopole_ur;      /**< Evolution index for neutrino hierarchy */
+  
+  /* Matter hierarchies */
+  int index_pt2_monopole_b;       /**< Evolution index for baryon hierarchy */
+  int index_pt2_monopole_cdm;     /**< Evolution index for cold dark matter hierarchy */
+  
+	/* Magnetic Field*/
+  int index_pt2_monopole_mag; 		/**< Evolution index for magnetic field hierarchy*/   
+  
+
+  /* Metric variables */
+  int index_pt2_eta;               /**< Evolution index for synchronous gauge metric perturbation eta */
+  int index_pt2_phi;               /**< Evolution index for Newtonian gauge curvature potential phi */
+  int index_pt2_omega_m1;          /**< Evolution index for Newtonian gauge vector potential omega_[m=1] */
+  int index_pt2_gamma_m2;          /**< Evolution index for Newtonian gauge tensor potential gamma_[m=2] */
+  int index_pt2_gamma_m2_prime;    /**< Evolution index for time derivative of gamma_[m=2] */
+
+  int pt2_size;         /**< Size of perturbation vector, equival to number of evolved perturbations */
+
+  /** Array of perturbations to be integrated. It is filled by the evolver at the end of
+  each time step. */
+
+  double * y;
+
+  /** Vector containing the time-derivative of the evolved perturbations contained in y.
+  It is filled by each call of perturb2_derivs(). */
+  double * dy;               
+
+  /** Boolean array specifying which perturbations enter in the calculation of the
+  source functions. Only the marked perturbations will be interpolated at the
+  times requested in ppt2->tau_sampling. */
+  int * used_in_sources;
+
 };
 
 
@@ -959,13 +1037,13 @@ struct perturb2_vector
 */ 
 struct perturb2_parameters_and_workspace {
 
-  struct precision * ppr;                         /* Pointer to the precision structure */
-  struct precision2 * ppr2;                       /* Pointer to the precision2 structure */
-  struct background * pba;                        /* Pointer to the background structure */
-  struct thermo * pth;                            /* Pointer to the thermodynamics structure */
-  struct perturbs * ppt;                          /* Pointer to the perturbation structure */
-  struct perturbs2 * ppt2;                        /* Pointer to the 2nd-order perturbation structure */
-  struct perturb2_workspace * ppw2;               /* Worspace defined above */
+  struct precision * ppr;               /**< Pointer to the precision structure */
+  struct precision2 * ppr2;             /**< Pointer to the precision2 structure */
+  struct background * pba;              /**< Pointer to the background structure */
+  struct thermo * pth;                  /**< Pointer to the thermodynamics structure */
+  struct perturbs * ppt;                /**< Pointer to the perturbation structure */
+  struct perturbs2 * ppt2;              /**< Pointer to the 2nd-order perturbation structure */
+  struct perturb2_workspace * ppw2;     /**< Pointer to the computation workspace */
     
 };
 
@@ -1014,6 +1092,17 @@ struct perturb2_parameters_and_workspace {
            struct perturbs * ppt,
            struct perturbs2 * ppt2
            );
+
+    int perturb2_start_time_evolution (
+            struct precision * ppr,
+            struct precision2 * ppr2,
+            struct background * pba,
+            struct thermo * pth,
+            struct perturbs * ppt,
+            struct perturbs2 * ppt2,
+            double k,
+            double * tau_ini
+            );
 
     int perturb2_end_of_recombination (
           struct precision * ppr,
@@ -1079,7 +1168,7 @@ struct perturb2_parameters_and_workspace {
           struct perturbs2 * ppt2,
           double tau,
           struct perturb2_workspace * ppw2,
-          int * pa_old
+          int * old_approx
           );
 
     int perturb2_vector_free(
@@ -1176,6 +1265,41 @@ struct perturb2_parameters_and_workspace {
          struct perturb2_workspace * ppw2
          );
 
+    int perturb2_workspace_at_tau (
+           struct precision * ppr,
+           struct precision2 * ppr2,
+           struct background * pba,
+           struct thermo * pth,
+           struct perturbs * ppt,
+           struct perturbs2 * ppt2,
+           double tau,
+           double * y,
+           struct perturb2_workspace * ppw2
+           );
+       
+    int perturb2_tca_variables (
+           struct precision * ppr,
+           struct precision2 * ppr2,
+           struct background * pba,
+           struct thermo * pth,
+           struct perturbs * ppt,
+           struct perturbs2 * ppt2,
+           double tau,
+           double * y,
+           struct perturb2_workspace * ppw2
+           );
+
+    int perturb2_fluid_variables (
+           struct precision * ppr,
+           struct precision2 * ppr2,
+           struct background * pba,
+           struct thermo * pth,
+           struct perturbs * ppt,
+           struct perturbs2 * ppt2,
+           double tau,
+           double * y,
+           struct perturb2_workspace * ppw2
+           );
 
     int perturb2_einstein(
        struct precision * ppr,
@@ -1274,8 +1398,9 @@ struct perturb2_parameters_and_workspace {
           struct thermo * pth,            
           struct perturbs * ppt,
           struct perturbs2 * ppt2,
-          int index_tau, /* if negative, use interpolation with tau, below */
+          int index_tau,
           double tau,
+          int what_to_compute,
           double * pvec_quadsources,
           double * pvec_quadcollision,
           struct perturb2_workspace * ppw2
@@ -1297,6 +1422,7 @@ struct perturb2_parameters_and_workspace {
             struct perturbs * ppt,
             struct perturbs2 * ppt2,
             double tau,
+            int what_to_interpolate,
             struct perturb2_workspace * ppw2
             );
 
@@ -1304,6 +1430,7 @@ struct perturb2_parameters_and_workspace {
             struct perturbs * ppt,
             struct perturbs2 * ppt2,
             double tau,
+            int what_to_interpolate,
             struct perturb2_workspace * ppw2
             );
 
@@ -1311,6 +1438,7 @@ struct perturb2_parameters_and_workspace {
             struct perturbs * ppt,
             struct perturbs2 * ppt2,
             double tau,
+            int what_to_interpolate,
             struct perturb2_workspace * ppw2
             );
 

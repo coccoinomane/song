@@ -286,8 +286,8 @@ int input2_init (
   // =                           Perturbations, time sampling                           =
   // ====================================================================================
 
-  class_read_double("tau_start_evolution_2nd_order", ppt2->tau_start_evolution); /* obsolete */
-  class_read_double("tau_start_evolution_song", ppt2->tau_start_evolution);
+  class_read_double("tau_start_evolution_2nd_order", ppr2->custom_tau_start_evolution); /* obsolete */
+  class_read_double("tau_start_evolution_song", ppr2->custom_tau_start_evolution);
 
   class_read_double("recombination_max_to_end_ratio", ppt2->recombination_max_to_end_ratio);
 
@@ -688,9 +688,9 @@ int input2_init (
   // =                           Perturbations, approximations                          =
   // ====================================================================================
 
-  /* Tight coupling.  Note that, contrary to the 1st order case, we read the approximation settings
-  directly into the ppt2 structure rather than in the precision one.  We do so in order to keep all
-  2nd-order related quantities in the same structure */
+  /* Tight coupling.  Note that, contrary to the 1st order case, we read the approximation
+  settings directly into the ppt2 structure rather than in the precision one.  We do so in
+  order to keep all second-order related quantities in the same structure */
   class_read_int("tight_coupling_approximation_2nd_order",
     ppt2->tight_coupling_approximation); /* obsolete */
   class_read_double("tight_coupling_trigger_tau_c_over_tau_h_2nd_order",  
@@ -738,8 +738,11 @@ int input2_init (
   class_read_double("no_radiation_approximation_rho_m_over_rho_r_song",
     ppt2->no_radiation_approximation_rho_m_over_rho_r);
 
-  class_test(ppt2->ur_fluid_trigger_tau_over_tau_k==ppt2->radiation_streaming_trigger_tau_over_tau_k, errmsg,
-    "please choose different values for precision parameters ur_fluid_trigger_tau_over_tau_k_song and radiation_streaming_trigger_tau_over_tau_k_song, in order to avoid switching two approximation schemes at the same time");
+  class_test(ppt2->ur_fluid_trigger_tau_over_tau_k
+    ==ppt2->radiation_streaming_trigger_tau_over_tau_k, errmsg,
+    "please choose different values for precision parameters\
+ur_fluid_trigger_tau_over_tau_k_song and radiation_streaming_trigger_tau_over_tau_k_song\
+, in order to avoid switching two approximation schemes at the same time");
 
 
   // ====================================================================================
@@ -762,7 +765,8 @@ int input2_init (
       ppt2->phi_prime_eq = longitudinal;
     }
     else {
-      class_stop (errmsg, "phi_prime_equation=%s not supported, choose between poisson and longitudinal",
+      class_stop (errmsg,
+      "phi_prime_equation=%s not supported, choose between poisson and longitudinal",
       string1);
     }
   }
@@ -879,7 +883,8 @@ int input2_init (
         "transfer2_k3_sampling=%s not supported, choose between 'bessel', 'smart' and 'class'.", string1);
   }
 
-  /* If 'transfer2_k3_sampling=class', choose the density of the k3-sampling for the transfer functions */
+  /* If 'transfer2_k3_sampling=class', choose the density of the k3-sampling for
+  the transfer functions */
   class_read_double("k_step_trans_scalars_2nd_order", ppr2->q_linstep_song); /* obsolete */
   class_read_double("q_linstep_song",ppr2->q_linstep_song);
 
@@ -1128,41 +1133,41 @@ int input2_init (
   // =========================================================================================
 
   /* Rear l_max for the Boltzmann hierarchies */
-  class_read_int("l_max_g_2nd_order", ppr2->l_max_g_song); /* obsolete */
-  class_read_int("l_max_pol_g_2nd_order", ppr2->l_max_pol_g_song); /* obsolete */
-  class_read_int("l_max_ur_2nd_order", ppr2->l_max_ur_song);   /* obsolete */
-  class_read_int("l_max_g_ten_2nd_order", ppr2->l_max_g_ten_song); /* obsolete */
-  class_read_int("l_max_pol_g_ten_2nd_order", ppr2->l_max_pol_g_ten_song); /* obsolete */
+  class_read_int("l_max_g_2nd_order", ppr2->l_max_g); /* obsolete */
+  class_read_int("l_max_pol_g_2nd_order", ppr2->l_max_pol_g); /* obsolete */
+  class_read_int("l_max_ur_2nd_order", ppr2->l_max_ur);   /* obsolete */
+  class_read_int("l_max_g_ten_2nd_order", ppr2->l_max_g_ten); /* obsolete */
+  class_read_int("l_max_pol_g_ten_2nd_order", ppr2->l_max_pol_g_ten); /* obsolete */
   
-  class_read_int("l_max_g_song", ppr2->l_max_g_song);
-  class_read_int("l_max_pol_g_song", ppr2->l_max_pol_g_song);    
-  class_read_int("l_max_ur_song", ppr2->l_max_ur_song);        
-  class_read_int("l_max_g_ten_song", ppr2->l_max_g_ten_song);       
-  class_read_int("l_max_pol_g_ten_song", ppr2->l_max_pol_g_ten_song);            
+  class_read_int("l_max_g_song", ppr2->l_max_g);
+  class_read_int("l_max_pol_g_song", ppr2->l_max_pol_g);    
+  class_read_int("l_max_ur_song", ppr2->l_max_ur);        
+  class_read_int("l_max_g_ten_song", ppr2->l_max_g_ten);       
+  class_read_int("l_max_pol_g_ten_song", ppr2->l_max_pol_g_ten);            
 
   /* Read l_max for the quadratic sources in the Boltzmann hierarchies. If the user specified
   a negative value for one of them, set it to the corresponding l_max_XXX_song (see above).
   Also make sure that each of them is not larger than the corresponding l_max_XXX_song. The
   following lines must go below the definitions of l_max_g_song, etc. */
   class_read_int("l_max_g_quadsources", ppr2->l_max_g_quadsources);
-  if ((ppr2->l_max_g_quadsources<0) || (ppr2->l_max_g_quadsources>ppr2->l_max_g_song))
-    ppr2->l_max_g_quadsources = ppr2->l_max_g_song;
+  if ((ppr2->l_max_g_quadsources<0) || (ppr2->l_max_g_quadsources>ppr2->l_max_g))
+    ppr2->l_max_g_quadsources = ppr2->l_max_g;
 
   class_read_int("l_max_pol_g_quadsources", ppr2->l_max_pol_g_quadsources);
-  if ((ppr2->l_max_pol_g_quadsources<0) || (ppr2->l_max_pol_g_quadsources>ppr2->l_max_pol_g_song))
-    ppr2->l_max_pol_g_quadsources = ppr2->l_max_pol_g_song;
+  if ((ppr2->l_max_pol_g_quadsources<0) || (ppr2->l_max_pol_g_quadsources>ppr2->l_max_pol_g))
+    ppr2->l_max_pol_g_quadsources = ppr2->l_max_pol_g;
 
   class_read_int("l_max_ur_quadsources", ppr2->l_max_ur_quadsources);
-  if ((ppr2->l_max_ur_quadsources<0) || (ppr2->l_max_ur_quadsources>ppr2->l_max_ur_song))
-    ppr2->l_max_ur_quadsources = ppr2->l_max_ur_song;
+  if ((ppr2->l_max_ur_quadsources<0) || (ppr2->l_max_ur_quadsources>ppr2->l_max_ur))
+    ppr2->l_max_ur_quadsources = ppr2->l_max_ur;
 
   class_read_int("l_max_g_ten_quadsources", ppr2->l_max_g_ten_quadsources);
-  if ((ppr2->l_max_g_ten_quadsources<0) || (ppr2->l_max_g_ten_quadsources>ppr2->l_max_g_ten_song))
-    ppr2->l_max_g_ten_quadsources = ppr2->l_max_g_ten_song;
+  if ((ppr2->l_max_g_ten_quadsources<0) || (ppr2->l_max_g_ten_quadsources>ppr2->l_max_g_ten))
+    ppr2->l_max_g_ten_quadsources = ppr2->l_max_g_ten;
 
   class_read_int("l_max_pol_g_ten_quadsources", ppr2->l_max_pol_g_ten_quadsources);
-  if ((ppr2->l_max_pol_g_ten_quadsources<0) || (ppr2->l_max_pol_g_ten_quadsources>ppr2->l_max_pol_g_ten_song))
-    ppr2->l_max_pol_g_ten_quadsources = ppr2->l_max_pol_g_ten_song;
+  if ((ppr2->l_max_pol_g_ten_quadsources<0) || (ppr2->l_max_pol_g_ten_quadsources>ppr2->l_max_pol_g_ten))
+    ppr2->l_max_pol_g_ten_quadsources = ppr2->l_max_pol_g_ten;
 
   /* Read l_max for the line of sight integration */
   class_read_int("l_max_T_los", ppr2->l_max_los_t); /* obsolete */
@@ -1232,7 +1237,7 @@ int input2_init (
   for (i=0; i < (ppr2->m_size-1); ++i)
     class_test (ppr2->m[i] >= ppr2->m[i+1],
       errmsg,
-      "the m-list provided  in 'modes_2nd_order' is not strictly ascending");
+      "the m-list provided  in modes_song is not strictly ascending");
 
   /* Maximum 'm' that will be computed */
   ppr2->m_max_2nd_order = ppr2->m[ppr2->m_size-1];
@@ -1240,12 +1245,13 @@ int input2_init (
   /* Check that the m's are positive */
   class_test (ppr2->m[0] < 0,
     errmsg,
-    "the m-list provided in 'modes_2nd_order' has negative numbers in it");
+    "the m-list provided in modes_song has negative numbers in it");
 
   /* Check that m_max is smaller than limit */  
   class_test (ppr2->m_max_2nd_order > (_MAX_NUM_AZIMUTHAL_-1),
     errmsg,
-    "the maximum value of the azimuthal number 'm' cannot exceed %d, please choose 'modes_2nd_order' accordingly",
+    "the maximum value of m cannot exceed %d, please choose modes_song\
+ accordingly or increase the macro _MAX_NUM_AZIMUTHAL_",
     _MAX_NUM_AZIMUTHAL_);
 
   /* Find out the index in ppr2->m corresponding to a given m. */
@@ -1529,8 +1535,6 @@ int input2_default_params (
 
   /* - Time sampling */
 
-  ppt2->tau_start_evolution = 1;
-
   ppt2->recombination_max_to_end_ratio = 1000;
 
   ppt2->has_custom_timesampling = _FALSE_;
@@ -1627,11 +1631,11 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
 
   ppr2->m_max_2nd_order=0;
 
-  ppr2->l_max_g_song=8;
-  ppr2->l_max_pol_g_song=8;
-  ppr2->l_max_ur_song=8; 
-  ppr2->l_max_g_ten_song=8;
-  ppr2->l_max_pol_g_ten_song=8;
+  ppr2->l_max_g=8;
+  ppr2->l_max_pol_g=8;
+  ppr2->l_max_ur=8; 
+  ppr2->l_max_g_ten=8;
+  ppr2->l_max_pol_g_ten=8;
 
   ppr2->l_max_g_quadsources=-1;
   ppr2->l_max_pol_g_quadsources=-1;
@@ -1651,6 +1655,7 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   // =                            Time samplings                          =
   // ======================================================================
 
+  ppr2->custom_tau_start_evolution = 0;
   ppr2->perturb_sampling_stepsize_song = 0.4;
   ppr2->start_small_k_at_tau_c_over_tau_h_song = 0.0015;  /* decrease to start earlier in time */
   ppr2->start_large_k_at_tau_h_over_tau_k_song = 0.07;    /* decrease to start earlier in time */

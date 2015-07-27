@@ -166,27 +166,27 @@ int main(int argc, char **argv) {
   // printf("\tpt2.primordial_local_fnl_phi = %g\n", pt2.primordial_local_fnl_phi);
 
   /* Bispectrum */
-  printf("* Bispectrum parameters\n");
-  printf("\tpt2.has_bispectra = %d\n", pt2.has_bispectra);
-  printf("\tbi.has_bispectra = %d\n", bi.has_bispectra);
-  printf("\tbi.has_local_model = %d\n", bi.has_local_model);
-  printf("\tbi.has_equilateral_model = %d\n", bi.has_equilateral_model);
-  printf("\tbi.has_orthogonal_model = %d\n", bi.has_orthogonal_model);
-  printf("\tbi.has_galileon_model = %d\n", bi.has_galileon_model);
-  printf("\tbi.has_intrinsic = %d\n", bi.has_intrinsic);
-  printf("\tbi.has_intrinsic_squeezed = %d\n", bi.has_intrinsic_squeezed);
-  printf("\tbi.has_intrinsic_squeezed_unlensed = %d\n", bi.has_intrinsic_squeezed_unlensed);
-  printf("\tbi.has_quadratic_correction = %d\n", bi.has_quadratic_correction);
-  printf("\tbi.add_quadratic_correction = %d\n", bi.add_quadratic_correction);
-  printf("\tbi.include_lensing_effects = %d\n", bi.include_lensing_effects);
-  printf("\tbi.lensed_intrinsic = %d\n", bi.lensed_intrinsic);
-  printf("\tpr.extend_lensed_cls = %d\n", pr.extend_lensed_cls);
-  printf("\tpr.bispectra_r_sampling = %d\n", pr.bispectra_r_sampling);
-  printf("\tpr.r_left = %g\n", pr.r_left);
-  printf("\tpr.r_right = %g\n", pr.r_right);
-  printf("\tpr.r_min = %g\n", pr.r_min);
-  printf("\tpr.r_max = %g\n", pr.r_max);
-  printf("\tpr.r_size = %d\n", pr.r_size);
+  // printf("* Bispectrum parameters\n");
+  // printf("\tpt2.has_bispectra = %d\n", pt2.has_bispectra);
+  // printf("\tbi.has_bispectra = %d\n", bi.has_bispectra);
+  // printf("\tbi.has_local_model = %d\n", bi.has_local_model);
+  // printf("\tbi.has_equilateral_model = %d\n", bi.has_equilateral_model);
+  // printf("\tbi.has_orthogonal_model = %d\n", bi.has_orthogonal_model);
+  // printf("\tbi.has_galileon_model = %d\n", bi.has_galileon_model);
+  // printf("\tbi.has_intrinsic = %d\n", bi.has_intrinsic);
+  // printf("\tbi.has_intrinsic_squeezed = %d\n", bi.has_intrinsic_squeezed);
+  // printf("\tbi.has_intrinsic_squeezed_unlensed = %d\n", bi.has_intrinsic_squeezed_unlensed);
+  // printf("\tbi.has_quadratic_correction = %d\n", bi.has_quadratic_correction);
+  // printf("\tbi.add_quadratic_correction = %d\n", bi.add_quadratic_correction);
+  // printf("\tbi.include_lensing_effects = %d\n", bi.include_lensing_effects);
+  // printf("\tbi.lensed_intrinsic = %d\n", bi.lensed_intrinsic);
+  // printf("\tpr.extend_lensed_cls = %d\n", pr.extend_lensed_cls);
+  // printf("\tpr.bispectra_r_sampling = %d\n", pr.bispectra_r_sampling);
+  // printf("\tpr.r_left = %g\n", pr.r_left);
+  // printf("\tpr.r_right = %g\n", pr.r_right);
+  // printf("\tpr.r_min = %g\n", pr.r_min);
+  // printf("\tpr.r_max = %g\n", pr.r_max);
+  // printf("\tpr.r_size = %d\n", pr.r_size);
 
   /* Fisher */
   // printf("\tfi.always_interpolate_bispectra = %d\n", fi.always_interpolate_bispectra);
@@ -211,27 +211,27 @@ int main(int argc, char **argv) {
   // printf("\tfi.squeezed_ratio = %g\n", fi.squeezed_ratio);
 
   /* Precision parameters - multipoles */
-  // printf("* Precision parameters - multipoles\n");
-  // printf("\tpr2.m_size = %d, ", pr2.m_size);
-  // printf("\tpr2.m_max_2nd_order = %d, ", pr2.m_max_2nd_order);
-  // printf("\tpr2.m = ");
-  // int index_m;
-  // for (index_m=0; index_m < pr2.m_size; ++index_m)
-  //   printf("%d%s ", pr2.m[index_m], index_m!=(pr2.m_size-1)?",":"\n");
-  // printf("\tpr2.l_max_g_song = %d\n", pr2.l_max_g_song);
-  // printf("\tpr2.l_max_pol_g_song = %d\n", pr2.l_max_pol_g_song);
-  // printf("\tpr2.l_max_ur_song = %d\n", pr2.l_max_ur_song);
-  // printf("\tpr2.l_max_g_ten_song = %d\n", pr2.l_max_g_ten_song);
-  // printf("\tpr2.l_max_pol_g_ten_song = %d\n", pr2.l_max_pol_g_ten_song);
-  // printf("\tpr2.l_max_g_quadsources = %d\n", pr2.l_max_g_quadsources);
-  // printf("\tpr2.l_max_pol_g_quadsources = %d\n", pr2.l_max_pol_g_quadsources);
-  // printf("\tpr2.l_max_ur_quadsources = %d\n", pr2.l_max_ur_quadsources);
-  // printf("\tpr2.l_max_g_ten_quadsources = %d\n", pr2.l_max_g_ten_quadsources);
-  // printf("\tpr2.l_max_pol_g_ten_quadsources = %d\n", pr2.l_max_pol_g_ten_quadsources);
-  // printf("\tpr2.l_max_los_t = %d\n", pr2.l_max_los_t);
-  // printf("\tpr2.l_max_los_quadratic_t = %d\n", pr2.l_max_los_quadratic_t);
-  // printf("\tpr2.l_max_los_p = %d\n", pr2.l_max_los_p);
-  // printf("\tpr2.l_max_los_quadratic_p = %d\n", pr2.l_max_los_quadratic_p);
+  printf("* Precision parameters - multipoles\n");
+  printf("\tpr2.m_size = %d, ", pr2.m_size);
+  printf("\tpr2.m_max_2nd_order = %d, ", pr2.m_max_2nd_order);
+  printf("\tpr2.m = ");
+  int index_m;
+  for (index_m=0; index_m < pr2.m_size; ++index_m)
+    printf("%d%s ", pr2.m[index_m], index_m!=(pr2.m_size-1)?",":"\n");
+  printf("\tpr2.l_max_g = %d\n", pr2.l_max_g);
+  printf("\tpr2.l_max_pol_g = %d\n", pr2.l_max_pol_g);
+  printf("\tpr2.l_max_ur = %d\n", pr2.l_max_ur);
+  printf("\tpr2.l_max_g_ten = %d\n", pr2.l_max_g_ten);
+  printf("\tpr2.l_max_pol_g_ten = %d\n", pr2.l_max_pol_g_ten);
+  printf("\tpr2.l_max_g_quadsources = %d\n", pr2.l_max_g_quadsources);
+  printf("\tpr2.l_max_pol_g_quadsources = %d\n", pr2.l_max_pol_g_quadsources);
+  printf("\tpr2.l_max_ur_quadsources = %d\n", pr2.l_max_ur_quadsources);
+  printf("\tpr2.l_max_g_ten_quadsources = %d\n", pr2.l_max_g_ten_quadsources);
+  printf("\tpr2.l_max_pol_g_ten_quadsources = %d\n", pr2.l_max_pol_g_ten_quadsources);
+  printf("\tpr2.l_max_los_t = %d\n", pr2.l_max_los_t);
+  printf("\tpr2.l_max_los_quadratic_t = %d\n", pr2.l_max_los_quadratic_t);
+  printf("\tpr2.l_max_los_p = %d\n", pr2.l_max_los_p);
+  printf("\tpr2.l_max_los_quadratic_p = %d\n", pr2.l_max_los_quadratic_p);
 
   /* Precision parameters - integration */
   // printf("* Precision parameters - integration\n");    

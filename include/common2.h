@@ -24,16 +24,16 @@ needed in bispectra2.c */
 struct precision2
 {
 
-  /* Tolerance for the integration of the 2nd-order system.  This parameter goes
+  /* Tolerance for the integration of the 2nd-order system. This parameter goes
   directly into the evolver as the parameter 'rtol' */
   double tol_perturb_integration_song;
   
   /* How many multipoles should we evolve at second-order? */
-  int l_max_g_song; 
-  int l_max_pol_g_song; 
-  int l_max_ur_song;
-  int l_max_g_ten_song;  
-  int l_max_pol_g_ten_song;
+  int l_max_g; 
+  int l_max_pol_g;
+  int l_max_ur;
+  int l_max_g_ten;  
+  int l_max_pol_g_ten;
 
   /* How many multipoles should we keep in the quadratic sources? */
   int l_max_g_quadsources; 
@@ -79,14 +79,29 @@ struct precision2
   // =       Time samplings       =
   // ==============================
   
-  /* Frequency of the time-sampling for the second-order line-of-sight sources */
+  /** Time at which the second-order system will start being evolved. By default it
+  is zero, which means that the start time will be determined automatically. */
+  double custom_tau_start_evolution; 
+  
+  /** Parameter used to determine the start time of the differential system at second
+  order; set to a value smaller than one to start evolving the k-modes in the tight
+  coupling regime. */
+  double start_small_k_at_tau_c_over_tau_h_song; 
+
+  /** Parameter used to determine the start time of the differential system at second
+  order; set to a value smaller than one to start evolving the k-modes when they are
+  outside the horizon. */
+  double start_large_k_at_tau_h_over_tau_k_song; 
+
+  /** Time step for the sampling of the second-order line-of-sight sources, in
+  units of the timescale involved in the sources. For example, for the CMB, the
+  timescale is set by the variations in the visibility function, while for the power
+  spectrum it is simply the Hubble time. */
   double perturb_sampling_stepsize_song;
   
-  /* When should we start to evolve the system? */
-  double start_small_k_at_tau_c_over_tau_h_song;
-  double start_large_k_at_tau_h_over_tau_k_song;
-
-  /* Time sampling for the line of sight integration */
+  /** Time sampling for the line of sight integration, to be used when the step of
+  the sources, perturb_sampling_stepsize_song, is not enough to capture the frequent
+  oscillations of the Bessel functions. */
   double tau_step_trans_song;  
 
 

@@ -30,6 +30,7 @@ Here is a summary of the most relevant properties of SONG:
 * It uses novel algorithms for Bessel convolution, bispectrum integration and 3D interpolation.
 * It implements a Fisher matrix module to quantify the observability of the any intrinsic or primordial bispectrum.
 * It fully includes polarisation of the cosmic microwave background.
+* It implements the tight coupling approximation for faster computation.
 * It implements the concept of beta-moments, whereby the non-realitivistic and relativistic species are treated in a unified way in terms of the moments of the distribution function.
 
 
@@ -40,7 +41,11 @@ The physics, mathematics and numerics of SONG are described extensively in my Ph
 
 
 ## GETTING STARTED
-To compile and make a test run of SONG, execute the following commands from your terminal:
+First, download SONG. You can do so either from the project's page <https://github.com/coccoinomane/song/releases> or from the command line with:
+
+    git clone --recursive https://github.com/coccoinomane/song.git song.git
+
+To compile and make a test run of SONG, enter SONG's directory and execute the following commands from your terminal:
 
     make song
     ./song ini/intrinsic.ini pre/quick_song_run.pre
@@ -88,7 +93,7 @@ The directory structure of SONG is important to learn how the code works:
 
 
 ## CONTRIBUTE
-Please feel free to contribute to the development of SONG! You can do so via a pull request using the Github project page: <https://github.com/coccoinomane/song.git>.
+Please feel free to contribute to the development of SONG! You can do so via the Github project page: <https://github.com/coccoinomane/song.git>. Fork the repository, make your modifications and send a pull request.
 
 If you are not familiar with Git and Github, please consider sending me the proposed modifications via email at <guido.pettinari@gmail.com>. Otherwise, there are very good [Github tutorials] available.
 
@@ -110,3 +115,4 @@ Feel free to send an email to Guido Pettinari <guido.pettinari@gmail.com> or Chr
 [9]: http://arxiv.org/abs/1104.2933 "The Cosmic Linear Anisotropy Solving System (CLASS)"
 [10]: http://arxiv.org/abs/1405.2280 "The intrinsic bispectrum of the Cosmic Microwave Background (Ph.D. thesis)"
 [Github tutorials]: https://help.github.com/articles/good-resources-for-learning-git-and-github/ "Good Resources for Learning Git and GitHub"
+[Github page]: https://github.com/coccoinomane/song.git

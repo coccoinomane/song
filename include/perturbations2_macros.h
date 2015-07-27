@@ -56,6 +56,7 @@ baryons and cold dark matter. */
 /* Define the photon temperature multipoles. Note that we set them to zero by default when
 the no-radiation approximation is switched on. */
 #define I(l,m) ( ((abs(m)>l) || (l<0) || ((l)>ppw2->pv->l_max_g)) ? 0 : y[ppw2->pv->index_pt2_monopole_g + lm(l,m)] )
+// #define I(l,m) ( ((abs(m)>l) || (l<0) || ((l)>ppw2->pv->l_max_g)) ? 0 : y[ppw2->pv->index_pt2_monopole_g + lm(l,m)] )
 #define dI(l,m) dy[ppw2->pv->index_pt2_monopole_g + lm(l,m)]
 
 /* Define the photon polarization multipoles.  We include a check on the E and B modes, so
@@ -94,8 +95,8 @@ or to unity if you use X ~ X^(1) + X^(2) instead. This feature is not fully impl
 yet, hence for the time being keep it equal to 2 */
 #define quad_coefficient 2
 
-/* Shortcuts to access the full quadratic sources, as computed by perturb2_quadratic_sources or
-interpolated by perturb2_quadratic_sources_at_tau. */
+/* Shortcuts to access the full quadratic sources, as computed by perturb2_quadratic_sources()
+or interpolated by perturb2_quadratic_sources_at_tau(). */
 #define dI_qs2(l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_g + lm(l,m)]
 #define dE_qs2(l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_E + lm(l,m)]
 #define dB_qs2(l,m) ppw2->pvec_quadsources[ppw2->index_qs2_monopole_B + lm(l,m)]
@@ -209,5 +210,19 @@ ppt2->c_minus are used */
 #define k_zero_21(l,m)  ppw2->k_zero_product_21[lm(l,m)]  
 #define k_zero_11(l,m)  ppw2->k_zero_product_11[lm(l,m)]  
 #define k_zero_22(l,m)  ppw2->k_zero_product_22[lm(l,m)]
+
+
+// ------------------------------------------------------------------------------------
+// -                                 Debug shortcuts                                  -
+// ------------------------------------------------------------------------------------
+                              
+#define printf_k_debug(args...) {                                   \
+  if((ppw2->index_k1==ppt2->index_k1_debug) &&                      \
+     (ppw2->index_k2==ppt2->index_k2_debug) &&                      \
+     (ppw2->index_k3==ppt2->index_k3_debug)) {                      \
+    printf (args);                                                  \
+  }                                                                 \
+}
+
 
 #endif

@@ -2383,8 +2383,8 @@ int transfer2_get_time_grid(
 
   if (ptr2->tau_sampling == bessel_tau_sampling) {
     /* Merge the J and S samplings for the given k-mode in such a way that we do not oversample the J's when
-      the sources grid is very fine. One could just add the two grids, but our treatment is better in the
-      periods where the J and S grids have a similar stride. */
+    the sources grid is very fine. One could just add the two grids, but our treatment is better in the
+    periods where the J and S grids have a similar stride. */
     tau_step_max = pbs2->xx_step/k;
   }
   else if (ptr2->tau_sampling == custom_transfer2_tau_sampling) {
