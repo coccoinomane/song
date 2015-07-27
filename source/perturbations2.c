@@ -2549,7 +2549,7 @@ int perturb2_timesampling_for_sources (
   earlier, cut the time-sampling vector so that sources at later times are not
   computed. */
 
-  if (ppt2->has_recombination_only == _TRUE_) {
+  if ((ppt2->has_recombination_only == _TRUE_) && (ppt2->has_custom_timesampling == _FALSE_)) {
     ppt2->tau_size = ppt2->index_tau_end_of_recombination;
   }
 
