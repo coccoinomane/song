@@ -109,7 +109,7 @@ int spectra2_init(
   int index_sp = 1;
 	
 	// Print time 
-	/*
+	
 	fprintf(file_sp, format_label, "tau",index_sp);
 	index_sp++;
   
@@ -127,9 +127,9 @@ int spectra2_init(
   
   fprintf(file_sp, "\n");
   
-  */
-  //Print k 
   
+  //Print k 
+  /*
   fprintf(file_sp, format_label, "k",index_sp);
 	index_sp++;
 
@@ -141,7 +141,7 @@ int spectra2_init(
  				
  		fprintf(file_sp, "\n");
 	
-	
+	*/
   /* Four loops over k1, k2, transfer type follow */
   double step_k1, step_k2;
  
@@ -299,7 +299,7 @@ int spectra2_init(
 					// symmetry factor (doing only half plane in k1 k3)
 					 2.*
 					// integration weight	
-					 k1*k2/k/4.* 
+					 k1*k2/k/2.* 
 					// integration stepsize
 					 step_k3*triangular_step_k1*
 					// phi integration
@@ -578,7 +578,7 @@ int spectra2_init(
   class_alloc (pvecback, pba->bg_size*sizeof(double), psp2->error_message);
 
  // print time
- /*
+ 
 	for (int index_tau = 0; index_tau < ppt2->tau_size; ++index_tau) { 
 	
 	class_call (background_at_tau(
@@ -610,9 +610,9 @@ int spectra2_init(
  		}
   	fprintf(file_sp, "\n");
 	}
-  */
-  // Print k 
   
+  // Print k 
+  /*
   for (int index_k3 = 0; index_k3 < psp2->k_size; ++index_k3) { 
 
 	    			
@@ -626,7 +626,7 @@ int spectra2_init(
   	fprintf(file_sp, "\n");
 	}
   
-  
+  */
   
   
  	printf("keq = %f \n",pba->k_eq);
