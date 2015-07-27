@@ -3380,7 +3380,7 @@ int perturb2_initial_conditions (
                 ppw2->pvec_sources1),
     	ppt->error_message,
     	ppt2->error_message);
-
+				
  		/* Interpolate first-order quantities (ppw2->psources_2) */
   	class_call (perturb_song_sources_at_tau (
                 ppr,
@@ -10233,8 +10233,9 @@ int perturb2_quadratic_sources (
  		if (ppt2->has_magnetic_field == _TRUE_) {
  			for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
         int m = ppt2->m[index_m];
-        c_1 = 4*V_b_1[(m)+1] - I_1(1,m);
-        c_2 = 4*V_b_2[(m)+1] - I_2(1,m);
+        
+        c_1 = 4*u_b_1[m] - I_1(1,m);
+        c_2 = 4*u_b_2[m] - I_2(1,m);
         double D_1 = -pvec_sources1[ppt->index_qs_phi];
       	double D_2 = -pvec_sources2[ppt->index_qs_phi];
       	double delta_g_1 = pvec_sources1[ppt->index_qs_delta_g];
@@ -10514,6 +10515,7 @@ int perturb2_sources (
                 ppt2->index_ic_first_order,
                 ppw2->index_k1,
                 tau,
+                ppt->qs_size[ppt->index_md_scalars],
                 ppt->inter_normal,
                 &(ppw2->last_index_sources),
                 ppw2->pvec_sources1),
@@ -10523,14 +10525,14 @@ int perturb2_sources (
   /* Interpolate first-order quantities in tau and k2 (ppw2->psources_2) */
  	 	class_call (perturb_song_sources_at_tau (
                 ppr,
-                ppr2,
-                pba,
-                pth,
                 ppt,
-                ppt2,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                ppw2->index_k2,
                 tau,
+                ppt->qs_size[ppt->index_md_scalars],
                 ppt->inter_normal,
-                &(ppw2->last_index_sources),                 
+                &(ppw2->last_index_sources),
                 ppw2->pvec_sources2),
     	ppt->error_message,
     	error_message);
@@ -11713,6 +11715,7 @@ int perturb2_save_early_transfers (
                ppt2->index_ic_first_order,
                ppw2->index_k1,
                tau,
+               ppt->qs_size[ppt->index_md_scalars],
                ppt->inter_normal,
                &(ppw2->last_index_sources),
                ppw2->pvec_sources1),
@@ -11727,6 +11730,7 @@ int perturb2_save_early_transfers (
                ppt2->index_ic_first_order,
                ppw2->index_k2,
                tau,
+               ppt->qs_size[ppt->index_md_scalars],
                ppt->inter_normal,
                &(ppw2->last_index_sources),                 
                ppw2->pvec_sources2),
@@ -12249,13 +12253,13 @@ int perturb2_save_early_transfers (
   		else fprintf(file_tr, format_value, 
   		/* ( I(1,1)*0.25 - delta_g_1*(-k2_m[1+1]*v_g_2) - delta_g_2*(-k1_m[1+1]*v_g_1)
   		 - (b(1,1,1)/3. - delta_b_1*(-k2_m[1+1]*v_b_2) - delta_b_2*(-k1_m[1+1]*v_b_1)) )*/
-  		 (-k1_m[1+1])*v_g_1 - (-k1_m[1+1])*v_b_1
+  			0.
   		 );
   	}
   	
   	if (ppr2->compute_m[1] == _TRUE_) {
   		if (ppw2->n_steps==1) fprintf(file_tr, format_label, "baryon velocity", index_print_tr++);
-  		else fprintf(file_tr, format_value,  	(-k1_m[1+1])*v_b_1);
+  		else fprintf(file_tr, format_value,  0.);
   	}
   	
   	if (ppr2->compute_m[1] == _TRUE_) {
@@ -13075,12 +13079,13 @@ int perturb_song_sources_at_tau_and_k (
                 index_ic,
                 index_k,
                 tau,
+                ppt->qs_size[ppt->index_md_scalars],
                 intermode,
                 last_index,
                 source_left),
     	ppt->error_message,
     	ppt->error_message);
-    	
+
     class_call (perturb_song_sources_at_tau (
                 ppr,
                 ppt,
@@ -13088,6 +13093,7 @@ int perturb_song_sources_at_tau_and_k (
                 index_ic,
                 index_k+1,
                 tau,
+                ppt->qs_size[ppt->index_md_scalars],
                 intermode,
                 last_index,
                 source_right),
