@@ -1028,7 +1028,7 @@ int perturb2_get_lm_lists (
   class_alloc (ppt2->lm_array, (ppt2->largest_l_quad+1)*sizeof(int*), ppt2->error_message);    
 
   for (int l=0; l<=ppt2->largest_l; ++l) {
-  
+
     class_calloc (ppt2->lm_array[l],
                   ppr2->index_m_max[l]+1,
                   sizeof(int),
@@ -4799,6 +4799,9 @@ int perturb2_approximations (
       /* Debug - Check that the NRA approximation is turned on when we want */
       // printf ("a, a_eq, ratio = %g, %g, %g\n", a, pba->a_eq, a/pba->a_eq);
     }
+    else {
+      ppw2->approx[ppw2->index_ap2_nra] = (int)nra_off;
+    }
   }
   
 
@@ -4809,11 +4812,13 @@ int perturb2_approximations (
   class_test ((ppw2->approx[ppw2->index_ap2_nra]==(int)nra_on)
     && (ppw2->approx[ppw2->index_ap2_tca]==(int)tca_on),
     ppt2->error_message,
-    "The TCA and NRA approximations can't be turned on at the same time.");
+    "tau=%g: the TCA and NRA approximations can't be turned on at the same time.",
+    tau);
     
   class_test (ppw2->n_active_approximations>1,
     ppt2->error_message,
-    "So far SONG only supports one active approximation at the same time");
+    "tau=%g: so far SONG only supports one active approximation at the same time.",
+    tau);
 
   return _SUCCESS_;
 }
@@ -8679,7 +8684,6 @@ int perturb2_tca_variables (
     }
   }
 
-
   return _SUCCESS_;
 
 }
@@ -11622,7 +11626,7 @@ int perturb2_save_early_transfers (
   int index_print_qs = 1;
   
   /* Choose how label & values should be formatted */
-  char format_label[64] = "%20s(%02d) ";
+  char format_label[64] = "%18s(%02d) ";
   char format_value[64] = "%+22.11e ";
   char buffer[64];
   
