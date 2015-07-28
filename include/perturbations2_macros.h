@@ -56,7 +56,6 @@ baryons and cold dark matter. */
 /* Define the photon temperature multipoles. Note that we set them to zero by default when
 the no-radiation approximation is switched on. */
 #define I(l,m) ( ((abs(m)>l) || (l<0) || ((l)>ppw2->pv->l_max_g)) ? 0 : y[ppw2->pv->index_pt2_monopole_g + lm(l,m)] )
-// #define I(l,m) ( ((abs(m)>l) || (l<0) || ((l)>ppw2->pv->l_max_g)) ? 0 : y[ppw2->pv->index_pt2_monopole_g + lm(l,m)] )
 #define dI(l,m) dy[ppw2->pv->index_pt2_monopole_g + lm(l,m)]
 
 /* Define the photon polarization multipoles.  We include a check on the E and B modes, so
@@ -74,11 +73,11 @@ or off. */
 #define dN(l,m) dy[ppw2->pv->index_pt2_monopole_ur + lm(l,m)]
 
 /* Define the baryon beta-moments */
-#define b(n,l,m) ( ((abs(m)>l) || (l<0)) ? 0 : y[ppw2->pv->index_pt2_monopole_b + nlm(n,l,m)] )
+#define b(n,l,m) ( ((abs(m)>l) || (l<0) || ((n)>ppw2->pv->n_max_b) || ((l)>ppw2->pv->l_max_b)) ? 0 : y[ppw2->pv->index_pt2_monopole_b + nlm(n,l,m)] )
 #define db(n,l,m) dy[ppw2->pv->index_pt2_monopole_b + nlm(n,l,m)]
 
 /* Define the CDM beta-moments */
-#define cdm(n,l,m) ( ((abs(m)>l) || (l<0)) ? 0 : y[ppw2->pv->index_pt2_monopole_cdm + nlm(n,l,m)] )
+#define cdm(n,l,m) ( ((abs(m)>l) || (l<0) || ((n)>ppw2->pv->n_max_cdm) || ((l)>ppw2->pv->l_max_cdm)) ? 0 : y[ppw2->pv->index_pt2_monopole_cdm + nlm(n,l,m)] )
 #define dcdm(n,l,m) dy[ppw2->pv->index_pt2_monopole_cdm + nlm(n,l,m)]
 
 // ------------------------------------------------------------------------------------
