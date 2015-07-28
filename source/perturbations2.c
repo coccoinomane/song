@@ -4792,10 +4792,9 @@ int perturb2_approximations (
   // =                              Free streaming approximation                            =
   // ========================================================================================
 
-  /* We start using the RSA approximation only when k is subhorizon */
+  /* We start using the RSA approximation only when the main wavemode k is
+  subhorizon. */
   double tau_k_rsa = 1/ppw2->k;
-  // double tau_k_rsa = 1/MAX(ppw2->k,MAX(ppw2->k1,ppw2->k2));
-  // double tau_k_rsa = 1/MIN(ppw2->k,MIN(ppw2->k1,ppw2->k2));
 
   if ((tau/tau_k_rsa > ppt2->radiation_streaming_trigger_tau_over_tau_k) &&
       (tau > pth->tau_free_streaming) && /* we activate the RSA only after photon decoupling */
@@ -6082,6 +6081,7 @@ int perturb2_vector_init (
     ppv->n_hierarchy_ur = size_l_indexm (ppv->l_max_ur, ppt2->m, ppt2->m_size);
   }
 
+
   /* The radiation hierarchies (photon intensity and polarisation, neutrinos) are
   affected by the tight coupling, radiation streaming and no-radiation approximations.
   These approximations allow us to truncate the Boltzmann hierarchy and evolve a
@@ -6094,6 +6094,7 @@ int perturb2_vector_init (
   /* If the tight coupling approximation is turned on, we only need to evolve the photon
   monopole and the baryon monopole and dipole, as all other moments, including polarisation,
   can be computed analytically. */
+
   if (new_approx[ppw2->index_ap2_tca] == (int)tca_on) {
 
     ppv->l_max_g = 0;
@@ -6104,15 +6105,28 @@ int perturb2_vector_init (
     ppv->n_hierarchy_pol_g = size_l_indexm (ppv->l_max_pol_g, ppt2->m, ppt2->m_size);
     ppv->use_closure_pol_g = _FALSE_;
 
-  } // end of if (tca_on)
+  }
 
 
   /* - Set l_max for the RSA */
   
-  /* If the radiation streaming approximation is turned on, we do not need to evolve any
-  equation for the massless hierarchies. The photon and neutrino hierarchies will only
-  include monopole and dipole, which will be inferred with two constraint equation.
-  Polarisation will be neglected altogether. */
+  /* If the radiation streaming approximation is turned on, we do not need to
+  evolve any equation for the massless hierarchies. The photon and neutrino
+  hierarchies will only include monopole and dipole, which will be inferred
+  with two constraint equation. Polarisation will be neglected altogether.
+  
+  This is the same approach as CLASS. But how does CLASS compute the effect of
+  reionisation on polarisation? Polarisation is sourced by the quadrupole, which
+  is neglected during RSA. Therefore, all modes that enter RSA before reionisation
+  (tau~4000), won't add up to polarisation. This behaviour is justified by the
+  fact that reionisation is affected by the modes that are the size of the horizon
+  at reionisation; the RSA however only affects subhorizon modes. Therefore, by
+  turning on the RSA we are not affecting reionisation at all, unless we make RSA
+  start earlier by reducing the radiation_streaming_trigger_tau_over_tau_k
+  parameter. After a quick test with CLASS v2.4.3, I find that the reionisation
+  contribution to C_l^EE is not affected as long as the parameter is larger than
+  ~20. */
+
   if (new_approx[ppw2->index_ap2_rsa] == (int)rsa_on) {
 
       ppv->l_max_g = -1;
@@ -8074,7 +8088,7 @@ int perturb2_workspace_at_tau (
   // ------------------------------------------------------------------------------------ 
 
   /* If the radiation streaming approximation is turned on, we need to infer the
-  monopoles and dipoles of the photons and of the neutrinos using the RSA relation */
+  monopoles and dipoles of the photons and of the neutrinos using the RSA relation. */
   
   if (ppw2->approx[ppw2->index_ap2_rsa] == (int)rsa_on) {
     
@@ -8955,8 +8969,7 @@ int perturb2_rsa_variables (
 
   /* - Extract the quadratic sources */
 
-  // if ((ppt2->radiation_streaming_approximation != rsa2_none)
-  //   &&(ppt2->radiation_streaming_approximation != rsa2_MD_no_quad))
+  // if (ppt2->radiation_streaming_approximation != rsa2_none)
   {
 
     if (ppt2->has_quadratic_sources == _TRUE_) {
@@ -9014,8 +9027,7 @@ int perturb2_rsa_variables (
     ppw2->delta_g_rsa = - 4 * ppw2->pvecmetric[ppw2->index_mt2_psi];
 
     /* Quadratic part. Skip if the user explicitly asked so. */
-    // if ((ppt2->radiation_streaming_approximation != rsa2_none)
-    //   &&(ppt2->radiation_streaming_approximation != rsa2_MD_no_quad))
+    // if (ppt2->radiation_streaming_approximation != rsa2_none)
     {
 
       double quadL_I_00_prime =
@@ -9053,8 +9065,7 @@ int perturb2_rsa_variables (
 
       ppw2->delta_ur_rsa = - 4 * ppw2->pvecmetric[ppw2->index_mt2_psi];
 
-      // if ((ppt2->radiation_streaming_approximation != rsa2_none)
-      //   &&(ppt2->radiation_streaming_approximation != rsa2_MD_no_quad))
+      // if (ppt2->radiation_streaming_approximation != rsa2_none)
       {
 
         double quadL_N_00_prime = 
@@ -9092,8 +9103,7 @@ int perturb2_rsa_variables (
       ppw2->u_g_rsa[0] = 6/k * ppw2->pvecmetric[ppw2->index_mt2_phi_prime_longitudinal];
 
       /* Quadratic part. */
-      // if ((ppt2->radiation_streaming_approximation != rsa2_none)
-      //   &&(ppt2->radiation_streaming_approximation != rsa2_MD_no_quad))
+      // if (ppt2->radiation_streaming_approximation != rsa2_none)
       {
 
         double quadL_I_00 = - (dI_qs2(0,0)-dI_qc2(0,0));
@@ -9165,8 +9175,7 @@ int perturb2_rsa_variables (
         ppw2->u_ur_rsa[0] = 6/k * ppw2->pvecmetric[ppw2->index_mt2_phi_prime_longitudinal];
 
         /* Quadratic part. */
-        // if ((ppt2->radiation_streaming_approximation != rsa2_none)
-        //   &&(ppt2->radiation_streaming_approximation != rsa2_MD_no_quad))
+        // if (ppt2->radiation_streaming_approximation != rsa2_none)
         {
 
           double quadL_N_00 = - dN_qs2(0,0);

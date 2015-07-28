@@ -28,7 +28,6 @@ enum tca2_method {
 enum rsa2_method {
   rsa2_none,          /**< No RSA approximation */
   rsa2_MD,            /**< RSA approximation assuming no collisions (i.e. no reionisation effects) */
-  rsa2_MD_no_quad,    /**< RSA approximation assuming no collisions and neglecting the delta and velocity quadratic sources */
   rsa2_MD_with_reio   /**< RSA approximation including collisions up to first-order in tau_c=1/kappa_dot (i.e. "first-order" reionisation) */
 };
 
