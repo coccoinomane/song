@@ -565,7 +565,8 @@ struct perturbs2
                                         do not care about the other flags. Useful for debugging. */
   short has_early_transfers2_only; /**< If _TRUE_, SONG will compute only the second-order early transfer functions and
                                         do not care about the other flags. Useful for debugging. */
-
+  short compute_quadsources_derivatives; /**< Should we compute the first, third and fourth derivatives of the quadratic
+                                         sources? */
 
   /* - Parameters related to the creation of debug files */
   short has_debug_files;        /**< Shall we dump to file the intermediate results such as evolved transfer functions and quadratic sources? */

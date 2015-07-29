@@ -737,11 +737,13 @@ int input2_init (
   class_read_double("no_radiation_approximation_rho_m_over_rho_r_song",
     ppt2->no_radiation_approximation_rho_m_over_rho_r);
 
-  class_test(ppt2->ur_fluid_trigger_tau_over_tau_k
-    ==ppt2->radiation_streaming_trigger_tau_over_tau_k, errmsg,
-    "please choose different values for precision parameters\
-ur_fluid_trigger_tau_over_tau_k_song and radiation_streaming_trigger_tau_over_tau_k_song\
-, in order to avoid switching two approximation schemes at the same time");
+  if (ppt2->ur_fluid_approximation != ufa2_none) {
+    class_test(ppt2->ur_fluid_trigger_tau_over_tau_k
+      ==ppt2->radiation_streaming_trigger_tau_over_tau_k, errmsg,
+      "please choose different values for precision parameters\
+ ur_fluid_trigger_tau_over_tau_k_song and radiation_streaming_trigger_tau_over_tau_k_song\
+ , in order to avoid switching two approximation schemes at the same time");
+  }
 
 
   // ====================================================================================
@@ -1331,7 +1333,7 @@ ur_fluid_trigger_tau_over_tau_k_song and radiation_streaming_trigger_tau_over_ta
   
   
   // ==============================================================================
-  // =                          Quadratic sources rescaling                       =
+  // =                               Quadratic sources                            =
   // ==============================================================================
 
   /* Do we want to rescale all multipoles with a factor 1/sin(theta_1)^m? The rescaling does not
@@ -1448,6 +1450,7 @@ int input2_default_params (
   ppt2->has_perfect_cdm = _TRUE_;
   ptr2->has_transfers2_only = _FALSE_;
   ppt2->rescale_quadsources = _TRUE_;
+  ppt2->compute_quadsources_derivatives = _FALSE_;
 
   ppt2->rescale_quadsources = _FALSE_;
 
@@ -1496,9 +1499,9 @@ int input2_default_params (
 
   /* - Approximations at second order */
 
-  ppt2->tight_coupling_approximation = tca2_none;
-  ppt2->tight_coupling_trigger_tau_c_over_tau_h = 0.015;
-  ppt2->tight_coupling_trigger_tau_c_over_tau_k = 0.01;
+  ppt2->tight_coupling_approximation = tca2_first_order_pitrou;
+  ppt2->tight_coupling_trigger_tau_c_over_tau_h = 0.01;
+  ppt2->tight_coupling_trigger_tau_c_over_tau_k = 0.007;
   
   ppt2->radiation_streaming_approximation = rsa2_none;
   ppt2->radiation_streaming_trigger_tau_over_tau_k = 45;
@@ -1507,7 +1510,7 @@ int input2_default_params (
   ppt2->ur_fluid_approximation = ufa2_none;
   ppt2->ur_fluid_trigger_tau_over_tau_k = 15;
   
-  ppt2->no_radiation_approximation = nra2_fluid;
+  ppt2->no_radiation_approximation = nra2_none;
   ppt2->no_radiation_approximation_rho_m_over_rho_r = 100;
 
 

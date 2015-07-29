@@ -1832,8 +1832,17 @@ int perturb2_get_k_lists (
   //   printf ("%17d %17.7g\n", index_k, ppt2->k[index_k]);
   // }
   
+  /* Check that the minimum and maximum values of ppt2->k are different. This
+  test might fire if the user set a custom time sampling with two equal k-values */
+  class_test (ppt2->k[0]>=ppt2->k[ppt2->k_size-1],
+    ppt2->error_message,
+    "first and last value of ppt2->k coincide; maybe you set k_min_custom>=k_max_custom?");
   
-  
+  /* Check that the k array is strictly ascending */
+  for (int index_k=1; index_k < ppt2->k_size; ++index_k)
+    class_test (ppt2->k[index_k]<=ppt2->k[index_k-1],
+      ppt2->error_message,
+      "the k-sampling should be strictly ascending");
   
   
   // ==================================================================================
@@ -2091,8 +2100,8 @@ int perturb2_get_k_lists (
   /* Set minimum and maximum k-values ever used in SONG */
   ppt2->k_min = ppt2->k3[0][0][0];
   ppt2->k_max = ppt2->k3[ppt2->k_size-1][ppt2->k_size-1]
-                  [ppt2->k3_size[ppt2->k_size-1][ppt2->k_size-1]];
-                        
+                  [ppt2->k3_size[ppt2->k_size-1][ppt2->k_size-1]-1];
+
   class_test ((ppt2->k_min==0) || (ppt2->k_max==0),
     ppt2->error_message,
     "found vanishing k value");
@@ -4047,34 +4056,39 @@ int perturb2_workspace_init_quadratic_sources (
   for (index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
     class_calloc (ppw2->dd_quadcollision_table[index_qs2], ppt->tau_size_quadsources, sizeof(double), ppt2->error_message);
 
-  /* Allocate the arrays that will contain the third derivative of the table arrays, in view of
-  spline interpolation of the first derivative */
-  class_calloc (ppw2->ddd_quadsources_table, ppw2->qs2_size, sizeof(double), ppt2->error_message);  
-  for (index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
-    class_calloc (ppw2->ddd_quadsources_table[index_qs2], ppt->tau_size_quadsources, sizeof(double), ppt2->error_message);
+  if (ppt2->compute_quadsources_derivatives == _TRUE_) {
 
-  class_calloc (ppw2->ddd_quadcollision_table, ppw2->qs2_size, sizeof(double), ppt2->error_message);  
-  for (index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
-    class_calloc (ppw2->ddd_quadcollision_table[index_qs2], ppt->tau_size_quadsources, sizeof(double), ppt2->error_message);
+    /* Allocate the arrays that will contain the third derivative of the table arrays, in view of
+    spline interpolation of the first derivative */
+    class_calloc (ppw2->ddd_quadsources_table, ppw2->qs2_size, sizeof(double), ppt2->error_message);  
+    for (index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
+      class_calloc (ppw2->ddd_quadsources_table[index_qs2], ppt->tau_size_quadsources, sizeof(double), ppt2->error_message);
 
-  /* Allocate the arrays that will contain the fourth derivative of the table arrays, in view of
-  spline interpolation of the second derivative */
-  class_calloc (ppw2->dddd_quadsources_table, ppw2->qs2_size, sizeof(double), ppt2->error_message);  
-  for (index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
-    class_calloc (ppw2->dddd_quadsources_table[index_qs2], ppt->tau_size_quadsources, sizeof(double), ppt2->error_message);
+    class_calloc (ppw2->ddd_quadcollision_table, ppw2->qs2_size, sizeof(double), ppt2->error_message);  
+    for (index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
+      class_calloc (ppw2->ddd_quadcollision_table[index_qs2], ppt->tau_size_quadsources, sizeof(double), ppt2->error_message);
 
-  class_calloc (ppw2->dddd_quadcollision_table, ppw2->qs2_size, sizeof(double), ppt2->error_message);  
-  for (index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
-    class_calloc (ppw2->dddd_quadcollision_table[index_qs2], ppt->tau_size_quadsources, sizeof(double), ppt2->error_message);
+    /* Allocate the arrays that will contain the fourth derivative of the table arrays, in view of
+    spline interpolation of the second derivative */
+    class_calloc (ppw2->dddd_quadsources_table, ppw2->qs2_size, sizeof(double), ppt2->error_message);  
+    for (index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
+      class_calloc (ppw2->dddd_quadsources_table[index_qs2], ppt->tau_size_quadsources, sizeof(double), ppt2->error_message);
+
+    class_calloc (ppw2->dddd_quadcollision_table, ppw2->qs2_size, sizeof(double), ppt2->error_message);  
+    for (index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
+      class_calloc (ppw2->dddd_quadcollision_table[index_qs2], ppt->tau_size_quadsources, sizeof(double), ppt2->error_message);
+  }
 
   /* Allocate the temporary arrays that will contain the interpolated values of the quadratic sources
   contained in the above tables, at a certain time */
   class_calloc (ppw2->pvec_quadsources, ppw2->qs2_size, sizeof(double), ppt2->error_message);
   class_calloc (ppw2->pvec_quadcollision, ppw2->qs2_size, sizeof(double), ppt2->error_message);
-  class_calloc (ppw2->pvec_d_quadsources, ppw2->qs2_size, sizeof(double), ppt2->error_message);
-  class_calloc (ppw2->pvec_d_quadcollision, ppw2->qs2_size, sizeof(double), ppt2->error_message);
-  class_calloc (ppw2->pvec_dd_quadsources, ppw2->qs2_size, sizeof(double), ppt2->error_message);
-  class_calloc (ppw2->pvec_dd_quadcollision, ppw2->qs2_size, sizeof(double), ppt2->error_message);
+  if (ppt2->compute_quadsources_derivatives == _TRUE_) {
+    class_calloc (ppw2->pvec_d_quadsources, ppw2->qs2_size, sizeof(double), ppt2->error_message);
+    class_calloc (ppw2->pvec_d_quadcollision, ppw2->qs2_size, sizeof(double), ppt2->error_message);
+    class_calloc (ppw2->pvec_dd_quadsources, ppw2->qs2_size, sizeof(double), ppt2->error_message);
+    class_calloc (ppw2->pvec_dd_quadcollision, ppw2->qs2_size, sizeof(double), ppt2->error_message);
+  }
 
 
   // -----------------------------------------------------------
@@ -4167,34 +4181,40 @@ int perturb2_workspace_free (
   /* Free quadratic sources temporary arrays */
   free(ppw2->pvec_quadsources);
   free(ppw2->pvec_quadcollision);
-  free(ppw2->pvec_d_quadsources);
-  free(ppw2->pvec_d_quadcollision);
-  free(ppw2->pvec_dd_quadsources);
-  free(ppw2->pvec_dd_quadcollision);
+  if (ppt2->compute_quadsources_derivatives == _TRUE_) {
+    free(ppw2->pvec_d_quadsources);
+    free(ppw2->pvec_d_quadcollision);
+    free(ppw2->pvec_dd_quadsources);
+    free(ppw2->pvec_dd_quadcollision);
+  }
 
   /* Free quadratic sources table */
   for (int index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2) {
     free (ppw2->quadsources_table[index_qs2]);
     free (ppw2->d_quadsources_table[index_qs2]);
     free (ppw2->dd_quadsources_table[index_qs2]);
-    free (ppw2->ddd_quadsources_table[index_qs2]);
-    free (ppw2->dddd_quadsources_table[index_qs2]);
     free (ppw2->quadcollision_table[index_qs2]);
     free (ppw2->d_quadcollision_table[index_qs2]);
     free (ppw2->dd_quadcollision_table[index_qs2]);
-    free (ppw2->ddd_quadcollision_table[index_qs2]);
-    free (ppw2->dddd_quadcollision_table[index_qs2]);
+    if (ppt2->compute_quadsources_derivatives == _TRUE_) {
+      free (ppw2->ddd_quadcollision_table[index_qs2]);
+      free (ppw2->dddd_quadcollision_table[index_qs2]);
+      free (ppw2->ddd_quadsources_table[index_qs2]);
+      free (ppw2->dddd_quadsources_table[index_qs2]);
+    }
   }
   free (ppw2->quadsources_table);
   free (ppw2->d_quadsources_table);  
   free (ppw2->dd_quadsources_table);  
-  free (ppw2->ddd_quadsources_table);  
-  free (ppw2->dddd_quadsources_table);  
   free (ppw2->quadcollision_table);
   free (ppw2->d_quadcollision_table);  
   free (ppw2->dd_quadcollision_table);  
-  free (ppw2->ddd_quadcollision_table);  
-  free (ppw2->dddd_quadcollision_table);  
+  if (ppt2->compute_quadsources_derivatives == _TRUE_) {
+    free (ppw2->ddd_quadsources_table);  
+    free (ppw2->dddd_quadsources_table);  
+    free (ppw2->ddd_quadcollision_table);  
+    free (ppw2->dddd_quadcollision_table);  
+  }
   
 
   /* Free coupling coefficient products */
@@ -4762,6 +4782,7 @@ int perturb2_approximations (
   // ppw2->approx[ppw2->index_ap2_tca] = (int)tca_off;
   // ppw2->approx[ppw2->index_ap2_rsa] = (int)rsa_off;
   // ppw2->approx[ppw2->index_ap2_nra] = (int)nra_off;
+  // ppw2->approx[ppw2->index_ap2_ufa] = (int)ufa_off;
   // return _SUCCESS_;
 
 
@@ -6605,25 +6626,14 @@ int perturb2_vector_init (
     // =                                  RSA approximation                             =
     // ==================================================================================
      
+    /* During the RSA regime we just switch off the massless hierarchies, therefore there
+    are no initial conditions to propagate */
+
     if ((old_approx[ppw2->index_ap2_rsa]==(int)rsa_off) && (new_approx[ppw2->index_ap2_rsa]==(int)rsa_on)) {
 
       if (ppt2->perturbations2_verbose > 3)
         printf("     * switching on radiation streaming approximation at tau=%g\n", tau);
 
-      /* Propagate the monoples using the RSA constraint */
-      if (ppr2->compute_m[0] == _TRUE_) {
-        y_new[ppv->index_pt2_monopole_g] = ppw2->I_00_rsa;
-        if (pba->has_ur == _TRUE_)
-          y_new[ppv->index_pt2_monopole_ur] = ppw2->N_00_rsa;
-      }
-
-      /* Propagate the intensity dipole using the RSA constraint */
-      for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
-        int m = ppt2->m[index_m];
-        y_new[ppv->index_pt2_monopole_g + lm(1,m)] = ppw2->I_1m_rsa[m];
-        if (pba->has_ur == _TRUE_)
-          y_new[ppv->index_pt2_monopole_ur + lm(1,m)] = ppw2->N_1m_rsa[m];
-      }
     }    
     
     
@@ -6631,7 +6641,8 @@ int perturb2_vector_init (
     // =                                  NRA approximation                             =
     // ==================================================================================
 
-    /* In the NRA approximation we do not use any constraint */
+    /* During the NRA regime we just truncate the massless hierarchies, therefore there
+    are no initial conditions to propagate */
      
     if ((old_approx[ppw2->index_ap2_nra]==(int)nra_off) && (new_approx[ppw2->index_ap2_nra]==(int)nra_on)) {
 
@@ -6649,7 +6660,6 @@ int perturb2_vector_init (
     /* Let ppw2->pv point towards the perturb2_vector structure that we created
     and filled above */
     ppw2->pv = ppv;
-
 
   } // end of if(pba_old != NULL)
 
@@ -7008,9 +7018,10 @@ int perturb2_derivs (
     ppt2->error_message,
     ppt2->error_message);
   
+  
   /* Interpolate Einstein equations and store them in pvec_metric. Note that
-  perturb2_einstein relies on ppw2->pvecback, ppw2->pvecthermo, and
-  ppw2->pvec_quadsources as calculated above.  Therefore, it should always be
+  perturb2_einstein() relies on ppw2->pvecback, ppw2->pvecthermo, and
+  ppw2->pvec_quadsources as calculated above. Therefore, it should always be
   called after the functions background_at_tau(), thermodynamics_at_z(), and
   perturb2_quadratic_sources(). */
   class_call (perturb2_einstein(
@@ -7643,16 +7654,16 @@ int perturb2_derivs (
 
 
 /**
- * Compute the metric quantities at a given time and fill the ppw2->pvecmetric
- * array.
+ * Compute the metric quantities at a given time using the Einstein equations
+ * and store them in the ppw2->pvecmetric array.
  *
- * Before calling this function, remember to compute the quadratic sources using
- * perturb2_quadratic_sources().  The result of such computation is stored in the
- * array ppw2->pvec_quadsources, while the single first-order perturbations
- * at time tau are in ppw2->pvec_sources1 and ppw2->pvec_sources2.
- * This function also relies on ppw2->pvecback and ppw2->pvecthermo, which
- * should have already been filled.  This is done in perturb2_derivs().
+ * The following function should precede perturb2_einstein():
+ * -# background_at_tau()
+ * -# thermodynamics_at_z()
+ * -# perturb2_quadratic_sources() or perturb2_quadratic_sources_at_tau()
+ *    to fill ppw2->pvec_quadsources.
  */
+
 int perturb2_einstein (
        struct precision * ppr,
        struct precision2 * ppr2,
@@ -8032,11 +8043,10 @@ int perturb2_workspace_at_tau (
   // -                                 Perfect fluid                                    -
   // ------------------------------------------------------------------------------------
 
-  /* If the baryons are treated as a perfect fluid, set their pressure and shear
-  to vanish by giving appropriate values to the moments b_200 and b_22m; same
-  for the cold dark matter. We store these values in ppw2->b_200, ppw2->b_22m[m],
-  ppw2->cdm_200, ppw2->cdm_22m[m]. For details, see eq. 5.18 of
-  http://arxiv.org/abs/1405.2280. */
+  /* If the baryons are treated as a perfect fluid, set their pressure and shear to
+  vanish by giving appropriate values to the moments b_200 and b_22m; same for the
+  cold dark matter. We store these values in ppw2->b_200, ppw2->b_22m[m], ppw2->cdm_200,
+  ppw2->cdm_22m[m]. For details, see eq. 5.18 of http://arxiv.org/abs/1405.2280. */
 
   if (ppt2->has_perfect_baryons == _TRUE_) { 
   
@@ -8088,7 +8098,9 @@ int perturb2_workspace_at_tau (
   // ------------------------------------------------------------------------------------ 
 
   /* If the radiation streaming approximation is turned on, we need to infer the
-  monopoles and dipoles of the photons and of the neutrinos using the RSA relation. */
+  monopoles and dipoles of the photons and of the neutrinos using the RSA relation.
+  Here we set the variable ppw2->I_00 which is needed to compute the perturbations in 
+  the TCA regime; therefore, it is important that this block precedes the TCA block. */
   
   if (ppw2->approx[ppw2->index_ap2_rsa] == (int)rsa_on) {
     
@@ -8130,7 +8142,11 @@ int perturb2_workspace_at_tau (
   // ------------------------------------------------------------------------------------
 
   /* If the tight coupling approximation is turned on, then the photon dipole and
-  the photon quadrupoles need to be inferred using the TCA relations. */
+  the photon quadrupoles need to be inferred using the TCA relations.
+  To compute the TCA relations, we require ppw2->b_11m[m] and ppw2->I_00 to be ready;
+  these quantities depend on the perfect fluid and RSA approximations, respectively,
+  meaning that this block should be placed after the ones where we set the perfect fluid
+  and radiation streaming variables. */
   
   if (ppw2->approx[ppw2->index_ap2_tca] == (int)tca_on) {
     
@@ -8225,14 +8241,12 @@ int perturb2_workspace_at_tau (
  *     b(2,0,0) = 3 pressure_g + v^i v_i
  *     b(2,2,m) = -15/2 (shear_b[m] + vv_g[m]) .
  *
- * This function requires the following functions to be called beforehand:
- * -# perturb_song_sources_at_tau() to fill ppw2->pvec_sources1 and ppw2->pvec_sources2
- * -# 
- * can be called at any point during the evolution of the differential
- * system. It does not require any background or thermodynamics quantity, but it requires
- * the y vector to be filled. If you are interested in the photon shear (ppw2->shear_g),
- * call this function after perturb2_einstein(), where the photon quadrupole (ppw2->I_2m)
- * is set. Otherwise, just ignore the output value in ppw2->shear_g.
+ * In order for all the fluid variables to be accurate, this function needs to be called
+ * after perturb2_workspace_at_tau(), where the approximation variables are set. In two
+ * occasions we contravene this rule, as we let perturb2_tca_variables() and
+ * perturb2_rsa_variables() call this function even if they themselves are called from
+ * perturb2_workspace_at_tau(). In these two cases, we make sure to access
+ * only those fluid variables that are correctly set.
  * 
  *
  * @section Velocities in SONG
@@ -8281,7 +8295,7 @@ int perturb2_fluid_variables (
 
 
   /* - Interpolate first order densities and velocities */
-  /* THESE TWO CALLS CAN BE REMOVED IF WE KEEP QUADRATIC_SOURCES IN DERIVS */ 
+
   class_call (perturb_song_sources_at_tau (
                ppr,
                ppt,
@@ -8504,11 +8518,15 @@ int perturb2_fluid_variables (
  * - ppw2->B_2m_tca1[m]:       photon B-mode polarisation quadrupole up to order O(tau_c)^1.
  *
  * This function requires the previous execution of the following functions:
+ *
  * -# background_at_tau()
  * -# thermodynamics_at_z()
- * -# perturb2_quadratic_sources_at_tau()
- * and it relies on the following approximation variables being set:
+ * -# perturb2_quadratic_sources_at_tau() to fill ppw2->pvec_quadsources.
+ *
+ * and it relies on the following variables being set:
+ *
  * -# ppw2->I_00
+ *
  */
 
 int perturb2_tca_variables (
@@ -8535,8 +8553,9 @@ int perturb2_tca_variables (
 
   /* - Compute fluid variables */
 
-  /* Compute density, velocity and shear of photons and baryons, and create 
-  local shortcuts. */
+  /* Compute density, velocity and shear for all species. The second-order velocity
+  and shear (ppw2->u_g[m] and ppw2->shear_g[m]) should not be trusted during the TCA
+  regime, because they depend on the outcome of this function. */
 
   class_call (perturb2_fluid_variables(
                 ppr,
@@ -8722,14 +8741,6 @@ int perturb2_tca_variables (
     ppw2->u_g_tca1[m] = u_b[m] - ppw2->U_slip_tca1[m];
     ppw2->I_1m_tca1[m] = 4 * (ppw2->u_g_tca1[m] + delta_g_1*u_g_2[m] + delta_g_2*u_g_1[m]);
 
-    /* When we called the perturb2_fluid_variables() function above we did not
-    know yet what was the value of the dipole. Now that we do, we update
-    the ppw2->u_g[m] field. */
-    if (ppw2->approx[ppw2->index_ap2_tca] == (int)tca_off)
-      ppw2->u_g[m] = I(1,m)/4 - delta_g_1*u_g_2[m] - delta_g_2*u_g_1[m];
-    else
-      ppw2->u_g[m] = ppw2->u_g_tca1[m];
-
 
     /* The collision term could also be written as: */
     // ppw2->C_1m_tca1[m] = 4 * kappa_dot * (
@@ -8763,7 +8774,7 @@ int perturb2_tca_variables (
   }
   
 
-  /* - Photon quadrupole in tight coupling */
+  /* - Photon intensity quadrupole */
   
   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
 
@@ -8834,19 +8845,11 @@ int perturb2_tca_variables (
     /* The quadrupole is obtained by adding a velocity squared term
     (eq. 4.48 of http://arxiv.org/abs/1405.2280) */
     ppw2->I_2m_tca1[m] = -15/2.*ppw2->shear_g_tca1[m] - 20*v_ten_v_g[m];
-
-    /* When we called the perturb2_fluid_variables() function above we did not
-    know yet what was the value of the quadrupole. Now that we do, we update
-    the ppw2->shear_g[m] field. */
-    if (ppw2->approx[ppw2->index_ap2_tca] == (int)tca_off)
-      ppw2->shear_g[m] = -2/15.*I(2,m) - 8/3.*v_ten_v_g[m];
-    else
-      ppw2->shear_g[m] = ppw2->shear_g_tca1[m];
     
   }
   
   
-  /* - Polarisation quadrupole in tight coupling */
+  /* - Polarisation quadrupoles */
 
   /* Compute the polarisation quadrupole for the E and B-modes during tight
   coupling. In doing so, we also compute the Pi[m] factor which appears in the
@@ -8900,6 +8903,35 @@ int perturb2_tca_variables (
     }
   }
 
+
+  // /* - Update fluid variables */
+  //
+  // /* When we called the perturb2_fluid_variables() function above we did not
+  // know yet what was the value of the dipole and of the quadrupole. Now that we
+  // do, we update the ppw2->u_g[m] and ppw2->shear_g[m] fields, so that the user does
+  // not have to call perturb2_fluid_variables() again after this function. */
+  //
+  // if (ppw2->approx[ppw2->index_ap2_tca] == (int)tca_off) {
+  //   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+  //     int m = ppr2->m[index_m];
+  //     ppw2->u_g[m] = I(1,m)/4 - delta_g_1*u_g_2[m] - delta_g_2*u_g_1[m];
+  //   }
+  //   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+  //     int m = ppr2->m[index_m];
+  //     ppw2->shear_g[m] = -2/15.*I(2,m) - 8/3.*v_ten_v_g[m];
+  //   }
+  // }
+  // else {
+  //   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+  //     int m = ppr2->m[index_m];
+  //     ppw2->u_g[m] = ppw2->u_g_tca1[m];
+  //   }
+  //   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+  //     int m = ppr2->m[index_m];
+  //     ppw2->shear_g[m] = ppw2->shear_g_tca1[m];
+  //   }
+  // }
+
   return _SUCCESS_;
 
 }
@@ -8942,16 +8974,16 @@ int perturb2_rsa_variables (
   /* - Shortcuts */
   
   double k = ppw2->k;
-  double Hc = ppw2->pvecback[pba->index_bg_a]*ppw2->pvecback[pba->index_bg_H];
-  double r = ppw2->pvecback[pba->index_bg_rho_g]/ppw2->pvecback[pba->index_bg_rho_b];
   double kappa_dot = ppw2->pvecthermo[pth->index_th_dkappa]; /* interaction rate */
   double tau_c = 1/kappa_dot; /* life time */
 
 
   /* - Compute fluid variables */
 
-  /* Compute density, velocity and shear of photons and baryons, and create 
-  local shortcuts. */
+  /* Compute density, velocity and shear for all species. The second-order densities
+  and velocities of photons and neutrinos (ppw2->delta_g, ppw2->u_g[m], ppw2->delta_ur,
+  ppw2->u_ur[m]) should not be trusted during the NRA regime, because they depend on
+  the outcome of this function. */
 
   class_call (perturb2_fluid_variables(
                 ppr,
@@ -8969,9 +9001,27 @@ int perturb2_rsa_variables (
 
   /* - Extract the quadratic sources */
 
-  // if (ppt2->radiation_streaming_approximation != rsa2_none)
-  {
+  if (ppt2->has_quadratic_sources == _TRUE_) {
+    class_call (perturb2_quadratic_sources(
+                  ppr,
+                  ppr2,
+                  pba,
+                  pth,
+                  ppt,
+                  ppt2,
+                  -1,
+                  tau,
+                  compute_only_collision,
+                  ppw2->pvec_quadsources,
+                  ppw2->pvec_quadcollision,
+                  ppw2
+                  ),
+      ppt2->error_message,
+      ppt2->error_message);
+  }
 
+
+  if (ppt2->compute_quadsources_derivatives == _TRUE_) {
     if (ppt2->has_quadratic_sources == _TRUE_) {
 
       /* Interpolate the time derivative of the full quadratic sources
@@ -9023,29 +9073,14 @@ int perturb2_rsa_variables (
 
   if (ppr2->compute_m[0] == _TRUE_) {
     
+    double quadL_I_10 = - (dI_qs2(1,0)-dI_qc2(1,0));
+    
     /* Purely second-order part, up to O(1/tauk) */
     ppw2->delta_g_rsa = - 4 * ppw2->pvecmetric[ppw2->index_mt2_psi];
 
-    /* Quadratic part. Skip if the user explicitly asked so. */
-    // if (ppt2->radiation_streaming_approximation != rsa2_none)
-    {
-
-      double quadL_I_00_prime =
-        - (ppw2->pvec_d_quadsources[ppw2->index_qs2_monopole_g]
-          - ppw2->pvec_d_quadcollision[ppw2->index_qs2_monopole_g]);
-
-      double quadL_I_10 = - (dI_qs2(1,0)-dI_qc2(1,0));
-
-      double v_ten_v_g_prime_prime =
-        -ppw2->k1_ten_k2[0+2] * ppw2->pvec_dd_quadsources[ppw2->index_qs2_vv_g];
-
-      ppw2->delta_g_rsa +=
-          quadL_I_10/k
-        - 3/(k*k)*quadL_I_00_prime
-        - 8*ppw2->v_dot_v_g/3
-        - 8*ppw2->v_ten_v_g[0+2]
-        - 8/(k*k)*v_ten_v_g_prime_prime;
-    }
+    /* Quadratic part, up to O(1/tauk). It is relevant only for squeezed
+    configurations where either k1 or k2 is the small leg. */
+    ppw2->delta_g_rsa += quadL_I_10/k;
     
     /* Build the monopole from the density contrast */
     ppw2->I_00_rsa = ppw2->delta_g_rsa + 8*ppw2->v_dot_v_g/3;
@@ -9063,28 +9098,16 @@ int perturb2_rsa_variables (
   
     if (pba->has_ur == _TRUE_) {
 
+      double quadL_N_10 = -dN_qs2(1,0);
+
+      /* Purely second-order part, up to O(1/tauk) */
       ppw2->delta_ur_rsa = - 4 * ppw2->pvecmetric[ppw2->index_mt2_psi];
 
-      // if (ppt2->radiation_streaming_approximation != rsa2_none)
-      {
+      /* Quadratic part, up to O(1/tauk). It is relevant only for squeezed
+      configurations where either k1 or k2 is the small leg. */
+      ppw2->delta_ur_rsa += quadL_N_10/k;
 
-        double quadL_N_00_prime = 
-          - (ppw2->pvec_d_quadsources[ppw2->index_qs2_monopole_ur]
-            - ppw2->pvec_d_quadcollision[ppw2->index_qs2_monopole_ur]);
-    
-        double quadL_N_10 = - dN_qs2(1,0);
-    
-        double v_ten_v_ur_prime_prime =
-          -ppw2->k1_ten_k2[0+2] * ppw2->pvec_dd_quadsources[ppw2->index_qs2_vv_ur];
-
-        ppw2->delta_ur_rsa +=
-            quadL_N_10/k
-          - 3/(k*k)*quadL_N_00_prime
-          - 8*ppw2->v_dot_v_ur/3
-          - 8*ppw2->v_ten_v_ur[0+2]
-          - 8/(k*k)*v_ten_v_ur_prime_prime;
-      }
-
+      /* Build the monopole from the density contrast */
       ppw2->N_00_rsa = ppw2->delta_ur_rsa + 8*ppw2->v_dot_v_ur/3;
 
     }
@@ -9099,53 +9122,17 @@ int perturb2_rsa_variables (
 
     if (m==0) {
     
+      double quadL_I_00 = - (dI_qs2(0,0)-dI_qc2(0,0));
+      double u_delta_g = ppw2->u_g_1[0]*ppw2->delta_g_2 + ppw2->u_g_2[0]*ppw2->delta_g_1;
+    
       /* Purely second-order part, up to O(1/tauk) */
       ppw2->u_g_rsa[0] = 6/k * ppw2->pvecmetric[ppw2->index_mt2_phi_prime_longitudinal];
 
-      /* Quadratic part. */
-      // if (ppt2->radiation_streaming_approximation != rsa2_none)
-      {
-
-        double quadL_I_00 = - (dI_qs2(0,0)-dI_qc2(0,0));
-
-        double quadL_I_00_prime_prime =
-          - (ppw2->pvec_dd_quadsources[ppw2->index_qs2_monopole_g]
-            - ppw2->pvec_dd_quadcollision[ppw2->index_qs2_monopole_g]);
-
-        double quadL_I_10_prime =
-          - (ppw2->pvec_d_quadsources[ppw2->index_qs2_monopole_g+lm(1,0)]
-            - ppw2->pvec_d_quadcollision[ppw2->index_qs2_monopole_g+lm(1,0)]);
-
-        double u_delta_g = ppw2->u_g_1[0]*ppw2->delta_g_2 + ppw2->u_g_2[0]*ppw2->delta_g_1;
-
-        double v_ten_v_g_prime =
-          -ppw2->k1_ten_k2[m+2] * ppw2->pvec_d_quadsources[ppw2->index_qs2_vv_g];
-
-        ppw2->u_g_rsa[0] +=
-          - u_delta_g
-          - 3/(4*k) * quadL_I_00
-          - 3/(4*k*k) * quadL_I_10_prime
-          + 6/k * v_ten_v_g_prime
-          + 9/(4*k*k*k) * quadL_I_00_prime_prime;
-
-        /* Debug - Inspect the single terms in u_g, especially the derivative ones */
-        // double quadL_I_00_prime =
-        //   - (ppw2->pvec_d_quadsources[ppw2->index_qs2_monopole_g]
-        //     - ppw2->pvec_d_quadcollision[ppw2->index_qs2_monopole_g]);
-        //
-        // double quadL_I_10 =
-        //   - (ppw2->pvec_quadsources[ppw2->index_qs2_monopole_g+lm(1,0)]
-        //     - ppw2->pvec_quadcollision[ppw2->index_qs2_monopole_g+lm(1,0)]);
-        //
-        // printf_k_debug (stderr, "%12g %12g %12g %12g %12g %12g %12g %12g %12g\n",
-        //   tau,
-        //   u_delta_g,
-        //   quadL_I_00, quadL_I_00_prime, quadL_I_00_prime_prime,
-        //   quadL_I_10, quadL_I_10_prime,
-        //   ppw2->pvec_quadsources[ppw2->index_qs2_vv_g],
-        //   ppw2->pvec_d_quadsources[ppw2->index_qs2_vv_g],
-        //   ppw2->pvec_dd_quadsources[ppw2->index_qs2_vv_g]);
-      }
+      /* Quadratic part, up to O(1/tauk). It is relevant only for squeezed
+      configurations where either k1 or k2 is the small leg. */
+      ppw2->u_g_rsa[0] +=
+        - u_delta_g
+        - 3/(4*k) * quadL_I_00;
 
       /* Build the dipole from the velocity */
       ppw2->I_1m_rsa[0] = 4 * (ppw2->u_g_rsa[0]
@@ -9171,36 +9158,19 @@ int perturb2_rsa_variables (
 
       if (m==0) {
     
+        double quadL_N_00 = -dN_qs2(0,0);
+        double u_delta_ur = ppw2->u_ur_1[0]*ppw2->delta_ur_2 + ppw2->u_ur_2[0]*ppw2->delta_ur_1;
+
         /* Purely second-order part, up to O(1/tauk) */
         ppw2->u_ur_rsa[0] = 6/k * ppw2->pvecmetric[ppw2->index_mt2_phi_prime_longitudinal];
 
-        /* Quadratic part. */
-        // if (ppt2->radiation_streaming_approximation != rsa2_none)
-        {
-
-          double quadL_N_00 = - dN_qs2(0,0);
-
-          double quadL_N_00_prime_prime =
-            - (ppw2->pvec_dd_quadsources[ppw2->index_qs2_monopole_ur]
-              - ppw2->pvec_dd_quadcollision[ppw2->index_qs2_monopole_ur]);
-
-          double quadL_N_10_prime =
-            - (ppw2->pvec_d_quadsources[ppw2->index_qs2_monopole_ur+lm(1,0)]
-              - ppw2->pvec_d_quadcollision[ppw2->index_qs2_monopole_ur+lm(1,0)]);
-
-          double u_delta_ur = ppw2->u_ur_1[0]*ppw2->delta_ur_2 + ppw2->u_ur_2[0]*ppw2->delta_ur_1;
-
-          double v_ten_v_ur_prime =
-            -ppw2->k1_ten_k2[m+2] * ppw2->pvec_d_quadsources[ppw2->index_qs2_vv_ur];
-
-          ppw2->u_ur_rsa[0] +=
-            - u_delta_ur
-            - 3/(4*k) * quadL_N_00
-            - 3/(4*k*k) * quadL_N_10_prime
-            + 6/k * v_ten_v_ur_prime
-            + 9/(4*k*k*k) * quadL_N_00_prime_prime;
-        }
+        /* Quadratic part, up to O(1/tauk). It is relevant only for squeezed
+        configurations where either k1 or k2 is the small leg. */
+        ppw2->u_ur_rsa[0] +=
+          - u_delta_ur
+          - 3/(4*k) * quadL_N_00;
         
+        /* Build the dipole from the velocity */
         ppw2->N_1m_rsa[0] = 4 * (ppw2->u_ur_rsa[0]
           + ppw2->delta_ur_1*ppw2->u_ur_2[0] + ppw2->delta_ur_2*ppw2->u_ur_1[0]);        
       }
@@ -9214,42 +9184,43 @@ int perturb2_rsa_variables (
     }
   }
   
-
-  /* - Update fluid variables */
   
-  /* When we called the perturb2_fluid_variables() function above we did not
-  know yet what was the value of the monopoles and dipoles. Now that we do, we
-  update the corresponding fields. */
-  if (ppw2->approx[ppw2->index_ap2_rsa] == (int)rsa_off) {
-    if (ppr2->compute_m[0]==_TRUE_) {
-      ppw2->delta_g = I(0,0) - 8/3.*ppw2->v_dot_v_g;
-      if (pba->has_ur == _TRUE_)
-        ppw2->delta_ur = N(0,0) - 8/3.*ppw2->v_dot_v_ur;
-    }
-    for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
-      int m = ppr2->m[index_m];    
-      ppw2->u_g[m] = I(1,m)/4
-        - ppw2->delta_g_1*ppw2->u_g_2[m] - ppw2->delta_g_2*ppw2->u_g_1[m];
-      if (pba->has_ur == _TRUE_)
-        ppw2->u_ur[m] = N(1,m)/4
-          - ppw2->delta_ur_1*ppw2->u_ur_2[m] - ppw2->delta_ur_2*ppw2->u_ur_1[m];
-    }
-  }
-  else {
-    if (ppr2->compute_m[0]==_TRUE_) {
-      ppw2->delta_g = ppw2->delta_g_rsa;
-      if (pba->has_ur == _TRUE_)
-        ppw2->delta_ur = ppw2->delta_ur_rsa;
-    }
-    for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
-      int m = ppr2->m[index_m];    
-      ppw2->u_g[m] = ppw2->u_g_rsa[m];
-      if (pba->has_ur == _TRUE_)
-        ppw2->u_ur[m] = ppw2->u_ur_rsa[m];
-    }
-  }
-
-
+  // /* - Update fluid variables */
+ //
+ //  /* When we called the perturb2_fluid_variables() function above we did not
+ //  know yet what was the value of the monopoles and dipoles for photons and
+ //  neutrinos. Now that we do, we update the corresponding fields, so that the
+ //  user does not have to call perturb2_fluid_variables() again after this function. */
+ //
+ //  if (ppw2->approx[ppw2->index_ap2_rsa] == (int)rsa_off) {
+ //    if (ppr2->compute_m[0]==_TRUE_) {
+ //      ppw2->delta_g = I(0,0) - 8/3.*ppw2->v_dot_v_g;
+ //      if (pba->has_ur == _TRUE_)
+ //        ppw2->delta_ur = N(0,0) - 8/3.*ppw2->v_dot_v_ur;
+ //    }
+ //    for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+ //      int m = ppr2->m[index_m];
+ //      ppw2->u_g[m] = I(1,m)/4
+ //        - ppw2->delta_g_1*ppw2->u_g_2[m] - ppw2->delta_g_2*ppw2->u_g_1[m];
+ //      if (pba->has_ur == _TRUE_)
+ //        ppw2->u_ur[m] = N(1,m)/4
+ //          - ppw2->delta_ur_1*ppw2->u_ur_2[m] - ppw2->delta_ur_2*ppw2->u_ur_1[m];
+ //    }
+ //  }
+ //  else {
+ //    if (ppr2->compute_m[0]==_TRUE_) {
+ //      ppw2->delta_g = ppw2->delta_g_rsa;
+ //      if (pba->has_ur == _TRUE_)
+ //        ppw2->delta_ur = ppw2->delta_ur_rsa;
+ //    }
+ //    for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+ //      int m = ppr2->m[index_m];
+ //      ppw2->u_g[m] = 0;
+ //      if (pba->has_ur == _TRUE_)
+ //        ppw2->u_ur[m] = ppw2->u_ur_rsa[m];
+ //    }
+ //  }
+  
   return _SUCCESS_;
 
 }
@@ -9269,8 +9240,10 @@ int perturb2_rsa_variables (
  * This function needs to be called after:
  * -# background_at_tau()
  * -# thermodynamics_at_z()
- * -# perturb_song_sources_at_tau()
- * -# perturb2_tca_variables()
+ * -# perturb2_quadratic_sources() to fill ppw2->pvec_quadsources, ppw2->pvec_sources1
+ *    and ppw2->pvec_sources2, or perturb2_quadratic_sources_at_tau() followed by two
+ *    calls to perturb_song_sources_at_tau().
+ * -# perturb2_workspace_at_tau()
  * -# perturb2_einstein()
  */
 
@@ -9377,6 +9350,8 @@ int perturb2_compute_psi_prime(
     rho_quadrupole_prime += rho_ur*dN(2,0);
   }
   
+  
+
   // =============================================================================
   // =                              Equation for psi'                            =
   // =============================================================================
@@ -9492,17 +9467,8 @@ int perturb2_quadratic_sources_for_k1k2k (
   // =                                 Take derivatives                                 =
   // ====================================================================================
 
-  /* Compute the conformal time derivatives of the quadratic sources. We need:
-
-   - d(qs)^2/dtau^2 for the spline interpolation of qs, and to compute the
-       perturbations during the radiation streaming approximation;
-
-   - d(qs)/dtau for the radiation streaming approximation;
-
-   - d(qs)^3/dtau^3 for the spline interpolation of d(qs)/dtau;
-
-   - d(qs)^4/dtau^4 for the spline interpolation of d(qs)^2/dtau^2. */
-
+  /* Compute the second derivative of the quadratic sources with respect to
+  conformal time, in view of spline interpolation */
 
   /* d(qs)^2/dtau^2 for the full quadratic sources (Liouville + collision) */
   class_call (spline_derivs_two_levels (
@@ -9532,89 +9498,95 @@ int perturb2_quadratic_sources_for_k1k2k (
     ppt2->error_message,
     ppt2->error_message);
 
+
+  /* Compute higher-order derivatives if requested */
+
+  if (ppt2->compute_quadsources_derivatives == _TRUE_) {
   
-  // for (int index_qs2=0; index_qs2 < ppw2->qs2_size; ++index_qs2) {
-  //
-  //   /* d(qs)/dtau for the full quadratic sources (Liouville + collision) */
-  //   class_call (array_spline_derive_table_lines(
-  //                 ppt->tau_sampling_quadsources,
-  //                 ppt->tau_size_quadsources,
-  //                 ppw2->quadsources_table[index_qs2],
-  //                 ppw2->dd_quadsources_table[index_qs2],
-  //                 1,
-  //                 ppw2->d_quadsources_table[index_qs2],
-  //                 ppt2->error_message),
-  //     ppt2->error_message,
-  //     ppt2->error_message);
-  //
-  //   /* d(qs)/dtau for the collision sources */
-  //   class_call (array_spline_derive_table_lines(
-  //                 ppt->tau_sampling_quadsources,
-  //                 ppt->tau_size_quadsources,
-  //                 ppw2->quadcollision_table[index_qs2],
-  //                 ppw2->dd_quadcollision_table[index_qs2],
-  //                 1,
-  //                 ppw2->d_quadcollision_table[index_qs2],
-  //                 ppt2->error_message),
-  //     ppt2->error_message,
-  //     ppt2->error_message);
-  // }
-  //
-  // /* d(qs)^3/dtau^3 for the full quadratic sources (Liouville + collision) */
-  // class_call (spline_derivs_two_levels (
-  //               ppt->tau_sampling_quadsources,
-  //               ppt->tau_size_quadsources,
-  //               ppw2->d_quadsources_table,
-  //               ppw2->qs2_size,
-  //               ppw2->ddd_quadsources_table,
-  //               _SPLINE_EST_DERIV_,
-  //               // _SPLINE_NATURAL_,
-  //               ppt2->error_message
-  //               ),
-  //   ppt2->error_message,
-  //   ppt2->error_message);
-  //
-  // /* d(qs)^3/dtau^3 for the collision sources */
-  // class_call (spline_derivs_two_levels (
-  //               ppt->tau_sampling_quadsources,
-  //               ppt->tau_size_quadsources,
-  //               ppw2->d_quadcollision_table,
-  //               ppw2->qs2_size,
-  //               ppw2->ddd_quadcollision_table,
-  //               _SPLINE_EST_DERIV_,
-  //               // _SPLINE_NATURAL_,
-  //               ppt2->error_message
-  //               ),
-  //   ppt2->error_message,
-  //   ppt2->error_message);
-  //
-  // /* d(qs)^4/dtau^4 for the full quadratic sources (Liouville + collision) */
-  // class_call (spline_derivs_two_levels (
-  //               ppt->tau_sampling_quadsources,
-  //               ppt->tau_size_quadsources,
-  //               ppw2->dd_quadsources_table,
-  //               ppw2->qs2_size,
-  //               ppw2->dddd_quadsources_table,
-  //               _SPLINE_EST_DERIV_,
-  //               // _SPLINE_NATURAL_,
-  //               ppt2->error_message
-  //               ),
-  //   ppt2->error_message,
-  //   ppt2->error_message);
-  //
-  // /* d(qs)^4/dtau^4 for the collision sources */
-  // class_call (spline_derivs_two_levels (
-  //               ppt->tau_sampling_quadsources,
-  //               ppt->tau_size_quadsources,
-  //               ppw2->dd_quadcollision_table,
-  //               ppw2->qs2_size,
-  //               ppw2->dddd_quadcollision_table,
-  //               _SPLINE_EST_DERIV_,
-  //               // _SPLINE_NATURAL_,
-  //               ppt2->error_message
-  //               ),
-  //   ppt2->error_message,
-  //   ppt2->error_message);
+    for (int index_qs2=0; index_qs2 < ppw2->qs2_size; ++index_qs2) {
+
+      /* d(qs)/dtau for the full quadratic sources (Liouville + collision) */
+      class_call (array_spline_derive_table_lines(
+                    ppt->tau_sampling_quadsources,
+                    ppt->tau_size_quadsources,
+                    ppw2->quadsources_table[index_qs2],
+                    ppw2->dd_quadsources_table[index_qs2],
+                    1,
+                    ppw2->d_quadsources_table[index_qs2],
+                    ppt2->error_message),
+        ppt2->error_message,
+        ppt2->error_message);
+
+      /* d(qs)/dtau for the collision sources */
+      class_call (array_spline_derive_table_lines(
+                    ppt->tau_sampling_quadsources,
+                    ppt->tau_size_quadsources,
+                    ppw2->quadcollision_table[index_qs2],
+                    ppw2->dd_quadcollision_table[index_qs2],
+                    1,
+                    ppw2->d_quadcollision_table[index_qs2],
+                    ppt2->error_message),
+        ppt2->error_message,
+        ppt2->error_message);
+    }
+
+    /* d(qs)^3/dtau^3 for the full quadratic sources (Liouville + collision) */
+    class_call (spline_derivs_two_levels (
+                  ppt->tau_sampling_quadsources,
+                  ppt->tau_size_quadsources,
+                  ppw2->d_quadsources_table,
+                  ppw2->qs2_size,
+                  ppw2->ddd_quadsources_table,
+                  _SPLINE_EST_DERIV_,
+                  // _SPLINE_NATURAL_,
+                  ppt2->error_message
+                  ),
+      ppt2->error_message,
+      ppt2->error_message);
+
+    /* d(qs)^3/dtau^3 for the collision sources */
+    class_call (spline_derivs_two_levels (
+                  ppt->tau_sampling_quadsources,
+                  ppt->tau_size_quadsources,
+                  ppw2->d_quadcollision_table,
+                  ppw2->qs2_size,
+                  ppw2->ddd_quadcollision_table,
+                  _SPLINE_EST_DERIV_,
+                  // _SPLINE_NATURAL_,
+                  ppt2->error_message
+                  ),
+      ppt2->error_message,
+      ppt2->error_message);
+
+    /* d(qs)^4/dtau^4 for the full quadratic sources (Liouville + collision) */
+    class_call (spline_derivs_two_levels (
+                  ppt->tau_sampling_quadsources,
+                  ppt->tau_size_quadsources,
+                  ppw2->dd_quadsources_table,
+                  ppw2->qs2_size,
+                  ppw2->dddd_quadsources_table,
+                  _SPLINE_EST_DERIV_,
+                  // _SPLINE_NATURAL_,
+                  ppt2->error_message
+                  ),
+      ppt2->error_message,
+      ppt2->error_message);
+
+    /* d(qs)^4/dtau^4 for the collision sources */
+    class_call (spline_derivs_two_levels (
+                  ppt->tau_sampling_quadsources,
+                  ppt->tau_size_quadsources,
+                  ppw2->dd_quadcollision_table,
+                  ppw2->qs2_size,
+                  ppw2->dddd_quadcollision_table,
+                  _SPLINE_EST_DERIV_,
+                  // _SPLINE_NATURAL_,
+                  ppt2->error_message
+                  ),
+      ppt2->error_message,
+      ppt2->error_message);
+
+  }
 
 
   return _SUCCESS_;
@@ -11777,8 +11749,8 @@ int what_if_ndf15_fails(int (*derivs)(double x,
   /* Print info */        
   if (ppt2->perturbations2_verbose > 0) {
     printf("     * error in ndf15: '%s'\n", error_message);
-    printf("     * recomputing mode (k1,k2,k,cosk1k2) = (%.17f,%.17f,%.17f,%.17f) = (%d,%d,%d) using Runge-Kutta method\n",
-      ppw2->k1, ppw2->k2, ppw2->k, ppw2->cosk1k2, ppw2->index_k1, ppw2->index_k2, ppw2->index_k3);
+    printf("     * recomputing mode (k1,k2,k,cosk1k2)=(%12g[%d],%12g[%d],%12g[%d],%12g) using Runge-Kutta method\n",
+      ppw2->k1, ppw2->index_k1, ppw2->k2, ppw2->index_k2, ppw2->k, ppw2->index_k3, ppw2->cosk1k2);
     fflush(stdout);
   }
     
@@ -11883,6 +11855,7 @@ int perturb2_save_early_transfers (
   If it exceeds 5000 steps, you should probably be suspicious. */
   // printf ("ppw2->n_steps = %d\n", ppw2->n_steps);
 
+
   // ======================================================================================
   // =                          Interpolate needed quantities                             =
   // ======================================================================================
@@ -11952,50 +11925,39 @@ int perturb2_save_early_transfers (
       ppt2->error_message,
       error_message);
 
-    /* Uncomment to interpolate the time derivative of the total quadratic sources
-    as well, and store it in ppw2->pvec_d_quadsources. For this to work, make sure
-    to fill the derivative table in perturb2_quadratic_sources_for_k1k2k(). */
-    // class_call(perturb2_quadratic_sources_at_tau(
-    //              ppr,
-    //              ppr2,
-    //              ppt,
-    //              ppt2,
-    //              tau,
-    //              interpolate_d_total,
-    //              ppw2
-    //              ),
-    //   ppt2->error_message,
-    //   ppt2->error_message);
-    //
-    // /* Interpolate the time derivative of the collisional quadratic sources
-    // and store it in ppw2->pvec_d_quadcollision */
-    // class_call(perturb2_quadratic_sources_at_tau(
-    //              ppr,
-    //              ppr2,
-    //              ppt,
-    //              ppt2,
-    //              tau,
-    //              interpolate_d_collision,
-    //              ppw2
-    //              ),
-    //   ppt2->error_message,
-    //   ppt2->error_message);
+    if (ppt2->compute_quadsources_derivatives == _TRUE_) {
+
+      /* Interpolate the time derivative of the total quadratic sources
+      as well, and store it in ppw2->pvec_d_quadsources */
+      class_call(perturb2_quadratic_sources_at_tau(
+                   ppr,
+                   ppr2,
+                   ppt,
+                   ppt2,
+                   tau,
+                   interpolate_d_total,
+                   ppw2
+                   ),
+        ppt2->error_message,
+        ppt2->error_message);
+
+      /* Interpolate the time derivative of the collisional quadratic sources
+      and store it in ppw2->pvec_d_quadcollision */
+      class_call(perturb2_quadratic_sources_at_tau(
+                   ppr,
+                   ppr2,
+                   ppt,
+                   ppt2,
+                   tau,
+                   interpolate_d_collision,
+                   ppw2
+                   ),
+        ppt2->error_message,
+        ppt2->error_message);
+    }
       
   }
 
-  /* Compute densities, velocities and shear */
-  class_call (perturb2_fluid_variables(
-                ppr,
-                ppr2,
-                pba,
-                pth,
-                ppt,
-                ppt2,
-                tau,
-                y,
-                ppw2),
-    ppt2->error_message,
-    error_message);
 
   /* Set the perturbations that are influenced by approximations */
   class_call (perturb2_workspace_at_tau(
@@ -12011,6 +11973,52 @@ int perturb2_save_early_transfers (
     ppt2->error_message,
     ppt2->error_message);
   
+
+  /* Compute useful quantities in the radiation streaming limit */
+  class_call (perturb2_rsa_variables(
+                ppr,
+                ppr2,
+                pba,
+                pth,
+                ppt,
+                ppt2,
+                tau,
+                y,
+                ppw2),
+    ppt2->error_message,
+    error_message);
+  
+  
+  /* Compute useful quantities in the tight coupling limit */
+  class_call (perturb2_tca_variables(
+                ppr,
+                ppr2,
+                pba,
+                pth,
+                ppt,
+                ppt2,
+                tau,
+                y,
+                ppw2),
+    ppt2->error_message,
+    error_message);
+
+
+  /* Compute densities, velocities and shear for all species */
+  class_call (perturb2_fluid_variables(
+                ppr,
+                ppr2,
+                pba,
+                pth,
+                ppt,
+                ppt2,
+                tau,
+                y,
+                ppw2),
+    ppt2->error_message,
+    error_message);
+    
+
   /* Define shorthands */
   double * pvec_sources1 = ppw2->pvec_sources1;
   double * pvec_sources2 = ppw2->pvec_sources2;
@@ -12287,23 +12295,7 @@ int perturb2_save_early_transfers (
   if (ppr2->compute_m[1] == _TRUE_) {
     omega_m1_analytical *= Fz*Hc/2;
   }
-  
-  /* - Compute useful quantities in the radiation streaming limit */
-  
-  class_call (perturb2_rsa_variables(
-                ppr,
-                ppr2,
-                pba,
-                pth,
-                ppt,
-                ppt2,
-                tau,
-                y,
-                ppw2),
-    ppt2->error_message,
-    error_message);
-  
-  
+    
   /* Debug of the analytical limits for m=1 and m=2 */
   // if ((ppr2->compute_m[1] == _TRUE_) && (ppr2->compute_m[2] == _TRUE_)) {
   //   if (ppw2->n_steps==1) {
@@ -12324,22 +12316,6 @@ int perturb2_save_early_transfers (
   // ====================================================================================
   // =                               Early universe limits                             =
   // ====================================================================================
-
-  /* - Compute useful quantities in the tight coupling limit */
-  
-  class_call (perturb2_tca_variables(
-                ppr,
-                ppr2,
-                pba,
-                pth,
-                ppt,
-                ppt2,
-                tau,
-                y,
-                ppw2),
-    ppt2->error_message,
-    error_message);
-
 
   /* - Adiabatic velocity at early times */
 
@@ -13235,21 +13211,33 @@ int perturb2_quadratic_sources_at_tau_linear(
     size = ppw2->qs2_size;
   }
   else if (what_to_interpolate == interpolate_d_total) {
+    class_test (ppt2->compute_quadsources_derivatives == _FALSE_,
+      ppt2->error_message,
+      "can't interpolate derivatives of quadsources if you don't compute them first!");
     table = ppw2->d_quadsources_table;
     result = ppw2->pvec_d_quadsources;
     size = ppw2->qs2_size;
   }
   else if (what_to_interpolate == interpolate_d_collision) {
+    class_test (ppt2->compute_quadsources_derivatives == _FALSE_,
+      ppt2->error_message,
+      "can't interpolate derivatives of quadsources if you don't compute them first!");
     table = ppw2->d_quadcollision_table;
     result = ppw2->pvec_d_quadcollision;    
     size = ppw2->qs2_size;
   }
   else if (what_to_interpolate == interpolate_dd_total) {
+    class_test (ppt2->compute_quadsources_derivatives == _FALSE_,
+      ppt2->error_message,
+      "can't interpolate derivatives of quadsources if you don't compute them first!");
     table = ppw2->dd_quadsources_table;
     result = ppw2->pvec_dd_quadsources;
     size = ppw2->qs2_size;
   }
   else if (what_to_interpolate == interpolate_dd_collision) {
+    class_test (ppt2->compute_quadsources_derivatives == _FALSE_,
+      ppt2->error_message,
+      "can't interpolate derivatives of quadsources if you don't compute them first!");
     table = ppw2->dd_quadcollision_table;
     result = ppw2->pvec_dd_quadcollision;    
     size = ppw2->qs2_size;
@@ -13302,24 +13290,36 @@ int perturb2_quadratic_sources_at_tau_spline (
     size = ppw2->qs2_size;
   }
   else if (what_to_interpolate == interpolate_d_total) {
+    class_test (ppt2->compute_quadsources_derivatives == _FALSE_,
+      ppt2->error_message,
+      "can't interpolate derivatives of quadsources if you don't compute them first!");
     table = ppw2->d_quadsources_table;
     dd_table = ppw2->ddd_quadsources_table;
     result = ppw2->pvec_d_quadsources;
     size = ppw2->qs2_size;
   }
   else if (what_to_interpolate == interpolate_d_collision) {
+    class_test (ppt2->compute_quadsources_derivatives == _FALSE_,
+      ppt2->error_message,
+      "can't interpolate derivatives of quadsources if you don't compute them first!");
     table = ppw2->d_quadcollision_table;
     dd_table = ppw2->ddd_quadcollision_table;
     result = ppw2->pvec_d_quadcollision;    
     size = ppw2->qs2_size;
   }
   else if (what_to_interpolate == interpolate_dd_total) {
+    class_test (ppt2->compute_quadsources_derivatives == _FALSE_,
+      ppt2->error_message,
+      "can't interpolate derivatives of quadsources if you don't compute them first!");
     table = ppw2->dd_quadsources_table;
     dd_table = ppw2->dddd_quadsources_table;
     result = ppw2->pvec_dd_quadsources;
     size = ppw2->qs2_size;
   }
   else if (what_to_interpolate == interpolate_dd_collision) {
+    class_test (ppt2->compute_quadsources_derivatives == _FALSE_,
+      ppt2->error_message,
+      "can't interpolate derivatives of quadsources if you don't compute them first!");
     table = ppw2->dd_quadcollision_table;
     dd_table = ppw2->dddd_quadcollision_table;
     result = ppw2->pvec_dd_quadcollision;    

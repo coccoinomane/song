@@ -209,13 +209,27 @@ ppt2->c_minus are used */
 // -                                 Debug shortcuts                                  -
 // ------------------------------------------------------------------------------------
                               
-#define printf_k_debug(args...) {                                   \
+#define fprintf_k_debug(args...) {                                  \
   if((ppw2->index_k1==ppt2->index_k1_debug) &&                      \
      (ppw2->index_k2==ppt2->index_k2_debug) &&                      \
      (ppw2->index_k3==ppt2->index_k3_debug)) {                      \
     fprintf (args);                                                 \
   }                                                                 \
 }
+
+#define printf_k_debug(args...) {                                   \
+  fprintf_k_debug (stdout, args)                                    \
+}
+
+#define fprintf_k_debug_xy(stream, x, y) {                          \
+  fprintf_k_debug (stream, "%12g %12g\n", x, y);                    \
+}
+
+#define fprintf_k_debug_xyz(stream, x, y, z) {                      \
+  fprintf_k_debug (stream, "%12g %12g %12g\n", x, y, z);            \
+}
+
+
 
 
 #endif
