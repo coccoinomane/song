@@ -1034,7 +1034,7 @@ int perturb2_get_lm_lists (
   class_alloc (ppt2->lm_array, (ppt2->largest_l_quad+1)*sizeof(int*), ppt2->error_message);    
 
   for (int l=0; l<=ppt2->largest_l; ++l) {
-  
+
     class_calloc (ppt2->lm_array[l],
                   ppr2->index_m_max[l]+1,
                   sizeof(int),
@@ -1960,7 +1960,7 @@ int perturb2_get_k_lists (
       This is not efficient, as low values of k1 and k2 do not need a sampling as good as the
       one needed for high values */
 
-      if ((ppt2->k3_sampling == lin_k3_sampling) || (ppt2->k3_sampling == log_k3_sampling)) {
+      else if ((ppt2->k3_sampling == lin_k3_sampling) || (ppt2->k3_sampling == log_k3_sampling)) {
 
         /* The size of the k3 array is the same for every (k1,k2) configuration, and is read
         from the precision structure */
@@ -2149,7 +2149,7 @@ int perturb2_get_k_lists (
   ppt2->k_max = ppt2->k3[ppt2->k_size-1][ppt2->k_size-1]
                   [ppt2->k3_size[ppt2->k_size-1][ppt2->k_size-1]];
                         
-  class_test ((ppt2->k_min==0) || (ppt2->k_max==0),
+  /*class_test ((ppt2->k_min==0) || (ppt2->k_max==0),
     ppt2->error_message,
     "found vanishing k value");
 
@@ -2612,11 +2612,9 @@ int perturb2_timesampling_for_sources (
   earlier, cut the time-sampling vector so that sources at later times are not
   computed. */
 
-  if (ppt2->has_recombination_only == _TRUE_) {
+  if ((ppt2->has_recombination_only == _TRUE_) && (ppt2->has_custom_timesampling == _FALSE_)) {
     ppt2->tau_size = ppt2->index_tau_end_of_recombination;
   }
-
-
 
   // ====================================================================================
   // =                             Allocate sources array                               =
@@ -4909,6 +4907,9 @@ int perturb2_approximations (
       /* Debug - Check that the NRA approximation is turned on when we want */
       // printf ("a, a_eq, ratio = %g, %g, %g\n", a, pba->a_eq, a/pba->a_eq);
     }
+    else {
+      ppw2->approx[ppw2->index_ap2_nra] = (int)nra_off;
+    }
   }
   
 
@@ -4919,11 +4920,13 @@ int perturb2_approximations (
   class_test ((ppw2->approx[ppw2->index_ap2_nra]==(int)nra_on)
     && (ppw2->approx[ppw2->index_ap2_tca]==(int)tca_on),
     ppt2->error_message,
-    "The TCA and NRA approximations can't be turned on at the same time.");
+    "tau=%g: the TCA and NRA approximations can't be turned on at the same time.",
+    tau);
     
   class_test (ppw2->n_active_approximations>1,
     ppt2->error_message,
-    "So far SONG only supports one active approximation at the same time");
+    "tau=%g: so far SONG only supports one active approximation at the same time.",
+    tau);
 
   return _SUCCESS_;
 }
@@ -7498,9 +7501,13 @@ int perturb2_derivs (
       The quadsources contain the quadratic part and the generation 
       from photon anisotropic stress*/
       
-      dmag(1,m) = -2. * Hc * mag(1,m) 
-      					+ k* pvecback[pba->index_bg_rho_g] /3. *(four_thirds*b(1,1,m) - I(1,m))
+       
+      dmag(1,m) = -2. * Hc * mag(1,m)  
+      					+
+      					k* pvecback[pba->index_bg_rho_g] /3. *ppw2->C_1m[m]/kappa_dot
+      					/*(four_thirds * b(1,1,m) - ppw2->I_1m[m])*/ 
       					;
+      					
       					 /*this is the conversion factor, after this add the collison term for photons stripped by kappa+_dot. Numerical factor of sigma_t/e missing*/
       					/*keep in mind that the collision term for photons does include the perturbation of xe form delta_b (and possible perturbed recombination) This needs to be removed for the magnetic field. Then an additional term of - psi has to be added seperately coming from the vierbein. Note that the contribution from phi is already included in the collision term*/		
       	 				
@@ -7509,7 +7516,7 @@ int perturb2_derivs (
 		if (ppt2->has_quadratic_sources == _TRUE_) {
       for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
         int m = ppr2->m[index_m];
-        dmag(1,m) += dmag_qs2(1,m);
+        dmag(1,m) +=  dmag_qs2(1,m);
 		}}
 	}
 
@@ -8091,6 +8098,9 @@ int perturb2_workspace_at_tau (
       int m = ppt2->m[index_m];
       double kappa_dot = ppw2->pvecthermo[pth->index_th_dkappa];
       ppw2->C_1m[m] = kappa_dot * (four_thirds*b(1,1,m) - I(1,m));
+     	/* magnetic fileds need the slip, this is a bit dirty here */
+     	/* ppw2->U_slip_tca1[m] =  (four_thirds*b(1,1,m) - I(1,m))/4.;*/
+     	
     }
     
   }
@@ -8866,7 +8876,6 @@ int perturb2_tca_variables (
 
     }
   }
-
 
   return _SUCCESS_;
 
@@ -10017,6 +10026,7 @@ int perturb2_quadratic_sources (
  
             dI_qc2(1,m) =  3 * ( c_minus_12(1,m) * v_0_1 * I_2_tilde(0)
                                + c_minus_21(1,m) * v_0_2 * I_1_tilde(0));
+                               
 
             /* In perturb2_derivs(), we have written the purely second-order part of
             the dipole equation as
@@ -10243,11 +10253,12 @@ int perturb2_quadratic_sources (
         //factor sigma_t/e missing + remove delta_e C1 and add -Psi C1
         dmag_qs2(1,m) = + k* pvecback[pba->index_bg_rho_g] /3.*(
           		 dI_qc2(1,ppt2->m[index_m])
+          		 
           		// here we substract delta_e C1 and add -Psi C1.
           			-(delta_e_1 - D_1)*c_2  -  (delta_e_2 - D_2)*c_1
           			
           		// test source term
-          	//	( A_1 + D_1 + delta_g_1 )*c_2  +  (A_2 + D_2 + delta_g_2)*c_1
+          		//( A_1 + D_1 + delta_g_1 )*c_2  +  (A_2 + D_2 + delta_g_2)*c_1
           			);
           			
           			//old code
@@ -12076,7 +12087,7 @@ int perturb2_save_early_transfers (
   int index_print_qs = 1;
   
   /* Choose how label & values should be formatted */
-  char format_label[64] = "%20s(%02d) ";
+  char format_label[64] = "%18s(%02d) ";
   char format_value[64] = "%+22.11e ";
   char buffer[64];
   
