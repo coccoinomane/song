@@ -1451,6 +1451,7 @@ int input2_default_params (
   ptr2->has_transfers2_only = _FALSE_;
   ppt2->rescale_quadsources = _TRUE_;
   ppt2->compute_quadsources_derivatives = _FALSE_;
+  // ppt2->compute_quadsources_derivatives = _TRUE_;
 
   ppt2->rescale_quadsources = _FALSE_;
 
@@ -1503,8 +1504,8 @@ int input2_default_params (
   ppt2->tight_coupling_trigger_tau_c_over_tau_h = 0.01;
   ppt2->tight_coupling_trigger_tau_c_over_tau_k = 0.007;
   
-  ppt2->radiation_streaming_approximation = rsa2_none;
-  ppt2->radiation_streaming_trigger_tau_over_tau_k = 45;
+  ppt2->radiation_streaming_approximation = rsa2_MD;
+  ppt2->radiation_streaming_trigger_tau_over_tau_k = 90;
   ppt2->radiation_streaming_trigger_tau_c_over_tau = 5;
   
   ppt2->ur_fluid_approximation = ufa2_none;

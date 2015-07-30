@@ -7968,6 +7968,8 @@ int perturb2_einstein (
  * The order in which the approximations are dealed with is important;
  * mind this if you plan to change this function.
  *
+ * Do not rely on the fluid variables computed in this function.
+ *
  * This function requires:
  * -# background_at_tau()
  * -# thermodynamics_at_z()
@@ -8527,6 +8529,8 @@ int perturb2_fluid_variables (
  *
  * -# ppw2->I_00
  *
+ * Do not rely on the fluid variables computed in this function.
+ *
  */
 
 int perturb2_tca_variables (
@@ -8956,6 +8960,9 @@ int perturb2_tca_variables (
  * -# background_at_tau()
  * -# thermodynamics_at_z()
  * -# perturb2_quadratic_sources_at_tau()
+ *
+ * Do not rely on the fluid variables computed in this function.
+ *
  */
 
 int perturb2_rsa_variables (
@@ -9020,6 +9027,10 @@ int perturb2_rsa_variables (
       ppt2->error_message);
   }
 
+  /* The quadratic contribution to the RSA approximation includes some higher-order
+  terms that we normally omit, and that require the computation of the derivatives
+  of the quadratic soruces. We include them only if the user asked for
+  ppt2->compute_quadsources_derivatives==_TRUE_ */
 
   if (ppt2->compute_quadsources_derivatives == _TRUE_) {
     if (ppt2->has_quadratic_sources == _TRUE_) {
@@ -9075,12 +9086,29 @@ int perturb2_rsa_variables (
     
     double quadL_I_10 = - (dI_qs2(1,0)-dI_qc2(1,0));
     
-    /* Purely second-order part, up to O(1/tauk) */
+    /* Purely second-order part */
     ppw2->delta_g_rsa = - 4 * ppw2->pvecmetric[ppw2->index_mt2_psi];
 
-    /* Quadratic part, up to O(1/tauk). It is relevant only for squeezed
+    /* Quadratic part. It is relevant only for squeezed
     configurations where either k1 or k2 is the small leg. */
     ppw2->delta_g_rsa += quadL_I_10/k;
+
+    /* Include higher-order terms */
+    if (ppt2->compute_quadsources_derivatives == _TRUE_) {
+      
+      double quadL_I_00_prime =
+        - (ppw2->pvec_d_quadsources[ppw2->index_qs2_monopole_g]
+          - ppw2->pvec_d_quadcollision[ppw2->index_qs2_monopole_g]);
+
+      double v_ten_v_g_prime_prime =
+        -ppw2->k1_ten_k2[0+2] * ppw2->pvec_dd_quadsources[ppw2->index_qs2_vv_g];
+
+      ppw2->delta_g_rsa +=
+        - 3/(k*k)*quadL_I_00_prime
+        - 8*ppw2->v_dot_v_g/3
+        - 8*ppw2->v_ten_v_g[0+2]
+        - 8/(k*k)*v_ten_v_g_prime_prime;
+    }
     
     /* Build the monopole from the density contrast */
     ppw2->I_00_rsa = ppw2->delta_g_rsa + 8*ppw2->v_dot_v_g/3;
@@ -9100,12 +9128,29 @@ int perturb2_rsa_variables (
 
       double quadL_N_10 = -dN_qs2(1,0);
 
-      /* Purely second-order part, up to O(1/tauk) */
+      /* Purely second-order part */
       ppw2->delta_ur_rsa = - 4 * ppw2->pvecmetric[ppw2->index_mt2_psi];
 
-      /* Quadratic part, up to O(1/tauk). It is relevant only for squeezed
+      /* Quadratic part. It is relevant only for squeezed
       configurations where either k1 or k2 is the small leg. */
       ppw2->delta_ur_rsa += quadL_N_10/k;
+
+      /* Include higher-order terms */
+      if (ppt2->compute_quadsources_derivatives == _TRUE_) {
+      
+        double quadL_N_00_prime = 
+          - (ppw2->pvec_d_quadsources[ppw2->index_qs2_monopole_ur]
+            - ppw2->pvec_d_quadcollision[ppw2->index_qs2_monopole_ur]);
+    
+        double v_ten_v_ur_prime_prime =
+          -ppw2->k1_ten_k2[0+2] * ppw2->pvec_dd_quadsources[ppw2->index_qs2_vv_ur];
+
+        ppw2->delta_ur_rsa +=
+          - 3/(k*k)*quadL_N_00_prime
+          - 8*ppw2->v_dot_v_ur/3
+          - 8*ppw2->v_ten_v_ur[0+2]
+          - 8/(k*k)*v_ten_v_ur_prime_prime;
+      }
 
       /* Build the monopole from the density contrast */
       ppw2->N_00_rsa = ppw2->delta_ur_rsa + 8*ppw2->v_dot_v_ur/3;
@@ -9125,14 +9170,34 @@ int perturb2_rsa_variables (
       double quadL_I_00 = - (dI_qs2(0,0)-dI_qc2(0,0));
       double u_delta_g = ppw2->u_g_1[0]*ppw2->delta_g_2 + ppw2->u_g_2[0]*ppw2->delta_g_1;
     
-      /* Purely second-order part, up to O(1/tauk) */
+      /* Purely second-order part */
       ppw2->u_g_rsa[0] = 6/k * ppw2->pvecmetric[ppw2->index_mt2_phi_prime_longitudinal];
 
-      /* Quadratic part, up to O(1/tauk). It is relevant only for squeezed
+      /* Quadratic part. It is relevant only for squeezed
       configurations where either k1 or k2 is the small leg. */
       ppw2->u_g_rsa[0] +=
         - u_delta_g
         - 3/(4*k) * quadL_I_00;
+
+      /* Include higher-order terms */
+      if (ppt2->compute_quadsources_derivatives == _TRUE_) {
+
+        double quadL_I_00_prime_prime =
+          - (ppw2->pvec_dd_quadsources[ppw2->index_qs2_monopole_g]
+            - ppw2->pvec_dd_quadcollision[ppw2->index_qs2_monopole_g]);
+
+        double quadL_I_10_prime =
+          - (ppw2->pvec_d_quadsources[ppw2->index_qs2_monopole_g+lm(1,0)]
+            - ppw2->pvec_d_quadcollision[ppw2->index_qs2_monopole_g+lm(1,0)]);
+
+        double v_ten_v_g_prime =
+          -ppw2->k1_ten_k2[m+2] * ppw2->pvec_d_quadsources[ppw2->index_qs2_vv_g];
+
+        ppw2->u_g_rsa[0] +=
+          - 3/(4*k*k) * quadL_I_10_prime
+          + 6/k * v_ten_v_g_prime
+          + 9/(4*k*k*k) * quadL_I_00_prime_prime;
+      }
 
       /* Build the dipole from the velocity */
       ppw2->I_1m_rsa[0] = 4 * (ppw2->u_g_rsa[0]
@@ -9161,14 +9226,35 @@ int perturb2_rsa_variables (
         double quadL_N_00 = -dN_qs2(0,0);
         double u_delta_ur = ppw2->u_ur_1[0]*ppw2->delta_ur_2 + ppw2->u_ur_2[0]*ppw2->delta_ur_1;
 
-        /* Purely second-order part, up to O(1/tauk) */
+        /* Purely second-order part */
         ppw2->u_ur_rsa[0] = 6/k * ppw2->pvecmetric[ppw2->index_mt2_phi_prime_longitudinal];
 
-        /* Quadratic part, up to O(1/tauk). It is relevant only for squeezed
+        /* Quadratic part. It is relevant only for squeezed
         configurations where either k1 or k2 is the small leg. */
         ppw2->u_ur_rsa[0] +=
           - u_delta_ur
           - 3/(4*k) * quadL_N_00;
+
+
+        /* Include higher-order terms */
+        if (ppt2->compute_quadsources_derivatives == _TRUE_) {
+
+          double quadL_N_00_prime_prime =
+            - (ppw2->pvec_dd_quadsources[ppw2->index_qs2_monopole_ur]
+              - ppw2->pvec_dd_quadcollision[ppw2->index_qs2_monopole_ur]);
+
+          double quadL_N_10_prime =
+            - (ppw2->pvec_d_quadsources[ppw2->index_qs2_monopole_ur+lm(1,0)]
+              - ppw2->pvec_d_quadcollision[ppw2->index_qs2_monopole_ur+lm(1,0)]);
+
+          double v_ten_v_ur_prime =
+            -ppw2->k1_ten_k2[m+2] * ppw2->pvec_d_quadsources[ppw2->index_qs2_vv_ur];
+
+          ppw2->u_ur_rsa[0] +=
+            - 3/(4*k*k) * quadL_N_10_prime
+            + 6/k * v_ten_v_ur_prime
+            + 9/(4*k*k*k) * quadL_N_00_prime_prime;
+        }
         
         /* Build the dipole from the velocity */
         ppw2->N_1m_rsa[0] = 4 * (ppw2->u_ur_rsa[0]
