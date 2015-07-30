@@ -27,6 +27,8 @@ enum tca2_method {
  */
 enum rsa2_method {
   rsa2_none,          /**< No RSA approximation */
+  rsa2_MD,            /**< RSA approximation assuming no collisions (i.e. no reionisation effects) */
+  rsa2_MD_with_reio   /**< RSA approximation including collisions up to first-order in tau_c=1/kappa_dot (i.e. "first-order" reionisation) */
 };
 
 /**
@@ -94,9 +96,18 @@ enum sources2_k3_sampling {
  * perturb2_quadratic_sources_at_tau() functions.
  */
 enum quadratic_source_interpolation {
-  interpolate_total,             /**< Interpolate the quadratic part of the full Boltzmann equation
-                                 (collision term + Liouville term) */
-  interpolate_collision      /**< Interpolate the quadratic part of the collision term */
+  interpolate_total,         /**< Interpolate the quadratic part of the full Boltzmann equation
+                             (collision term + Liouville term) */
+  interpolate_collision,     /**< Interpolate the quadratic part of the collision term */
+
+  interpolate_d_total,       /**< Interpolate the conformal time derivative of the quadratic part of
+                             the full Boltzmann equation (collision term + Liouville term) */
+  interpolate_d_collision,   /**< Interpolate the conformal time derivative of the quadratic part of
+                             the collision term */
+  interpolate_dd_total,      /**< Interpolate the conformal-time second derivative of the quadratic part
+                             of the full Boltzmann equation (collision term + Liouville term) */
+  interpolate_dd_collision   /**< Interpolate the conformal-time second derivative of the quadratic part
+                             of the collision term */
 };
 
 /**
@@ -513,6 +524,7 @@ struct perturbs2
 
   int radiation_streaming_approximation;
   double radiation_streaming_trigger_tau_over_tau_k;
+  double radiation_streaming_trigger_tau_c_over_tau;
 
   int ur_fluid_approximation;
   double ur_fluid_trigger_tau_over_tau_k;
@@ -553,7 +565,8 @@ struct perturbs2
                                         do not care about the other flags. Useful for debugging. */
   short has_early_transfers2_only; /**< If _TRUE_, SONG will compute only the second-order early transfer functions and
                                         do not care about the other flags. Useful for debugging. */
-
+  short compute_quadsources_derivatives; /**< Should we compute the first, third and fourth derivatives of the quadratic
+                                         sources? */
 
   /* - Parameters related to the creation of debug files */
   short has_debug_files;        /**< Shall we dump to file the intermediate results such as evolved transfer functions and quadratic sources? */
@@ -739,15 +752,33 @@ struct perturb2_workspace
                                SONG to solve the differential system for the current wavemode.
                                Indexed as ppw2->quadsources_table[index_qs2_XXX][index_tau] */
 
+  double ** d_quadsources_table;  /**< First-order time derivative of quadsources_table,
+                                  needed for some approximations */
+
   double ** dd_quadsources_table; /**< Second-order time derivative of quadsources_table,
                                   needed for spline interpolation */
+  
+  double ** ddd_quadsources_table; /**< Third-order time derivative of quadsources_table,
+                                  needed for spline interpolation of the first-derivative */
+  
+  double ** dddd_quadsources_table; /**< Fourth-order time derivative of quadsources_table,
+                                    needed for spline interpolation of the second-derivative */
   
   double ** quadcollision_table; /**< Table that will contain the quadratic part of the collision
                                  term. Needed to compute the tight coupling approximation.
                                  Indexed as ppw2->quadsources_table[index_qs2_XXX][index_tau] */
 
+  double ** d_quadcollision_table; /**< First-order time derivative of quadcollision_table,
+                                   needed for some approximations */
+
   double ** dd_quadcollision_table; /**< Second-order time derivative of quadcollision_table,
                                     needed for spline interpolation */
+
+  double ** ddd_quadcollision_table; /**< Third-order time derivative of quadcollision_table,
+                                     needed for spline interpolation of the first-derivative */
+  
+  double ** dddd_quadcollision_table; /**< Fourth-order time derivative of quadcollision_table,
+                                      needed for spline interpolation of the second-derivative */
   
   int qs2_size; /**< Number of quadratic sources used in SONG, and size of ppw2->quadsources_table
                 and ppw2->pvec_quadsources */
@@ -776,9 +807,13 @@ struct perturb2_workspace
   int index_qs2_monopole_ur;
 
   /* Other useful quadratic sources. */
-  int index_qs2_dd_b;    /* Quadratic density of baryons */
-  int index_qs2_vv_b;    /* Quadratic velocity of baryons */
-  int index_qs2_vv_cdm;  /* Quadratic velocity of CDM */
+  int index_qs2_vv_g;    /**< (velocity potential)^2 of photons */
+  int index_qs2_vv_ur;   /**< (velocity potential)^2 of neutrinos */
+  int index_qs2_vd_g;    /**< (velocity potential)^2 of photons */
+  int index_qs2_vd_ur;   /**< (velocity potential)^2 of neutrinos */
+  int index_qs2_dd_b;    /**< (density contrast)^2 of baryons */
+  int index_qs2_vv_b;    /**< (velocity potential)^2 of baryons */
+  int index_qs2_vv_cdm;  /**< (velocity potential)^2 of CDM */
 
   /* Constants needed to assign the indices */
   int l_max_g;
@@ -796,11 +831,15 @@ struct perturb2_workspace
   // =                                      Time interpolation                                   =
   // =============================================================================================
 
-  double * pvecback;            /**< interpolated values of the background quantitites at the current time tau */
-  double * pvecthermo;          /**< interpolated values of the thermodynamics quantitites at the current time tau */
-  double * pvecmetric;          /**< interpolated values of the metric quantitites at the current time tau */
-  double * pvec_quadsources;    /**< interpolated values of the quadratic sources at the current time tau */
-  double * pvec_quadcollision;  /**< interpolated values of the quadratic collisional sources at the current time tau */
+  double * pvecback;              /**< interpolated values of the background quantitites at the current time tau */
+  double * pvecthermo;            /**< interpolated values of the thermodynamics quantitites at the current time tau */
+  double * pvecmetric;            /**< interpolated values of the metric quantitites at the current time tau */
+  double * pvec_quadsources;      /**< interpolated values of the quadratic sources at the current time tau */
+  double * pvec_quadcollision;    /**< interpolated values of the quadratic collisional sources at the current time tau */
+  double * pvec_d_quadsources;    /**< interpolated values of the conformal-time derivatives of the quadratic sources at the current time tau */
+  double * pvec_d_quadcollision;  /**< interpolated values of the conformal-time derivatives of the quadratic collisional sources at the current time tau */
+  double * pvec_dd_quadsources;   /**< interpolated values of the conformal-time second derivatives of the quadratic sources at the current time tau */
+  double * pvec_dd_quadcollision; /**< interpolated values of the conformal-time second derivatives of the quadratic collisional sources at the current time tau */
 
   double * pvec_sources1;       /**< interpolated values of the first-order perturbations in k1 and tau; filled by
                                 the perturbations.c function perturb_song_sources_at_tau() */
@@ -865,25 +904,40 @@ struct perturb2_workspace
 
   int n_active_approximations; /**< Number of approximations active for the current (k1,k2,k3) and time tau */
 
-  double I_1m_tca1[2];     /**< value of the photon intensity dipole in the tight coupling approximations, neglecting O(tau_c)^2 terms */
-  double u_g_tca1[2];      /**< value of the photon velocity u_g[m]=i*v_g[m] in the tight coupling approximations, neglecting O(tau_c)^2 terms */
-  double I_2m_tca0[3];     /**< value of the photon quadrupole in the tight coupling approximations, neglecting O(tau_c) terms */
-  double I_2m_tca1[3];     /**< value of the photon quadrupole in the tight coupling approximations, neglecting O(tau_c)^2 terms */
-  double shear_g_tca1[3];  /**< value of the photon shear in the tight coupling approximations, neglecting O(tau_c)^2 terms */
-  double Pi_tca0[3];       /**< value of the Pi factor in the tight coupling approximations, neglecting O(tau_c) terms */
-  double Pi_tca1[3];       /**< value of the Pi factor in the tight coupling approximations, neglecting O(tau_c)^2 terms */
-  double E_2m_tca1[3];     /**< value of the E-mode quadrupole in the tight coupling approximations, neglecting O(tau_c)^2 terms */
-  double B_2m_tca1[3];     /**< value of the B-mode quadrupole in the tight coupling approximations, neglecting O(tau_c)^2 terms */
-  double U_slip_tca1[2];   /**< value of the velocity slip U[m]=u_b[m]-u_g[m] in the tight coupling approximations, neglecting O(tau_c)^2 terms */
-  double C_1m_tca1[2];     /**< value of the purely second-order part of the photon dipole collision term,
-                           C_1m = kappa_dot * (4/3*b_11m-I_1m), in the tight coupling approximations, neglecting O(tau_c)^2 terms */
+  double I_1m_tca1[2];     /**< photon intensity dipole in the tight coupling approximations, neglecting O(tau_c)^2 terms */
+  double u_g_tca1[2];      /**< photon velocity u_g[m]=i*v_g[m] in the tight coupling approximations, neglecting O(tau_c)^2 terms */
+  double I_2m_tca0[3];     /**< photon quadrupole in the tight coupling approximations, neglecting O(tau_c) terms */
+  double I_2m_tca1[3];     /**< photon quadrupole in the tight coupling approximations, neglecting O(tau_c)^2 terms */
+  double shear_g_tca1[3];  /**< photon shear in the tight coupling approximations, neglecting O(tau_c)^2 terms */
+  double Pi_tca0[3];       /**< Pi factor in the tight coupling approximations, neglecting O(tau_c) terms */
+  double Pi_tca1[3];       /**< Pi factor in the tight coupling approximations, neglecting O(tau_c)^2 terms */
+  double E_2m_tca1[3];     /**< E-mode quadrupole in the tight coupling approximations, neglecting O(tau_c)^2 terms */
+  double B_2m_tca1[3];     /**< B-mode quadrupole in the tight coupling approximations, neglecting O(tau_c)^2 terms */
+  double U_slip_tca1[2];   /**< velocity slip U[m]=u_b[m]-u_g[m] in the tight coupling approximations, neglecting O(tau_c)^2 terms */
+  double C_1m_tca1[2];     /**< purely second-order part of the photon dipole collision term,
+                           C_1m = kappa_dot * (4/3*b_11m-I_1m), in the tight coupling approximations,
+                           neglecting O(tau_c)^2 terms. */
 
-  double I_1m[3];      /**< The intensity dipole fed to the evolver (depends on TCA) */
+  double I_00_rsa;       /**< value of the photon intensity monopole in the radiation streaming approximations */
+  double I_1m_rsa[2];    /**< value of the photon intensity dipole in the radiation streaming approximations */
+  double N_00_rsa;       /**< value of the neutrino monopole in the radiation streaming approximations */
+  double N_1m_rsa[2];    /**< value of the neutrino dipole in the radiation streaming approximations */
+  double delta_g_rsa;    /**< value of the photon density contrast in the radiation streaming approximations */
+  double u_g_rsa[2];     /**< value of the photon velociy in the radiation streaming approximations */
+  double delta_ur_rsa;   /**< value of the neutrino density contrast in the radiation streaming approximations */
+  double u_ur_rsa[2];    /**< value of the neutrino velocity in the radiation streaming approximations */
+
+
+  double I_00;         /**< The intensity monopole fed to the evolver (depends on RSA) */
+  double N_00;         /**< The intensity dipole fed to the evolver (depends on RSA) */
+  double N_1m[2];      /**< The intensity dipole fed to the evolver (depends on RSA) */
+  double I_1m[2];      /**< The intensity dipole fed to the evolver (depends on TCA and RSA) */
   double I_2m[3];      /**< The intensity quadrupole fed to the evolver (depends on TCA) */
   double E_2m[3];      /**< The E-polarisation quadrupole fed to the evolver (depends on TCA) */
   double B_2m[3];      /**< The B-polarisation quadrupole fed to the evolver (depends on TCA) */
-  double C_1m[2];      /**< value of the purely second-order part of the photon dipole collision term,
-                       C_1m = kappa_dot * (4/3*b_11m-I_1m) */
+  double C_1m[2];      /**< Purely second-order part of the photon dipole collision term,
+                       C_1m = kappa_dot * (4/3*b_11m-I_1m); the collision term for baryons is
+                       the same times -r=-rho_g/rho_b. */
   double b_200;        /**< The baryon "pressure" fed to the evolver (depends on perfect fluid approximation) */
   double b_22m[3];     /**< The baryon quadrupole fed to the evolver (depends on perfect fluid approximation) */
   double cdm_200;      /**< The CDM "pressure" fed to the evolver (depends on perfect fluid approximation) */
@@ -1263,6 +1317,18 @@ struct perturb2_parameters_and_workspace {
            );
        
     int perturb2_tca_variables (
+           struct precision * ppr,
+           struct precision2 * ppr2,
+           struct background * pba,
+           struct thermo * pth,
+           struct perturbs * ppt,
+           struct perturbs2 * ppt2,
+           double tau,
+           double * y,
+           struct perturb2_workspace * ppw2
+           );
+
+    int perturb2_rsa_variables (
            struct precision * ppr,
            struct precision2 * ppr2,
            struct background * pba,

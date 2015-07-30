@@ -123,7 +123,7 @@ perturb_sampling_stepsize_for_quadsources = 0.03
 ## Custom timesampling for the quadratic sources
 custom_time_sampling_for_quadsources = no
 custom_tau_ini_quadsources = 0.1                # must be smaller than tau_ini_2nd_order_sources (best: 0.1)
-custom_tau_end_quadsources = 1000                # enter 0 to save sources up to today (best: 550)
+custom_tau_end_quadsources = 1000               # enter 0 to save sources up to today (best: 550)
 custom_tau_size_quadsources = 1000              
 custom_tau_mode_quadsources = log               # either lin, log or class (best: log)
 
@@ -156,8 +156,8 @@ tau_step_trans_song = 4
 
 ## Second-order Boltzmann hierarchies
 l_max_g_song = 12
-l_max_ur_song = 8
-l_max_pol_g_song = 8
+l_max_ur_song = 12
+l_max_pol_g_song = 12
 
 l_max_g_quadsources = -1
 l_max_ur_quadsources = -1
@@ -165,15 +165,14 @@ l_max_pol_g_quadsources = -1
 
 ## How many multipoles to include in the line of sight sources
 l_max_los_t = 5
-l_max_los_quadratic_t = 5
-
 l_max_los_p = 5
+l_max_los_quadratic_t = 5
 l_max_los_quadratic_p = 5
 
 # First-order hierarchies
 l_max_g = 15
-l_max_pol_g = 10
-l_max_ur = 10
+l_max_pol_g = 15
+l_max_ur = 15
 
 
 
@@ -270,20 +269,6 @@ enum rsa2_method {rsa2_none};
 enum ufa2_method {ufa2_none};
 enum nra2_method {nra2_none, nra2_all, nra2_fluid};
 
-# ------------------------------ */
-# - No radiation approximation - */
-# ------------------------------ */
-
-## Second order.
-## This is the poor's man RSA approximation at second order. Stop evolving the radiation
-## species (photon temperature and polarization, neutrinos) after the radiation density is
-## below a certain treshold with respect to the matter density. Turn on this approximation
-## if you are not interested into radiation multipoles today. This approximation does not
-## affect sources that are located at recombination.
-no_radiation_approximation_song = 2
-no_radiation_approximation_rho_m_over_rho_r_song = 100
-
-
 # -------------------------------- */
 # - Tight coupling approximation - */
 # -------------------------------- */
@@ -308,25 +293,28 @@ tight_coupling_trigger_tau_c_over_tau_k_song = 0.007
 
 ## First order.
 ## The RSA substitutes the crazy oscillations of the photon & neutrino moments
-## at late times with their average (see fig. 8 of Blas et al.).
+## at late times (after photon decoupling, inside the Hubble radius) with their
+## average (see sec. 4 of Blas, Lesgourgues & Tram 2011).
 ## To turn off the rsa approximation, set radiation_streaming_approximation = 3. 
 ## This is not very useful, though, since the result will just be a big mess
 ## at late times for all photon & neutrino multipoles.  Probably, that won't affect
 ## the results, but it is unnecessary to compute all those oscillations, and anyway
-## your sampling won't be fine enough to get them.
+## your sampling won't be fine enough to get them..
 ## It is also good to keep the RSA approximation because it relieves the truncation
 ## effects.  We know that the reflection effects get worse and worse with time,
 ## so using RSA from a certain point avoids this issue.
-radiation_streaming_approximation = 2
+radiation_streaming_approximation = 2 # set to 3 to disable RSA
 radiation_streaming_trigger_tau_over_tau_k = 45
 radiation_streaming_trigger_tau_c_over_tau = 5
 
-## Second order (NOT IMPLEMENTED YET).
-## Note that the above flag "radiation_streaming_trigger_tau_c_over_tau" affects also the
-## 2nd-order RSA as it is used in the thermodynamics module.  The effect of that flag is to
-## start the RSA only after recombination.
-radiation_streaming_approximation_song = 0
-radiation_streaming_trigger_tau_over_tau_k_song = 200
+## Second order.
+## Note that the above flag radiation_streaming_trigger_tau_c_over_tau affects also
+## the 2nd-order RSA as it is used in the thermodynamics module to determine the
+## start of the free streaming regime. Therefore, we automatically set the variable
+## in CLASS to match whatever we choose in SONG.
+radiation_streaming_approximation_song = 1
+radiation_streaming_trigger_tau_over_tau_k_song = 45
+radiation_streaming_trigger_tau_c_over_tau_song = 5
 
 
 # ------------------------------------------ */
@@ -334,27 +322,30 @@ radiation_streaming_trigger_tau_over_tau_k_song = 200
 # ------------------------------------------ */
 
 ## First order.
-## The UFA approximation is similar to a radiation streaming approximation but for neutrinos.
-## To turn it off, set it to 3 or increase the ur_fluid_trigger_tau_over_tau_k to a very high
-## number (e.g. 10000). If you turn off the ufa, and do not use a high l_max_ur (>100), be
-## prepared to have numerical noise such as the red curve in fig. 6 of Blas et al. 2010.
-ur_fluid_approximation = 1 # 2
-ur_fluid_trigger_tau_over_tau_k = 50 # 18
+## The UFA approximation is similar to a radiation streaming approximation that works for
+## even before and during photon decoupling. To turn it off, set it to 3 or increase the
+## ur_fluid_trigger_tau_over_tau_k to a very high number (e.g. 10000). If you turn off the
+## ufa, and do not use a high l_max_ur (>100), be prepared to have numerical noise such as
+## the red curve in fig. 6 of Blas et al. 2010.
+ur_fluid_approximation = 2 # set to 3 to disable
+ur_fluid_trigger_tau_over_tau_k = 30
 
 ## Second order (NOT IMPLEMENTED YET)
 ur_fluid_approximation_song = 0
-ur_fluid_trigger_tau_over_tau_k_song = 50
+ur_fluid_trigger_tau_over_tau_k_song = 30
 
 
-# ---------------------------- */
-# - ncdm fluid approximation - */
-# ---------------------------- */
+# ------------------------------ */
+# - No radiation approximation - */
+# ------------------------------ */
 
-## First order
-ncdm_fluid_approximation = 2
-ncdm_fluid_trigger_tau_over_tau_k = 1000.
-
-
-
+## Second order.
+## This is the poor's man RSA approximation at second order. Stop evolving the radiation
+## species (photon temperature and polarization, neutrinos) after the radiation density is
+## below a certain treshold with respect to the matter density. Turn on this approximation
+## if you are not interested into radiation multipoles today. This approximation does not
+## affect sources that are located at recombination.
+no_radiation_approximation_song = 0
+no_radiation_approximation_rho_m_over_rho_r_song = 100
 
 
