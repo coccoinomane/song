@@ -15,6 +15,7 @@ OPTFLAG    = -O
 # Compilation flags
 CFLAGS     += -g
 # CFLAGS     += -w
+# CFLAGS     += -Wall -Wno-unused
 CFLAGS     += -std=c99
 CFLAGS     += -fopenmp # comment for compiling without parallel support
 # CFLAGS     += -DVALGRIND

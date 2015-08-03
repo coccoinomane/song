@@ -61,14 +61,6 @@ enum nra_flags {
 
 
 /**
- * Which Einstein equation to use for the derivative of the Newtonian potential phi?
- */
-enum phi_prime_equation {
-  poisson,      /**< Use Poisson equation (eq 5.2 of http://arxiv.org/abs/1405.2280) */
-  longitudinal  /**< Use the longitudinal equation (eq 3.98 of http://arxiv.org/abs/1405.2280) */
-};
-
-/**
  * Possible sampling methods for the ppt2->k array
  */
 enum sources2_k_sampling {
@@ -202,15 +194,16 @@ struct perturbs2
   short has_perturbed_recombination_stz;    /**< Shall we use the perturbed fraction of free electrons? */
   int perturbed_recombination_use_approx;   /**< Shall we use the approximation in eq. 3.23 of Senatore et al. 2009? */
 
-  /**< If true, all of the requested line-of-sight sources are located at recombination or
+  /** If true, all of the requested line-of-sight sources are located at recombination or
   earlier, so that we can avoid computing them all the way to today. This is a major speed-up
   that affects also the line-of-sight integration in the transfer2.c module */
   int has_recombination_only;
 
-  /**< Which equation should we use to evolve the curvature potential phi in Newtonian gauge?
-  Current options are poisson for the time-time Einstein equation and longitudinal for the
-  time-space Einstein equation */
-  enum phi_prime_equation phi_prime_eq;
+  /** Which equation should we use to evolve the curvature potential phi in Newtonian gauge? Current options are:
+   - "poisson" to use the time-time Einstein equation;
+   - "longitudinal" for the space-time Einstein equation;
+   - "huang" to use a combination of the trace and time-time equation, as in Huang 2012 (http://arxiv.org/abs/1201.5961) */
+  enum phi_equation phi_eq;
 
   /* In order to compute the bispectrum integral, it is useful to rescale the line of sight sources
   by a 1/sin(theta_1)^m factor, where theta_1 is the angle between \vec{k1} and \vec{k3}. This
@@ -332,7 +325,7 @@ struct perturbs2
   int n_sources_B;                    /**< Number of sources to be computed for photon B-polarization */
   int tp2_size;                       /**< Number of source types that we need to compute */
 
-  /**< Array of strings that contain the labels of the various source types
+  /** Array of strings that contain the labels of the various source types
   For example, tp2_labels[index_tp2_phi] is equal to the string "phi" */
   char ** tp2_labels;
 
@@ -728,9 +721,10 @@ struct perturb2_workspace
 
   /* Newtonian gauge */
   int index_mt2_psi;                      /**< psi in newtonian gauge */
-  int index_mt2_phi_prime;                /**< (d phi/d tau) in newtonian gauge, will set to be equal to one of the below indices. */
-  int index_mt2_phi_prime_poisson;        /**< (d phi/d tau) in newtonian gauge, using the Poisson equation */
-  int index_mt2_phi_prime_longitudinal;   /**< (d phi/d tau) in newtonian gauge, using the longitudinal equation */
+  int index_mt2_phi_prime;                /**< (d phi/d tau) in Newtonian gauge */
+  int index_mt2_phi_prime_prime;          /**< (d^2 phi/d tau^2) in Newtonian gauge, using the second-order version of eq. 2.30 of Huang 2012 (http://arxiv.org/abs/1201.5961) */
+  int index_mt2_phi_prime_poisson;        /**< (d phi/d tau) in Newtonian gauge, using the Poisson equation */
+  int index_mt2_phi_prime_longitudinal;   /**< (d phi/d tau) in Newtonian gauge, using the longitudinal equation */
   int index_mt2_omega_m1_prime;           /**< vector mode of the metric in Newtonian gauge */
   int index_mt2_gamma_m2_prime_prime;     /**< tensor mode of the metric in Newtonian gauge */           
 
@@ -786,9 +780,10 @@ struct perturb2_workspace
   /* Quadratic sources for the metric, Newtonian gauge */
   int index_qs2_psi;
   int index_qs2_psi_prime;
-  int index_qs2_phi_prime;               
+  int index_qs2_phi_prime;
+  int index_qs2_phi_prime_prime;               
   int index_qs2_phi_prime_poisson;      
-  int index_qs2_phi_prime_longitudinal;       
+  int index_qs2_phi_prime_longitudinal;
   int index_qs2_omega_m1_prime;
   int index_qs2_gamma_m2_prime_prime;
 
@@ -1045,6 +1040,7 @@ struct perturb2_vector
   /* Metric variables */
   int index_pt2_eta;               /**< Evolution index for synchronous gauge metric perturbation eta */
   int index_pt2_phi;               /**< Evolution index for Newtonian gauge curvature potential phi */
+  int index_pt2_phi_prime;         /**< Evolution index for the time derivative of the Newtonian gauge curvature potential phi */
   int index_pt2_omega_m1;          /**< Evolution index for Newtonian gauge vector potential omega_[m=1] */
   int index_pt2_gamma_m2;          /**< Evolution index for Newtonian gauge tensor potential gamma_[m=2] */
   int index_pt2_gamma_m2_prime;    /**< Evolution index for time derivative of gamma_[m=2] */
@@ -1063,6 +1059,11 @@ struct perturb2_vector
   source functions. Only the marked perturbations will be interpolated at the
   times requested in ppt2->tau_sampling. */
   int * used_in_sources;
+
+  /** Array of strings that contain the labels of the various evolved perturbations.
+  For debug purposes only. */
+  char pt2_labels[_MAX_NUM_LABELS_][_MAX_LENGTH_LABEL_];
+
 
 };
 

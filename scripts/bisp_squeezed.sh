@@ -34,7 +34,7 @@
 #! /bin/sh
 
 # Which bispectra to print?
-probes = "ttt tte tet ett eet ete tee eee"
+probes="ttt tte tet ett eet ete tee eee"
 
 # Parse arguments
 l_long=$1

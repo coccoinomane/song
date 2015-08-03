@@ -750,25 +750,33 @@ int input2_init (
   // =                        Perturbations, gauges & equations                         =
   // ====================================================================================
 
-  class_call(parser_read_string(pfc,"phi_prime_equation",&(string1),&(flag1),errmsg),
-    errmsg,errmsg);
+  class_read_string_one_of_two(pfc,
+    "phi_prime_equation",  /* obsolete */
+    "phi_equation_song");
+
      
-  if (flag1 == _TRUE_) {
+  if (flag == _TRUE_) {
   
-    if ( (strcmp(string1,"poisson") == 0) || (strcmp(string1,"POISSON") == 0)||
-         (strcmp(string1,"Poisson") == 0) || (strcmp(string1,"P") == 0) ||
-         (strcmp(string1,"p") == 0) ) {
-      ppt2->phi_prime_eq = poisson;
+    if ( (strcmp(string,"poisson") == 0) || (strcmp(string,"POISSON") == 0)||
+         (strcmp(string,"Poisson") == 0) || (strcmp(string,"P") == 0) ||
+         (strcmp(string,"p") == 0) ) {
+      ppt2->phi_eq = poisson;
     }
-    else if ( (strcmp(string1,"longitudinal") == 0) || (strcmp(string1,"LONGITUDINAL") == 0)||
-              (strcmp(string1,"Longitudinal") == 0) || (strcmp(string1,"L") == 0) ||
-              (strcmp(string1,"l") == 0) ) {
-      ppt2->phi_prime_eq = longitudinal;
+    else if ( (strcmp(string,"longitudinal") == 0) || (strcmp(string,"LONGITUDINAL") == 0)||
+              (strcmp(string,"Longitudinal") == 0) || (strcmp(string,"L") == 0) ||
+              (strcmp(string,"l") == 0) ) {
+      ppt2->phi_eq = longitudinal;
+    }
+    else if ( (strcmp(string,"huang") == 0) || (strcmp(string,"HUANG") == 0)||
+              (strcmp(string,"Huang") == 0) || (strcmp(string,"H") == 0) ||
+              (strcmp(string,"h") == 0) || (strcmp(string,"Z") == 0) ) {
+      ppt2->phi_eq = huang;
+      ppt->phi_eq = huang;
     }
     else {
       class_stop (errmsg,
-      "phi_prime_equation=%s not supported, choose between poisson and longitudinal",
-      string1);
+      "phi_equation=%s not supported, choose between poisson, longitudinal and huang",
+      string);
     }
   }
   
@@ -1121,7 +1129,7 @@ int input2_init (
   // =                                   Angular scales                                      =
   // =========================================================================================
 
-  /* Rear l_max for the Boltzmann hierarchies */
+  /* Read l_max for the Boltzmann hierarchies */
   class_read_int("l_max_g_2nd_order", ppr2->l_max_g); /* obsolete */
   class_read_int("l_max_pol_g_2nd_order", ppr2->l_max_pol_g); /* obsolete */
   class_read_int("l_max_ur_2nd_order", ppr2->l_max_ur);   /* obsolete */
@@ -1270,7 +1278,7 @@ int input2_init (
   must be after setting ppr2->l_max_los and ppr2->l_max_boltzmann. */
   int l_max = pbs->l_max + MAX (ppr2->l_max_los, ppr2->m_max_2nd_order);
   
-  /* In some debug scenarion, we will need to evolve a lot of Boltzmann moments, more than
+  /* In some debug scenarios, we will need to evolve a lot of Boltzmann moments, more than
   the maximum l for the C_l */
   l_max = MAX (l_max, ppr2->l_max_boltzmann);
 
@@ -1451,7 +1459,6 @@ int input2_default_params (
   ptr2->has_transfers2_only = _FALSE_;
   ppt2->rescale_quadsources = _TRUE_;
   ppt2->compute_quadsources_derivatives = _FALSE_;
-  // ppt2->compute_quadsources_derivatives = _TRUE_;
 
   ppt2->rescale_quadsources = _FALSE_;
 
@@ -1517,7 +1524,7 @@ int input2_default_params (
 
   /* - Choose equation for the time potential */
 
-  ppt2->phi_prime_eq = poisson;
+  ppt2->phi_eq = huang;
 
 
   /* - Time sampling */

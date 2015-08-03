@@ -3327,7 +3327,7 @@ int perturb2_initial_conditions (
   double delta_cdm_1=0, delta_cdm_2=0, vpot_cdm_1=0, vpot_cdm_2=0;
   double delta_ur=0, pressure_ur=0, v_0_ur=0, shear_0_ur=0;  
   double delta_ur_1=0, delta_ur_2=0, vpot_ur_1=0, vpot_ur_2=0;
-  double phi_1, phi_2, psi_1, psi_2;
+  double phi_1=0, phi_2=0, psi_1=0, psi_2=0;
 
   /* Photons */
   delta_g_1 = pvec_sources1[ppt->index_qs_delta_g];
@@ -3698,7 +3698,42 @@ int perturb2_initial_conditions (
         y[ppw2->pv->index_pt2_monopole_ur + lm(1,0)] = N_1_0;
         y[ppw2->pv->index_pt2_monopole_ur + lm(2,0)] = N_2_0;
       }           
-    
+
+
+      /* Set initial condition for phi', the time-derivative of the curvature
+      potential. To do so, we use the space-time Einstein equation. This block
+      of code requires the dipoles to be initialised. */
+      
+      if (ppt2->phi_eq == huang) {
+        
+        // double rho_dipole = ppw2->pvecback[pba->index_bg_rho_g]*I_1_0;
+        // rho_dipole += ppw2->pvecback[pba->index_bg_rho_b]*b_1_1_0;
+        // if (pba->has_cdm == _TRUE_)
+        //   rho_dipole += ppw2->pvecback[pba->index_bg_rho_cdm]*cdm_1_1_0;
+        // if (pba->has_ur == _TRUE_)
+        //   rho_dipole += ppw2->pvecback[pba->index_bg_rho_ur]*N_1_0;
+        //
+        // y[ppw2->pv->index_pt2_phi_prime] =
+        //   - Hc*psi
+        //   + 0.5 * (a_sq/k) * rho_dipole
+        //   + ppw2->pvec_quadsources[ppw2->index_qs2_phi_prime_longitudinal];
+
+        /* Uncomment to use the Poisson equation instead
+        (TODO: why is the IC for phi' so different?)*/
+        double rho_monopole = ppw2->pvecback[pba->index_bg_rho_g]*I_0_0;
+        rho_monopole += ppw2->pvecback[pba->index_bg_rho_b]*b_0_0_0;
+        if (pba->has_cdm == _TRUE_)
+          rho_monopole += ppw2->pvecback[pba->index_bg_rho_cdm]*cdm_0_0_0;
+        if (pba->has_ur == _TRUE_)
+          rho_monopole += ppw2->pvecback[pba->index_bg_rho_ur]*N_0_0;
+
+        y[ppw2->pv->index_pt2_phi_prime] =
+          - Hc*psi
+          - k_sq/(3*Hc)*phi
+          - a_sq * rho_monopole/(2*Hc)
+          + ppw2->pvec_quadsources[ppw2->index_qs2_phi_prime_poisson];
+      }
+
     } // end of scalar modes
 
     /* TODO: include initial conditions for m!=0. These are given by the scalar quadratic
@@ -3750,13 +3785,16 @@ int perturb2_workspace_init (
   if (ppt->gauge == newtonian) {
 
     /* We are going to evolve the curvature potential phi, and use the anisotropic stresses
-    constraint equation to obtain psi. We obtain phi_prime from either the time-time or
-    longitudinal Einstein equations. */
+    constraint equation to obtain psi. We obtain the dynamics of phi_prime using one between
+    the following Einstein equations: the time-time equation, the space-time equation, or a
+    combination of the trace and time-time equation, which is more stable numerically
+    according to Huang 2012. */
 
     /* Scalar potentials */
     if (ppr2->compute_m[0] == _TRUE_) {
       ppw2->index_mt2_psi = index_mt++;                         /* Psi */
       ppw2->index_mt2_phi_prime = index_mt++;                   /* Phi' */
+      ppw2->index_mt2_phi_prime_prime = index_mt++;             /* Phi'' */
       ppw2->index_mt2_phi_prime_poisson = index_mt++;           /* Phi' from the Poisson equation */
       ppw2->index_mt2_phi_prime_longitudinal = index_mt++;      /* Phi' from the longitudinal equation */
     }
@@ -3887,9 +3925,9 @@ int perturb2_workspace_init_quadratic_sources (
     /* Scalar potentials */
     if (ppr2->compute_m[0] == _TRUE_) {
       ppw2->index_qs2_psi = index_qs2++;                         /* Psi */
-      if (ppt2->has_isw == _TRUE_)  
-        ppw2->index_qs2_psi_prime = index_qs2++;                 /* Psi' */
+      ppw2->index_qs2_psi_prime = index_qs2++;                   /* Psi' */
       ppw2->index_qs2_phi_prime = index_qs2++;                   /* Phi' */
+      ppw2->index_qs2_phi_prime_prime = index_qs2++;             /* Phi'' */
       ppw2->index_qs2_phi_prime_poisson = index_qs2++;           /* Phi' from the Poisson equation */
       ppw2->index_qs2_phi_prime_longitudinal = index_qs2++;      /* Phi' from the longitudinal equation */
     }
@@ -6032,6 +6070,10 @@ int perturb2_vector_init (
   ppv->use_closure_pol_g = _TRUE_;
   ppv->use_closure_ur = _TRUE_;
 
+  /* Initialise the labels */
+  for (int index_pt=0; index_pt < _MAX_NUM_LABELS_; ++index_pt)
+    strcpy (ppv->pt2_labels[index_pt], "");
+  
 
   // ====================================================================================
   // =                                     Checks                                       =
@@ -6224,7 +6266,9 @@ int perturb2_vector_init (
   // ------------------------------------------------------------------------------------
 
   ppv->index_pt2_monopole_g = index_pt;
+  strcpy (ppv->pt2_labels[MIN(index_pt,_MAX_NUM_LABELS_-1)], "I_start");
   index_pt += ppv->n_hierarchy_g;
+
 
   if (ppt2->perturbations2_verbose > 4)
     printf("     * photon temperature hierarchy: we shall evolve %d equations (l_max_g = %d).\n",
@@ -6239,10 +6283,12 @@ int perturb2_vector_init (
 
     /* E-modes */
     ppv->index_pt2_monopole_E = index_pt;
+    strcpy (ppv->pt2_labels[MIN(index_pt,_MAX_NUM_LABELS_-1)], "E_start");
     index_pt += ppv->n_hierarchy_pol_g;
 
     /* B-modes */
     ppv->index_pt2_monopole_B = index_pt;
+    strcpy (ppv->pt2_labels[MIN(index_pt,_MAX_NUM_LABELS_-1)], "B_start");
     index_pt += ppv->n_hierarchy_pol_g;
 
     if (ppt2->perturbations2_verbose > 4)
@@ -6258,6 +6304,7 @@ int perturb2_vector_init (
   if (pba->has_ur == _TRUE_) {
 
     ppv->index_pt2_monopole_ur = index_pt;
+    strcpy (ppv->pt2_labels[MIN(index_pt,_MAX_NUM_LABELS_-1)], "N_start");
     index_pt += ppv->n_hierarchy_ur;
 
     if ((pba->has_ur) && (ppt2->perturbations2_verbose > 4))
@@ -6284,6 +6331,7 @@ int perturb2_vector_init (
 
   ppv->n_hierarchy_b = size_n_l_indexm (ppv->n_max_b, ppv->l_max_b, ppt2->m, ppt2->m_size);
   ppv->index_pt2_monopole_b = index_pt;
+  strcpy (ppv->pt2_labels[MIN(index_pt,_MAX_NUM_LABELS_-1)], "b_start");
   index_pt += ppv->n_hierarchy_b;
   
   if (ppt2->perturbations2_verbose > 4)
@@ -6309,6 +6357,7 @@ int perturb2_vector_init (
 
     ppv->n_hierarchy_cdm = size_n_l_indexm (ppv->n_max_cdm, ppv->l_max_cdm, ppt2->m, ppt2->m_size);
     ppv->index_pt2_monopole_cdm = index_pt;
+    strcpy (ppv->pt2_labels[MIN(index_pt,_MAX_NUM_LABELS_-1)], "cdm_start");
     index_pt += ppv->n_hierarchy_cdm;
     
     if (ppt2->perturbations2_verbose > 4)
@@ -6327,14 +6376,24 @@ int perturb2_vector_init (
   /* Newtonian gauge */
   if (ppt->gauge == newtonian) {
 
-    if (ppr2->compute_m[0] == _TRUE_)
+    if (ppr2->compute_m[0] == _TRUE_) {
+      strcpy (ppv->pt2_labels[index_pt], "phi");
       ppv->index_pt2_phi = index_pt++;
+      if (ppt2->phi_eq == huang) {
+        strcpy (ppv->pt2_labels[index_pt], "phi'");
+        ppv->index_pt2_phi_prime = index_pt++;
+      }
+    }
 
-    if (ppr2->compute_m[1] == _TRUE_)
+    if (ppr2->compute_m[1] == _TRUE_) {
+      strcpy (ppv->pt2_labels[index_pt], "omega_m1");
       ppv->index_pt2_omega_m1 = index_pt++;
+    }
 
     if (ppr2->compute_m[2] == _TRUE_) {
+      strcpy (ppv->pt2_labels[index_pt], "gamma_m2");
       ppv->index_pt2_gamma_m2 = index_pt++;
+      strcpy (ppv->pt2_labels[index_pt], "gamma_m2_prime");
       ppv->index_pt2_gamma_m2_prime = index_pt++;
     }
   }
@@ -6514,8 +6573,11 @@ int perturb2_vector_init (
     /* Newtonian gauge metric variables */
     else if (ppt->gauge == newtonian) {
 
-      if (ppr2->compute_m[0] == _TRUE_)
+      if (ppr2->compute_m[0] == _TRUE_) {
         y_new[ppv->index_pt2_phi] = y_old[ppw2->pv->index_pt2_phi];
+        if (ppt2->phi_eq == huang)
+          y_new[ppv->index_pt2_phi_prime] = y_old[ppw2->pv->index_pt2_phi_prime];
+      }
       
       if (ppr2->compute_m[1] == _TRUE_)
         y_new[ppv->index_pt2_omega_m1] = y_old[ppw2->pv->index_pt2_omega_m1];
@@ -7033,14 +7095,15 @@ int perturb2_derivs (
                 ppt2,
                 tau,
                 y,
-                ppw2), /* will fill ppw2->pvecmetric */
+                ppw2),
     ppt2->error_message,
     error_message);
 
 
   /* Assign shortcuts for metric variables */
 
-  double phi_prime=0, psi=0, phi=0, omega_m1=0, omega_m1_prime=0, gamma_m2_prime=0;
+  double psi=0, phi=0, phi_prime=0;
+  double omega_m1=0, omega_m1_prime=0, gamma_m2_prime=0;
 
   if (ppt->gauge == newtonian) {
 
@@ -7060,8 +7123,7 @@ int perturb2_derivs (
     /* Tensor potentials */
     if (ppr2->compute_m[2] == _TRUE_)
       gamma_m2_prime = y[ppw2->pv->index_pt2_gamma_m2_prime];
-
-  } // end of if newtonian
+  }
 
 
   /* Split each equations for CDM and baryons into a metric (gauge dependenent) part
@@ -7080,9 +7142,9 @@ int perturb2_derivs (
   else if (ppt->gauge == newtonian) {
 
     if (ppr2->compute_m[0] == _TRUE_) {
-      metric_continuity = -3.*phi_prime;
-      metric_euler = k*psi;  
-      metric_shear = 0.;
+      metric_continuity = -3 * phi_prime;
+      metric_euler = k * psi;
+      metric_shear = 0;
     }
   }
 
@@ -7483,7 +7545,7 @@ int perturb2_derivs (
         db(2,2,ppt2->m[index_m]) = - 2*Hc*b(2,2,ppt2->m[index_m]);
 
 
-  // *** Add baryon quadratic sources
+  /* Add baryon quadratic sources */
 
   if (ppt2->has_quadratic_sources == _TRUE_) {
     for (int n=0; n <= ppw2->pv->n_max_b; ++n) {
@@ -7587,12 +7649,50 @@ int perturb2_derivs (
   tensor together. Note that here there is no need to add the quadratic sources since we
   already did that in perturb2_einstein(). */
 
-  // **** Newtonian gauge
+
+  /* - Newtonian gauge */
+  
   if (ppt->gauge == newtonian) {
 
-    /* Curvature potential phi */
-    if (ppr2->compute_m[0] == _TRUE_)
+    if (ppr2->compute_m[0] == _TRUE_) {
+
+      /* Set the time derivative of the curvature potential phi */
       dy[ppw2->pv->index_pt2_phi] = pvecmetric[ppw2->index_mt2_phi_prime];
+      
+      /* In SONG you can choose to compute phi by either solving a first-order differential
+      equation (phi_eq==poisson or phi_eq==longitudinal) or a second-order one
+      (phi_eq==huang). To compute phi'' we use the equation from Huang 2012
+      (http://arxiv.org/abs/1201.5961), which requires the time derivative of the time
+      potential psi. This could not be computed in perturb2_einstein(), so we do it
+      here and add it to the equation for phi_prime_prime. */
+      double psi_prime;
+      
+      /* This call must be after the quadrupoles in the dy vector have been filled,
+      otherwise you will get inconsistent results. */
+      class_call (perturb2_compute_psi_prime (
+                   ppr,
+                   ppr2,
+                   pba,
+                   pth,
+                   ppt,
+                   ppt2,
+                   tau,
+                   y,
+                   dy,
+                   &(psi_prime),
+                   ppw2),
+        ppt2->error_message,
+        error_message);  
+
+      /* Add the missing piece to the expression for phi'' */
+      pvecmetric[ppw2->index_mt2_phi_prime_prime] += - Hc * psi_prime;
+
+      /* If we are using phi'' to evolve the curvature potential, then
+      store its value in the dy array */
+      if (ppt2->phi_eq == huang)
+        dy[ppw2->pv->index_pt2_phi_prime] = pvecmetric[ppw2->index_mt2_phi_prime_prime];
+      
+    }
     
     /* Vector potential omega */
     if (ppr2->compute_m[1] == _TRUE_)
@@ -7603,36 +7703,42 @@ int perturb2_derivs (
       dy[ppw2->pv->index_pt2_gamma_m2] = y[ppw2->pv->index_pt2_gamma_m2_prime];
       dy[ppw2->pv->index_pt2_gamma_m2_prime] = pvecmetric[ppw2->index_mt2_gamma_m2_prime_prime];
     }
-    
-  } // end of if newtonian
+  }
 
 
 
-  // *** Synchronous gauge
+  /* - Synchronous gauge */
+
   if (ppt->gauge == synchronous) {
 
     /* Curvature potential eta */
     if (ppr2->compute_m[0] == _TRUE_)
       dy[ppw2->pv->index_pt2_eta] = pvecmetric[ppw2->index_mt2_eta_prime];
 
-  } // end of if synchronous
+  }
+  
 
-  /* Debug - Print plenty of information */
-  // if ( (0==0) || (ppw2->derivs_count == 793) || (ppw2->derivs_count == 794)) {
-  //   if ((ppw2->index_k1==0) && (ppw2->index_k2==1)) {
+  /* Debug - Print the full content of y and dy, along with comprehensive debug information.
+  This is a good way to debug the differential system step by step. */
+  // if (ppw2->derivs_count < 4) {
+  //   if ((ppw2->index_k1==ppt2->index_k1_debug)
+  //     && (ppw2->index_k2==ppt2->index_k2_debug)
+  //      && (ppw2->index_k3==ppt2->index_k3_debug)) {
   //
-  //     printf(" *** Leaving derivs for the %d time; tau = %.16f\n", ppw2->derivs_count, tau);
+  //     printf("> Leaving derivs for the %d time; k=(%g,%g,%g); tau = %.16f\n",
+  //       ppw2->derivs_count, ppw2->k1, ppw2->k2, ppw2->k, tau);
   //
   //     /* Show content of y, dy and dy_quadsources */
   //     int index_pt;
   //     for (int index_pt=0; index_pt<ppw2->pv->pt2_size; ++index_pt)
-  //       printf("y[%3d] = %+12.3g,  dy[%3d] = %+12.3g,   dy_quadsources[%3d] = %+12.3g\n",
-  //         index_pt, y[index_pt], index_pt, dy[index_pt], index_pt, ppw2->pv->dy_quadsources[index_pt]);
+  //       printf("y[%3d] = %+12.3g,  dy[%3d] = %+12.3g,  %-15s\n",
+  //         index_pt, y[index_pt], index_pt, dy[index_pt],
+  //         ppw2->pv->pt2_labels[index_pt]);
   //
   //   }
   // }
 
-  /* Debug - Print the y and dy arrays */
+  /* Debug - Print perturbations as a function of time. */
   // if ((ppw2->index_k1==15) && (ppw2->index_k2==0) && (ppw2->index_k3==1)) {
   //   fprintf (stderr, "%17.7g %17.7g %17.7g %17.7g %17.7g %17.7g %17.7g\n",
   //     tau,
@@ -7654,8 +7760,17 @@ int perturb2_derivs (
 
 
 /**
- * Compute the metric quantities at a given time using the Einstein equations
- * and store them in the ppw2->pvecmetric array.
+ * Compute the metric quantities at the given time using the Einstein equations.
+ *
+ * The results of the computation will be stored in ppw2->pvecmetric array,
+ * which is in turn accessed using the ppw2->index_mt2_XXX indices.
+ *
+ * There is only one metric quantity that is not fully computed here: phi'',
+ * the second derivative of the curvature potential. The reason is that
+ * perturb2_einstein() does not have access to the derivatives computed
+ * in perturb2_derivs(), which are needed to compute phi''. We shall
+ * finish to compute phi'' later in perturb2_derivs() by adding a
+ * -2*Hc*psi_prime to ppw2->pvecmetric[ppw2->index_mt2_phi_prime_prime].
  *
  * The following function should precede perturb2_einstein():
  * -# background_at_tau()
@@ -7679,7 +7794,8 @@ int perturb2_einstein (
 
   /* Contribution of the single species */
   double rho_g=0, rho_b=0, rho_cdm=0, rho_ur=0;
-  
+  double rho_monopole_b=0, rho_monopole_cdm=0;
+    
   /* Variables that will accumulate the contribution from all species */
   double rho_monopole=0, rho_dipole=0, rho_quadrupole=0,
          rho_dipole_m1=0, rho_quadrupole_m1=0,
@@ -7691,6 +7807,7 @@ int perturb2_einstein (
   double a = ppw2->pvecback[pba->index_bg_a];
   double a_sq = a*a;
   double Hc = ppw2->pvecback[pba->index_bg_H]*a;
+  double Hc_prime = a*ppw2->pvecback[pba->index_bg_H_prime] + (a*Hc)*ppw2->pvecback[pba->index_bg_H];
   double r = ppw2->pvecback[pba->index_bg_rho_g]/ppw2->pvecback[pba->index_bg_rho_b];
     
   
@@ -7705,7 +7822,7 @@ int perturb2_einstein (
   by terms quadratic in the first order velocities and densities */
     
 
-  // *** Photon contribution.
+  /* Photon contribution */
   rho_g = ppw2->pvecback[pba->index_bg_rho_g];
   
   if (ppr2->compute_m[0] == _TRUE_) {
@@ -7721,12 +7838,12 @@ int perturb2_einstein (
     rho_quadrupole_m2    =  rho_g*ppw2->I_2m[2];
 
 
-
-  // *** Baryons contribution
+  /* Baryons contribution */
   rho_b = ppw2->pvecback[pba->index_bg_rho_b];
   
   if (ppr2->compute_m[0] == _TRUE_) {
-    rho_monopole           +=  rho_b*b(0,0,0);
+    rho_monopole_b          =  rho_b*b(0,0,0);
+    rho_monopole           +=  rho_monopole_b;
     rho_dipole             +=  rho_b*b(1,1,0);
     rho_quadrupole         +=  rho_b*ppw2->b_22m[0];
   }
@@ -7738,15 +7855,14 @@ int perturb2_einstein (
     rho_quadrupole_m2    +=  rho_b*ppw2->b_22m[2];
 
 
-
-
-  // *** CDM contribution
+  /* CDM contribution */
   if (pba->has_cdm == _TRUE_) {
 
     rho_cdm = ppw2->pvecback[pba->index_bg_rho_cdm];
     
     if (ppr2->compute_m[0] == _TRUE_) {
-      rho_monopole          +=  rho_cdm*cdm(0,0,0);
+      rho_monopole_cdm       =  rho_cdm*cdm(0,0,0);
+      rho_monopole          +=  rho_monopole_cdm;
       rho_dipole            +=  rho_cdm*cdm(1,1,0);
       rho_quadrupole        +=  rho_cdm*ppw2->cdm_22m[0];
     }
@@ -7760,8 +7876,7 @@ int perturb2_einstein (
   }
 
 
-  
-  // *** Ultra-relativistic neutrino/relics contribution
+  /* Ultra-relativistic neutrino/relics contribution */
   if (pba->has_ur == _TRUE_) {
 
     rho_ur = ppw2->pvecback[pba->index_bg_rho_ur];
@@ -7797,16 +7912,16 @@ int perturb2_einstein (
 
     if (ppr2->compute_m[0] == _TRUE_) {
 
-      /* Constraint equation for psi. This is just the anisotropic stresses Einstein
-      equation.  If you consider that (w+1)*shear = 2/15 quadrupole, this matches the
-      equation in the original CLASS */
+      /* Constraint equation for psi, using eq. 5.3  of http://arxiv.org/abs/1405.2280.
+      This is just the anisotropic stresses Einstein equation. If you consider that
+      (w+1)*shear=2/15*quadrupole, this matches the equation in the original CLASS */
       ppw2->pvecmetric[ppw2->index_mt2_psi] =
         y[ppw2->pv->index_pt2_phi]
         - 3/5. * (a_sq/k_sq) * rho_quadrupole
         + ppw2->pvec_quadsources[ppw2->index_qs2_psi];
 
 
-      /* Phi' from the Einstein time-time (Poisson) equation */
+      /* Phi' from the Einstein time-time (Poisson) equation (eq. 5.2 of http://arxiv.org/abs/1405.2280)*/
       ppw2->pvecmetric[ppw2->index_mt2_phi_prime_poisson] = 
         - Hc*ppw2->pvecmetric[ppw2->index_mt2_psi]
         - k_sq/(3*Hc)*y[ppw2->pv->index_pt2_phi]
@@ -7814,21 +7929,59 @@ int perturb2_einstein (
         + ppw2->pvec_quadsources[ppw2->index_qs2_phi_prime_poisson];
    
 
-      /* Phi' from the longitudinal Einstein equation.  If you consider that
-      (w+1)*theta = k*dipole/3, you recover the equation in the original CLASS. */
+      /* Phi' from the longitudinal Einstein equation (eq. 3.98 of http://arxiv.org/abs/1405.2280)
+      If you consider that (w+1)*theta = k*dipole/3, you recover the equation in the original CLASS. */
       ppw2->pvecmetric[ppw2->index_mt2_phi_prime_longitudinal] = 
         - Hc*ppw2->pvecmetric[ppw2->index_mt2_psi]
         + 0.5 * (a_sq/k) * rho_dipole
         + ppw2->pvec_quadsources[ppw2->index_qs2_phi_prime_longitudinal];
 
 
-      /* Choose which equation to use */
-      if (ppt2->phi_prime_eq == poisson)  {
-        ppw2->pvecmetric[ppw2->index_mt2_phi_prime] =  ppw2->pvecmetric[ppw2->index_mt2_phi_prime_poisson];
+      /* Choose which equation to use for phi'. If we use Huang's equation, then phi'
+      is an evolved quantity and we take its value directly from the y vector. */
+      if (ppt2->phi_eq == poisson)  {
+        ppw2->pvecmetric[ppw2->index_mt2_phi_prime] = ppw2->pvecmetric[ppw2->index_mt2_phi_prime_poisson];
       }
-      else if (ppt2->phi_prime_eq == longitudinal) {
-        ppw2->pvecmetric[ppw2->index_mt2_phi_prime] =  ppw2->pvecmetric[ppw2->index_mt2_phi_prime_longitudinal];
+      else if (ppt2->phi_eq == longitudinal) {
+        ppw2->pvecmetric[ppw2->index_mt2_phi_prime] = ppw2->pvecmetric[ppw2->index_mt2_phi_prime_longitudinal];
       }
+      else if (ppt2->phi_eq == huang) {
+        ppw2->pvecmetric[ppw2->index_mt2_phi_prime] = y[ppw2->pv->index_pt2_phi_prime];
+      }
+
+
+      /* Obtain metric perturbations required to compute phi''. Also psi_prime is required,
+      but we cannot compute it here because it requires in turn the time derivatives of y.
+      The dy vector however is not availabe because perturb2_einstein() is called by
+      perturb2_derivs() right before filling dy. Therefore, for the time being, we set
+      psi_prime to zero. */
+      double psi_prime = 0;
+      double psi = ppw2->pvecmetric[ppw2->index_mt2_psi];
+      double phi = y[ppw2->pv->index_pt2_phi];
+      double phi_prime = ppw2->pvecmetric[ppw2->index_mt2_phi_prime];      
+      
+      /* Compute Phi'' by using a combination of the trace and time-time Einstein equations;
+      the equation we use here is the second-order equivalent of eq. 2.30 of Huang 2012
+      (http://arxiv.org/abs/1201.5961), and is obtained by inserting the time-time equation
+      in the trace equation. It includes only the monopoles of the cold species, because
+      the trace of the energy momentum tensor only includes the hot species. */
+      ppw2->pvecmetric[ppw2->index_mt2_phi_prime_prime] = 
+        + k_sq/3 * (psi - 2*phi)
+        - Hc * (psi_prime + 3*phi_prime)
+        - 2*psi * (Hc*Hc + Hc_prime)
+        - a_sq/2 * (rho_monopole_b + rho_monopole_cdm)
+        + ppw2->pvec_quadsources[ppw2->index_qs2_phi_prime_prime];
+
+      /* Debug - print all terms in the equation for phi'' */
+      // p7 (
+      //   tau,
+      //   ppw2->pvecmetric[ppw2->index_mt2_phi_prime_prime],
+      //   + k_sq/3 * (psi - 2*phi),
+      //   - Hc * (psi_prime + 3*phi_prime),
+      //   - 2*psi * (Hc*Hc + Hc_prime),
+      //   - a_sq/2 * (rho_monopole_b + rho_monopole_cdm),
+      //   + ppw2->pvec_quadsources[ppw2->index_qs2_phi_prime_prime]
+      // );
 
     } // end of scalar potentials
 
@@ -8963,6 +9116,9 @@ int perturb2_tca_variables (
  *
  * Do not rely on the fluid variables computed in this function.
  *
+ * SHIIIIIT: THIS FUNCTION REQUIRES PHI_PRIME AND PHI! WHERE IS IT GOING TO TAKE THEM FROM, IF
+ * WE INSIST IN CALLING WORKSPACE AT TAU AT THE BEGINNING ?
+ *
  */
 
 int perturb2_rsa_variables (
@@ -9171,7 +9327,7 @@ int perturb2_rsa_variables (
       double u_delta_g = ppw2->u_g_1[0]*ppw2->delta_g_2 + ppw2->u_g_2[0]*ppw2->delta_g_1;
     
       /* Purely second-order part */
-      ppw2->u_g_rsa[0] = 6/k * ppw2->pvecmetric[ppw2->index_mt2_phi_prime_longitudinal];
+      ppw2->u_g_rsa[0] = 6/k * ppw2->pvecmetric[ppw2->index_mt2_phi_prime];
 
       /* Quadratic part. It is relevant only for squeezed
       configurations where either k1 or k2 is the small leg. */
@@ -9227,7 +9383,7 @@ int perturb2_rsa_variables (
         double u_delta_ur = ppw2->u_ur_1[0]*ppw2->delta_ur_2 + ppw2->u_ur_2[0]*ppw2->delta_ur_1;
 
         /* Purely second-order part */
-        ppw2->u_ur_rsa[0] = 6/k * ppw2->pvecmetric[ppw2->index_mt2_phi_prime_longitudinal];
+        ppw2->u_ur_rsa[0] = 6/k * ppw2->pvecmetric[ppw2->index_mt2_phi_prime];
 
         /* Quadratic part. It is relevant only for squeezed
         configurations where either k1 or k2 is the small leg. */
@@ -9353,19 +9509,52 @@ int perturb2_compute_psi_prime(
 
   /* Shortcuts */
   double k = ppw2->k;
-  double k2 = k*k;
-  double a2 = ppw2->pvecback[pba->index_bg_a]*ppw2->pvecback[pba->index_bg_a];
+  double k_sq = k*k;
+  double a_sq = ppw2->pvecback[pba->index_bg_a]*ppw2->pvecback[pba->index_bg_a];
   double Hc = ppw2->pvecback[pba->index_bg_a]*ppw2->pvecback[pba->index_bg_H];
-  double kappa_dot = ppw2->pvecthermo[pth->index_th_dkappa];
 
 
+  /* - Interpolate first order densities and velocities */
 
-  // =============================================================================
-  // =                              Compute shear                                =
-  // =============================================================================
+  class_call (perturb_song_sources_at_tau (
+               ppr,
+               ppt,
+               ppt->index_md_scalars,
+               ppt2->index_ic_first_order,
+               ppw2->index_k1,
+               tau,
+               ppt->qs_size_short, /* just delta and vpot */
+               ppt->inter_normal,
+               &(ppw2->last_index_sources),
+               ppw2->pvec_sources1),
+     ppt->error_message,
+     ppt2->error_message);
 
-  /* To compute psi_prime we need rho*d(quadrupole)/dtau and
-  rho*(1+3w)*quadrupole. */
+  class_call (perturb_song_sources_at_tau (
+               ppr,
+               ppt,
+               ppt->index_md_scalars,
+               ppt2->index_ic_first_order,
+               ppw2->index_k2,
+               tau,
+               ppt->qs_size_short, /* just delta and vpot */
+               ppt->inter_normal,
+               &(ppw2->last_index_sources),                 
+               ppw2->pvec_sources2),
+    ppt->error_message,
+    ppt2->error_message);
+
+
+  // =================================================================================
+  // =                              Compute quadrupoles                              =
+  // =================================================================================
+
+  /* To compute psi_prime, we take the time derivative of the anisitropic stresses equation
+  (eq. 3.99 of http://arxiv.org/abs/1405.2280). This gives rise to a term involving the
+  time derivative of the background density times the quadrupoles, and to a term with
+  the background density times the quadrupoles derivative. We use the continuity equation,
+  rho' = -3 Hc (rho + P) = -3 Hc rho (1+w), to express the former in terms of the
+  regular energy density, and we compute the latter as it is. */
   double rho_plus_3p_quadrupole=0, rho_quadrupole_prime=0;
 
   /* - Photons */
@@ -9377,16 +9566,19 @@ int perturb2_compute_psi_prime(
   if (ppw2->approx[ppw2->index_ap2_tca] == (int)tca_off) 
     rho_quadrupole_prime = rho_g * dI(2,0);
   else {
-    /* For the time derivative of the quadrupole in TCA1, we use the usual Boltzmann
-    equation with I(3,0)=0. We also use c_minus(2,0,0)=2/3 */
-    double dI_20 = 2/3.*k*ppw2->I_1m_tca1[0] - kappa_dot*(ppw2->I_2m_tca1[0] - ppw2->Pi_tca1[0]);
+    /* During the tight coupling regime, the photon quadrupole is not evolved.
+    We compute its derivative using the Boltzmann equation with I(3,0)=0 
+    and c_minus(2,0,0)=2/3 */
+    double kappa_dot = ppw2->pvecthermo[pth->index_th_dkappa];
+    double dI_20 = 2/3.*k*ppw2->I_1m_tca1[0]
+                 - kappa_dot*(ppw2->I_2m_tca1[0] - ppw2->Pi_tca1[0])
+                 + dI_qs2(2,0);
     rho_quadrupole_prime = rho_g * dI_20;
   }
 
-
   /* - Baryons */
-  
-  double rho_b = ppw2->pvecback[pba->index_bg_rho_g];
+
+  double rho_b = ppw2->pvecback[pba->index_bg_rho_b];
   double vpot_b_1 = ppw2->pvec_sources1[ppt->index_qs_v_b];
   double vpot_b_2 = ppw2->pvec_sources2[ppt->index_qs_v_b];
   double vpot_b_1_prime = ppw2->pvec_sources1[ppt->index_qs_v_b_prime];
@@ -9403,18 +9595,19 @@ int perturb2_compute_psi_prime(
     rho_quadrupole_prime += rho_b*db_220;
   }
   
-  
   /* - Cold dark matter */
+
+  double rho_cdm = 0;
   
   if (pba->has_cdm == _TRUE_) {
 
-    double rho_cdm = ppw2->pvecback[pba->index_bg_rho_cdm];
+    rho_cdm = ppw2->pvecback[pba->index_bg_rho_cdm];
     double vpot_cdm_1 = ppw2->pvec_sources1[ppt->index_qs_v_cdm];
     double vpot_cdm_2 = ppw2->pvec_sources2[ppt->index_qs_v_cdm];
     double vpot_cdm_1_prime = ppw2->pvec_sources1[ppt->index_qs_v_cdm_prime];
     double vpot_cdm_2_prime = ppw2->pvec_sources2[ppt->index_qs_v_cdm_prime];
 
-    rho_plus_3p_quadrupole +=  rho_cdm*ppw2->cdm_22m[0];
+    rho_plus_3p_quadrupole += rho_cdm*ppw2->cdm_22m[0];
 
     if (ppt2->has_perfect_cdm == _FALSE_) {
       rho_quadrupole_prime += rho_cdm*dcdm(2,2,0);
@@ -9429,27 +9622,51 @@ int perturb2_compute_psi_prime(
   
   /* Neutrinos */
   
+  double rho_ur = 0;
+  
   if (pba->has_ur == _TRUE_) {
-
-    double rho_ur = ppw2->pvecback[pba->index_bg_rho_ur];
+    rho_ur = ppw2->pvecback[pba->index_bg_rho_ur];
     rho_plus_3p_quadrupole += 2*rho_ur*N(2,0);
     rho_quadrupole_prime += rho_ur*dN(2,0);
   }
   
-  
 
-  // =============================================================================
-  // =                              Equation for psi'                            =
-  // =============================================================================
+  // =================================================================================
+  // =                                Equation for psi'                              =
+  // =================================================================================
   
-  /* The derivative of the gravitational potential psi, needed to compute the ISW effect */
-  *psi_prime = ppw2->pvecmetric[ppw2->index_mt2_phi_prime] - 3/5. * (a2/k2)
-    * (rho_quadrupole_prime - Hc*rho_plus_3p_quadrupole)
-    + ppw2->pvec_quadsources[ppw2->index_qs2_psi_prime];
+  /* Formula for hte derivative of the gravitational potential psi. It is obtained by:
+    1) taking the conformal time derivative of the anisotropic stresses equation (eq.3.99
+       of http://arxiv.org/abs/1405.2280) and solving for psi_prime;
+    2) enforcing the background continuity equation rho_prime=-3*Hc*rho*(1+w);
+    3) enforcing the anisotropic stresses equation again to eliminate rho*quadrupole */
+  double phi_prime = ppw2->pvecmetric[ppw2->index_mt2_phi_prime];
+  double psi = ppw2->pvecmetric[ppw2->index_mt2_psi];
+  double phi = y[ppw2->pv->index_pt2_phi];
+  
+  *psi_prime = phi_prime
+             - 2 * Hc * (psi - phi)
+             - 3/5. * (a_sq/k_sq) * (rho_quadrupole_prime + Hc*rho_b*ppw2->b_22m[0] + Hc*rho_cdm*ppw2->cdm_22m[0])
+             + ppw2->pvec_quadsources[ppw2->index_qs2_psi_prime];
+
+  /* Uncomment to use the expression one would obtain without enforcing step 3 in the
+  comment above. To have a consistent result, remember to also uncomment the line in
+  perturb2_quadratic_sources() where we define the value for ppw2->index_qs2_psi_prime. */
+  // *psi_prime = phi_prime
+  //            - 3/5. * (a_sq/k_sq) * (rho_quadrupole_prime - Hc*rho_plus_3p_quadrupole)
+  //            + ppw2->pvec_quadsources[ppw2->index_qs2_psi_prime];
   
   /* Debug - print psi_prime together with psi */
-  // if (ppw2->index_k == 200)
-  //   fprintf (stderr, "%15g %15g %15g\n", tau, ppw2->pvecmetric[ppw2->index_mt2_psi], *psi_prime);
+  // p8 (
+  //   tau,
+  //   psi,
+  //   *psi_prime,
+  //   phi_prime,
+  //   - 2 * Hc * (psi - phi),
+  //   - 3/5. * (a_sq/k_sq) * (rho_quadrupole_prime + Hc*rho_b*ppw2->b_22m[0] + Hc*rho_cdm*ppw2->cdm_22m[0]),
+  //   - 3/5. * (a_sq/k_sq) * rho_quadrupole_prime,
+  //   + ppw2->pvec_quadsources[ppw2->index_qs2_psi_prime]
+  // );
 
   return _SUCCESS_;
 
@@ -9852,6 +10069,8 @@ int perturb2_quadratic_sources (
   double a = ppw2->pvecback[pba->index_bg_a];
   double a_sq = a*a;
   double Hc = ppw2->pvecback[pba->index_bg_H]*a;
+  double Hc_sq = Hc*Hc;
+  double Hc_prime = a*ppw2->pvecback[pba->index_bg_H_prime] + (a*Hc)*ppw2->pvecback[pba->index_bg_H];
   double kappa_dot = ppw2->pvecthermo[pth->index_th_dkappa];     /* Interaction rate */
   double r = pvecback[pba->index_bg_rho_g]/pvecback[pba->index_bg_rho_b];
   double Y = log10 (a/pba->a_eq);
@@ -9863,7 +10082,7 @@ int perturb2_quadratic_sources (
   double vpot_b_2 = pvec_sources2[ppt->index_qs_v_b];
   
   /* CDM variables */
-  double delta_cdm_1, delta_cdm_2, vpot_cdm_1, vpot_cdm_2;
+  double delta_cdm_1=0, delta_cdm_2=0, vpot_cdm_1=0, vpot_cdm_2=0;
   if (pba->has_cdm == _TRUE_) {
     delta_cdm_1 = pvec_sources1[ppt->index_qs_delta_cdm];
     delta_cdm_2 = pvec_sources2[ppt->index_qs_delta_cdm];
@@ -9940,6 +10159,7 @@ int perturb2_quadratic_sources (
   
     /* Shortcuts */
     double phi_1, phi_2, psi_1, psi_2, phi_prime_1, phi_prime_2, psi_prime_1, psi_prime_2;
+    double phi_prime_prime_1, phi_prime_prime_2;
     double eta_1, eta_2, eta_prime_1, eta_prime_2, eta_prime_prime_1, eta_prime_prime_2;
     double h_1, h_2, h_prime_1, h_prime_2, h_prime_prime_1, h_prime_prime_2; 
  
@@ -9980,70 +10200,111 @@ int perturb2_quadratic_sources (
       phi_2 =  pvec_sources2[ppt->index_qs_phi];
       psi_1 =  pvec_sources1[ppt->index_qs_psi];
       psi_2 =  pvec_sources2[ppt->index_qs_psi];
+      psi_prime_1 = pvec_sources1[ppt->index_qs_psi_prime];
+      psi_prime_2 = pvec_sources2[ppt->index_qs_psi_prime];
       phi_prime_1 = pvec_sources1[ppt->index_qs_phi_prime];
       phi_prime_2 = pvec_sources2[ppt->index_qs_phi_prime];
-      if (ppt2->has_isw == _TRUE_) {
-        psi_prime_1 = pvec_sources1[ppt->index_qs_psi_prime];
-        psi_prime_2 = pvec_sources2[ppt->index_qs_psi_prime];
-      }
+      phi_prime_prime_1 = pvec_sources1[ppt->index_qs_phi_prime_prime];
+      phi_prime_prime_2 = pvec_sources2[ppt->index_qs_phi_prime_prime];
 
       /* Scalar potentials */
       if (ppr2->compute_m[0] == _TRUE_) {
 
-        /* Curvature potential (phi_prime), using Poisson equation */
-        pvec_quadsources[ppw2->index_qs2_phi_prime_poisson] = 
+        /* Here we copy the quadratic part of the Einstein equations, as in eq. 3.100 of
+        http://arxiv.org/abs/1405.2280. The labels stand for:
+         - Q_TT -> time-time equation   = a^2 * G^0_0
+         - Q_TS -> space-time equation  = a^2 * i * k[m]/k * G_{i0}
+         - Q_TR -> trace equation       = a^2 * G^i_i
+         - Q_SS -> space-space quation  = a^2 * \chi^{ij}_{2[m]} * G_{ij}
+        where G is the quadratic part of the Einstein tensor at second order. The equations
+        in SONG are also symmetrised with respect to an exchange of k1 and k2. */
 
-            (6*psi_1*Hc*(2*psi_2*Hc + phi_prime_2) + 3*phi_prime_1*(2*(-phi_2 + psi_2)*Hc + phi_prime_2)
-      
-            + phi_1*(-((4*k1_sq + 3*mu*k1*k2 + 4*k2_sq)*phi_2) - 6*Hc*phi_prime_2))/(3.*Hc);
+        double Q_TT = - 12 * psi_1 * psi_2 * Hc_sq
+                      +      phi_1 * phi_2 * (3*k1_dot_k2 + 4*k1_sq + 4*k2_sq)
+                      +  6 * phi_prime_2 * (phi_1 - psi_1) * Hc
+                      +  6 * phi_prime_1 * (phi_2 - psi_2) * Hc
+                      -  3 * phi_prime_1 * phi_prime_2;
 
+        double Q_ST = +  2 * psi_1 * psi_2 * Hc  * (       k1_m[1]   +     k2_m[1] )
+                      -  2 * psi_1 * phi_2 * Hc  * (       k1_m[1]                 )
+                      -  2 * psi_2 * phi_1 * Hc  * (                 +     k2_m[1] )
+                      -  2 * phi_1 * phi_prime_2 * (       k1_m[1]   +   2*k2_m[1] )
+                      -  2 * phi_2 * phi_prime_1 * (     2*k1_m[1]   +     k2_m[1] )
+                      +      psi_1 * phi_prime_2 * (       k1_m[1]                 )
+                      +      psi_2 * phi_prime_1 * (                       k2_m[1] )
+                      /* Terms arising from the tetrads (second line of eq. 4.30 in http://arxiv.org/abs/1405.2280) */
+                      + 0.5 * a_sq * (k1_m[1]/k1*rho_dipole_1*(psi_2+phi_2) + k2_m[1]/k2*rho_dipole_2*(psi_1+phi_1));
+
+        double Q_TR = -  12 * psi_1 * psi_2 * (Hc*Hc + 2*Hc_prime)
+                      +       psi_1 * psi_2 * (k_sq + k1_sq + k2_sq)
+                      +       phi_1 * phi_2 * (3*k1_dot_k2 + 4*k1_sq + 4*k2_sq)
+                      +       phi_1 * psi_2 * (k1_dot_k2 - 2*k2_sq)
+                      +       phi_2 * psi_1 * (k1_dot_k2 - 2*k1_sq)
+                      +   6 * (phi_prime_prime_2 + 2*Hc*phi_prime_2) * (phi_1 - psi_1)
+                      +   6 * (phi_prime_prime_1 + 2*Hc*phi_prime_1) * (phi_2 - psi_2)
+                      -   3 * psi_prime_2 * (4*Hc*psi_1 + phi_prime_1)
+                      -   3 * psi_prime_1 * (4*Hc*psi_2 + phi_prime_2)
+                      +   3 * phi_prime_1 * phi_prime_2;
+          
+        double Q_SS =   phi_1 * phi_2 * ( - 3*k1_ten_k2[2] - 2*k1_ten_k1[2] - 2*k2_ten_k2[2] )
+                      + psi_1 * psi_2 * ( -   k1_ten_k2[2] -   k1_ten_k1[2] -   k2_ten_k2[2] )
+                      + psi_1 * phi_2 * (     k1_ten_k2[2] +   k1_ten_k1[2]                  )
+                      + psi_2 * phi_1 * (     k1_ten_k2[2]                  +   k2_ten_k2[2] );
+
+        double Q_SS_prime =
+            (phi_prime_1 * phi_2 + phi_1 * phi_prime_2) * ( - 3*k1_ten_k2[2] - 2*k1_ten_k1[2] - 2*k2_ten_k2[2] )
+          + (psi_prime_1 * psi_2 + psi_1 * psi_prime_2) * ( -   k1_ten_k2[2] -   k1_ten_k1[2] -   k2_ten_k2[2] )                  
+          + (psi_prime_1 * phi_2 + psi_1 * phi_prime_2) * (     k1_ten_k2[2] +   k1_ten_k1[2]                  )                  
+          + (psi_prime_2 * phi_1 + psi_2 * phi_prime_1) * (     k1_ten_k2[2]                  +   k2_ten_k2[2] );                  
+
+
+        /* In SONG we expand X~X^(0)+X^(1)+1/2*X^(2), while in our reference (http://arxiv.org/abs/1405.2280)
+        we do not adapt the 1/2 factor. Therefore, all quadratic sources has to be multiplied by a 2 factor */
+        Q_TT *= 2;
+        Q_ST *= 2;
+        Q_TR *= 2;
+        Q_SS *= 2;
+        Q_SS_prime *= 2;
+
+        /* First derivative of the curvature potential (phi_prime), using the time-time equation
+        (eq. 3.96 of http://arxiv.org/abs/1405.2280) */
+        pvec_quadsources[ppw2->index_qs2_phi_prime_poisson] = - Q_TT / (6*Hc);
     
-        /* Curvature potential (phi_prime), using the Longitudinal (k^i . G^0_i) equation */
-        pvec_quadsources[ppw2->index_qs2_phi_prime_longitudinal] = 2 * 1/(2.*k) *
-          (
-              2 * psi_1 * psi_2 * Hc  * (       k1_m[1]   +     k2_m[1] )
-            - 2 * psi_1 * phi_2 * Hc  * (       k1_m[1]                 )
-            - 2 * psi_2 * phi_1 * Hc  * (                 +     k2_m[1] )
-            - 2 * phi_1 * phi_prime_2 * (       k1_m[1]   +   2*k2_m[1] )
-            - 2 * phi_2 * phi_prime_1 * (     2*k1_m[1]   +     k2_m[1] )
-            +     psi_1 * phi_prime_2 * (       k1_m[1]                 )
-            +     psi_2 * phi_prime_1 * (                       k2_m[1] )
-            /* Quadratic term arising from the tetrads */
-            + 0.5 * a_sq * ( k1_m[1]/k1*rho_dipole_1*(psi_2+phi_2) + k2_m[1]/k2*rho_dipole_2*(psi_1+phi_1) )
-          );
-      
+        /* First derivative of the curvature potential (phi_prime), using the space-time equation
+        (eq. 3.98 of http://arxiv.org/abs/1405.2280) */
+        pvec_quadsources[ppw2->index_qs2_phi_prime_longitudinal] = Q_ST / (2*k);
 
-        /* Choose between Poisson and longitudinal equations */
-        if (ppt2->phi_prime_eq == poisson)
+        /* Choose which quadratic sources to use for the phi' equation. The choice is between
+        Poisson, longitudinal and Huang equations. In the latter case, there are no quadratic
+        sources for phi' because we obtain phi' directly from the differential system, rather
+        than setting its value using an Einstein constraint. */
+        if (ppt2->phi_eq == poisson)
           pvec_quadsources[ppw2->index_qs2_phi_prime] =
             pvec_quadsources[ppw2->index_qs2_phi_prime_poisson];
  
-        else if (ppt2->phi_prime_eq == longitudinal)
+        else if (ppt2->phi_eq == longitudinal)
           pvec_quadsources[ppw2->index_qs2_phi_prime] =
             pvec_quadsources[ppw2->index_qs2_phi_prime_longitudinal];
       
+        else if (ppt2->phi_eq == huang)
+          pvec_quadsources[ppw2->index_qs2_phi_prime] = 0;
 
-        /* Scalar potential (psi). k1_ten_k2[m+2] picks the 'm' component of the tensorial product between k1 and k2 */    
-        pvec_quadsources[ppw2->index_qs2_psi] = - 3./k_sq *
-          (
-              phi_1 * phi_2 * ( - 3*k1_ten_k2[2] - 2*k1_ten_k1[2] - 2*k2_ten_k2[2] )
-            + psi_1 * psi_2 * ( -   k1_ten_k2[2] -   k1_ten_k1[2] -   k2_ten_k2[2] )
-            + psi_1 * phi_2 * (     k1_ten_k2[2] +   k1_ten_k1[2]                  )
-            + psi_2 * phi_1 * (     k1_ten_k2[2]                  +   k2_ten_k2[2] )
-          ); 
-      
-        /* Conformal time derivative of the above, needed to compute psi_prime */    
-        if (ppt2->has_isw == _TRUE_) {
+        /* Time potential (psi), using the space-space (or anisotropic stresses) equation in
+        eq. 3.99 of http://arxiv.org/abs/1405.2280.  */    
+        pvec_quadsources[ppw2->index_qs2_psi] = - Q_SS * 3/(2*k_sq);
+
+        /* Time derivative of the time potential (psi_prime) using the using the space-space (or
+        anisotropic stresses) equation; see perturb2_compute_psi_prime() */
+        pvec_quadsources[ppw2->index_qs2_psi_prime] = - Q_SS_prime * 3/(2*k_sq) - Q_SS * 3*Hc/k_sq;
         
-          pvec_quadsources[ppw2->index_qs2_psi_prime] = - 3./k_sq *
-            (
-                (phi_prime_1 * phi_2 + phi_1 * phi_prime_2) * ( - 3*k1_ten_k2[2] - 2*k1_ten_k1[2] - 2*k2_ten_k2[2] )
-              + (psi_prime_1 * psi_2 + psi_1 * psi_prime_2) * ( -   k1_ten_k2[2] -   k1_ten_k1[2] -   k2_ten_k2[2] )
-              + (psi_prime_1 * phi_2 + psi_1 * phi_prime_2) * (     k1_ten_k2[2] +   k1_ten_k1[2]                  )
-              + (psi_prime_2 * phi_1 + psi_2 * phi_prime_1) * (     k1_ten_k2[2]                  +   k2_ten_k2[2] )
-            );         
-        }
-      
+        /* Uncomment to use the alternative expression for psi_prime, see comment in 
+        perturb2_compute_psi_prime() */
+        // pvec_quadsources[ppw2->index_qs2_psi_prime] = - Q_SS_prime * 3/(2*k_sq);
+
+        /* Second derivative of the curvature potential (phi_prime_prime). This is the
+        sum of the quadratic parts of the trace and time-time Einstein equations, divided
+        by -6. The trace equation is in eq. 3.97 of http://arxiv.org/abs/1405.2280. */
+        pvec_quadsources[ppw2->index_qs2_phi_prime_prime] = -(Q_TR + Q_TT) / 6;
 
       } // end of scalar modes
 
@@ -10051,15 +10312,19 @@ int perturb2_quadratic_sources (
       /* Vector potentials */
       if (ppr2->compute_m[1] == _TRUE_) {
 
-        /* Vector potential (omega_m1). Note that for k1=k2 and m=1, the quadratic sources for
-        the vector potential omega_m1 vanish because k1_ten_k2=0 and k1_ten_k1=-k2_ten_k2 */
-        pvec_quadsources[ppw2->index_qs2_omega_m1_prime] = 2. * sqrt_3 / k * 
-          (
-              phi_1 * phi_2 * ( - 3*k1_ten_k2[3] - 2*k1_ten_k1[3] - 2*k2_ten_k2[3] )
-            + psi_1 * psi_2 * ( -   k1_ten_k2[3] -   k1_ten_k1[3] -   k2_ten_k2[3] )
-            + psi_1 * phi_2 * (     k1_ten_k2[3] +   k1_ten_k1[3]                  )
-            + psi_2 * phi_1 * (     k1_ten_k2[3]                  +   k2_ten_k2[3] )
-          );
+        /* Vector potential (omega_m1), using the space-time equation (eq. 3.98 of http://arxiv.org/abs/1405.2280,
+        and with omega_m1=i*\omega_{[+1]}). Note that for k1=k2 and m=1, the quadratic sources for the vector
+        potential omega_m1 vanish because k1_ten_k2=0 and k1_ten_k1=-k2_ten_k2, and so does the transfer function
+        itself, because we assume vanishing initial conditions for m!=0 modes. This is true for all odd-m
+        perturbations and standard physics. */
+        double Q_SS = + phi_1 * phi_2 * ( - 3*k1_ten_k2[3] - 2*k1_ten_k1[3] - 2*k2_ten_k2[3] )
+                      + psi_1 * psi_2 * ( -   k1_ten_k2[3] -   k1_ten_k1[3] -   k2_ten_k2[3] )
+                      + psi_1 * phi_2 * (     k1_ten_k2[3] +   k1_ten_k1[3]                  )
+                      + psi_2 * phi_1 * (     k1_ten_k2[3]                  +   k2_ten_k2[3] );
+
+        Q_SS *= 2;
+
+        pvec_quadsources[ppw2->index_qs2_omega_m1_prime] = sqrt_3 / k * Q_SS;
 
       } // end of vector modes
 
@@ -10067,14 +10332,16 @@ int perturb2_quadratic_sources (
       /* Tensor potentials */
       if (ppr2->compute_m[2] == _TRUE_) {
 
-        /* Tensor potential (gamma_m2) sources */
-        pvec_quadsources[ppw2->index_qs2_gamma_m2_prime_prime] = -2 *
-          (
-              phi_1 * phi_2 * ( - 3*k1_ten_k2[4] - 2*k1_ten_k1[4] - 2*k2_ten_k2[4] )
-            + psi_1 * psi_2 * ( -   k1_ten_k2[4] -   k1_ten_k1[4] -   k2_ten_k2[4] )
-            + psi_1 * phi_2 * (     k1_ten_k2[4] +   k1_ten_k1[4]                  )
-            + psi_2 * phi_1 * (     k1_ten_k2[4]                  +   k2_ten_k2[4] )
-          );
+        /* Tensor potential (gamma_m2), using the space-space equation (eq. 3.99 of
+        http://arxiv.org/abs/1405.2280) */
+        double Q_SS = + phi_1 * phi_2 * ( - 3*k1_ten_k2[4] - 2*k1_ten_k1[4] - 2*k2_ten_k2[4] )
+                      + psi_1 * psi_2 * ( -   k1_ten_k2[4] -   k1_ten_k1[4] -   k2_ten_k2[4] )
+                      + psi_1 * phi_2 * (     k1_ten_k2[4] +   k1_ten_k1[4]                  )
+                      + psi_2 * phi_1 * (     k1_ten_k2[4]                  +   k2_ten_k2[4] );
+        
+        Q_SS *= 2;
+
+        pvec_quadsources[ppw2->index_qs2_gamma_m2_prime_prime] = - Q_SS;
 
       } // end of tensor modes
 
@@ -10942,10 +11209,8 @@ int perturb2_sources (
     phi_prime_1 = pvec_sources1[ppt->index_qs_phi_prime];
     phi_prime_2 = pvec_sources2[ppt->index_qs_phi_prime];
 
-    if (switch_isw == 1) {
-      psi_prime_1 = pvec_sources1[ppt->index_qs_psi_prime];
-      psi_prime_2 = pvec_sources2[ppt->index_qs_psi_prime];
-    }
+    psi_prime_1 = pvec_sources1[ppt->index_qs_psi_prime];
+    psi_prime_2 = pvec_sources2[ppt->index_qs_psi_prime];
 
 
     /* Scalar potentials */
@@ -10990,16 +11255,14 @@ int perturb2_sources (
       phi_exp = phi + 2*phi_1*phi_2;
       psi_exp = psi - 2*psi_1*psi_2;
       phi_exp_prime = phi_prime + 2*(phi_1*phi_prime_2 + phi_prime_1*phi_2);
-      if (switch_isw == 1)
-        psi_exp_prime = psi_prime - 2*(psi_1*psi_prime_2 + psi_prime_1*psi_2);
+      psi_exp_prime = psi_prime - 2*(psi_1*psi_prime_2 + psi_prime_1*psi_2);
       
       /* Should we use the linear potentials or the exponential ones? */
       if (ppt2->use_exponential_potentials == _TRUE_) {
         phi = phi_exp;
         psi = psi_exp;
         phi_prime = phi_exp_prime;
-        if (switch_isw == 1)
-          psi_prime = psi_exp_prime;
+        psi_prime = psi_exp_prime;
       }
       
     } // end of m=0
@@ -12163,11 +12426,6 @@ int perturb2_save_early_transfers (
     if (ppr2->compute_m[0] == _TRUE_) {
       psi = pvecmetric[ppw2->index_mt2_psi];
       phi = y[ppw2->pv->index_pt2_phi];
-    }
-    
-    /* Conformal time derivative of psi */
-    if ((ppt2->has_isw == _TRUE_) && (ppr2->compute_m[0])) {
-
       class_call(perturb2_compute_psi_prime (
                    ppr,
                    ppr2,
@@ -12330,7 +12588,7 @@ int perturb2_save_early_transfers (
   /* Compute the limit for the vector potential in matter domination from eq. 2.6
   of Boubeker, Creminelli et al. 2009. The extra factor 2 comes from the fact that
   we expand X = X0 + X1 + 1/2*X2. */
-  double omega_m1_analytical;
+  double omega_m1_analytical=0;
 
   if (ppr2->compute_m[1] == _TRUE_) {
     double kernel_omega_m1 =  4/(3*Hc*k_sq) * (k1_sq * k2_m[2] + k2_sq * k1_m[2]);
@@ -12343,7 +12601,7 @@ int perturb2_save_early_transfers (
   
   /* Compute the limit for the tensor potential in matter domination from eq. 2.7
   of Boubeker, Creminelli et al. 2009. */
-  double gamma_m2_analytical;
+  double gamma_m2_analytical=0;
   
   if (ppr2->compute_m[2] == _TRUE_) {    
     double kernel_gamma_m2 = ppw2->k1_ten_k2[4]/k_sq;
@@ -12407,7 +12665,7 @@ int perturb2_save_early_transfers (
 
   /* Compute the common velocity of all matter species for adiabatic initial conditions.
   The formula is derived in sec. 5.4.1.1 of http://arxiv.org/abs/1405.2280 starting from
-  the time-space (longitudinal) Einstein equation.  */
+  the space-time (longitudinal) Einstein equation.  */
 
   double v_0_adiabatic = 0;
 
@@ -12497,23 +12755,37 @@ int perturb2_save_early_transfers (
        fprintf(file_qs, format_value, pvec_quadsources[ppw2->index_qs2_psi]);
       }
       // psi_prime
-      if (ppt2->has_isw == _TRUE_) {
-        if (ppw2->n_steps==1) {
-         fprintf(file_tr, format_label, "psi'", index_print_tr++);
-         fprintf(file_qs, format_label, "psi'", index_print_qs++);
-        }
-        else {
-         fprintf(file_tr, format_value, psi_prime);
-         fprintf(file_qs, format_value, pvec_quadsources[ppw2->index_qs2_psi_prime]);
-        }
+      if (ppw2->n_steps==1) {
+       fprintf(file_tr, format_label, "psi'", index_print_tr++);
+       fprintf(file_qs, format_label, "psi'", index_print_qs++);
+      }
+      else {
+       fprintf(file_tr, format_value, psi_prime);
+       fprintf(file_qs, format_value, pvec_quadsources[ppw2->index_qs2_psi_prime]);
       }
       // phi
       if (ppw2->n_steps==1) fprintf(file_tr, format_label, "phi", index_print_tr++);
       else fprintf(file_tr, format_value, phi);
+      // phi_prime
+      if (ppw2->n_steps==1) {
+       fprintf(file_tr, format_label, "phi'", index_print_tr++);
+      }
+      else {
+       fprintf(file_tr, format_value, pvecmetric[ppw2->index_mt2_phi_prime]);
+      }
+      // phi_prime_prime
+      if (ppw2->n_steps==1) {
+       fprintf(file_tr, format_label, "phi''", index_print_tr++);
+       fprintf(file_qs, format_label, "phi''", index_print_qs++);
+      }
+      else {
+       fprintf(file_tr, format_value, pvecmetric[ppw2->index_mt2_phi_prime_prime]);
+       fprintf(file_qs, format_value, pvec_quadsources[ppw2->index_qs2_phi_prime_prime]);
+      }
       // phi_prime_poisson
       if (ppw2->n_steps==1) {
-       fprintf(file_tr, format_label, "phi'tt", index_print_tr++);
-       fprintf(file_qs, format_label, "phi'tt", index_print_qs++);
+       fprintf(file_tr, format_label, "phi'P", index_print_tr++);
+       fprintf(file_qs, format_label, "phi'P", index_print_qs++);
       }
       else {
        fprintf(file_tr, format_value, pvecmetric[ppw2->index_mt2_phi_prime_poisson]);
@@ -12521,8 +12793,8 @@ int perturb2_save_early_transfers (
       }
       // phi_prime_longitudinal
       if (ppw2->n_steps==1) {
-       fprintf(file_tr, format_label, "phi'lg", index_print_tr++);
-       fprintf(file_qs, format_label, "phi'lg", index_print_qs++);
+       fprintf(file_tr, format_label, "phi'L", index_print_tr++);
+       fprintf(file_qs, format_label, "phi'L", index_print_qs++);
       }
       else {
        fprintf(file_tr, format_value, pvecmetric[ppw2->index_mt2_phi_prime_longitudinal]);

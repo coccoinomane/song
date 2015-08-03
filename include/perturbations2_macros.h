@@ -221,12 +221,36 @@ ppt2->c_minus are used */
   fprintf_k_debug (stdout, args)                                    \
 }
 
-#define fprintf_k_debug_xy(stream, x, y) {                          \
-  fprintf_k_debug (stream, "%12g %12g\n", x, y);                    \
+#define p1(x) {                                             \
+  fprintf_k_debug (stderr, "%25.17g\n", x);                            \
 }
 
-#define fprintf_k_debug_xyz(stream, x, y, z) {                      \
-  fprintf_k_debug (stream, "%12g %12g %12g\n", x, y, z);            \
+#define p2(x, y) {                                         \
+  fprintf_k_debug (stderr, "%25.17g %25.17g\n", x, y);                    \
+}
+
+#define p3(x, y, z) {                                     \
+  fprintf_k_debug (stderr, "%25.17g %25.17g %25.17g\n", x, y, z);            \
+}
+
+#define p4(a,b,c,d) {                                     \
+  fprintf_k_debug (stderr, "%25.17g %25.17g %25.17g %25.17g\n", a, b, c, d);            \
+}
+
+#define p5(a,b,c,d,e) {                                     \
+  fprintf_k_debug (stderr, "%25.17g %25.17g %25.17g %25.17g %25.17g\n", a, b, c, d, e);            \
+}
+
+#define p6(a,b,c,d,e,f) {                                     \
+  fprintf_k_debug (stderr, "%25.17g %25.17g %25.17g %25.17g %25.17g %25.17g\n", a, b, c, d, e, f);            \
+}
+
+#define p7(a,b,c,d,e,f,g) {                                     \
+  fprintf_k_debug (stderr, "%25.17g %25.17g %25.17g %25.17g %25.17g %25.17g %25.17g\n", a, b, c, d, e, f, g);            \
+}
+
+#define p8(a,b,c,d,e,f,g,h) {                                     \
+  fprintf_k_debug (stderr, "%25.17g %25.17g %25.17g %25.17g %25.17g %25.17g %25.17g %25.17g\n", a, b, c, d, e, f, g, h);            \
 }
 
 

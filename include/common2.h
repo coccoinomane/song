@@ -36,7 +36,7 @@ struct precision2
   int l_max_g;         /**< Number of multipoles to evolve for the photon intensity */
   int l_max_pol_g;     /**< Number of multipoles to evolve for the photon polarisation */
   int l_max_ur;        /**< Number of multipoles to evolve for the neutrinos */
-  int l_max_boltzmann; /**< Maximum number of multipoles to evolve at second order for a species  */
+  int l_max_boltzmann; /**< maximum number of multipoles to keep in any of the second-order Boltzmann hierarchies */
 
   int l_max_g_quadsources;      /**< Number of multipoles to include in the quadratic part of the Boltzmann hierarchy for the photon intensity. Set to -1 to include all quadratic sources up to ppr2->l_max_g. */
   int l_max_pol_g_quadsources;  /**< Number of multipoles to include in the quadratic part of the Boltzmann hierarchy for the photon polarisation. Set to -1 to include all quadratic sources up to ppr2->l_max_pol_g. */
