@@ -7504,7 +7504,7 @@ int perturb2_derivs (
        
       dmag(1,m) = -2. * Hc * mag(1,m)  
       					+
-      					k* pvecback[pba->index_bg_rho_g] /3. *ppw2->C_1m[m]/kappa_dot
+      					0.*k* pvecback[pba->index_bg_rho_g] /3. *ppw2->C_1m[m]/kappa_dot
       					/*(four_thirds * b(1,1,m) - ppw2->I_1m[m])*/ 
       					;
       					
@@ -7516,7 +7516,7 @@ int perturb2_derivs (
 		if (ppt2->has_quadratic_sources == _TRUE_) {
       for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
         int m = ppr2->m[index_m];
-        dmag(1,m) +=  dmag_qs2(1,m);
+        dmag(1,m) +=  0.*dmag_qs2(1,m);
 		}}
 	}
 
@@ -10771,8 +10771,13 @@ int perturb2_sources (
         /* We shall increment the source term for this (l,m)-multipole with several contributions */
       	double source = 0;    
         
+        if (l==0) {
+					source += cdm(0,0,0);
+
+				}
+        
       	if (l==1) {
-					source += mag(1,m);
+					source += ppw2->u_cdm[m];
 
 				} // end of dipole sources
 				

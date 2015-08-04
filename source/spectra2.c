@@ -109,7 +109,7 @@ int spectra2_init(
   int index_sp = 1;
 	
 	// Print time 
-	
+	/*
 	fprintf(file_sp, format_label, "tau",index_sp);
 	index_sp++;
   
@@ -126,10 +126,10 @@ int spectra2_init(
  		}
   
   fprintf(file_sp, "\n");
-  
+  */
   
   //Print k 
-  /*
+  
   fprintf(file_sp, format_label, "k",index_sp);
 	index_sp++;
 
@@ -141,7 +141,7 @@ int spectra2_init(
  				
  		fprintf(file_sp, "\n");
 	
-	*/
+	
   /* Four loops over k1, k2, transfer type follow */
   double step_k1, step_k2;
  
@@ -305,7 +305,7 @@ int spectra2_init(
 					// phi integration
 					 2 * _PI_*
 					// spectra factors
-					 4./2./_PI_/2./_PI_/2./_PI_* 
+					 2./2./_PI_/2./_PI_/2./_PI_* 
 					// definition of second order perturbation theory
 					 1./2./2.*
 					// psi od phi
@@ -317,8 +317,8 @@ int spectra2_init(
 					// 1.602 * 1.e-19 is electron charge ,  1.e-6 is e-10 from CLASS convention 
 					// (rho_g_CLASS^0 = e+10 h^2/c^2 * Omega_g^0) and e+4 to covert from international units to Gauss
 					// (1 G = 10 e-4 kg/ s/ C)
-					*_c_*_c_*_c_* 6.652 * 1.e-29 * 1.e-6 * 1.878 * 1.e-26 / 1.602 / 1.e-19
-					*_c_*_c_*_c_* 6.652 * 1.e-29 * 1.e-6 * 1.878 * 1.e-26 / 1.602 / 1.e-19
+					//*_c_*_c_*_c_* 6.652 * 1.e-29 * 1.e-6 * 1.878 * 1.e-26 / 1.602 / 1.e-19
+					//*_c_*_c_*_c_* 6.652 * 1.e-29 * 1.e-6 * 1.878 * 1.e-26 / 1.602 / 1.e-19
 					;
 					} 
 					
@@ -521,7 +521,7 @@ int spectra2_init(
 					// phi integration
 					 2 * _PI_*
 					// spectra factors
-					 4./2./_PI_/2./_PI_/2./_PI_* 
+					 2./2./_PI_/2./_PI_/2./_PI_* 
 					// definition of second order perturbation theory
 					 1./2./2.*
 					// psi od phi
@@ -533,8 +533,8 @@ int spectra2_init(
 					// 1.602 * 1.e-19 is electron charge ,  1.e-6 is e-10 from CLASS convention 
 					// (rho_g_CLASS^0 = e+10 h^2/c^2 * Omega_g^0) and e+4 to covert from international units to Gauss
 					// (1 G = 10 e-4 kg/ s/ C)
-					*_c_*_c_*_c_* 6.652 * 1.e-29 * 1.e-6 * 1.878 * 1.e-26 / 1.602 / 1.e-19
-					*_c_*_c_*_c_* 6.652 * 1.e-29 * 1.e-6 * 1.878 * 1.e-26 / 1.602 / 1.e-19
+					//*_c_*_c_*_c_* 6.652 * 1.e-29 * 1.e-6 * 1.878 * 1.e-26 / 1.602 / 1.e-19
+					//*_c_*_c_*_c_* 6.652 * 1.e-29 * 1.e-6 * 1.878 * 1.e-26 / 1.602 / 1.e-19
 					;
 					} 
 					
@@ -578,7 +578,7 @@ int spectra2_init(
   class_alloc (pvecback, pba->bg_size*sizeof(double), psp2->error_message);
 
  // print time
- 
+ /*
 	for (int index_tau = 0; index_tau < ppt2->tau_size; ++index_tau) { 
 	
 	class_call (background_at_tau(
@@ -605,14 +605,14 @@ int spectra2_init(
   	
   	for (int index_k3 = 0; index_k3 < psp2->k_size; ++index_k3) { 
   		
- 			fprintf(file_sp, format_value, psp2->spectra[ppt2->index_tp2_M + lm(1,1)][index_k3*ppt2->tau_size + index_tau] );	
+ 			fprintf(file_sp, format_value, psp2->spectra[ppt2->index_tp2_M + lm(0,0)][index_k3*ppt2->tau_size + index_tau] );	
  			
  		}
   	fprintf(file_sp, "\n");
 	}
-  
+  */
   // Print k 
-  /*
+  
   for (int index_k3 = 0; index_k3 < psp2->k_size; ++index_k3) { 
 
 	    			
@@ -620,13 +620,13 @@ int spectra2_init(
   	
   	for (int index_tau = 0; index_tau < ppt2->tau_size; ++index_tau) { 
   		
- 			fprintf(file_sp, format_value, psp2->spectra[ppt2->index_tp2_M + lm(1,1)][index_k3*ppt2->tau_size + index_tau] );	
+ 			fprintf(file_sp, format_value, psp2->spectra[ppt2->index_tp2_M + lm(0,0)][index_k3*ppt2->tau_size + index_tau] );	
  			
  		}
   	fprintf(file_sp, "\n");
 	}
   
-  */
+  
   
   
  	printf("keq = %f \n",pba->k_eq);
