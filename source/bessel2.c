@@ -506,8 +506,8 @@ int bessel2_convolution (
 
   class_test ((kk[k_size-1]*r)>pbs2->xx[pbs2->xx_size-1],
     error_message,
-    "r*k_max=%g is larger than x_max=%g (index_l1=%d)",
-    kk[k_size-1]*r, pbs2->xx[pbs2->xx_size-1], index_l);
+    "r*k_max=%g is larger than x_max=%g (index_l1=%d,r=%g,k_max=%g)",
+    kk[k_size-1]*r, pbs2->xx[pbs2->xx_size-1], index_l,r,kk[k_size-1]);
 #endif // DEBUG
 
   /* Initialize the integral */

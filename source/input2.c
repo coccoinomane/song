@@ -287,7 +287,6 @@ int input2_init (
 
   class_read_double("recombination_max_to_end_ratio", ppt2->recombination_max_to_end_ratio);
 
-
   class_read_string_one_of_two(pfc,
     "custom_time_sampling_for_2nd_order_sources",
     "custom_time_sampling_song_sources");   

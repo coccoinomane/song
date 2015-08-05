@@ -112,6 +112,11 @@ int main (int argc, char **argv) {
     return _FAILURE_;
   }
 
+  if (pt2.has_early_transfers2_only == _TRUE_) {
+    printf ("\n\nCannot compute late transfer function if pt2.has_early_transfers2_only is on");
+    return _FAILURE_;
+  }
+
   /* Check that we are going to compute the needed transfer type */
   if (type == 'T') {
     if (pt2.has_cmb_temperature==_FALSE_) {
@@ -198,6 +203,7 @@ int main (int argc, char **argv) {
 
 
   /* Find the indices associated to l and m */
+  printf ("l = %d\n", l);
   int index_l = tr.index_l[l];
   int index_m = pr2.index_m[m];
   if (index_l<0) {
@@ -234,6 +240,8 @@ int main (int argc, char **argv) {
   if(index_k2 > k1_size-1) index_k2 = k1_size-1;  // We use k1_size because index_k2 refers to pt2.k
   if(index_k2 < 0) index_k2 = 0;
   
+  double k1 = pt2.k[index_k1];
+  double k2 = pt2.k[index_k2];
   
   
   // ===============================================================================
@@ -282,13 +290,15 @@ int main (int argc, char **argv) {
   /* Number of rows to be printed */
   int k_size = tr2.k_size_k1k2[index_k1][index_k2];
   
-  /* Print information on k to screen */
-  printf("index_k1 = %d\n", index_k1);
-  printf("index_k2 = %d\n", index_k2);
-  printf("pt2.k_size = %d\n", pt2.k_size);
-  double k1 = pt2.k[index_k1];
-  double k2 = pt2.k[index_k2];
-  fprintf(stderr, "# k1 = %g, k2 = %g, k3_size = %d, l_size = %d\n", k1, k2, k_size, tr2.l_size);
+  /* Print information to stdout */
+  printf("Printing (index_k1,index_k2)=(%d,%d) out of %d\n",
+    index_k1, index_k2, pt2.k_size);
+  printf("corresponding to (l, m, k1, k2, index_tt) = (%d, %d, %g, %g, %d)\n",
+    tr2.l[index_l], tr2.m[index_m], k1, k2, index_tt);
+
+  /* Print information to stderr */
+  fprintf(stderr, "# k1 = %g, k2 = %g, k3_size = %d, l_size = %d\n",
+    k1, k2, k_size, tr2.l_size);
     
   fprintf(stderr, "# Time-sampling of quadsources with %d points from tau=%g to %g\n",
     pt.tau_size_quadsources, pt.tau_sampling_quadsources[0],
@@ -313,8 +323,6 @@ int main (int argc, char **argv) {
     index_tt, index_k1, index_k2);
   fprintf(stderr, "# corresponding to (l,m,k1,k2) = (%d,%d,%g,%g)\n",
     tr2.l[index_l], tr2.m[index_m], k1, k2);
-  printf("# corresponding to (l,m,k1,k2,index_tt) = (%d,%d,%g,%g,%d)\n",
-    tr2.l[index_l], tr2.m[index_m], k1, k2, index_tt);
   
   
 

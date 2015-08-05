@@ -72,7 +72,7 @@ int bispectra2_init (
   // =                                 Compute bispectra                                 =
   // =====================================================================================
 
-  class_call (bispectra2_harmonic (ppr,ppr2,pba,ppt,ppt2,pbs,pbs2,ptr,ptr2,ppm,psp,pbi),
+  class_call (bispectra2_harmonic (ppr,ppr2,pba,pth,ppt,ppt2,pbs,pbs2,ptr,ptr2,ppm,psp,pbi),
     pbi->error_message,
     pbi->error_message);
 
@@ -141,6 +141,7 @@ int bispectra2_harmonic (
     struct precision * ppr,
     struct precision2 * ppr2,
     struct background * pba,
+    struct thermo * pth,
     struct perturbs * ppt,
     struct perturbs2 * ppt2,
     struct bessels * pbs,
@@ -174,6 +175,8 @@ int bispectra2_harmonic (
     class_call (bispectra2_intrinsic_workspace_init(
                   ppr,
                   ppr2,
+                  pba,
+                  pth,
                   ppt,
                   ppt2,
                   pbs,
@@ -215,13 +218,14 @@ int bispectra2_harmonic (
 
   
     
-  // ========================================================================================
-  // =                               Add four-point corrections                             =
-  // ========================================================================================
+  // ================================================================================
+  // =                           Add four-point corrections                         =
+  // ================================================================================
 
-  /* Add to the intrinsic bispectrum with the quadratic correction intended to turn the brightness
-  temperature to the bolometric one (Sec. 3.2 of http://arxiv.org/abs/1401.3296), and absorb the
-  redshift term of Boltzmann equation (Sec. 3.1 of http://arxiv.org/abs/1401.3296). */
+  /* Add to the intrinsic bispectrum with the quadratic correction intended to turn
+  the brightness temperature to the bolometric one (Sec. 3.2 of
+  http://arxiv.org/abs/1401.3296), and absorb the redshift term of Boltzmann equation
+  (Sec. 3.1 of http://arxiv.org/abs/1401.3296). */
   class_call (bispectra2_add_quadratic_corrections (ppr,ppr2,pba,ppt,ppt2,pbs,pbs2,ptr,ptr2,ppm,psp,pbi),
     pbi->error_message,
     pbi->error_message);
@@ -239,9 +243,9 @@ int bispectra2_harmonic (
 
   
   
-  // ============================================================================
-  // =                      Check bispectra against nan's                       =
-  // ============================================================================
+  // ================================================================================
+  // =                                 Check for nans                               =
+  // ================================================================================
 
   for (int index_bt = 0; index_bt < pbi->bt_size; ++index_bt) {
 
@@ -438,8 +442,8 @@ int bispectra2_intrinsic_init (
       pwb->X = X;
 
       if (pbi->bispectra_verbose > 0)
-        printf(" -> computing %s bispectrum involving %s^(2)\n",
-        pbi->bt_labels[index_bt], pbi->bf_labels[X]);
+        printf(" -> computing intrinsic bispectrum with %s^(2), r sampled %d times in [%g,%g]\n",
+        pbi->bf_labels[X], pwb->r_size, pwb->r_min, pwb->r_max);
 
       // -------------------------------------------------------------------------------------
       // -                              Cycle over M3, L3, L1                                -
@@ -811,6 +815,8 @@ wrong/non_negl=%g, <diff> of matches=%g, <diff> of wrongs=%g\n",
 int bispectra2_intrinsic_workspace_init (
     struct precision * ppr,
     struct precision2 * ppr2,
+    struct background * pba,
+    struct thermo * pth,
     struct perturbs * ppt,
     struct perturbs2 * ppt2,
     struct bessels * pbs,
@@ -833,28 +839,36 @@ int bispectra2_intrinsic_workspace_init (
   // -                         Grid in r                        -
   // ------------------------------------------------------------
 
+  /* We set the r-sampling as if it were a time sampling.  We do so because 'r' has the
+  right dimensions, and it always appears in the argument of a Bessel function multiplying
+  a wavemode, just as it was for conformal time in the line-of-sight integral. */
 
-  /* We set the r-sampling as if it were a time sampling.  We do so because 'r' has the right dimensions, and
-  it always appears in the argument of a Bessel function multiplying a wavemode, just as it was for conformal
-  time in the line-of-sight integral.  This is the only place in the module where the background structure
-  is accessed. */
-  pwb->r_min = ppr->r_min;
-  pwb->r_max = ppr->r_max;
   pwb->r_size = ppr->r_size;
-  
-  /* We decide to sample r linearly */
+
+  if (ppr->bispectra_r_sampling == custom_r_sampling) {
+    pwb->r_min = ppr->r_min;
+    pwb->r_max = ppr->r_max;
+  }
+  /* Centre the r-grid on tau0-tau_rec */
+  else if (ppr->bispectra_r_sampling == centred_r_sampling) {
+    double centre = pba->conformal_age - pth->tau_rec;
+    pwb->r_min = MAX (0, centre - ppr->r_left*pth->tau_rec);
+    pwb->r_max = centre + ppr->r_right*pth->tau_rec;
+  }
+
+  /* We sample r linearly */
   class_alloc (pwb->r, pwb->r_size*sizeof(double), pbi->error_message);
   lin_space (pwb->r, pwb->r_min, pwb->r_max, pwb->r_size);
-  
+    
   /* Allocate & fill delta_r, the measure for the trapezoidal integration over r */
   class_alloc (pwb->delta_r, pwb->r_size * sizeof(double), pbi->error_message);
 
   /* Fill pwb->delta_r */
   pwb->delta_r[0] = pwb->r[1] - pwb->r[0];
-    
+      
   for (int index_r=1; index_r < pwb->r_size-1; ++index_r)
     pwb->delta_r[index_r] = pwb->r[index_r+1] - pwb->r[index_r-1];
-    
+      
   pwb->delta_r[pwb->r_size-1] = pwb->r[pwb->r_size-1] - pwb->r[pwb->r_size-2];
 
   /* Print the r-grid */
@@ -890,7 +904,7 @@ int bispectra2_intrinsic_workspace_init (
     double k = pwb->k_smooth_grid[index_k];
     double pk = pbi->pk_pt[index_k];
   
-    pwb->k_window[index_k] = 1./pow(k,2);
+    pwb->k_window[index_k] = 1/pow(k,2);
   }
 
   /* Inverse window function will have ptr->q_size elements */
@@ -1317,7 +1331,23 @@ int bispectra2_intrinsic_integrate_over_k3 (
                               [index_k1]
                               [index_k2];
           
-          
+#ifdef DEBUG
+          /* We expect the second-order transfer function to be order unity for scalar modes */
+          if (pwb->abs_M3 == 0) {
+            double expected_scale = 1;
+            for (int index_k3=0; index_k3 < k3_size; ++index_k3) {
+              class_test_permissive (fabs(transfer[index_k3]) > (expected_scale*1000),
+                pbi->error_message,
+                "found extremely large value for second-order transfer function: T_l3_m3(k1,k2,k3_tr)=%g\
+ for l3=%d[%d], m3=%d[%d], k1=%g[%d], k2=%g[%d], k3_tr=%g[%d]\n",
+                transfer[index_k3], pbi->l[index_l3], index_l3, pwb->abs_M3, ppr2->index_m[pwb->abs_M3],
+                ppt2->k[index_k1], index_k1, ppt2->k[index_k2], index_k2, 
+                pwb->k3_grid[thread][index_k3], index_k3);
+            }
+          }
+#endif // DEBUG
+
+
           // ===================================================
           // =                     Integrate                   =
           // ===================================================
@@ -1342,15 +1372,16 @@ int bispectra2_intrinsic_integrate_over_k3 (
               pbi->error_message);
 
 #ifdef DEBUG
-            /* Check that when 'm' is odd and k1=k2, then T(k1,k2,k3) is small with respect to
-            1 (which is the same as assuming that the bispectrum is small with respect to
-            A_s*A_s). */
-            /* TODO: It is a good idea to have this check also in the perturbations2 module.
-            There, the order of the perturbations is O(1) hence we could just use _SMALL_ as
-            an absolute epsilon. */
+            /* Check that when m is odd and k1=k2, then T(k1,k2,k3) is small with respect to 1.
+            This should be the case because the odd-m quadratic sources always vanish for k1==k2
+            (see comment for vector Q_SS in perturb2_quadratic_sources()), unless non-vanishing
+            initial conditions are given */
+            /* TODO: Include this check in perturb2_quadratic_sources(), which is the quantity
+            that we know should vanish. The bispectrum could still be non-vanishing for non-zero
+            initial conditions.  */
             if ((index_k1==index_k2) && (pwb->abs_M3%2!=0)) {
-              double characteristic_scale = ppm->A_s*ppm->A_s;
-              double epsilon = 1e-4*characteristic_scale;
+              double expected_scale = ppm->A_s*ppm->A_s;
+              double epsilon = 1e-4*expected_scale;
               class_test_permissive (
                 fabs (pwb->integral_over_k3[index_l3][index_r][index_k1][index_k2]) > epsilon,
                 ppt2->error_message,
@@ -1549,11 +1580,24 @@ int bispectra2_interpolate_over_k2 (
         ((a*a*a-a) * integral_splines[index_k] +(b*b*b-b) * integral_splines[index_k+1])*h*h/6.0;
     }
 
-    /* Further convolve with the primordial power spectrum */
-    interpolated_integral[index_k_tr] *= pbi->pk[index_k_tr];
-
     /* Revert the effect of the window function */
     interpolated_integral[index_k_tr] *= pwb->k_window_inverse[index_k_tr];
+
+#ifdef DEBUG
+    /* We expect the integral over k3 that we are interpolating to be order unity,
+    because it is obtained as a convolution of the second-order transfer functions
+    and a Bessel function */
+    double expected_scale = 1;
+    class_test_permissive (fabs(interpolated_integral[index_k_tr]) > (expected_scale*1000),
+      pbi->error_message,
+      "found extremely large value for integral over k3 (m=%d): I_l3(k1_pt,k2_tr,r)=%g,\
+ for l3=%d[%d], k1_pt=%g[%d], k2_tr=%g[%d], r=%g[%d]\n",
+      pwb->abs_M3, interpolated_integral[index_k_tr], pbi->l[index_l3], index_l3,
+      k_pt[index_k1], index_k1, k_tr[index_k_tr], index_k_tr, pwb->r[index_r], index_r);
+#endif // DEBUG
+
+    /* Further convolve with the primordial power spectrum */
+    interpolated_integral[index_k_tr] *= pbi->pk[index_k_tr];
 
     /* Test for nans */
     class_test (isnan(interpolated_integral[index_k_tr]),
@@ -1912,11 +1956,24 @@ int bispectra2_interpolate_over_k1 (
         + ((a*a*a-a) * integral_splines[index_k] +(b*b*b-b) * integral_splines[index_k+1])*h*h/6.0;
     }
 
-    /* Further convolve with the primordial power spectrum */
-    interpolated_integral[index_k_tr] *= pbi->pk[index_k_tr];
-
     /* Revert the effect of the window function */
     interpolated_integral[index_k_tr] *= pwb->k_window_inverse[index_k_tr];
+
+#ifdef DEBUG
+    /* We expect the integral over k2 that we are interpolating to be order A_s~1e-10,
+    because it is obtained as a convolution of two O(1) function (the integral over k3
+    and a Bessel function) and the primordial power spectrum (of oder A_s) */
+    double expected_scale = 1e-10;
+    class_test_permissive (fabs(interpolated_integral[index_k_tr]) > (expected_scale*1000),
+      pbi->error_message,
+      "found extremely large value for integral over k2 (m=%d): I_l2_l3(k1_tr,r)=%g,\
+ for l2=%d[%d], l3=%d[%d], k1_tr=%g[%d], r=%g[%d]\n",
+      pwb->abs_M3, interpolated_integral[index_k_tr], pbi->l[index_l2], index_l2, pbi->l[index_l3], index_l3,
+      k_tr[index_k_tr], index_k_tr, pwb->r[index_r], index_r);
+#endif // DEBUG
+
+    /* Further convolve with the primordial power spectrum */
+    interpolated_integral[index_k_tr] *= pbi->pk[index_k_tr];
 
     /* Test for nans */
     class_test (isnan(interpolated_integral[index_k_tr]),

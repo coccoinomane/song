@@ -91,6 +91,8 @@ int main(int argc, char **argv) {
     index_k1 = atoi(argv[first_arg+1]);
     index_k3 = atoi(argv[first_arg+2]);
     index_tau = atoi(argv[first_arg+3]);
+    printf ("WARNING: printing the source functions as a function of k2 is not\
+ fully supported yet, do not rely on results.");
   }
   else if ((strcmp(variable_to_print, "k") == 0)
     || (strcmp(variable_to_print, "k3") == 0)
@@ -404,23 +406,23 @@ int main(int argc, char **argv) {
   
   /* First row contains the labels of the different types */
   if (PRINT_K2 == _TRUE_) {
-    fprintf (stderr, "%11s(%03d) ", "k2", index_print++);
+    fprintf (stderr, "%17s(%03d) ", "k2", index_print++);
   }
   else if (PRINT_K3 == _TRUE_) {
-    fprintf (stderr, "%11s(%03d) ", "k", index_print++);
-    fprintf (stderr, "%11s(%03d) ", "cosk1k2", index_print++);
+    fprintf (stderr, "%17s(%03d) ", "k", index_print++);
+    fprintf (stderr, "%17s(%03d) ", "cosk1k2", index_print++);
   } 
   else if (PRINT_TAU == _TRUE_) {
-    fprintf (stderr, "%11s(%03d) ", "tau", index_print++);           // Time
-    fprintf (stderr, "%11s(%03d) ", "a", index_print++);             // Conformal expansion rate 
-    fprintf (stderr, "%11s(%03d) ", "y", index_print++);             // Scale factor normalized to equality
+    fprintf (stderr, "%17s(%03d) ", "tau", index_print++);           // Time
+    fprintf (stderr, "%17s(%03d) ", "a", index_print++);             // Conformal expansion rate 
+    fprintf (stderr, "%17s(%03d) ", "y", index_print++);             // Scale factor normalized to equality
   }
   
   for (int index_type = 0; index_type < tp2_size; ++index_type)
-    fprintf (stderr, "%11s(%03d) ", pt2.tp2_labels[index_type], index_print++);
+    fprintf (stderr, "%17s(%03d) ", pt2.tp2_labels[index_type], index_print++);
   
-  fprintf (stderr, "%11s(%03d) ", "kappa_dot", index_print++);
-  fprintf (stderr, "%11s(%03d) ", "exp_m_kappa", index_print++);
+  fprintf (stderr, "%17s(%03d) ", "kappa_dot", index_print++);
+  fprintf (stderr, "%17s(%03d) ", "exp_m_kappa", index_print++);
   
   fprintf (stderr, "\n");
   
@@ -461,7 +463,7 @@ int main(int argc, char **argv) {
 
       index_k2 = running_index;
       k2 = pt2.k[index_k2];
-      fprintf (stderr, "%+16e ", k2);
+      fprintf (stderr, "%+22.15g ", k2);
       
       if (pt2.k3_sampling == smart_k3_sampling) { 
       
@@ -483,9 +485,9 @@ int main(int argc, char **argv) {
           WRITE_ZERO = _TRUE_;
         
         /* Some debug */
-        // fprintf (stderr, "%+16d ", k3_size);
-        // fprintf (stderr, "%+16d ", index_k3_min);
-        // fprintf (stderr, "%+16d ", INDEX_K3);
+        // fprintf (stderr, "%+22d ", k3_size);
+        // fprintf (stderr, "%+22d ", index_k3_min);
+        // fprintf (stderr, "%+d ", INDEX_K3);
       }
       
     }
@@ -495,8 +497,8 @@ int main(int argc, char **argv) {
       k3 = pt2.k3[index_k1][index_k2][INDEX_K3];
       cosk1k2 = (k3*k3 - k1*k1 - k2*k2)/(2.*k1*k2);
       
-      fprintf (stderr, "%+16e ", k3);
-      fprintf (stderr, "%+16e ", cosk1k2);
+      fprintf (stderr, "%+22.15g ", k3);
+      fprintf (stderr, "%+22.15g ", cosk1k2);
     }
     else if (PRINT_TAU == _TRUE_) {
       
@@ -515,9 +517,9 @@ int main(int argc, char **argv) {
       exp_minus_kappa = pvecthermo[th.index_th_exp_m_kappa];
       
       /* Print values of time variables */
-      fprintf (stderr, "%+16e ", tau);
-      fprintf (stderr, "%+16e ", a);
-      fprintf (stderr, "%+16e ", log10(a/ba.a_eq));
+      fprintf (stderr, "%+22.15g ", tau);
+      fprintf (stderr, "%+22.15g ", a);
+      fprintf (stderr, "%+22.15g ", log10(a/ba.a_eq));
     }
   
   
@@ -535,11 +537,11 @@ int main(int argc, char **argv) {
         source = 0;
       }
         
-      fprintf (stderr, "%+16e ", source);
+      fprintf (stderr, "%+22.15g ", source);
     }
   
-    fprintf (stderr, "%+16e ", kappa_dot);
-    fprintf (stderr, "%+16e ", exp_minus_kappa);
+    fprintf (stderr, "%+22.15g ", kappa_dot);
+    fprintf (stderr, "%+22.15g ", exp_minus_kappa);
   
     fprintf (stderr, "\n");
   

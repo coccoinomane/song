@@ -205,6 +205,7 @@ int bispectra2_indices (
       struct precision * ppr,
       struct precision2 * ppr2,
       struct background * pba,
+      struct thermo * pth,
       struct perturbs * ppt,
       struct perturbs2 * ppt2,
       struct bessels * pbs,
@@ -233,6 +234,8 @@ int bispectra2_indices (
   int bispectra2_intrinsic_workspace_init(
       struct precision * ppr,
       struct precision2 * ppr2,
+      struct background * pba,
+      struct thermo * pth,
       struct perturbs * ppt,
       struct perturbs2 * ppt2,
       struct bessels * pbs,
