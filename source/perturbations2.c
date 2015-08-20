@@ -4140,6 +4140,7 @@ int perturb2_workspace_init_quadratic_sources (
   contained in the above tables, at a certain time */
   class_calloc (ppw2->pvec_quadsources, ppw2->qs2_size, sizeof(double), ppt2->error_message);
   class_calloc (ppw2->pvec_quadcollision, ppw2->qs2_size, sizeof(double), ppt2->error_message);
+  class_calloc (ppw2->pvec_quadcollisionloss, ppw2->qs2_size, sizeof(double), ppt2->error_message);
 
 
   // -----------------------------------------------------------
@@ -4232,6 +4233,7 @@ int perturb2_workspace_free (
   /* Free quadratic sources temporary arrays */
   free(ppw2->pvec_quadsources);
   free(ppw2->pvec_quadcollision);
+  free(ppw2->pvec_quadcollisionloss);
 
   /* Free quadratic sources table */
   for (int index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2) {
@@ -8564,6 +8566,7 @@ int perturb2_tca_variables (
                   compute_only_collision,
                   ppw2->pvec_quadsources,
                   ppw2->pvec_quadcollision,
+                  ppw2->pvec_quadcollisionloss,
                   ppw2
                   ),
       ppt2->error_message,
@@ -9093,6 +9096,7 @@ int perturb2_quadratic_sources_for_k1k2k (
                   compute_total_and_collision,
                   ppw2->pvec_quadsources,
                   ppw2->pvec_quadcollision,
+                  ppw2->pvec_quadcollisionloss,
                   ppw2
                   ),
       ppt2->error_message,
@@ -9103,7 +9107,7 @@ int perturb2_quadratic_sources_for_k1k2k (
 
     for (int index_qs2=0; index_qs2 < ppw2->qs2_size; ++index_qs2)
       ppw2->quadcollision_table[index_qs2][index_tau] = ppw2->pvec_quadcollision[index_qs2];
-
+    
   } // end of for (index_tau)
 
   /* Compute second-order derivatives of the quadratic sources in view of spline interpolation */
@@ -9194,6 +9198,8 @@ int perturb2_quadratic_sources (
                                  ppw2->index_qs2_XXX */
       double * pvec_quadcollision, /**< output: array with the collisional part of the quadratic
                                  sources, indexed by ppw2->index_qs2_XXX */
+      double * pvec_quadcollisionloss, /**< output: array with the collisional part of the quadratic
+                                 sources that exists for all multipoles l, indexed by ppw2->index_qs2_XXX */
       struct perturb2_workspace * ppw2
       )
 {
@@ -9896,6 +9902,7 @@ int perturb2_quadratic_sources (
      
     for (int index_qs2=0; index_qs2 < ppw2->qs2_size; ++index_qs2)
       pvec_quadcollision[index_qs2] = 0;
+      pvec_quadcollisionloss[index_qs2] = 0;
  
     if (ppt2->has_quadratic_collision == _TRUE_) {
      
@@ -10089,12 +10096,14 @@ int perturb2_quadratic_sources (
           is the same for every l-moment. In the tight coupling regime, this contribution should
           be O(1) for l>=3 because all first-order multipoles with l>=2 are strongly suppressed,
           while the contributions to the dipole and the quadrupole are of order O(kappa_dot). */
-          dI_qc2(l,m) +=  (A_1 + delta_e_1)*c_2  +  (A_2 + delta_e_2)*c_1
+         
+          dIloss_qc2(l,m) =  (A_1 + delta_e_1)*c_2  +  (A_2 + delta_e_2)*c_1
                         + c_minus_12(l,m) * v_0_1 * I_2_tilde(l-1)
                         - c_plus_12(l,m)  * v_0_1 * I_2_tilde(l+1)
                         /* Symmetrisation */
                         + c_minus_21(l,m) * v_0_2 * I_1_tilde(l-1)
                         - c_plus_21(l,m)  * v_0_2 * I_1_tilde(l+1);
+          dI_qc2(l,m) += dIloss_qc2(l,m);
  
         } // end of for (index_m)
       } // end of for (l)
@@ -10165,12 +10174,13 @@ int perturb2_quadratic_sources (
             // *** All moments
 
             /* First-order collision term, plus fourth line of equation 2.19 */
-            dE_qc2(l,m) += (A_1 + delta_e_1)*c_2  +  (A_2 + delta_e_2)*c_1
+            dEloss_qc2(l,m) = (A_1 + delta_e_1)*c_2  +  (A_2 + delta_e_2)*c_1
                            + d_minus_12(l,m) * v_0_1 * E_2_tilde(l-1)
                            - d_plus_12(l,m)  * v_0_1 * E_2_tilde(l+1)
                            /* Symmetrisation */
                            + d_minus_21(l,m) * v_0_2 * E_1_tilde(l-1)
                            - d_plus_21(l,m)  * v_0_2 * E_1_tilde(l+1);
+            dE_qc2(l,m) += dEloss_qc2(l,m)
 
       
           } // end of for (index_m)
@@ -10198,8 +10208,9 @@ int perturb2_quadratic_sources (
                               + d_zero_21(2,m) * v_0_2 * (I_1_tilde(2) - sqrt_6*E_1_tilde(2)));
  
             /* Second line of equation 2.20 */
-            dB_qc2(l,m) +=    d_zero_12(l,m) * v_0_1 * E_2_tilde(l)
+            dBloss_qc2(l,m) =    d_zero_12(l,m) * v_0_1 * E_2_tilde(l)
                             + d_zero_21(l,m) * v_0_2 * E_1_tilde(l);
+          	dB_qc2(l,m) += dBloss_qc2(l,m)
 
           
           } // end of for (index_m)
@@ -10292,6 +10303,7 @@ int perturb2_quadratic_sources (
 
       for (int index_qs2=0; index_qs2 < ppw2->qs2_size; ++index_qs2) {
         pvec_quadcollision[index_qs2] *= kappa_dot;
+        pvec_quadcollisionloss[index_qs2] *= kappa_dot;
         if (what_to_compute == compute_total_and_collision)
           pvec_quadsources[index_qs2] += pvec_quadcollision[index_qs2];
       }
@@ -10481,6 +10493,7 @@ int perturb2_sources (
                   compute_total_and_collision,
                   ppw2->pvec_quadsources,
                   ppw2->pvec_quadcollision,
+                  ppw2->pvec_quadcollisionloss,
                   ppw2
                   ),
       ppt2->error_message,
@@ -10886,9 +10899,13 @@ int perturb2_sources (
         // *** Contributions valid for all multipoles
   
         /* Scattering from quadratic sources of the form multipole times baryon_velocity */
-        if (ppt2->has_quad_scattering_in_los == _TRUE_)
+        if (ppt2->has_quad_scattering_in_los == _TRUE_){
           source += dI_qc2(l,m);
+        	if (ppt->has_source_reionisation == _TRUE_) {
+        		source -= dIloss_qc2(l,m);
+        	}
         
+        }
 
         /* Time delay terms, i.e. terms arising from the free streaming part of the Liouville operator.
         These terms are suppressed by a factor 1/l. */
@@ -11686,6 +11703,7 @@ int perturb2_save_early_transfers (
                   compute_total_and_collision,
                   ppw2->pvec_quadsources,
                   ppw2->pvec_quadcollision,
+                  ppw2->pvec_quadcollisionloss,
                   ppw2
                   ),
       ppt2->error_message,

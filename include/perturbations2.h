@@ -809,7 +809,7 @@ struct perturb2_workspace
   double * pvecmetric;          /**< interpolated values of the metric quantitites at the current time tau */
   double * pvec_quadsources;    /**< interpolated values of the quadratic sources at the current time tau */
   double * pvec_quadcollision;  /**< interpolated values of the quadratic collisional sources at the current time tau */
-
+	double * pvec_quadcollisionloss; /**< interpolated values of the quadratic collisional loss sources at the current time tau */
   double * pvec_sources1;       /**< interpolated values of the first-order perturbations in k1 and tau; filled by
                                 the perturbations.c function perturb_song_sources_at_tau() */
   double * pvec_sources2;       /**< interpolated values of the first-order perturbations in k2 and tau; filled by
@@ -1403,6 +1403,7 @@ struct perturb2_parameters_and_workspace {
           int what_to_compute,
           double * pvec_quadsources,
           double * pvec_quadcollision,
+          double * pvec_quadcollisionloss,
           struct perturb2_workspace * ppw2
           );
 
