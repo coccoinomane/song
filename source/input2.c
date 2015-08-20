@@ -29,6 +29,7 @@ int input2_init_from_arguments(
             struct transfers2 *ptr2,
             struct primordial *ppm,
             struct spectra *psp,
+            struct spectra2 *psp2,
             struct nonlinear *pnl,
             struct lensing *ple,
             struct bispectra *pbi,
@@ -110,6 +111,7 @@ int input2_init_from_arguments(
                 ptr2,
                 ppm,
                 psp,
+                psp2,
                 pnl,
                 ple,
                 pbi,
@@ -148,6 +150,7 @@ int input2_init (
          struct transfers2 *ptr2,
          struct primordial *ppm,
          struct spectra *psp,
+         struct spectra2 *psp2,
          struct nonlinear * pnl,
          struct lensing *ple,
          struct bispectra *pbi,
@@ -188,6 +191,7 @@ int input2_init (
                ptr2,
                ppm,
                psp,
+               psp2,
                pnl,
                ple,
                pbi,
@@ -418,6 +422,10 @@ int input2_init (
     else if ((strcmp(string1,"smart") == 0) || (strcmp(string1,"class") ==0))
       ppt2->k3_sampling = smart_k3_sampling;
 
+
+    else if ((strcmp(string1,"sym") == 0))
+      ppt2->k3_sampling = sym_k3_sampling;
+
     else if (strcmp(string1,"theta_12") == 0)
       ppt2->k3_sampling = theta12_k3_sampling;
 
@@ -479,6 +487,11 @@ int input2_init (
   class_read_double("tol_perturb_integration_2nd_order",ppr2->tol_perturb_integration_song); /* obsolete */
   class_read_double("tol_perturb_integration_song",ppr2->tol_perturb_integration_song);
 
+	class_call(parser_read_string(pfc,"magnetic_field",&(string1),&(flag1),errmsg),errmsg,errmsg);
+
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL))) {
+    ppt2->has_magnetic_field = _TRUE_;
+  }
 
   // ====================================================================================
   // =                      Perturbations, perturbed recombination                      =
@@ -777,12 +790,17 @@ ur_fluid_trigger_tau_over_tau_k_song and radiation_streaming_trigger_tau_over_ta
     ppt2->has_debug_files = _TRUE_;
 
   if (ppt2->has_debug_files == _TRUE_) {
+  
+    class_call(parser_read_string(pfc,"spectra_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);    
+    if ((flag1 == _TRUE_) && (string1 != NULL))
+      strcpy(psp2->spectra_filename, string1);
+    class_open(psp2->spectra_file,psp2->spectra_filename,"w",errmsg);		
 
     class_call(parser_read_string(pfc,"transfers_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);  
     if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_))
       strcpy(ppt2->transfers_filename, string1);
     class_open(ppt2->transfers_file,ppt2->transfers_filename,"w",errmsg);
-
+  
     class_call(parser_read_string(pfc,"quadsources_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);      
     if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_))
       strcpy(ppt2->quadsources_filename, string1);
@@ -830,6 +848,13 @@ ur_fluid_trigger_tau_over_tau_k_song and radiation_streaming_trigger_tau_over_ta
   class_read_double("bessel_x_step_2nd_order", ppr2->bessel_x_step_song); /* obsolete */
   class_read_double("bessel_x_step_song", ppr2->bessel_x_step_song);
   
+
+  // =========================================================================================
+  // =                                  SPECTRA						                                   =
+  // =========================================================================================
+
+  class_read_int("spectra2_verbose", psp2->spectra2_verbose);
+
 
   // =========================================================================================
   // =                                  Transfer functions                                   =
@@ -1328,13 +1353,16 @@ ur_fluid_trigger_tau_over_tau_k_song and radiation_streaming_trigger_tau_over_ta
   ppt2->rescale_quadsources = _TRUE_;
   
   /* Uncomment if you want the output functions to output non-rescaled functions */
-  if ((ppt2->has_early_transfers2_only == _TRUE_) || (ptr2->has_transfers2_only == _TRUE_))
+  if ((ppt2->has_early_transfers2_only == _TRUE_) || (ptr2->has_transfers2_only == _TRUE_) || (ppt2->has_magnetic_field == _TRUE_) /*add magentic field here*/) {
     ppt2->rescale_quadsources = _FALSE_;
 
   /* Uncomment if you want the m=0 sources to be computed without the rescaling, when they are
   the only requested sources. */
   // if (ppr2->m_max_2nd_order == 0)
   //   ppt2->rescale_quadsources = _TRUE_;
+
+		printf("deactivated scaling !!\n");
+}
 
   
   // =============================================================================================
@@ -1396,6 +1424,7 @@ int input2_default_params (
        struct transfers2 *ptr2,     
        struct primordial *ppm,
        struct spectra *psp,
+       struct spectra2 *psp2,
        struct nonlinear * pnl,
        struct lensing *ple,
        struct bispectra *pbi,
@@ -1450,6 +1479,8 @@ int input2_default_params (
   ppt2->has_lensing_in_los = _FALSE_;
 
   ppt2->use_delta_tilde_in_los = _FALSE_;
+  
+  ppt2->has_magnetic_field = _FALSE_;
 
   ppt2->has_sw = _FALSE_;
   ppt2->use_exponential_potentials = _FALSE_;
@@ -1542,6 +1573,11 @@ int input2_default_params (
   pbs2->bessels2_verbose = 0;
   pbs2->extend_l1_using_m = _FALSE_;
 
+  // ============================================================
+  // =                     spectra2 structure                  =
+  // ============================================================
+  psp2->spectra2_verbose = 0;
+  
   
   // ============================================================
   // =                     transfer2 structure                  =

@@ -84,6 +84,7 @@ enum sources2_k3_sampling {
   lin_k3_sampling,                  /**< Linear k sampling */
   log_k3_sampling,                  /**< Logarithmic k sampling */
   smart_k3_sampling,                /**< k sampling adopted in perturb_get_k3_list */
+  sym_k3_sampling,									/**< k sampling based on transformed symmetric grid */
   theta12_k3_sampling,              /**< Sampling linear in the angle between k1 and k2 */
   theta13_k3_sampling               /**< Sampling linear in the angle between k1 and k3 */
 };
@@ -187,6 +188,7 @@ struct perturbs2
   short has_quadratic_collision;            /**< Shall we include the quadratic sources in the photon-baryon collision term? */      
   short has_perfect_baryons;                /**< Shall we treat baryons as a pressureless perfect fluid? */
   short has_perfect_cdm;                    /**< Shall we treat cold dark matter as a pressureless perfect fluid? */
+  short has_magnetic_field;									/**< Do we need to compute the magnetic fields from recombination? */
 
   short has_perturbed_recombination_stz;    /**< Shall we use the perturbed fraction of free electrons? */
   int perturbed_recombination_use_approx;   /**< Shall we use the approximation in eq. 3.23 of Senatore et al. 2009? */
@@ -315,10 +317,12 @@ struct perturbs2
   int index_tp2_T;                    /**< Index value for photon temperature */
   int index_tp2_E;                    /**< Index value for photon E-polarization */
   int index_tp2_B;                    /**< Index value for photon B-polarization */
+  int index_tp2_M;										/**< Index value for magnetic fields */
   int index_tp2_g;                    /**< Index value for gravitational potential */
   int n_sources_T;                    /**< Number of sources to be computed for photon temperature */
   int n_sources_E;                    /**< Number of sources to be computed for photon E-polarization */
   int n_sources_B;                    /**< Number of sources to be computed for photon B-polarization */
+  int n_sources_M;										/**< Number of sources to be computed for magneti fields temperature */
   int tp2_size;                       /**< Number of source types that we need to compute */
 
   /**< Array of strings that contain the labels of the various source types
@@ -779,6 +783,10 @@ struct perturb2_workspace
   int index_qs2_dd_b;    /* Quadratic density of baryons */
   int index_qs2_vv_b;    /* Quadratic velocity of baryons */
   int index_qs2_vv_cdm;  /* Quadratic velocity of CDM */
+  
+  /* magnetic field quadratic sources */
+  
+  int index_qs2_monopole_mag;
 
   /* Constants needed to assign the indices */
   int l_max_g;
@@ -801,7 +809,7 @@ struct perturb2_workspace
   double * pvecmetric;          /**< interpolated values of the metric quantitites at the current time tau */
   double * pvec_quadsources;    /**< interpolated values of the quadratic sources at the current time tau */
   double * pvec_quadcollision;  /**< interpolated values of the quadratic collisional sources at the current time tau */
-
+	double * pvec_quadcollisionloss; /**< interpolated values of the quadratic collisional loss sources at the current time tau */
   double * pvec_sources1;       /**< interpolated values of the first-order perturbations in k1 and tau; filled by
                                 the perturbations.c function perturb_song_sources_at_tau() */
   double * pvec_sources2;       /**< interpolated values of the first-order perturbations in k2 and tau; filled by
@@ -937,6 +945,8 @@ struct perturb2_workspace
 struct perturb2_vector
 {
 
+
+ 
   // ====================================================================================
   // =                                 Number of equations                              =
   // ====================================================================================
@@ -987,6 +997,10 @@ struct perturb2_vector
   /* Matter hierarchies */
   int index_pt2_monopole_b;       /**< Evolution index for baryon hierarchy */
   int index_pt2_monopole_cdm;     /**< Evolution index for cold dark matter hierarchy */
+  
+	/* Magnetic Field*/
+  int index_pt2_monopole_mag; 		/**< Evolution index for magnetic field hierarchy*/   
+  
 
   /* Metric variables */
   int index_pt2_eta;               /**< Evolution index for synchronous gauge metric perturbation eta */
@@ -999,6 +1013,7 @@ struct perturb2_vector
 
   /** Array of perturbations to be integrated. It is filled by the evolver at the end of
   each time step. */
+
   double * y;
 
   /** Vector containing the time-derivative of the evolved perturbations contained in y.
@@ -1388,6 +1403,7 @@ struct perturb2_parameters_and_workspace {
           int what_to_compute,
           double * pvec_quadsources,
           double * pvec_quadcollision,
+          double * pvec_quadcollisionloss,
           struct perturb2_workspace * ppw2
           );
 
@@ -1456,6 +1472,17 @@ struct perturb2_parameters_and_workspace {
          struct perturbs2 * ppt2,
          int index_k1
          );
+
+int perturb_song_sources_at_tau_and_k (  
+             struct precision * ppr,
+             struct perturbs * ppt,
+             int index_mode,
+             int index_ic,
+             double k,
+             double tau,
+             short intermode,
+             int * last_index,
+             double * psource);
 
 
 #ifdef __cplusplus

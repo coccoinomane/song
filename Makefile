@@ -85,6 +85,7 @@ PERTURBATIONS2 = perturbations2.o
 BESSEL = bessel.o
 BESSEL2 = bessel2.o
 TRANSFER2 = transfer2.o
+SPECTRA2 = spectra2.o
 BISPECTRA = bispectra.o
 BISPECTRA2 = bispectra2.o
 FISHER = fisher.o
@@ -114,7 +115,7 @@ PRINT_THERMO = print_thermo.o
 PRINT_COUPLINGS = print_couplings.o
 
 song: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2)\
-	$(BESSEL2) $(TRANSFER2) $(BISPECTRA2) $(OUTPUT) $(SONG)
+	$(BESSEL2) $(TRANSFER2) $(SPECTRA2) $(BISPECTRA2) $(OUTPUT) $(SONG)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_params: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PRINT_PARAMS)
@@ -136,7 +137,7 @@ print_transfers2: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2)\
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_bispectra: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2)\
-	$(BESSEL2) $(TRANSFER2) $(BISPECTRA2) $(OUTPUT) $(PRINT_BISPECTRA)
+	$(BESSEL2) $(TRANSFER2) $(SPECTRA2) $(BISPECTRA2) $(OUTPUT) $(PRINT_BISPECTRA)
 	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_background: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PRINT_BACKGROUND)

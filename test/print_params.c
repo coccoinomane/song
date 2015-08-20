@@ -24,6 +24,7 @@ int main(int argc, char **argv) {
   struct transfers2 tr2;      /* transfer functions (2nd-order) */
   struct primordial pm;       /* primordial spectra */
   struct spectra sp;          /* output spectra (1st-order) */
+  struct spectra2 sp2;
   struct bispectra bi;        /* bispectra */
   struct fisher fi;           /* fisher matrix */
   struct nonlinear nl;        /* non-linear spectra */
@@ -38,7 +39,7 @@ int main(int argc, char **argv) {
   }
   
   if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&tr,&bs,&bs2,&tr2,&pm,
-    &sp,&nl,&le,&bi,&fi,&op,errmsg) == _FAILURE_) {
+    &sp,&sp2,&nl,&le,&bi,&fi,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg);
     return _FAILURE_;
   }

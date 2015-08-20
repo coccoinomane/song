@@ -8,6 +8,7 @@
 #include "bessel2.h"
 #include "perturbations2.h"
 #include "transfer2.h"
+#include "spectra2.h"
 
 /* macros for reading parameter values with routines from the parser */
 #define class_read_string_one_of_two(pfc,name1,name2)                   \
@@ -57,6 +58,7 @@ extern "C" {
      struct transfers2 *ptr2,
 		 struct primordial *ppm,
 		 struct spectra *psp,
+		 struct spectra2 *psp2,
 		 struct nonlinear *pnl,
 		 struct lensing *ple,
 		 struct bispectra *pbi,
@@ -79,6 +81,7 @@ extern "C" {
      struct transfers2 *ptr2,
 		 struct primordial *ppm,
 		 struct spectra *psp,
+		 struct spectra2 *psp2,
 		 struct nonlinear *pnl,
 		 struct lensing *ple,
 		 struct bispectra *pbi,
@@ -98,6 +101,7 @@ extern "C" {
          struct transfers2 *ptr2,
 			   struct primordial *ppm,
 			   struct spectra *psp,
+			   struct spectra2 *psp2,
 			   struct nonlinear *pnl,
 			   struct lensing *ple,
 			   struct bispectra *pbi,

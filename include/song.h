@@ -10,6 +10,7 @@
 #include "input2.h"
 #include "perturbations2.h"
 #include "transfer2.h"
+#include "spectra2.h"
 #include "bessel2.h"
 #include "bispectra2.h"
 

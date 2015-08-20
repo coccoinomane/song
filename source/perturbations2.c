@@ -719,7 +719,22 @@ at first order. Make sure that l_max_los_p is smaller or equal than l_max_pol_g.
     
   }
 
-
+	// -------------------------------------------------------------------------
+  // -                      magnetic field sources                      -
+  // -------------------------------------------------------------------------
+  
+  if (ppt2->has_magnetic_field == _TRUE_) {
+  
+  	
+  	ppt2->n_sources_M = size_l_indexm (1, ppt2->m, ppt2->m_size);
+  	
+    ppt2->index_tp2_M = index_type;                  /* The first moment of the hierarchy is the monopole l=0, m=0 */
+    index_type += ppt2->n_sources_M;  /* Make space for l>0 moments of the hierarchy */
+	
+  
+  }
+  
+  
   // -------------------------------------------------------------------------
   // -                       Photon polarization sources                     -
   // -------------------------------------------------------------------------
@@ -797,8 +812,7 @@ at first order. Make sure that l_max_los_p is smaller or equal than l_max_pol_g.
 
   class_test (ppt2->pf_size > _MAX_NUM_FIELDS_,
    "exceeded maximum number of allowed fields, increase _MAX_NUM_FIELDS_ in common.h",
-   ppt2->error_message);
-  
+   ppt2->error_message)
   if (ppt2->perturbations2_verbose > 1) {
     printf ("     * will compute tp2_size=%d source terms: ", ppt2->tp2_size);
     if (ppt2->has_cmb_temperature == _TRUE_)
@@ -835,8 +849,6 @@ at first order. Make sure that l_max_los_p is smaller or equal than l_max_pol_g.
   ppt2->index_ic_first_order = ppt->index_ic_ad;
 
   
-
-
   // ==============================================================================
   // =                            Fill (l,m) arrays                               =
   // ==============================================================================
@@ -850,9 +862,6 @@ at first order. Make sure that l_max_los_p is smaller or equal than l_max_pol_g.
                 ppt2),
     ppt2->error_message,
     ppt2->error_message);
-
-
-
 
 
   // ===============================================================================
@@ -872,10 +881,7 @@ at first order. Make sure that l_max_los_p is smaller or equal than l_max_pol_g.
     ppt2->error_message,
     ppt2->error_message);
 
-
-
-
-  // ================================================================================
+// ================================================================================
   // =                          Create sources directory                            =
   // ================================================================================
   
@@ -1138,8 +1144,7 @@ int perturb2_get_lm_lists (
 
   /* Fill the above arrays */
   for (int index_tp = 0; index_tp < ppt2->tp2_size; index_tp++) {
-
-    /* Initialise the result to -1 */
+	    /* Initialise the result to -1 */
     int l = -1;
     int index_m = -1;
     int l_max = -1;
@@ -1163,8 +1168,30 @@ int perturb2_get_lm_lists (
 
       /* Some debug */
       // printf("T, index_tp=%d: lm_offset=%d -> (%d,%d), label=%s, monopole = %d\n",
-      //   index_tp, lm_offset, l, ppt2->m[index_m],
-      //   ppt2->tp2_labels[index_tp], ppt2->index_monopole[index_tp]);
+      // index_tp, lm_offset, l, ppt2->m[index_m],
+      // ppt2->tp2_labels[index_tp], ppt2->index_monopole[index_tp]);
+
+    }
+     // *** magnetic field ***
+    else if ((ppt2->has_magnetic_field == _TRUE_) 
+    && (index_tp >= ppt2->index_tp2_M) && (index_tp < ppt2->index_tp2_M+ppt2->n_sources_M)) {
+
+      /* Find the position of the monopole of the same type as index_tp */
+      ppt2->index_monopole[index_tp] = ppt2->index_tp2_M;
+
+      /* Find (l,index_m) associated with index_tp */
+      l_max = 1;
+      int lm_offset = index_tp - ppt2->index_monopole[index_tp];
+      offset2multipole_l_indexm (lm_offset, l_max, ppt2->m, ppt2->m_size,
+                                 &l, &index_m);
+                                 
+      /* Set the labels of the transfer types */
+      sprintf(ppt2->tp2_labels[index_tp], "M_%d_%d",l,ppt2->m[index_m]);
+
+      /* Some debug */
+      // printf("T, index_tp=%d: lm_offset=%d -> (%d,%d), label=%s, monopole = %d\n",
+      // index_tp, lm_offset, l, ppt2->m[index_m],
+      // ppt2->tp2_labels[index_tp], ppt2->index_monopole[index_tp]);
 
     }
 
@@ -1222,8 +1249,7 @@ int perturb2_get_lm_lists (
     
   } // end of for (index_tp)    
 
-
-  // ======================================================================================
+	// ======================================================================================
   // =                             Compute the C,D coefficients                           =
   // ======================================================================================
   
@@ -1774,8 +1800,11 @@ int perturb2_get_k_lists (
       k = k_next;
 
     }
+    int n_mult = 1;
+    double spacing_fraction = 0.10;
     
-    ppt2->k_size = index_k;
+    /*magnets: here is add a strange sampling in n-tuplets, which should improve the integration of at least fourier power spectra. In general, the ksampling should be compeltely reworked for this.*/
+    ppt2->k_size = n_mult*(index_k-1) + 1;
     
   
     // *** Allocate and fill ppt2->k ***
@@ -1786,44 +1815,55 @@ int perturb2_get_k_lists (
     
     ppt2->k[index_k] = ppr2->k_min_tau0/pba->conformal_age;
   
-    index_k++;
+    index_k+= n_mult;
   
     while (index_k < ppt2->k_size) {
 
       /* Linear step */
       double lin_step = ppr2->k_step_super  
-           + 0.5 * (tanh((ppt2->k[index_k-1]-k_rec)/k_rec/ppr2->k_step_transition)+1.)
+           + 0.5 * (tanh((ppt2->k[index_k-n_mult]-k_rec)/k_rec/ppr2->k_step_transition)+1.)
                  * (ppr2->k_step_sub-ppr2->k_step_super);
   
       /* Logarithmic step */
-      double log_step = ppt2->k[index_k-1] * (ppr2->k_logstep_super - 1.);
+      double log_step = ppt2->k[index_k-n_mult] * (ppr2->k_logstep_super - 1.);
   
       /* Use the smallest between the logarithmic and linear steps. If we are considering
       small enough scales, just use the linear step. */
-      if ((log_step > (lin_step*k_rec)) || (ppt2->k[index_k-1] > k_rec)) {
-        ppt2->k[index_k] = ppt2->k[index_k-1] + lin_step * k_rec;
+      if ((log_step > (lin_step*k_rec)) || (ppt2->k[index_k-n_mult] > k_rec)) {
+        ppt2->k[index_k] = ppt2->k[index_k-n_mult] + lin_step * k_rec;
         // printf("linstep = %g\n", lin_step*k_rec);
       }
       else {
-        ppt2->k[index_k] = ppt2->k[index_k-1] * ppr2->k_logstep_super;
+        ppt2->k[index_k] = ppt2->k[index_k-n_mult] * ppr2->k_logstep_super;
         // printf("logstep = %g\n", ppt2->k[index_k] - ppt2->k[index_k-1]);
       }
       
-      index_k++;
+      
+      index_k+= n_mult;
+      
+      
     }
-
+	
     /* We do not want to overshoot k_max as pbs->x_max, that is the maximum argument for which
     the Bessel functions are computed, is determined using it */
-    ppt2->k[ppt2->k_size-1] = MIN (ppt2->k[ppt2->k_size-1], k_max);
+		ppt2->k[ppt2->k_size-1] = MIN (ppt2->k[ppt2->k_size-1], k_max);
+		
+		// now add the tuplets
+    for (int index_k=0; index_k < ppt2->k_size-n_mult; index_k+=n_mult) {  
+    	double final_step = ppt2->k[index_k + n_mult] - ppt2->k[index_k];
+    	for (int nc = 1; nc < n_mult; ++nc){
+     	 ppt2->k[index_k+nc] = ppt2->k[index_k] + nc*final_step*spacing_fraction;
+    	}
+    }
   
   } // end of if(smart_sources_k_sampling)
   
 
   /* Some debug - print out the k-list */
-  // printf ("# ~~~ k-sampling for k1 and k2 (size=%d) ~~~\n", ppt2->k_size);
-  // for (int index_k=0; index_k < ppt2->k_size; ++index_k) {
-  //   printf ("%17d %17.7g\n", index_k, ppt2->k[index_k]);
-  // }
+   printf ("# ~~~ k-sampling for k1 and k2 (size=%d) ~~~\n", ppt2->k_size);
+   for (int index_k=0; index_k < ppt2->k_size; ++index_k) {
+	 	 printf ("%17d %17.7g\n", index_k, ppt2->k[index_k]);
+   }
   
   
   
@@ -1889,6 +1929,29 @@ int perturb2_get_k_lists (
         k3_min, k3_max, index_k1, k1, index_k2, k2);
 
 
+ 			// ---------------------------------------------------------
+      // -           Symmetric sampling								           -
+      // ---------------------------------------------------------
+
+      /* Here we use a grid in transformed quantities k1t,k2t and k3t in which the triangular 
+      condition is trivial. Therefore we can use the full first quadrant and sample k3 as k1 */
+
+      if ((ppt2->k3_sampling == sym_k3_sampling) ) {
+
+        /* The size of the k3 array is the same for every (k1,k2) configuration*/
+        ppt2->k3_size[index_k1][index_k2] = ppt2->k_size;
+        class_alloc (ppt2->k3[index_k1][index_k2], ppt2->k_size*sizeof(double),
+          ppt2->error_message);
+
+        
+        /* Build the grids */
+        
+         
+        ppt2->k3[index_k1][index_k2] = ppt2->k;
+        
+      } // end of sym sampling
+    
+
       // ---------------------------------------------------------
       // -           Linear/logarithmic sampling for k3          -
       // ---------------------------------------------------------
@@ -1897,7 +1960,7 @@ int perturb2_get_k_lists (
       This is not efficient, as low values of k1 and k2 do not need a sampling as good as the
       one needed for high values */
 
-      if ((ppt2->k3_sampling == lin_k3_sampling) || (ppt2->k3_sampling == log_k3_sampling)) {
+      else if ((ppt2->k3_sampling == lin_k3_sampling) || (ppt2->k3_sampling == log_k3_sampling)) {
 
         /* The size of the k3 array is the same for every (k1,k2) configuration, and is read
         from the precision structure */
@@ -2086,7 +2149,7 @@ int perturb2_get_k_lists (
   ppt2->k_max = ppt2->k3[ppt2->k_size-1][ppt2->k_size-1]
                   [ppt2->k3_size[ppt2->k_size-1][ppt2->k_size-1]];
                         
-  class_test ((ppt2->k_min==0) || (ppt2->k_max==0),
+  /*class_test ((ppt2->k_min==0) || (ppt2->k_max==0),
     ppt2->error_message,
     "found vanishing k value");
 
@@ -2552,8 +2615,6 @@ int perturb2_timesampling_for_sources (
   if ((ppt2->has_recombination_only == _TRUE_) && (ppt2->has_custom_timesampling == _FALSE_)) {
     ppt2->tau_size = ppt2->index_tau_end_of_recombination;
   }
-
-
 
   // ====================================================================================
   // =                             Allocate sources array                               =
@@ -3193,6 +3254,7 @@ int perturb2_initial_conditions (
   double * y = ppw2->pv->y;
   double k1 = ppw2->k1;
   double k2 = ppw2->k2;
+    
   double k = ppw2->k;
   double k_sq = ppw2->k_sq;
   double k1_0 = ppw2->k1_m[0+1];
@@ -3267,8 +3329,43 @@ int perturb2_initial_conditions (
       ppt2->error_message);
   }
 
-  /* Interpolate first-order quantities (ppw2->psources_1) */
-  class_call (perturb_song_sources_at_tau (
+  
+  
+  /*sym sampling*/
+  
+  if ((ppt2->k3_sampling == sym_k3_sampling) ) {
+  
+  	class_call (perturb_song_sources_at_tau_and_k (
+                ppr,
+                ppt,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                k1,
+                tau,
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources1),
+    	ppt->error_message,
+    	ppt2->error_message);
+    	
+    	class_call (perturb_song_sources_at_tau_and_k (
+                ppr,
+                ppt,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                k2,
+                tau,
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources2),
+    	ppt->error_message,
+    	ppt2->error_message);
+  
+  }
+  
+  else {
+  	/* Interpolate first-order quantities (ppw2->psources_1) */
+  	class_call (perturb_song_sources_at_tau (
                 ppr,
                 ppt,
                 ppt->index_md_scalars,
@@ -3279,11 +3376,11 @@ int perturb2_initial_conditions (
                 ppt->inter_normal,
                 &(ppw2->last_index_sources),
                 ppw2->pvec_sources1),
-    ppt->error_message,
-    ppt2->error_message);
-
-  /* Interpolate first-order quantities (ppw2->psources_2) */
-  class_call (perturb_song_sources_at_tau (
+    	ppt->error_message,
+    	ppt2->error_message);
+				
+ 		/* Interpolate first-order quantities (ppw2->psources_2) */
+  	class_call (perturb_song_sources_at_tau (
                 ppr,
                 ppt,
                 ppt->index_md_scalars,
@@ -3294,9 +3391,10 @@ int perturb2_initial_conditions (
                 ppt->inter_normal,
                 &(ppw2->last_index_sources),                 
                 ppw2->pvec_sources2),
-    ppt->error_message,
-    ppt2->error_message);  
+    	ppt->error_message,
+    	ppt2->error_message);  
 
+	}
   /* Shortcuts to access the first-order quantities */
   double * pvec_sources1 = ppw2->pvec_sources1;
   double * pvec_sources2 = ppw2->pvec_sources2;
@@ -3993,10 +4091,20 @@ int perturb2_workspace_init_quadratic_sources (
     
   }
   
+  // ----------------------------------------------
+  // -               magnetic fiels		            -
+  // ----------------------------------------------
+  
+  if (ppt2->has_magnetic_field == _TRUE_) {
+  	ppw2->index_qs2_monopole_mag = index_qs2;
+  	index_qs2 += size_l_indexm (1, ppt2->m, ppt2->m_size);
+  }
+  
+  
   /* Set the size of the quadratic sources */
   ppw2->qs2_size = index_qs2;
 
-
+	
 
 
   // ==========================================================================================
@@ -4032,6 +4140,7 @@ int perturb2_workspace_init_quadratic_sources (
   contained in the above tables, at a certain time */
   class_calloc (ppw2->pvec_quadsources, ppw2->qs2_size, sizeof(double), ppt2->error_message);
   class_calloc (ppw2->pvec_quadcollision, ppw2->qs2_size, sizeof(double), ppt2->error_message);
+  class_calloc (ppw2->pvec_quadcollisionloss, ppw2->qs2_size, sizeof(double), ppt2->error_message);
 
 
   // -----------------------------------------------------------
@@ -4124,6 +4233,7 @@ int perturb2_workspace_free (
   /* Free quadratic sources temporary arrays */
   free(ppw2->pvec_quadsources);
   free(ppw2->pvec_quadcollision);
+  free(ppw2->pvec_quadcollisionloss);
 
   /* Free quadratic sources table */
   for (int index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2) {
@@ -4899,6 +5009,16 @@ int perturb2_geometrical_corner (
   double k = ppw2->k = ppt2->k3[index_k1][index_k2][index_k3];
   double k_sq = ppw2->k_sq = k*k;
 
+ 	if ((ppt2->k3_sampling == sym_k3_sampling) ) {
+ 	
+ 		/*in sym sampling the index refers to the transformed k's while k1,k2,k are the actual k's*/
+ 		k1 = ppw2->k1 = (ppt2->k[index_k2] + ppt2->k3[index_k1][index_k2][index_k3])/2.;
+  	k2 = ppw2->k2 = (ppt2->k[index_k1] + ppt2->k3[index_k1][index_k2][index_k3])/2.;
+  	k = ppw2->k = 	(ppt2->k[index_k1] + ppt2->k[index_k2])/2.;
+  	k_sq = ppw2->k_sq = k*k;
+ 	
+ 	}
+
   /* Get the angles */
   double cosk1k2 = ppw2->cosk1k2 = (k_sq - k1*k1 - k2*k2)/(2.*k1*k2);
   double cosk1k = ppw2->cosk1k = (k1 + k2*cosk1k2)/k;
@@ -5573,6 +5693,7 @@ int perturb2_solve (
         
   /* Should we create debug files for this particular (k1,k2,k3)? */
   ppw2->print_function = NULL;
+  
   if ((ppt2->has_debug_files == _TRUE_)
      && (index_k1 == ppt2->index_k1_debug)
      && (index_k2 == ppt2->index_k2_debug)
@@ -6163,6 +6284,20 @@ int perturb2_vector_init (
   // -                                Cold dark matter                                  -
   // ------------------------------------------------------------------------------------
 
+
+
+  // ==============================================
+  // =               magnetic fields              =
+  // ==============================================
+	if (ppt2->has_magnetic_field == _TRUE_) {
+		ppv->index_pt2_monopole_mag = index_pt;
+		index_pt += size_l_indexm (1, ppt2->m, ppt2->m_size);
+	}
+	
+  // ==============================================
+  // =               Cold Dark Matter             =
+  // ==============================================
+
   if (pba->has_cdm == _TRUE_) {
 
     /* See comment above for baryons */
@@ -6375,6 +6510,28 @@ int perturb2_vector_init (
         }
       }
     }
+    
+    //  *** magnetic field
+    
+  	if (ppt2->has_magnetic_field == _TRUE_) {
+      for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {    
+      
+        int m = ppr2->m[index_m];
+			
+				ppv->y[ppv->index_pt2_monopole_mag + lm(1,m)] =
+            ppw2->pv->y[ppw2->pv->index_pt2_monopole_mag + lm(1,m)];          
+             
+      }
+    }
+    
+    // *** Fluid component ***
+
+    if (pba->has_fld == _TRUE_) { 
+    }
+      
+    
+    
+    // *** Metric variables ***
 
     /* Synchronous gauge metric variables */
     if (ppt->gauge == synchronous) {
@@ -7330,6 +7487,41 @@ int perturb2_derivs (
     }
   }
 
+  // ----------------------------------------------
+  // -               magnetic fields              -
+  // ----------------------------------------------
+	if (ppt2->has_magnetic_field == _TRUE_) {
+		
+		dmag(0,0) = 0.;
+		
+		for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+      int m = ppt2->m[index_m];	
+      
+      /* the sources are hubble dilution and the tight coupling 
+      suppressed differences of baryon and photon velocity
+      
+      The quadsources contain the quadratic part and the generation 
+      from photon anisotropic stress*/
+      
+       
+      dmag(1,m) = -2. * Hc * mag(1,m)  
+      					+
+      					0.*k* pvecback[pba->index_bg_rho_g] /3. *ppw2->C_1m[m]/kappa_dot
+      					/*(four_thirds * b(1,1,m) - ppw2->I_1m[m])*/ 
+      					;
+      					
+      					 /*this is the conversion factor, after this add the collison term for photons stripped by kappa+_dot. Numerical factor of sigma_t/e missing*/
+      					/*keep in mind that the collision term for photons does include the perturbation of xe form delta_b (and possible perturbed recombination) This needs to be removed for the magnetic field. Then an additional term of - psi has to be added seperately coming from the vierbein. Note that the contribution from phi is already included in the collision term*/		
+      	 				
+      	}
+		
+		if (ppt2->has_quadratic_sources == _TRUE_) {
+      for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+        int m = ppr2->m[index_m];
+        dmag(1,m) +=  0.*dmag_qs2(1,m);
+		}}
+	}
+
 
   // -----------------------------------------------------------------------------------------
   // -                                    Cold Dark Matter                                   -
@@ -7908,6 +8100,9 @@ int perturb2_workspace_at_tau (
       int m = ppt2->m[index_m];
       double kappa_dot = ppw2->pvecthermo[pth->index_th_dkappa];
       ppw2->C_1m[m] = kappa_dot * (four_thirds*b(1,1,m) - I(1,m));
+     	/* magnetic fileds need the slip, this is a bit dirty here */
+     	/* ppw2->U_slip_tca1[m] =  (four_thirds*b(1,1,m) - I(1,m))/4.;*/
+     	
     }
     
   }
@@ -8371,6 +8566,7 @@ int perturb2_tca_variables (
                   compute_only_collision,
                   ppw2->pvec_quadsources,
                   ppw2->pvec_quadcollision,
+                  ppw2->pvec_quadcollisionloss,
                   ppw2
                   ),
       ppt2->error_message,
@@ -8900,6 +9096,7 @@ int perturb2_quadratic_sources_for_k1k2k (
                   compute_total_and_collision,
                   ppw2->pvec_quadsources,
                   ppw2->pvec_quadcollision,
+                  ppw2->pvec_quadcollisionloss,
                   ppw2
                   ),
       ppt2->error_message,
@@ -8910,7 +9107,7 @@ int perturb2_quadratic_sources_for_k1k2k (
 
     for (int index_qs2=0; index_qs2 < ppw2->qs2_size; ++index_qs2)
       ppw2->quadcollision_table[index_qs2][index_tau] = ppw2->pvec_quadcollision[index_qs2];
-
+    
   } // end of for (index_tau)
 
   /* Compute second-order derivatives of the quadratic sources in view of spline interpolation */
@@ -9001,6 +9198,8 @@ int perturb2_quadratic_sources (
                                  ppw2->index_qs2_XXX */
       double * pvec_quadcollision, /**< output: array with the collisional part of the quadratic
                                  sources, indexed by ppw2->index_qs2_XXX */
+      double * pvec_quadcollisionloss, /**< output: array with the collisional part of the quadratic
+                                 sources that exists for all multipoles l, indexed by ppw2->index_qs2_XXX */
       struct perturb2_workspace * ppw2
       )
 {
@@ -9044,28 +9243,93 @@ int perturb2_quadratic_sources (
   /* If the user provides a valid time index (index_tau>=0), use the
   first-order transfer functions in the tabulated values; otherwise interpolate
   them at the desired tau */
+  
+  
+  
   if (index_tau >= 0) { 
 
     tau = ppt->tau_sampling_quadsources[index_tau];
 
-    for (int index_type=0; index_type<qs_size; ++index_type) {
+    if ((ppt2->k3_sampling == sym_k3_sampling) ) {
+  		/*here we could improve as there is no tau interpoaltion needed. However nothng is lost apart from speed as the interpoaltion on the node is exact*/
+  		class_call (perturb_song_sources_at_tau_and_k (
+                ppr,
+                ppt,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                k1,
+                tau,
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources1),
+    		ppt->error_message,
+    		ppt2->error_message);
+    	
+    	class_call (perturb_song_sources_at_tau_and_k (
+                ppr,
+                ppt,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                k2,
+                tau,
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources2),
+    		ppt->error_message,
+    		ppt2->error_message);
+  
+ 	 	}
+  	else {
+    
+    	for (int index_type=0; index_type<qs_size; ++index_type) {
  
-      /* First-order sources in k1 */
-      ppw2->pvec_sources1[index_type] =
-        ppt->quadsources[ppt->index_md_scalars][ppt2->index_ic_first_order*qs_size + index_type]
+      	/* First-order sources in k1 */
+      	ppw2->pvec_sources1[index_type] =
+        	ppt->quadsources[ppt->index_md_scalars][ppt2->index_ic_first_order*qs_size + index_type]
                         [index_tau*ppt->k_size[ppt->index_md_scalars]+ppw2->index_k1];
  
-      /* First-order sources in k2 */
-      ppw2->pvec_sources2[index_type] =
-        ppt->quadsources[ppt->index_md_scalars][ppt2->index_ic_first_order*qs_size + index_type]
+      	/* First-order sources in k2 */
+      	ppw2->pvec_sources2[index_type] =
+        	ppt->quadsources[ppt->index_md_scalars][ppt2->index_ic_first_order*qs_size + index_type]
                         [index_tau*ppt->k_size[ppt->index_md_scalars]+ppw2->index_k2];
+    	}
     }
   }
   /* Interpolate first-order sources at the desired time */
   else {
-        
+      
+    if ((ppt2->k3_sampling == sym_k3_sampling) ) {
+  
+  		class_call (perturb_song_sources_at_tau_and_k (
+                ppr,
+                ppt,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                k1,
+                tau,
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources1),
+    		ppt->error_message,
+    		ppt2->error_message);
+    	
+    		class_call (perturb_song_sources_at_tau_and_k (
+                ppr,
+                ppt,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                k2,
+                tau,
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources2),
+    		ppt->error_message,
+    		ppt2->error_message);
+  
+  	}
+    else {  
     /* Interpolate first-order quantities in tau and k1 (ppw2->psources_1) */
-    class_call (perturb_song_sources_at_tau (
+    	class_call (perturb_song_sources_at_tau (
                  ppr,
                  ppt,
                  ppt->index_md_scalars,
@@ -9076,11 +9340,11 @@ int perturb2_quadratic_sources (
                  ppt->inter_normal,
                  &(ppw2->last_index_sources),
                  ppw2->pvec_sources1),
-       ppt->error_message,
-       ppt2->error_message);
+       	ppt->error_message,
+       	ppt2->error_message);
   
     /* Interpolate first-order quantities in tau and k2 (ppw2->psources_2) */ 
-    class_call (perturb_song_sources_at_tau (
+    	class_call (perturb_song_sources_at_tau (
                  ppr,
                  ppt,
                  ppt->index_md_scalars,
@@ -9091,9 +9355,37 @@ int perturb2_quadratic_sources (
                  ppt->inter_normal,
                  &(ppw2->last_index_sources),                 
                  ppw2->pvec_sources2),
-      ppt->error_message,
-      ppt2->error_message);      
-  }
+      	ppt->error_message,
+      	ppt2->error_message); 
+      	
+      }
+  }   
+      
+    /* Interpolate background-related quantities in tau (pvecback) */
+    class_call (background_at_tau(
+                 pba,
+                 tau, 
+                 pba->normal_info, 
+                 pba->inter_closeby,
+                 &(ppw2->last_index_back), 
+                 ppw2->pvecback),
+      pba->error_message,
+      ppt2->error_message);
+
+    /* Interpolate thermodynamics-related quantities in tau (pvecthermo) */
+    class_call (thermodynamics_at_z(
+                 pba,
+                 pth,
+                 1./ppw2->pvecback[pba->index_bg_a]-1.,  /* redshift z=1./a-1 */
+                 pth->inter_closeby,
+                 &(ppw2->last_index_thermo),
+                 ppw2->pvecback,
+                 ppw2->pvecthermo),
+      pth->error_message,
+      ppt2->error_message);
+      
+  
+
  
   /* Debug - Test the interpolation */
   // if ((ppw2->index_k1==0) && (ppw2->index_k2==0)) {
@@ -9496,6 +9788,7 @@ int perturb2_quadratic_sources (
         // ----------------------------------------------
         // -               Cold Dark Matter             -
         // ----------------------------------------------
+
  
         if (pba->has_cdm == _TRUE_) {     
  
@@ -9609,6 +9902,7 @@ int perturb2_quadratic_sources (
      
     for (int index_qs2=0; index_qs2 < ppw2->qs2_size; ++index_qs2)
       pvec_quadcollision[index_qs2] = 0;
+      pvec_quadcollisionloss[index_qs2] = 0;
  
     if (ppt2->has_quadratic_collision == _TRUE_) {
      
@@ -9739,6 +10033,7 @@ int perturb2_quadratic_sources (
  
             dI_qc2(1,m) =  3 * ( c_minus_12(1,m) * v_0_1 * I_2_tilde(0)
                                + c_minus_21(1,m) * v_0_2 * I_1_tilde(0));
+                               
 
             /* In perturb2_derivs(), we have written the purely second-order part of
             the dipole equation as
@@ -9801,12 +10096,14 @@ int perturb2_quadratic_sources (
           is the same for every l-moment. In the tight coupling regime, this contribution should
           be O(1) for l>=3 because all first-order multipoles with l>=2 are strongly suppressed,
           while the contributions to the dipole and the quadrupole are of order O(kappa_dot). */
-          dI_qc2(l,m) +=  (A_1 + delta_e_1)*c_2  +  (A_2 + delta_e_2)*c_1
+         
+          dIloss_qc2(l,m) =  (A_1 + delta_e_1)*c_2  +  (A_2 + delta_e_2)*c_1
                         + c_minus_12(l,m) * v_0_1 * I_2_tilde(l-1)
                         - c_plus_12(l,m)  * v_0_1 * I_2_tilde(l+1)
                         /* Symmetrisation */
                         + c_minus_21(l,m) * v_0_2 * I_1_tilde(l-1)
                         - c_plus_21(l,m)  * v_0_2 * I_1_tilde(l+1);
+          dI_qc2(l,m) += dIloss_qc2(l,m);
  
         } // end of for (index_m)
       } // end of for (l)
@@ -9877,12 +10174,13 @@ int perturb2_quadratic_sources (
             // *** All moments
 
             /* First-order collision term, plus fourth line of equation 2.19 */
-            dE_qc2(l,m) += (A_1 + delta_e_1)*c_2  +  (A_2 + delta_e_2)*c_1
+            dEloss_qc2(l,m) = (A_1 + delta_e_1)*c_2  +  (A_2 + delta_e_2)*c_1
                            + d_minus_12(l,m) * v_0_1 * E_2_tilde(l-1)
                            - d_plus_12(l,m)  * v_0_1 * E_2_tilde(l+1)
                            /* Symmetrisation */
                            + d_minus_21(l,m) * v_0_2 * E_1_tilde(l-1)
                            - d_plus_21(l,m)  * v_0_2 * E_1_tilde(l+1);
+            dE_qc2(l,m) += dEloss_qc2(l,m)
 
       
           } // end of for (index_m)
@@ -9910,8 +10208,9 @@ int perturb2_quadratic_sources (
                               + d_zero_21(2,m) * v_0_2 * (I_1_tilde(2) - sqrt_6*E_1_tilde(2)));
  
             /* Second line of equation 2.20 */
-            dB_qc2(l,m) +=    d_zero_12(l,m) * v_0_1 * E_2_tilde(l)
+            dBloss_qc2(l,m) =    d_zero_12(l,m) * v_0_1 * E_2_tilde(l)
                             + d_zero_21(l,m) * v_0_2 * E_1_tilde(l);
+          	dB_qc2(l,m) += dBloss_qc2(l,m)
 
           
           } // end of for (index_m)
@@ -9946,12 +10245,65 @@ int perturb2_quadratic_sources (
  
       }
 
+
+		// ----------------------------------------------
+    // -               magnetic fields              -
+    // ----------------------------------------------
+    
+    //  Note that we have put the magnetic field here. It is not a collision term in the classical sense, but the origin of the magnetic field is directly linked to collisions.  
+ 		if (ppt2->has_magnetic_field == _TRUE_) {
+ 			for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+        int m = ppt2->m[index_m];
+        
+        c_1 = 4*u_b_1[m] - I_1(1,m);
+        c_2 = 4*u_b_2[m] - I_2(1,m);
+        double D_1 = -pvec_sources1[ppt->index_qs_phi];
+      	double D_2 = -pvec_sources2[ppt->index_qs_phi];
+      	double delta_g_1 = pvec_sources1[ppt->index_qs_delta_g];
+  			double delta_g_2 = pvec_sources2[ppt->index_qs_delta_g];
+        //factor sigma_t/e missing + remove delta_e C1 and add -Psi C1
+        dmag_qs2(1,m) = + k* pvecback[pba->index_bg_rho_g] /3.*(
+          		 dI_qc2(1,ppt2->m[index_m])
+          		 
+          		// here we substract delta_e C1 and add -Psi C1.
+          			-(delta_e_1 - D_1)*c_2  -  (delta_e_2 - D_2)*c_1
+          			
+          		// test source term
+          		//( A_1 + D_1 + delta_g_1 )*c_2  +  (A_2 + D_2 + delta_g_2)*c_1
+          			);
+          			
+          			//old code
+          			//slip
+          		 //	+( I_1(0,0) +phi_1 - psi_1) * ( I_2(1,m)/4. - (-k2_m[m+1] * v_b_2))
+          			//	+( I_2(0,0) +phi_2 - psi_2) * ( I_1(1,m)/4. - (-k1_m[m+1] * v_b_1))
+          				
+          				// contribution from second order slip
+          			//	- I_1(0,0)* I_2(1,m)/4. + delta_b_1 * (-k2_m[m+1]) * v_b_2
+          			//	- I_2(0,0)* I_1(1,m)/4.+ delta_b_2 * (-k1_m[m+1]) * v_b_1
+          				
+          				// anisotropic stree
+          				
+          			//	- sqrt((2.-m)*(3.-m)/2.) *(I_1(2,m-1) * k2_m[1+1] * v_b_2)
+          			//	+ sqrt(4.-m*m) *(I_1(2,m) * k2_m[1] * v_b_2)
+        				//	- sqrt((2.+m)*(3.+m)/2.) *(I_1(2,m+1) * k2_m[1-1] * v_b_2)
+        				//	- sqrt((2.-m)*(3.-m)/2.) *(I_2(2,m-1) * k1_m[1+1] * v_b_1)
+          			//	+ sqrt(4.-m*m) *(I_2(2,m) * k1_m[1] * v_b_1)
+        				//	- sqrt((2.+m)*(3.+m)/2.) *(I_2(2,m+1) * k1_m[1-1] * v_b_1)
+        					
+          	
+          
+     	 }
+			}
+
+
       // ---------------------------------------------------------------------
       // -                      Add collisions to sources                    -
       // ---------------------------------------------------------------------
 
+
       for (int index_qs2=0; index_qs2 < ppw2->qs2_size; ++index_qs2) {
         pvec_quadcollision[index_qs2] *= kappa_dot;
+        pvec_quadcollisionloss[index_qs2] *= kappa_dot;
         if (what_to_compute == compute_total_and_collision)
           pvec_quadsources[index_qs2] += pvec_quadcollision[index_qs2];
       }
@@ -10141,29 +10493,78 @@ int perturb2_sources (
                   compute_total_and_collision,
                   ppw2->pvec_quadsources,
                   ppw2->pvec_quadcollision,
+                  ppw2->pvec_quadcollisionloss,
                   ppw2
                   ),
       ppt2->error_message,
       error_message);
   }
   
+
+  if ((ppt2->k3_sampling == sym_k3_sampling) ) {
+  
+  	class_call (perturb_song_sources_at_tau_and_k (
+                ppr,
+                ppt,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                k1,
+                tau,
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources1),
+    	ppt->error_message,
+    	ppt2->error_message);
+    	
+    	class_call (perturb_song_sources_at_tau_and_k (
+                ppr,
+                ppt,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                k2,
+                tau,
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources2),
+    	ppt->error_message,
+    	ppt2->error_message);
+  
+  }
+  else {
+  /* Interpolate first-order quantities in tau and k1 (ppw2->psources_1) */
+  	class_call (perturb_song_sources_at_tau (
+                ppr,
+                ppt,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                ppw2->index_k1,
+                tau,
+                ppt->qs_size[ppt->index_md_scalars],
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources1),
+    	ppt->error_message,
+    	error_message);
+  
+  /* Interpolate first-order quantities in tau and k2 (ppw2->psources_2) */
+ 	 	class_call (perturb_song_sources_at_tau (
+                ppr,
+                ppt,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                ppw2->index_k2,
+                tau,
+                ppt->qs_size[ppt->index_md_scalars],
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources2),
+    	ppt->error_message,
+    	error_message);
+  }
   /* Define shorthands */
   double * pvec_sources1 = ppw2->pvec_sources1;
   double * pvec_sources2 = ppw2->pvec_sources2;
-  
-  /* Set the perturbations that are influenced by approximations */
-  class_call (perturb2_workspace_at_tau(
-                ppr,
-                ppr2,
-                pba,
-                pth,
-                ppt,
-                ppt2,
-                tau,
-                y,
-                ppw2),
-    ppt2->error_message,
-    ppt2->error_message);
+
   
   /* Interpolate Einstein equations (pvecmetric) */
   class_call (perturb2_einstein (
@@ -10372,6 +10773,38 @@ int perturb2_sources (
 
   
   // -------------------------------------------------------------------------------
+  // -                               magnetic field                                  -
+  // -------------------------------------------------------------------------------  
+	if (ppt2->has_magnetic_field == _TRUE_) {
+
+		for (int l=0; l<=1; ++l) {
+			for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+				int m = ppt2->m[index_m];
+  
+        /* We shall increment the source term for this (l,m)-multipole with several contributions */
+      	double source = 0;    
+        
+        if (l==0) {
+					source += cdm(0,0,0);
+
+				}
+        
+      	if (l==1) {
+					source += ppw2->u_cdm[m];
+
+				} // end of dipole sources
+				
+				sources(ppt2->index_tp2_M + lm(l,m)) = source;
+
+        #pragma omp atomic
+        ++ppt2->count_memorised_sources;
+				
+			}
+  	}
+  	    
+	}
+  
+  // -------------------------------------------------------------------------------
   // -                            Photon temperature                               -
   // -------------------------------------------------------------------------------  
   
@@ -10466,9 +10899,13 @@ int perturb2_sources (
         // *** Contributions valid for all multipoles
   
         /* Scattering from quadratic sources of the form multipole times baryon_velocity */
-        if (ppt2->has_quad_scattering_in_los == _TRUE_)
+        if (ppt2->has_quad_scattering_in_los == _TRUE_){
           source += dI_qc2(l,m);
+        	if (ppt->has_source_reionisation == _TRUE_) {
+        		source -= dIloss_qc2(l,m);
+        	}
         
+        }
 
         /* Time delay terms, i.e. terms arising from the free streaming part of the Liouville operator.
         These terms are suppressed by a factor 1/l. */
@@ -11022,6 +11459,14 @@ int perturb2_print_variables(double tau,
   struct perturb2_workspace * ppw2 = pppaw2->ppw2;
   double k1 = ppt2->k[ppw2->index_k1];  
   double k2 = ppt2->k[ppw2->index_k2];
+  
+  if ((ppt2->k3_sampling == sym_k3_sampling) ) {
+  
+  	k1 = ppw2->k1;
+  	k2 = ppw2->k2;
+  }
+  
+  
   double * pvecback = ppw2->pvecback;
   double * pvecthermo = ppw2->pvecthermo;
   double * pvecmetric = ppw2->pvecmetric;
@@ -11258,39 +11703,76 @@ int perturb2_save_early_transfers (
                   compute_total_and_collision,
                   ppw2->pvec_quadsources,
                   ppw2->pvec_quadcollision,
+                  ppw2->pvec_quadcollisionloss,
                   ppw2
                   ),
       ppt2->error_message,
       error_message);
   }
 
-  /* Compute densities, velocities and shear */
-  class_call (perturb2_fluid_variables(
+  
+  /* Interpolate first-order quantities (ppw2->psources_1) */
+  if ((ppt2->k3_sampling == sym_k3_sampling) ) {
+  
+  	class_call (perturb_song_sources_at_tau_and_k (
                 ppr,
-                ppr2,
-                pba,
-                pth,
                 ppt,
-                ppt2,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                k1,
                 tau,
-                y,
-                ppw2),
-    ppt2->error_message,
-    error_message);
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources1),
+    	ppt->error_message,
+    	ppt2->error_message);
+    	
+    	class_call (perturb_song_sources_at_tau_and_k (
+                ppr,
+                ppt,
+                ppt->index_md_scalars,
+                ppt2->index_ic_first_order,
+                k2,
+                tau,
+                ppt->inter_normal,
+                &(ppw2->last_index_sources),
+                ppw2->pvec_sources2),
+    	ppt->error_message,
+    	ppt2->error_message);
+  
+  }
+  else {
+  	class_call (perturb_song_sources_at_tau (
+               ppr,
+               ppt,
+               ppt->index_md_scalars,
+               ppt2->index_ic_first_order,
+               ppw2->index_k1,
+               tau,
+               ppt->qs_size[ppt->index_md_scalars],
+               ppt->inter_normal,
+               &(ppw2->last_index_sources),
+               ppw2->pvec_sources1),
+     	ppt->error_message,
+     	ppt2->error_message);
+  
+  /* Interpolate first-order quantities (ppw2->psources_2) */
+  	class_call (perturb_song_sources_at_tau (
+               ppr,
+               ppt,
+               ppt->index_md_scalars,
+               ppt2->index_ic_first_order,
+               ppw2->index_k2,
+               tau,
+               ppt->qs_size[ppt->index_md_scalars],
+               ppt->inter_normal,
+               &(ppw2->last_index_sources),                 
+               ppw2->pvec_sources2),
+    	ppt->error_message,
+    	ppt2->error_message);
+    	
+  }
 
-  /* Set the perturbations that are influenced by approximations */
-  class_call (perturb2_workspace_at_tau(
-                ppr,
-                ppr2,
-                pba,
-                pth,
-                ppt,
-                ppt2,
-                tau,
-                y,
-                ppw2),
-    ppt2->error_message,
-    ppt2->error_message);
   
   /* Define shorthands */
   double * pvec_sources1 = ppw2->pvec_sources1;
@@ -11311,6 +11793,7 @@ int perturb2_save_early_transfers (
     error_message);
 
   
+
   
   // ====================================================================================
   // =                                Newtonian Gauge                                   =
@@ -11320,6 +11803,7 @@ int perturb2_save_early_transfers (
   double psi_1=0, psi_2=0, phi_1=0, phi_2=0, phi_prime_1=0, phi_prime_2=0;
   double omega_m1=0, omega_m1_constraint=0;
   double gamma_m2=0, gamma_m2_prime=0;
+
   
   if (ppt->gauge == newtonian) {
 
@@ -11787,7 +12271,37 @@ int perturb2_save_early_transfers (
   if (ppr2->compute_m[0] == _TRUE_) {
     if (ppw2->n_steps==1) fprintf(file_tr, format_label, "v_0_adiab", index_print_tr++);
     else fprintf(file_tr, format_value, v_0_adiabatic);
-  }    
+  }  
+  
+  // #define V_g(m) I(1,m)*0.25 - delta_g_1*(-k2_m[m+1]*v_g_2) - delta_g_2*(-k1_m[m+1]*v_g_1)
+  // #define V_b(m) b(1,1,m)/3. - delta_b_1*(-k2_m[m+1]*v_b_2) - delta_b_2*(-k1_m[m+1]*v_b_1)
+
+  // *** magnetic field
+  if (ppt2->has_magnetic_field == _TRUE_) {
+  	if (ppr2->compute_m[1] == _TRUE_) {
+  		if (ppw2->n_steps==1) fprintf(file_tr, format_label, "mag", index_print_tr++);
+  		else fprintf(file_tr, format_value, mag(1,1));
+  	}
+  	if (ppr2->compute_m[1] == _TRUE_) {
+  		if (ppw2->n_steps==1) fprintf(file_tr, format_label, "dipsource", index_print_tr++);
+  		else fprintf(file_tr, format_value, 
+  		/* ( I(1,1)*0.25 - delta_g_1*(-k2_m[1+1]*v_g_2) - delta_g_2*(-k1_m[1+1]*v_g_1)
+  		 - (b(1,1,1)/3. - delta_b_1*(-k2_m[1+1]*v_b_2) - delta_b_2*(-k1_m[1+1]*v_b_1)) )*/
+  			0.
+  		 );
+  	}
+  	
+  	if (ppr2->compute_m[1] == _TRUE_) {
+  		if (ppw2->n_steps==1) fprintf(file_tr, format_label, "baryon velocity", index_print_tr++);
+  		else fprintf(file_tr, format_value,  0.);
+  	}
+  	
+  	if (ppr2->compute_m[1] == _TRUE_) {
+  		if (ppw2->n_steps==1) fprintf(file_tr, format_label, "rho_g", index_print_tr++);
+  		else fprintf(file_tr, format_value,  pvecback[pba->index_bg_rho_g]  );
+  	}
+  }
+
   /* Velocity slip (TCA1) */
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     int m = ppr2->m[index_m];
@@ -11879,6 +12393,7 @@ int perturb2_save_early_transfers (
   // ------------------------------------------------------------------------------------
   // -                                  Fluid limit                                     -
   // ------------------------------------------------------------------------------------
+
   
   /* - Baryon fluid limit */
 
@@ -12535,3 +13050,99 @@ int perturb2_store_sources_to_disk(
 
 #undef sources
 
+//* This should not be here and be moved to class eventually. Also bispline might be the way to go here or some other fancy method. For now I am just using linear interpolation in k, followed by whatever is selected for eta */
+
+int perturb_song_sources_at_tau_and_k (  
+             struct precision * ppr,
+             struct perturbs * ppt,
+             int index_mode,
+             int index_ic,
+             double k,
+             double tau,
+             short intermode,
+             int * last_index,
+             double * psource){
+  
+  int index_k; /*Index left of k*/
+  
+  int inf = 0;
+  int sup = ppt->k_size[index_mode] - 1;
+  int mid, i;
+  double * k_vec = ppt->k[index_mode];
+
+    if (k_vec[inf] < k_vec[sup]){
+
+      while (sup-inf > 1) {
+
+        mid = (int)(0.5*(inf+sup));
+
+        if (k < k_vec[mid])
+          sup = mid;
+        else
+          inf = mid;
+      }
+    }
+    else {
+      while (sup-inf > 1) {
+
+        mid = (int)(0.5*(inf+sup));
+
+        if (k > k_vec[mid])
+          sup = mid;
+        else
+          inf = mid;
+      }
+    }
+
+    index_k = mid-1;
+    double k_right = k_vec[index_k+1];
+    double step = k_right - k_vec[index_k];
+		double a = (k_right - k)/step;  
+  	int qs_size = ppt->qs_size[index_mode];
+  	
+  	double * source_left;
+  	double * source_right;
+  	
+  	class_alloc(source_left,qs_size*sizeof(double),ppt->error_message);
+  	class_alloc(source_right,qs_size*sizeof(double),ppt->error_message);
+  	
+  	class_call (perturb_song_sources_at_tau (
+                ppr,
+                ppt,
+                index_mode,
+                index_ic,
+                index_k,
+                tau,
+                ppt->qs_size[ppt->index_md_scalars],
+                intermode,
+                last_index,
+                source_left),
+    	ppt->error_message,
+    	ppt->error_message);
+
+    class_call (perturb_song_sources_at_tau (
+                ppr,
+                ppt,
+                index_mode,
+                index_ic,
+                index_k+1,
+                tau,
+                ppt->qs_size[ppt->index_md_scalars],
+                intermode,
+                last_index,
+                source_right),
+    	ppt->error_message,
+    	ppt->error_message);
+                
+   	for (int index_type=0; index_type<qs_size; ++index_type) {
+ 	
+                      
+    	psource[index_type] = a*source_left[index_type] + (1-a)*source_right[index_type];
+   
+  	}
+  	
+  	free(source_left);
+  	free(source_right);
+  	return _SUCCESS_;
+
+}

@@ -21,6 +21,7 @@ int main(int argc, char **argv) {
   struct transfers2 tr2;      /* transfer functions (2nd-order) */
   struct primordial pm;       /* primordial spectra */
   struct spectra sp;          /* output spectra (1st-order) */
+  struct spectra2 sp2;        /* output spectra (2nd-order) */
   struct nonlinear nl;        /* non-linear spectra */
   struct lensing le;          /* lensed spectra */
   struct bispectra bi;        /* bispectra */
@@ -34,9 +35,9 @@ int main(int argc, char **argv) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
     return _FAILURE_;
   }
-  
+
   if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,
-    &pt,&pt2,&tr,&bs,&bs2,&tr2,&pm, &sp,&nl,&le,&bi,&fi,&op,errmsg) == _FAILURE_) {
+    &pt,&pt2,&tr,&bs,&bs2,&tr2,&pm,&sp,&sp2,&nl,&le,&bi,&fi,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg);
     return _FAILURE_;
   }
@@ -103,8 +104,14 @@ int main(int argc, char **argv) {
   }
   
   /* Compute second-order transfer functions using the line of sight formalism */
-  if (transfer2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2) == _FAILURE_) {
-    printf("\n\nError in transfer2_init \n=>%s\n",tr2.error_message);
+  // if (transfer2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2) == _FAILURE_) {
+  //   printf("\n\nError in transfer2_init \n=>%s\n",tr2.error_message);
+  //   return _FAILURE_;
+  // }
+  
+  /* Compute the power spectra */
+  if (spectra2_init(&pm,&pr,&pr2,&ba,&th,&pt,&pt2,&sp2) == _FAILURE_) {
+    printf("\n\nError in primordial_init \n=>%s\n",pm.error_message);
     return _FAILURE_;
   }
   
