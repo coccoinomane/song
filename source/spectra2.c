@@ -75,6 +75,51 @@ int spectra2_init(
   
   printf("allocated workspace \n");
   
+  // angular power spectra
+
+if ((ppr2->load_transfers_from_disk == _TRUE_) || (ppr2->store_transfers_to_disk == _TRUE_)) {
++      class_call (transfer2_load_transfers_from_disk (
++                    ppt2,
++                    ptr2,
++                    index_tt2_k3 + lm_cls(index_l3, index_M3)),
++        ptr2->error_message,
++        pbi->error_message);
++    }
++  
++  class_call_parallel (transfer2_get_k3_list (
++                                 ppr,
++                                 ppr2,
++                                 ppt2,
++                                 pbs,
++                                 pbs2,
++                                 ptr2,
++                                 index_k1,
++                                 index_k2,
++                                 pwb->k3_grid[thread],  /* output */
++                                 &dump   
++                                 ),
++            ptr2->error_message,
++            pbi->error_message);
++  
++     /* Define the pointer to the second-order transfer function as a function of k3.
++          Note that this transfer function has already been rescaled according to eq. 6.26
++          of http://arxiv.org/abs/1405.2280 in the perturbations.c module.  */
++          double * transfer = ptr2->transfer[index_tt2_k3 + lm_cls(index_l3,index_M3)]
++                              [index_k1]
++                              [index_k2];
++                              
++        /* Free the memory associated with the second order transfer function for this (l,m) */
++    if ((ppr2->load_transfers_from_disk == _TRUE_)
++      || (ppr2->store_transfers_to_disk == _TRUE_)) {
++      class_call (transfer2_free_type_level (
++                    ppt2,
++                    ptr2,
++                    index_tt2_k3 + lm_cls(index_l3, index_M3)),
++        ptr2->error_message,
++        pbi->error_message);
++    }
+  
+  
   // ==================================================================================
   // =                               ksampling					                              =
   // ==================================================================================

@@ -113,6 +113,10 @@ sight sources. */
 #define dB_qc2(l,m) ppw2->pvec_quadcollision[ppw2->index_qs2_monopole_B + lm(l,m)]
 #define db_qc2(n,l,m) ppw2->pvec_quadcollision[ppw2->index_qs2_monopole_b + nlm(n,l,m)]
 
+#define dIloss_qc2(l,m) ppw2->pvec_quadcollision[ppw2->index_qs2_monopole_g + lm(l,m)]
+#define dEloss_qc2(l,m) ppw2->pvec_quadcollision[ppw2->index_qs2_monopole_E + lm(l,m)]
+#define dBloss_qc2(l,m) ppw2->pvec_quadcollision[ppw2->index_qs2_monopole_B + lm(l,m)]
+
 // ------------------------------------------------------------------------------------
 // -                          Shortcuts for 1st-order moments                         -
 // ------------------------------------------------------------------------------------

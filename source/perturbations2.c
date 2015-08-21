@@ -9900,10 +9900,11 @@ int perturb2_quadratic_sources (
     definition of the coupling coefficients, which we compute in the function
     perturb2_geometrical_corner(). */
      
-    for (int index_qs2=0; index_qs2 < ppw2->qs2_size; ++index_qs2)
+    for (int index_qs2=0; index_qs2 < ppw2->qs2_size; ++index_qs2){
       pvec_quadcollision[index_qs2] = 0;
       pvec_quadcollisionloss[index_qs2] = 0;
- 
+
+ 		}
     if (ppt2->has_quadratic_collision == _TRUE_) {
      
       /* Spherical components of the linear baryon velocity; obtained as 
@@ -10180,7 +10181,7 @@ int perturb2_quadratic_sources (
                            /* Symmetrisation */
                            + d_minus_21(l,m) * v_0_2 * E_1_tilde(l-1)
                            - d_plus_21(l,m)  * v_0_2 * E_1_tilde(l+1);
-            dE_qc2(l,m) += dEloss_qc2(l,m)
+            dE_qc2(l,m) += dEloss_qc2(l,m);
 
       
           } // end of for (index_m)
@@ -10210,7 +10211,8 @@ int perturb2_quadratic_sources (
             /* Second line of equation 2.20 */
             dBloss_qc2(l,m) =    d_zero_12(l,m) * v_0_1 * E_2_tilde(l)
                             + d_zero_21(l,m) * v_0_2 * E_1_tilde(l);
-          	dB_qc2(l,m) += dBloss_qc2(l,m)
+                            
+          	dB_qc2(l,m) += dBloss_qc2(l,m);
 
           
           } // end of for (index_m)
@@ -11087,8 +11089,15 @@ int perturb2_sources (
         // *** Contributions valid for all multipoles
           
         /* Scattering from quadratic sources of the form multipole times baryon_velocity */
-        if (ppt2->has_quad_scattering_in_los == _TRUE_)
+
+          
+        if (ppt2->has_quad_scattering_in_los == _TRUE_){
           source += dE_qc2(l,m);
+        	if (ppt->has_source_reionisation == _TRUE_) {
+        		source -= dEloss_qc2(l,m);
+        	}
+        
+        }
 
 
         /* Time delay terms, i.e. terms arising from the free streaming part of the Liouville operator */
@@ -11228,8 +11237,15 @@ int perturb2_sources (
         operator, not through the collision term, which is the way I and E mix. */
 
         /* Scattering from quadratic sources of the form multipole times baryon_velocity */
-        if (ppt2->has_quad_scattering_in_los == _TRUE_)
+
+          
+        if (ppt2->has_quad_scattering_in_los == _TRUE_){
           source += dB_qc2(l,m);
+        	if (ppt->has_source_reionisation == _TRUE_) {
+        		source -= dBloss_qc2(l,m);
+        	}
+        
+        }  
 
 
         /* Time delay terms, i.e. terms arising from the free streaming part of the Liouville operator */
