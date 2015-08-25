@@ -165,6 +165,7 @@ int input2_init (
 
   int flag1,flag2,flag3,flag;
   int int1;
+  int found;
   double param1,param2,param3;
   int entries_read;
   int * int_pointer, * int_pointer1, * int_pointer2;
@@ -199,6 +200,7 @@ int input2_init (
   class_call (input2_default_precision (ppr2),
     errmsg,
     errmsg);
+
 
   
   // ==================================================================================
@@ -1439,6 +1441,11 @@ int input2_default_params (
   // ===========================================================
   // =                     perturb1 structure                  =
   // ===========================================================
+
+  /* Make sure CLASS does not add points to the k grid  */
+  ppt->k_output_values_num = -1;
+  ppt->store_perturbations = _FALSE_;
+  pop->write_perturbations = _FALSE_;
 
 
   // ===========================================================

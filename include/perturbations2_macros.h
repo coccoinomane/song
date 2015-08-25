@@ -253,6 +253,10 @@ ppt2->c_minus are used */
   fprintf_k_debug (stderr, "%25.17g %25.17g %25.17g %25.17g %25.17g %25.17g %25.17g %25.17g\n", a, b, c, d, e, f, g, h);            \
 }
 
+#define p9(a,b,c,d,e,f,g,h,i) {                                     \
+  fprintf_k_debug (stderr, "%25.17g %25.17g %25.17g %25.17g %25.17g %25.17g %25.17g %25.17g %25.17g\n", a, b, c, d, e, f, g, h, i);            \
+}
+
 
 
 
