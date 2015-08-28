@@ -1245,7 +1245,7 @@ int bispectra2_intrinsic_integrate_over_k3 (
       class_call (transfer2_load_transfers_from_disk (
                     ppt2,
                     ptr2,
-                    index_tt2_k3 + lm_cls(index_l3, index_M3)),
+                    index_tt2_k3 + ptr2->lm_array[index_l3][index_M3]),
         ptr2->error_message,
         pbi->error_message);
     }
@@ -1327,7 +1327,7 @@ int bispectra2_intrinsic_integrate_over_k3 (
           /* Define the pointer to the second-order transfer function as a function of k3.
           Note that this transfer function has already been rescaled according to eq. 6.26
           of http://arxiv.org/abs/1405.2280 in the perturbations.c module.  */
-          double * transfer = ptr2->transfer[index_tt2_k3 + lm_cls(index_l3,index_M3)]
+          double * transfer = ptr2->transfer[index_tt2_k3 + ptr2->lm_array[index_l3][index_M3]]
                               [index_k1]
                               [index_k2];
           
@@ -1448,7 +1448,7 @@ int bispectra2_intrinsic_integrate_over_k3 (
       class_call (transfer2_free_type_level (
                     ppt2,
                     ptr2,
-                    index_tt2_k3 + lm_cls(index_l3, index_M3)),
+                    index_tt2_k3 + ptr2->lm_array[index_l3][index_M3]),
         ptr2->error_message,
         pbi->error_message);
     }

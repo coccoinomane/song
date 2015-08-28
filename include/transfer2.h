@@ -26,7 +26,7 @@ enum transfer2_k3_sampling {
  */
 enum transfer2_tau_sampling {
   bessel_tau_sampling, /**< add extra points to the integration grid based on the x-sampling of the Bessel functions */
-  custom_transfer2_tau_sampling /** add extra points to the integration grid based on input from user */
+  custom_transfer2_tau_sampling /**< add extra points to the integration grid based on input from user */
 };
 
 
@@ -77,13 +77,18 @@ struct transfers2 {
     
     The ptr->transfer array should be indexed as follows:
 
-      ptr->transfer [index_tt2_X + lm_cls(index_l,index_m)]
+      ptr->transfer [index_tt]
                     [index_k1]
                     [index_k2]
                     [index_k]
 
-  Where X can be T, E, B, etc. for temperature, e-modes, b-modes, etc.
-  Important: as in ppt2->sources, index_k2 goes from 0 to index_k1. */
+  * index_tt is a composite index that includes both the field (T,E,B) and multipole (l,m) dependences;
+    it is expanded as index_tt = ptr2->index_tt2_X + ptr2->lm_array[index_l][index_m], where X is either
+    T,E or B.
+  * index_k1 goes from 0 to ppt2->k_size.    
+  * index_k2 goes from 0 to ppt2->k_size-index_k1.
+  * index_k3 goes from 0 to ppt2->k3_size[index_k1][index_k2]. */
+
   double **** transfer; 
   
   int index_tt2_T;              /* Index for transfer type = temperature */
@@ -108,7 +113,6 @@ struct transfers2 {
   // *** Number and list of multipoles
 
   int l_size;        /* number of multipole values */
-  int l_size_max;    /* greatest of all l_size */
   int * l;           /* list of multipole values l[index_l] */
   int * m;           /* list of azimuthal multipole values m[index_m] */
   int m_size;        /* number of of azimuthal multipole values m[index_m] */

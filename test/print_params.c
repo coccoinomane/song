@@ -150,7 +150,7 @@ int main(int argc, char **argv) {
   // printf("\tpt2.k3_sampling = %d\n", pt2.k3_sampling);
   // printf("\tpr2.k3_size_min = %d\n", pr2.k3_size_min);
   // printf("\tpr2.k3_size = %d\n", pr2.k3_size);
-  // printf("\tpr2.tau_step_trans_song = %g\n", pr2.tau_step_trans_song);
+  // printf("\tpr2.tau_linstep_song = %g\n", pr2.tau_linstep_song);
   // printf("\ttr2.k_sampling = %d\n", tr2.k_sampling);
   // printf("\ttr2.tau_sampling = %d\n", tr2.tau_sampling);
 

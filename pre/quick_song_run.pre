@@ -86,7 +86,7 @@ k3_size_min = 5
 ## Second-order k-sampling for the transfer functions
 q_linstep = 0.4
 q_linstep_song = 0.4
-transfer2_k3_sampling = class
+transfer2_k3_sampling = smart
 
 
 
@@ -146,7 +146,7 @@ custom_tau_mode_song_sources = log             # either lin, log or class
 
 ## Integration grid in time for 2nd-order transfer functions
 transfer2_tau_sampling = smart
-tau_step_trans_song = 4
+tau_linstep_song = 0.6
 
 
 

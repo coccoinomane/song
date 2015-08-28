@@ -934,9 +934,20 @@ int input2_init (
         "transfer2_tau_sampling=%s not supported, choose between 'bessel', 'smart' or 'custom'.", string1);
   }
 
-  /* If 'transfer2_tau_sampling=custom', choose the density of the tau-sampling for the transfer functions */
-  class_read_double("tau_step_trans_2nd_order", ppr2->tau_step_trans_song); /* obsolete */
-  class_read_double("tau_step_trans_song", ppr2->tau_step_trans_song);
+  /* If 'transfer2_tau_sampling=custom', choose the density of the tau-sampling for the transfer
+  functions. Older versions of SONG used the parameter tau_step_trans_song, which is related to the
+  new one by a 2*pi factor. */
+
+  class_read_double("tau_step_trans_2nd_order", ppr2->tau_linstep_song); /* obsolete */
+  if (flag1 == _TRUE_)
+    ppr2->tau_linstep_song /= 2*_PI_;
+  class_read_double("tau_step_trans_song", ppr2->tau_linstep_song); /* obsolete */
+  if (flag1 == _TRUE_)
+    ppr2->tau_linstep_song /= 2*_PI_;
+
+  class_read_double("tau_linstep_song", ppr2->tau_linstep_song);
+
+
   
 
   // =============================================================================================
@@ -1669,7 +1680,7 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   ppr2->q_linstep_song = 0.45;
 
   /* Transfer function tau-sampling (used only if ptr2->tau_sampling == custom_transfer2_tau_sampling) */
-  ppr2->tau_step_trans_song = 4;
+  ppr2->tau_linstep_song = 0.6;
   
   /* Scalars */
   ppr2->k_min_custom = 1e-4;

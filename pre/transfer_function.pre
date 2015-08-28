@@ -4,7 +4,7 @@
 ## For example, the following command will dump into result.dat the
 ## (l,m)=(502,0) transfer function of the E-modes for (k1,k2)=(0.1,0.15) Mpc^-1:
 ##
-##  ./print_transfers2 ini/intrinsic.ini pre/transfer_function.pre E_502_0 1 0 2> result.dat
+##  ./print_transfers2 ini/intrinsic.ini pre/transfer_function.pre 1 0 E_502_0 2> result.dat
 ##
 ## Similarly, one can save the line-of-sight sources as a function of time for
 ## (k1,k2)=(0.1,0.15) Mpc^-1 and k3 something in between by running:
@@ -31,7 +31,7 @@ k3_size = 100
 
 # Second-order k-sampling for the transfer functions
 q_linstep_song = 0.1
-transfer2_k3_sampling = class
+transfer2_k3_sampling = smart
 
 # Multipoles to include in the line of sight sources
 l_max_los_t = 5

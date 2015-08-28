@@ -1557,14 +1557,16 @@ int perturb2_get_lm_lists (
  * precision run, the final list will consist of about 10^6 triplets (compare to the about
  * 400 values of k at first order).
  *
- * The algorithm we use is described in sec. 5.3.2 of http://arxiv.org/abs/1405.2280; more
- * detail on mode coupling is in sec 3.5.2.
+ * The algorithm we use is described in Sec. 5.3.2 of http://arxiv.org/abs/1405.2280; more
+ * detail on mode coupling is in Sec 3.5.2.
  *
  * This function will write the following fields in the ppt2 structure:
  *  - ppt2->k
  *  - ppt2->k_size
  *  - ppt2->k3
  *  - ppt2->k3_size
+ *  - ppt2->k_min
+ *  - ppt2->k_max
  *
  * and the following ones in the ppt structure:
  *  - ppt->k
@@ -1574,6 +1576,7 @@ int perturb2_get_lm_lists (
  *  - ppt->k_min
  *  - ppt->k_max
  */
+
 int perturb2_get_k_lists (
           struct precision * ppr,
           struct precision2 * ppr2,
@@ -2100,7 +2103,7 @@ int perturb2_get_k_lists (
   /* Set minimum and maximum k-values ever used in SONG */
   ppt2->k_min = ppt2->k3[0][0][0];
   ppt2->k_max = ppt2->k3[ppt2->k_size-1][ppt2->k_size-1]
-                  [ppt2->k3_size[ppt2->k_size-1][ppt2->k_size-1]-1];
+                        [ppt2->k3_size[ppt2->k_size-1][ppt2->k_size-1]-1];
 
   class_test ((ppt2->k_min==0) || (ppt2->k_max==0),
     ppt2->error_message,
@@ -2135,7 +2138,7 @@ int perturb2_get_k_lists (
       ppt->k[index_md][index_k] = ppt2->k[index_k];
   }
   
-  /* Determine k_min and k_max. The following block is copied from perturbations.c */
+  /* Determine ppt->k_min and ppt->k_max. The following block is copied from perturbations.c */
   ppt->k_min = _HUGE_;
   ppt->k_max = 0.;
     if (ppt->has_scalars == _TRUE_) {
@@ -10696,36 +10699,44 @@ int perturb2_quadratic_sources (
       double c_1=0, c_2=0;
   
 
-      // -------------------------------------------------------------
-      // -                   Perturbed recombination                 -
-      // -------------------------------------------------------------
+      // -----------------------------------------------------------------------------
+      // -                           Perturbed recombination                         -
+      // -----------------------------------------------------------------------------
     
-      /* 'delta_e' is the density contrast of free electrons, which we assume to
-      be equal to 'delta_b' if perturbed recombination is not requested. */  
+      /* The photon interactions are proportional to the free-electron density
+      constrast, delta_e, which is given by the sum of the baryon density contrast
+      and the perturbation to the free-electron fraction: delta_e = delta_b + delta_xe.
+      For details, see Sec. 5.29 of http://arxiv.org/abs/1405.2280. By default, we assume
+      that delta_xe vanishes. */  
       double delta_e_1 = delta_b_1;
       double delta_e_2 = delta_b_2;
 
       if (ppt2->has_perturbed_recombination_stz == _TRUE_) {
- 
-        /* If requested, we use the approximated formula in 3.23 of Senatore, Tassev, Zaldarriaga (STZ,
-        http://arxiv.org/abs/0812.3652), which is valid for k < 1 in Newtonian gauge and it doesn't require
-        to solve differential equations. */
-        if (ppt2->perturbed_recombination_use_approx == _TRUE_) {
 
+        /* Infer the perturbation to the free-electron fraction, delta_xe, using the developed
+        in Senatore, Tassev & Zaldarriaga 2009 (http://arxiv.org/abs/0812.3652). The formalism
+        consists in using the derivatives of the Q function (computed in the thermodynamics.c) to
+        solve an additional equation for delta_Xe in perturbations.c. For further details, please
+        refer to Sec. 5.29 of http://arxiv.org/abs/1405.2280 or appendix A of Pitrou et al. 2010). */ 
+        if (ppt2->perturbed_recombination_use_approx != _TRUE_) {
+          delta_e_1 = delta_b_1 + pvec_sources1[ppt->index_qs_delta_Xe];
+          delta_e_2 = delta_b_2 + pvec_sources2[ppt->index_qs_delta_Xe];
+        }
+
+        /* If requested, use the approximated formula in Eq. 3.23 of Senatore, Tassev,
+        Zaldarriaga (http://arxiv.org/abs/0812.3652), which relies only on background
+        quantities. The approximation is roughly valid for modes with k <= 0.1, as 
+        shown in Fig. 5 of the same paper. */
+        else {
+        
           double xe = pvecthermo[pth->index_th_xe];
           double xe_dot = pvecthermo[pth->index_th_dxe];
           delta_e_1 = delta_b_1 * (1. - 1/(3*Hc)*(xe_dot/xe));
           delta_e_2 = delta_b_2 * (1. - 1/(3*Hc)*(xe_dot/xe));
         }
-        /* Full formalism, which involves computing the derivatives of the Q function (see http://arxiv.org/abs/0812.3652
-        or appendix A of Pitrou et al. 2010) and solving an additional equation for delta_Xe in the first-order module. */
-        else {
-        
-          delta_e_1 = delta_b_1 + pvec_sources1[ppt->index_qs_delta_Xe];
-          delta_e_2 = delta_b_2 + pvec_sources2[ppt->index_qs_delta_Xe];
-        }
 
-        /* Some debug. Make sure that pth->compute_xe_derivatives = _TRUE_ */
+        /* Debug - Print perutrbed recombination quantities (make sure that
+        pth->compute_xe_derivatives==_TRUE_) */
         // thermodynamics_at_z(pba,pth,1/a-1,pth->inter_normal,&(ppw2->last_index_thermo),
         //   ppw2->pvecback,ppw2->pvecthermo);
         // 
@@ -13296,6 +13307,16 @@ int perturb2_save_early_transfers (
   else {
    fprintf(file_tr, format_value, pvecthermo[pth->index_th_g]);
    fprintf(file_qs, format_value, pvecthermo[pth->index_th_g]);
+  }
+
+  sprintf(buffer, "xe");
+  if (ppw2->n_steps==1) {
+   fprintf(file_tr, format_label, buffer, index_print_tr++);
+   fprintf(file_qs, format_label, buffer, index_print_qs++);
+  }
+  else {
+   fprintf(file_tr, format_value, pvecthermo[pth->index_th_xe]);
+   fprintf(file_qs, format_value, pvecthermo[pth->index_th_xe]);
   }
 
   sprintf(buffer, "H");

@@ -284,8 +284,9 @@ int main (int argc, char **argv) {
     fprintf (stderr, "synchronous gauge\n");  
   
   /* Find the index_tt corresponding to the (l,m) multipole */
-  int index_tt = index_tt_monopole
-    + multipole2offset_indexl_indexm (l, m, tr2.l, tr2.l_size, tr2.m, tr2.m_size);
+  int index_tt = index_tt_monopole + tr2.lm_array[index_l][index_m];
+  // int index_tt = index_tt_monopole
+  //   + multipole2offset_indexl_indexm (l, m, tr2.l, tr2.l_size, tr2.m, tr2.m_size);
   
   /* Number of rows to be printed */
   int k_size = tr2.k_size_k1k2[index_k1][index_k2];

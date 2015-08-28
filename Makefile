@@ -67,7 +67,7 @@ CFLAGS += -DWITH_BISPECTRA
 TOOLS = growTable.o dei_rkck.o sparse.o evolver_rkck.o  evolver_ndf15.o \
 arrays.o parser.o quadrature.o hyperspherical.o common.o
 SOURCE_CLASS = input.o background.o thermodynamics.o perturbations.o primordial.o \
-nonlinear.o transfer.o spectra.o lensing.o bessel.o bispectra.o fisher.o
+nonlinear.o transfer.o spectra.o lensing.o bessel.o bispectra.o fisher.o output.o
 INPUT = input.o
 BACKGROUND = background.o
 THERMO = thermodynamics.o

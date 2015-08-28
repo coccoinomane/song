@@ -2,29 +2,34 @@
  * 
  * Module to compute and store the projection functions for SONG.
  *
- * The projection functions are purely geometrical object needed to convert
+ * The projection functions J are purely geometrical object needed to convert
  * the line of sight sources at recombination, which were computed by the
  * perturbations2.c module, into the transfer functions today, which will be
- * computed by the transfer2.c module using the output of this module.
+ * computed by the transfer2.c module.
  *
  * The procedure is detailed in sec. 5.5 of http://arxiv.org/abs/1405.2280,
  * and is a generalisation of the classical line of sight formalism initially
- * proposed in 1996 by Seljak and Zaldarriaga (see references of ibidem).
+ * proposed in 1996 by Seljak and Zaldarriaga.
+ *
+ * The projection functions are linear combinations of spherical Bessel functions.
+ * The temperature projection function (J_TT) is given in eq. 5.97 of
+ * http://arxiv.org/abs/1405.2280, while the polarised ones (J_EE, J_EB)
+ * are in eq. 5.103 and 5.104, respectively.
  *
  * The following functions can be called from other modules:
  *
- * -# bessel2_init() to run the module; requires loading background_init(),
- *    perturbations2_init(), transfer_init() and bessel_init() first.
+ * -# bessel2_init() to run the module.
  * -# bessel2_free() to free the memory allocated by the module.
- * -# bessel2_convolution() to convolve the spherical Bessel functios computed
- *    in this module with up to two input functions.
+ * -# bessel2_convolution() to convolve the projection functions computed
+ *    in this module with arbitrary functions.
  *
  * Created by Guido W. Pettinari on 17.03.2013 based on bessel.c by the
  * CLASS team (http://class-code.net/).
- * Last modified by Guido W. Pettinari on 04.06.2015
+ * Last modified by Guido W. Pettinari on 29.08.2015
  */
 
 #include "bessel2.h"
+
 
 
 /**
@@ -44,7 +49,7 @@
  *    via bessel2_j_for_l1(). We label these as j_l1(x), to differentiate them from
  *    the j_l(x) computed in the bessel.c module.
  *
- * -# Allocate memory for the array of the projection functions pbs->J_Llm_x and its
+ * -# Allocate memory for the array of the projection functions pbs2->J_Llm_x and its
  *    second derivative pbs->ddJ_Llm_x(x), in view of spline interpolation.
  *
  * -# For each multipole value in pbs->l, call bessel_j_for_l() to compute and store
@@ -53,12 +58,18 @@
  * The computation of the Bessel function is determined by the following parameters:
  *
  * -# pbs->l[index_l]: list of size pbs->l_size with the multipole values l where we shall
- *    compute the Bessel functions; it is determined in transfer structure.
- * -# pbs->x_step: step dx for sampling Bessel functions j_l(x)
- * -# pbs->x_max: maximum value of x where to compute the Bessel functions
- * -# pbs->j_cut: value of j_l(x) below which it is approximated by zero in the region x<<l
+ *    compute the projection functions; it is determined in the transfer.c module.
+ * -# pbs2->xx_step: step dx for sampling the projection functions J(x), given by the
+ *    user via the parameter file.
+ * -# pbs2->xx_max: maximum value of x where to compute the projection functions; determined
+ *    in the input2.c module
+ * -# ppr2->bessel_J_cut_song: value of J_Llm(x) below which it is approximated by zero in the
+ *    region x<<l
  *
- * You need to call the background_init() and transfer_init() before calling this function.
+ * This function requires the following modules:
+ *
+ * -# perturbations2_init(), to determine which projection functions are needed.
+ * -# bessel_init(), to access the list of multipoles in pbs->l.
  */
 
 int bessel2_init(
@@ -100,7 +111,8 @@ int bessel2_init(
     pbs2->error_message,
     pbs2->error_message);
 
-  /* Create the m array by copying it from ppr2->m */
+  /* Copy the array with the m values (azimuthal number of the spherical harmonics)
+  from the ppr2 structure */
   pbs2->m_size = ppr2->m_size;
   class_alloc (pbs2->m, pbs2->m_size*sizeof(int), pbs2->error_message);
   for (int index_m=0; index_m<pbs2->m_size; ++index_m)
@@ -115,9 +127,9 @@ int bessel2_init(
 
 
   
-  // ================================================================================
-  // =                          Count projection functions                          =
-  // ================================================================================
+  // ====================================================================================
+  // =                          Count projection functions                              =
+  // ====================================================================================
   
   int index_J = 0;
   
@@ -154,18 +166,13 @@ int bessel2_init(
 
 
 
-  // ==========================================================================
-  // =                            Compute j_l1(x)                             =
-  // ==========================================================================
+  // ====================================================================================
+  // =                                  Compute j_l1(x)                                 =
+  // ====================================================================================
       
-  /* In order to compute the J_Llm_x functions, we need to evaluate the spherical
-  Bessel functions j_l1(x) for a wide range of l1's and x's.  The range of l1's
-  is larger than the standard pbs2->l_list:  for a given L and l, we will need all
-  the l1's between abs(l-L) and l+L.  Here, we precompute j_l1(x) for the extended
-  range contained in pbs2->l1.  The process is equivalent to what it is done in
-  in the first part of bessel_init, where pbs2->j was filled. */
-
-  /* Get the list where we will need to compute Bessel functions */
+  /* In order to compute the projection functions J_Llm(x), we need the spherical Bessel
+  functions j_l1(x). For a given L and l, we will need j_l1(x) for all l1 between abs(l-L)
+  and l+L. Here we build a list of required l1 values and store it in pbs2->. */
   class_call (bessel2_get_l1_list (ppr,ppr2,pbs,pbs2),
     pbs2->error_message,
     pbs2->error_message);
@@ -228,9 +235,9 @@ int bessel2_init(
 
 
 
-  // =====================================================================================
-  // =                              Allocate result arrays                               =
-  // =====================================================================================
+  // ====================================================================================
+  // =                             Allocate result arrays                               =
+  // ====================================================================================
   
   /* Here we allocate the (J,L,l,m) levels of the following arrays:
 
@@ -292,9 +299,9 @@ int bessel2_init(
 
 
 
-  // ========================================================================================
-  // =                           Compute the projection functions                           =
-  // ========================================================================================
+  // ====================================================================================
+  // =                                    Compute J                                     =
+  // ====================================================================================
 
   /* Compute the J's, that is the combination of Bessels and 3j-symbols needed to compute
   the line of sight integral at second order. The J's are 3-index objects depending on
@@ -385,14 +392,15 @@ int bessel2_init(
 
 
 
-  // ===================================================================================
-  // =                               Spline interpolation                              =
-  // ===================================================================================
+  // ====================================================================================
+  // =                               Spline interpolation                               =
+  // ====================================================================================
   
   if (ppr->bessels_interpolation == cubic_interpolation) {
     
-    /* Compute second derivatives of the J_Llm's in view of the spline interpolation needed
-    in the second-order transfer module */
+    /* Compute second derivatives of the J_Llm's in view of the spline interpolation. 
+    The J will be used in the second-order transfer module to solve the line of sight
+    integral. */
     
     for (int index_J = 0; index_J < pbs2->J_size; ++index_J) {
 
@@ -437,9 +445,9 @@ int bessel2_init(
     } // end of loop of projection function type
 
 
-    /* Compute second derivatives of the j1_l's in view of the spline interpolation needed
-    in the intrinsic bispectrum module */
-    int abort = _FALSE_;    
+    /* Compute second derivatives of the j1_l's in view of the spline interpolation. The
+    j_l1 will be needed for the computation of the intrinsic bispectrum in bispectra2.c. */
+
     #pragma omp parallel for shared(pbs,abort)
     for (int index_l1 = 0; index_l1 < pbs2->l1_size; ++index_l1) {
 
@@ -459,9 +467,8 @@ int bessel2_init(
           pbs2->error_message);
 
       #pragma omp flush(abort)
-    } // end of for(index_l1)
+    }
     if (abort == _TRUE_) return _FAILURE_;
-
 
 
   } // end of spline calculation
@@ -684,16 +691,17 @@ int bessel2_free(
 
 
 /**
- * Define number and values of mutipoles l. This is crucial since not
- * only the Bessel functions, but also the transfer functions and
- * anisotropy spectra C_l will automatically be sampled at the same
- * values (there would be no logic in having various l lists differing
- * from each other).
+ * Determine list of l1 multipoles where to compute the Bessel functions
+ * j_l1(x).
  *
+ * The j_l1(x) Bessels are needed to build the projection function J_Llm(x),
+ * according to eq. 5.97 of http://arxiv.org/abs/1405.2280.
  *
- * @param ppr Input : pointer to precision structure
- * @param pbs Input/Output : pointer to besseld structure (result stored here) 
- * @return the error status
+ * The argument l1 ranges between l1_min=|l-L| and l1_max=l+L. Here we build
+ * the list of all l1 values that will be ever needed. This is given by the
+ * list of l (pbs->l) with the addition of extra points.
+ *
+ * This function will fill pbs2->l1 and pbs2->l1_size.
  */
 
 int bessel2_get_l1_list(
@@ -704,18 +712,6 @@ int bessel2_get_l1_list(
           )
 {
 
-  /* The line of sight integration at second-order requires to compute a linear combination of
-  spherical Bessel functions with 3j-symbols.  In particular, the Bessel function of order l1
-  is required several times.  However, l1 goes from |l-L| to l+L, where the upper limit of L
-  is given by pbs2->L_max.  This means that we need to compute the spherical Bessels in an
-  extended range that includes the l's that are within a range of +/- pbs2->L_max from 
-  each member of pbs2->l.
-  
-  Similarly, to compute the contribution to the bispectrum integral from a certain azimuthal number
-  m, we will need to compute Bessel functions with order between |l-|m|| and l+|m|. Hence, we need
-  to compute the spherical Bessels in an extended range that includes the l's that are within a range
-  of +/- MAX(pbs2->L_max, ppr2->m_max_second_order) from each member of pbs2->l.*/
-    
   if (pbs2->bessels2_verbose > 2) {
     printf (" -> will compute %d l's in the range l=(%d,%d)\n", pbs->l_size, pbs->l[0], pbs->l[pbs->l_size-1]);    
     printf ("    * l-list:\n       ");
@@ -727,70 +723,92 @@ int bessel2_get_l1_list(
   }
 
   
-  // *** Determine the number of elements in the extended list pbs2->l1
+  // ====================================================================================
+  // =                                 Count l1 values                                  =
+  // ====================================================================================
 
-  /* The maximum number of elements pbs2->l1 can have is given by the maximum l in
-  pbs2->l plus L_max=MAX(pbs2->L_max, ppr2->m_max_2nd_order). See the long comment
-  above for details. We use a logical array (i.e. an array of 1s and 0s) to keep track
-  of which l1's are to be kept. */
-  int L_max = pbs2->L_max;
-  int l1_max_size = pbs->l[pbs->l_size - 1] + L_max;
-  short * l1_logical = (short *)calloc(l1_max_size+1, sizeof(int));
+  /* The line of sight integration at second-order requires to compute a linear combination of
+  spherical Bessel functions with 3j-symbols (see eq. 5.97 of http://arxiv.org/abs/1405.2280).
+  In particular, the Bessel function of order l1 is required several times.  However, l1 goes
+  from |l-L| to l+L, where the upper limit of L is given by pbs2->L_max. This means that we need
+  to compute the spherical Bessels in an extended range that includes the l that are within a
+  range of +/- pbs2->L_max from  each member of pbs2->l.
+  
+  Similarly, to compute the contribution to the bispectrum integral from a certain azimuthal
+  number m, we will need to compute Bessel functions with order between |l-|m|| and l+|m|
+  (see eq. 6.36 of http://arxiv.org/abs/1405.2280). Hence, l1 needs to include all l that are
+  within a range of +/- MAX(pbs2->L_max, ppr2->m_max_second_order) from each member of pbs2->l. */
+    
 
-  /* Each of the l1's is to be kept only if it is in the range  abs(l-L_max) <= l1 <= l+L_max  */
+  /* The maximum number of elements of pbs2->l1 is given by the maximum l in pbs->l
+  plus MAX(pbs2->L_max, ppr2->m_max_2nd_order). We use a logical array to keep track
+  of which l1 are to be kept. */
+  int L_max = pbs2->L_max + ppr2->m_max_2nd_order; // +1;
+  int l1_max = pbs->l[pbs->l_size - 1] + L_max;
+  short * l1_logical;
+  class_calloc (l1_logical, l1_max+1, sizeof(int), pbs2->error_message);
+
+  /* Each of the l1's is to be kept only if it is in the range abs(l-L_max)<=l1<=l+L_max */
   pbs2->l1_size = 0;
 
-  for(int l1=0; l1<=l1_max_size; ++l1) {
+  for(int l1=0; l1<(l1_max+1); ++l1) {
 
-    l1_logical[l1] = _FALSE_;                         // Initialize flag
+    l1_logical[l1] = _FALSE_;                   // Initialize flag
 
     for(int index_l=0; index_l<pbs->l_size; ++index_l) {
 
       int l = pbs->l[index_l];
 
-      if ( (l1>=(l-L_max)) && (l1<=l+L_max) )         // It is important to omit abs()
-        l1_logical[l1] = _TRUE_;                      // Flag the l1 to be kept
+      if ((l1>=(l-L_max)) && (l1<=l+L_max))     // It is important to omit abs()
+        l1_logical[l1] = _TRUE_;                // Flag the l1 to be kept
                   
-    }                                                 // end of for(index_l)
+    }
     
-    if (l1_logical[l1] == _TRUE_)                     // Increment the counter
+    if (l1_logical[l1] == _TRUE_)               // Increment the counter
       pbs2->l1_size++;
 
-  }                                                   // end of for(index_l1)
+  }
 
-  // *** Some debug
-  // for(index_l1=0; index_l1<l1_max_size; ++index_l1)
+  /* Debug - Print which l1 shall be computed */
+  // for(index_l1=0; index_l1<(l1_max+1); ++index_l1)
   //   if (l1_logical[index_l1] == _FALSE_)
   //     printf("We shall not compute the l1=%d bessel.\n", index_l1);
   // printf("pbs->l_size = %d, pbs2->l1_size = %d\n", pbs->l_size, pbs2->l1_size);
   
   
-  // *** Write pbs2->l1 list using l1_logical
+
+  // ====================================================================================
+  // =                                 Write l1 values                                  =
+  // ====================================================================================
+
   class_alloc (pbs2->l1, pbs2->l1_size*sizeof(int), pbs2->error_message);
+
   int l1 = 0;
+
   for(int index_l1=0; index_l1<pbs2->l1_size; ++index_l1) {
 
-    while (l1_logical[l1] == _FALSE_) l1++;             // Look for the first l1 to keep
+    while (l1_logical[l1] == _FALSE_)
+      l1++;                         // Look for the first l1 to keep
 
-    pbs2->l1[index_l1] = l1++;                          // And store it in pbs2->l1
+    pbs2->l1[index_l1] = l1++;      // and store it in pbs2->l1
     
-    // Some debug
-    // printf("pbs2->l1[%d] = %d\n", index_l1, pbs2->l1[index_l1]);
   }
 
   free(l1_logical);
 
-  /* Find out the index in pbs2->l1 corresponding to a given l. */
+
+  /* It is useful to define an array that contains for all possible values of l1
+  the index they are assigned in pbs->l1. */
+
   class_alloc (pbs2->index_l1, (pbs2->l1[pbs2->l1_size-1]+1)*sizeof(int), pbs2->error_message);
+
   for(l1=0; l1<=pbs2->l1[pbs2->l1_size-1]; ++l1) {
   
-    pbs2->index_l1[l1] = -1;
+    pbs2->index_l1[l1] = -1;       // Assign a negative value if l1 is not included in pbs2->l1
   
     for (int index_l1=0; index_l1<pbs2->l1_size; ++index_l1)
       if (l1==pbs2->l1[index_l1]) pbs2->index_l1[l1] = index_l1;
-    
-    /* Some debug */
-    // printf("pbs2->index_l1[%d] = %d\n", l1, pbs2->index_l1[l1]);
+
   }
 
   return _SUCCESS_;
@@ -805,7 +823,7 @@ int bessel2_get_l1_list(
  * Determine the x-grid where J_Llm(x) will be sampled and store it in pbs2->xx.
  *
  * The projection functions J_Llm(x) are a linear combination of spherical Bessel
- * functions j_l1(x), which in turn can be sampled linearly in x.
+ * functions j_l1(x). We sample both j and J linearly.
  * 
  */
 int bessel2_get_xx_list(
@@ -817,7 +835,13 @@ int bessel2_get_xx_list(
       )
 {
     
-  /* Update the vale of pbs2->xx_max to reflect pbs->x_max */
+  /* The argument of the projection function in the line of sight integral is x=k*(tau_0-tau).
+  Therefore, we choose the maximum x-value where to compute J, pbs2->xx_max, to be as large
+  as the maximum k used in SONG, times the tau_0, the conformal age of the Universe. This is 
+  done in the input2.c module, where we have set
+    pbs2->xx_max = ppr2->k_max_tau0_over_l_max * ppt->l_scalar_max.
+  Here we set pbs2->xx_max to be at least as large as the maximum x used to compute the Bessel
+  functions of the bessel.c module. */
   pbs2->xx_max = MAX (pbs2->xx_max, pbs->x_max);
   
   /* Sample xx linearly between 0 and pbs2->xx_max with step pbs2->xx_step */
@@ -825,42 +849,6 @@ int bessel2_get_xx_list(
   class_alloc (pbs2->xx, pbs2->xx_size*sizeof(double), pbs2->error_message);
   lin_space (pbs2->xx, 0, pbs2->xx_max, pbs2->xx_size);
   
-  return _SUCCESS_;
-
-}
-
-
-
-
-
-/** 
- * Bessel factors J_Llm for arbitrary argument x. 
- *
- * Evaluates the J_Llm factor needed for the 2nd-order line of sight integrations at a given
- * value of x by interpolating in the pre-computed table pbs2->J_Llm_x.  This function can be
- * called from whatever module at whatever time, provided that bessel_init() has been called
- * before, and bessel_free() has not been called yet.
- *
- * @param pbs       Input: pointer to bessels structure
- * @param x         Input: argument x
- * @param index_L   Input: index defining L = pbs2->L[index_L]
- * @param index_l   Input: index defining l = pbs->l[index_l]
- * @param index_m   Input: index defining m = pbs2->m[index_m]
- * @param J_Llm_x   Ouput: J_Llm(x)
- * @return the error status
- */
-int bessel2_J_Llm_at_x (
-    struct bessels * pbs,
-    struct bessels2 * pbs2,
-    double x,
-    int index_L,
-    int index_l,
-    int index_m,
-    double * J_Llm_x
-    )
-{
-
-
   return _SUCCESS_;
 
 }
@@ -947,15 +935,15 @@ int bessel2_J_for_Llm (
   faults. */  
   if (constraint_spin || constraint_EB) {
 
-    pbs2->x_size_J[index_J][index_L][index_l][index_m] = 1;
-    pbs2->index_xmin_J[index_J][index_L][index_l][index_m] = pbs2->xx_size - 1;
-    pbs2->x_min_J[index_J][index_L][index_l][index_m] = pbs2->xx_max;
     class_calloc (pbs2->J_Llm_x[index_J][index_L][index_l][index_m],1,sizeof(double),pbs2->error_message);
-    pbs2->J_Llm_x[index_J][index_L][index_l][index_m][0] = 0.;
     if (ppr->bessels_interpolation == cubic_interpolation) {
       class_calloc (pbs2->ddJ_Llm_x[index_J][index_L][index_l][index_m],1,sizeof(double),pbs2->error_message);
       pbs2->ddJ_Llm_x[index_J][index_L][index_l][index_m][0] = 0.;
     }
+    pbs2->J_Llm_x[index_J][index_L][index_l][index_m][0] = 0;
+    pbs2->x_size_J[index_J][index_L][index_l][index_m] = 1;
+    pbs2->index_xmin_J[index_J][index_L][index_l][index_m] = pbs2->xx_size - 1;
+    pbs2->x_min_J[index_J][index_L][index_l][index_m] = pbs2->xx_max;
 
     if (pbs2->bessels2_verbose > 2)
       printf("     \\ skipping J(%d,%d,%d,%d) due to the geometrical constraints\n",
@@ -1296,14 +1284,6 @@ int bessel2_J_for_Llm (
  *
  * - 'x' is the argument of the Bessel function, that will be equal to k(tau-tau0)
  *   in the line of sight integration.
- * 
- * @param pbs Input : pointer to bessel structure (used only for error message)
- * @param L   Input: L value
- * @param l   Input: l value
- * @param m   Input: m value
- * @param x   Input: x value
- * @param J_Llm_x  Output: J_Llm(x) value
- * @return the error status
  */
 
 int bessel2_J_Llm (

@@ -104,10 +104,10 @@ struct precision2
   spectrum it is simply the Hubble time. */
   double perturb_sampling_stepsize_song;
   
-  /** Time sampling for the line of sight integration, to be used when the step of
-  the sources, perturb_sampling_stepsize_song, is not enough to capture the frequent
-  oscillations of the Bessel functions. */
-  double tau_step_trans_song;  
+  /** Frequency of the time sampling for the line of sight integration. This parameter
+  is used when the time-sampling of the sources, ppt2->tau_sampling, is not dense enough
+  to capture the frequent oscillations of the Bessel functions. */
+  double tau_linstep_song;  
 
 
 
