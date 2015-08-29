@@ -8775,43 +8775,6 @@ int perturb2_tca_variables (
   // }
 
 
-  /* - Compute quadratic parts */
-
-  /* Create shortcuts for the quadratic parts of the Boltzmann equation for
-  photon intensity, photon polarisation and baryons. */
-
-  double quadC_I_1M=0, quadL_I_1M=0;
-  double quadC_I_2M=0, quadL_I_2M=0;
-  double quadC_E_2M=0, quadL_E_2M=0;
-  double quadC_B_2M=0, quadL_B_2M=0;
-  double quadL_b_11M=0;
-
-  for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
-
-    int m = ppr2->m[index_m];
-
-    /* Quadratic part of the collision term for the multipoles */
-    quadC_I_1M = dI_qc2(1,m)/kappa_dot;
-    quadC_I_2M = dI_qc2(2,m)/kappa_dot;
-    if (ppt2->has_polarization2 == _TRUE_) {
-      quadC_E_2M = dE_qc2(2,m)/kappa_dot;
-      quadC_B_2M = (m!=0?dB_qc2(2,m):0)/kappa_dot;
-    }
-
-    /* Quadratic part of the Liouville term for the multipoles.
-    We reverse the sign because in SONG the Liouville term is on the right hand
-    side, while in our reference for the TCA equations it is on the left hand
-    side. */
-    quadL_b_11M = - (db_qs2(1,1,m)-db_qc2(1,1,m));
-    quadL_I_1M = - (dI_qs2(1,m)-dI_qc2(1,m));
-    quadL_I_2M = - (dI_qs2(2,m)-dI_qc2(2,m));
-    if (ppt2->has_polarization2 == _TRUE_) {
-      quadL_E_2M = - (dE_qs2(2,m)-dE_qc2(2,m)); /* O(tau_c), see eq. 4.153 */
-      quadL_B_2M = - (dB_qs2(2,m)-dB_qc2(2,m)); /* O(tau_c), see eq. 4.156 */
-    }
-  }
- 
-
   /* - Velocity slip */
   
   /* Compute the velocity slip V[m] = v_b[m] - v_g[m] using the formalism in
@@ -8826,6 +8789,9 @@ int perturb2_tca_variables (
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
 
     int m = ppr2->m[index_m];
+
+    /* Quadratic part of the collision term for the photon dipole */
+    double quadC_I_1M = dI_qc2(1,m)/kappa_dot;
 
     /* Quadratic part of the collision term of the photon velocity;
     see eq. 3b of my TCA notes. */
@@ -8849,6 +8815,15 @@ int perturb2_tca_variables (
                              + delta_b_1*u_b_2_prime[m] + delta_b_2*u_b_1_prime[m];
     double delta_u_prime_g_m = four_thirds * delta_u_prime_b_m; /* enforce TCA0 */
 
+    /* Quadratic part of the Liouville term for the baryon and photon dipoles.
+    We reverse the sign because in SONG the Liouville term is on the right hand
+    side, while in our reference for the TCA equations it is on the left hand
+    side. */
+    double quadL_b_11M = - (db_qs2(1,1,m)-db_qc2(1,1,m));
+    double quadL_I_1M = - (dI_qs2(1,m)-dI_qc2(1,m));
+
+    /* Difference between the quadratic Liouville parts of the baryon and photon
+    velocities */
     double quadL_diff =
       quadL_b_11M/3 - quadL_I_1M/4
       - delta_u_prime_g_m/4 /* from dipole->vel. transf. of dipole derivatives */
@@ -8882,13 +8857,11 @@ int perturb2_tca_variables (
     ppw2->u_g_tca1[m] = u_b[m] - ppw2->U_slip_tca1[m];
     ppw2->I_1m_tca1[m] = 4 * (ppw2->u_g_tca1[m] + delta_g_1*u_g_2[m] + delta_g_2*u_g_1[m]);
 
-
     /* The collision term could also be written as: */
     // ppw2->C_1m_tca1[m] = 4 * kappa_dot * (
     //                        + ppw2->U_slip_tca1[m]
     //                        - ppw2->u_g_1[m]*ppw2->delta_g_2 - ppw2->u_g_2[m]*ppw2->delta_g_1
     //                        + ppw2->u_b_1[m]*ppw2->delta_b_2 + ppw2->u_b_2[m]*ppw2->delta_b_1);
-
 
     /* Debug - Compute the Liouville difference quadL_diff explicitely as
     quadL_b_11M/3-quadL_I_1M/4 and compare with quadL_diff. */
@@ -8943,6 +8916,24 @@ int perturb2_tca_variables (
     double gamma_m2_prime = (m==2?y[ppw2->pv->index_pt2_gamma_m2_prime]:0);
     ppw2->shear_g_tca1[m] = 8/45. * tau_c * (-k*ppw2->I_1m_tca1[m]*c_minus(2,m,m) - 4*(m==2?gamma_m2_prime:0));
     
+    /* Quadratic part of the collision term for the quadrupoles */
+    double quadC_I_2M = dI_qc2(2,m)/kappa_dot;
+    double quadC_E_2M = 0;
+    double quadC_B_2M = 0;
+    if (ppt2->has_polarization2 == _TRUE_) {
+      quadC_E_2M = dE_qc2(2,m)/kappa_dot;
+      quadC_B_2M = (m!=0?dB_qc2(2,m):0)/kappa_dot;
+    }
+
+    /* Quadratic part of the Liouville term for the quadrupoles */
+    double quadL_I_2M = - (dI_qs2(2,m)-dI_qc2(2,m));
+    double quadL_E_2M = 0;
+    double quadL_B_2M = 0;
+    if (ppt2->has_polarization2 == _TRUE_) {
+      quadL_E_2M = - (dE_qs2(2,m)-dE_qc2(2,m)); /* O(tau_c), see eq. 4.153 */
+      quadL_B_2M = (m!=0?-(dB_qs2(2,m)-dB_qc2(2,m)):0); /* O(tau_c), see eq. 4.156 */
+    }
+
     /* The quadratic part is a combination of Liouville terms, collision terms and
     velocity squared terms. Here we add the terms that are not explicitly multiplied
     by a tau_c factor, but are nonetheless of order tau_c. This is the case because
@@ -8986,23 +8977,17 @@ int perturb2_tca_variables (
     /* The quadrupole is obtained by adding a velocity squared term
     (eq. 4.48 of http://arxiv.org/abs/1405.2280) */
     ppw2->I_2m_tca1[m] = -15/2.*ppw2->shear_g_tca1[m] - 20*v_ten_v_g[m];
-    
-  }
-  
-  
-  /* - Polarisation quadrupoles */
 
-  /* Compute the polarisation quadrupole for the E and B-modes during tight
-  coupling. In doing so, we also compute the Pi[m] factor which appears in the
-  collision term for the intensity and E-polarisation quadrupoles; see eq.
-  4.145 of http://arxiv.org/abs/1405.2280. The Pi factor is defined
-  as Pi[m] = (I(2,m) - sqrt_6*E(2,m))/10. */
-  
-  if (ppt2->has_polarization2 == _TRUE_) {
-  
-    for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
 
-      int m = ppr2->m[index_m];
+    /* - Polarisation quadrupoles */
+
+    /* Compute the polarisation quadrupole for the E and B-modes during tight
+    coupling. In doing so, we also compute the Pi[m] factor which appears in the
+    collision term for the intensity and E-polarisation quadrupoles; see eq.
+    4.145 of http://arxiv.org/abs/1405.2280. The Pi factor is defined
+    as Pi[m] = (I(2,m) - sqrt_6*E(2,m))/10. */
+  
+    if (ppt2->has_polarization2 == _TRUE_) {  
 
       /* The TCA0 expression for Pi is simply given by -vv[m], because its parts are
       I(2,m)=-10*vv[m] and dE_qc2(2,m)=-sqrt(6)*vv[m]. */
@@ -9041,37 +9026,11 @@ int perturb2_tca_variables (
       as you would do for a TCA0 approximation. */
       ppw2->B_2m_tca1[m] = (m!=0 ? quadC_B_2M : 0);
 
-    }
-  }
+    } // end of if(polarisation)
+    
+  } // end of loop over m=0,1,2
+  
 
-
-  // /* - Update fluid variables */
-  //
-  // /* When we called the perturb2_fluid_variables() function above we did not
-  // know yet what was the value of the dipole and of the quadrupole. Now that we
-  // do, we update the ppw2->u_g[m] and ppw2->shear_g[m] fields, so that the user does
-  // not have to call perturb2_fluid_variables() again after this function. */
-  //
-  // if (ppw2->approx[ppw2->index_ap2_tca] == (int)tca_off) {
-  //   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
-  //     int m = ppr2->m[index_m];
-  //     ppw2->u_g[m] = I(1,m)/4 - delta_g_1*u_g_2[m] - delta_g_2*u_g_1[m];
-  //   }
-  //   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
-  //     int m = ppr2->m[index_m];
-  //     ppw2->shear_g[m] = -2/15.*I(2,m) - 8/3.*v_ten_v_g[m];
-  //   }
-  // }
-  // else {
-  //   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
-  //     int m = ppr2->m[index_m];
-  //     ppw2->u_g[m] = ppw2->u_g_tca1[m];
-  //   }
-  //   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
-  //     int m = ppr2->m[index_m];
-  //     ppw2->shear_g[m] = ppw2->shear_g_tca1[m];
-  //   }
-  // }
 
   return _SUCCESS_;
 
