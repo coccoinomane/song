@@ -2113,7 +2113,25 @@ int transfer2_compute (
 
 
 
-
+/**
+ * Solve the line of sight integral for the set of parameters (k1,k2,k,l,m)
+ * using the trapezoidal method.
+ *
+ * The line of sight integral is a convolution over time between the source
+ * function S_Lm(k1,k2,k,tau) and the projection function J_Llm(x), with
+ * x=k*(tau_0-tau) and L summed from 0 to L_max.
+ *
+ * The time grid for the integration was computed in the transfer2_get_time_grid()
+ * function, and is stored in pw->time_grid.
+ *
+ * The second-order source function is passed as an array of values 
+ * at the grid points, interpolated from the ppt2->sources array; the interpolation
+ * was performed in the functions transfer2_interpolate_sources_in_k() and
+ * transfer2_interpolate_sources_in_time().
+ *
+ * The projection function will be interpolated in x=k*(tau_0-tau) from the precomputed
+ * table stored in the bessel2 structure.
+ */
 int transfer2_integrate (
       struct precision * ppr,
       struct precision2 * ppr2,
@@ -2176,7 +2194,7 @@ int transfer2_integrate (
   If index_tau_max ends up being negative, it means that the projection functions are always
   negligible. */
   int index_tau_max = pw->tau_grid_size-1;
-  while ((k*pw->tau0_minus_tau[index_tau_max] < x_min_bessel) && (index_tau_max >= 0))
+  while ((index_tau_max >= 0) && (k*pw->tau0_minus_tau[index_tau_max] < x_min_bessel))
     index_tau_max--;
 
   if ((ptr2->transfer2_verbose > 4) && (index_tau_max!=(pw->tau_grid_size-1)))
@@ -2185,10 +2203,11 @@ int transfer2_integrate (
 
   /* Adjust the upper limit of the integration grid accordingly */
   int tau_grid_size_adjusted = index_tau_max + 1;
-
+  
   /* Adjust the trapezoidal measure to take into account the new upper limit */
-  pw->delta_tau[tau_grid_size_adjusted-1] =
-    pw->tau_grid[tau_grid_size_adjusted-1]-pw->tau_grid[tau_grid_size_adjusted-2];
+  if (tau_grid_size_adjusted > 1)
+    pw->delta_tau[tau_grid_size_adjusted-1] =
+      pw->tau_grid[tau_grid_size_adjusted-1]-pw->tau_grid[tau_grid_size_adjusted-2];
 
     
   
@@ -2461,7 +2480,6 @@ int transfer2_get_time_grid(
 
   pw->tau_grid_size = index_tau_tr;
 
-  
 
   // ====================================================================================
   // =                                 Fill time grid                                   =

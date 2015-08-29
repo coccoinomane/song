@@ -1695,6 +1695,7 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   // ====================================================================
   // =                           Bessel functions                       =
   // ====================================================================
+
   ppr2->bessel_j_cut_song = 1e-12;
   ppr2->bessel_J_cut_song = 1e-6;
   ppr2->bessel_x_step_song = 0.3;
