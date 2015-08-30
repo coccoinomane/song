@@ -172,6 +172,7 @@ int input2_init (
   int * pointer_to_int;
   char string1[_ARGUMENT_LENGTH_MAX_];
   char string2[_ARGUMENT_LENGTH_MAX_];
+  char string3[_ARGUMENT_LENGTH_MAX_];
   char string[_ARGUMENT_LENGTH_MAX_];
   int i;
 
@@ -245,7 +246,7 @@ int input2_init (
       ppt2->has_cls = _FALSE_;
     }
     else {
-      if (strstr(string1,"transfers2") != NULL) {
+      if ((strstr(string1,"transfers2") != NULL) || (strstr(string1,"T2") != NULL)) {
         ptr2->has_transfers2_only = _TRUE_;
         ppt2->has_perturbations2 = _TRUE_;
         ppt2->has_cls = _TRUE_;
@@ -358,9 +359,6 @@ int input2_init (
     else if ((strcmp(string1,"log") == 0) || (strcmp(string1,"logarithmic")) == 0)
       ppt2->k_sampling = log_k_sampling;
 
-    else if (strcmp(string1,"class") ==0)
-      ppt2->k_sampling = class_sources_k_sampling;
-
     else if (strcmp(string1,"smart") == 0)
       ppt2->k_sampling = smart_sources_k_sampling;
       
@@ -421,13 +419,10 @@ int input2_init (
 
     else if (strcmp(string1,"theta_12") == 0)
       ppt2->k3_sampling = theta12_k3_sampling;
-
-    else if (strcmp(string1,"theta_13") == 0)
-      ppt2->k3_sampling = theta13_k3_sampling;
       
     else
       class_stop(errmsg,
-        "sources2_k3_sampling=%s not supported. Choose between 'lin', 'log', 'smart', 'theta_12', 'theta_13'",
+        "sources2_k3_sampling=%s not supported. Choose between 'lin', 'log', 'smart', 'theta_12'",
         string1);
   }
   
@@ -523,22 +518,17 @@ int input2_init (
     ppt2->has_pure_scattering_in_los = _TRUE_;
 
   class_read_string_one_of_two(pfc,
-    "include_photon_monopole_in_los_2nd_order",
-    "include_photon_monopole_song");
-  if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
-    ppt2->has_photon_monopole_in_los = _TRUE_;
-  
-  class_read_string_one_of_two(pfc,
     "include_quad_scattering_in_los_2nd_order",
     "include_quad_scattering_song");
   if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
     ppt2->has_quad_scattering_in_los = _TRUE_;
 
-  class_read_string_one_of_two(pfc,
+  class_read_string_one_of_three(pfc,
     "include_metric_in_los_2nd_order",
-    "include_metric_song");
+    "include_metric_song",
+    "include_pure_metric_song");
   if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
-    ppt2->has_metric_in_los = _TRUE_;
+    ppt2->has_pure_metric_in_los = _TRUE_;
 
   class_read_string_one_of_two(pfc,
     "include_quad_metric_in_los_2nd_order",
@@ -576,9 +566,9 @@ int input2_init (
     if ((flag == _TRUE_) && ((strstr(string,"y") != NULL) || (strstr(string,"Y") != NULL)))
       ppt2->has_isw = _TRUE_;
 
-  /* Avoid counting twice the same metric effects */
+  /* Avoid counting twice the same metric effects. SW and ISW override metric. */
   if ((ppt2->has_sw == _TRUE_) || (ppt2->has_isw == _TRUE_))
-    ppt2->has_metric_in_los = _FALSE_;
+    ppt2->has_pure_metric_in_los = _FALSE_;
 
   class_call(parser_read_string(pfc,"use_delta_tilde_in_los",&(string1),&(flag1),errmsg),errmsg,errmsg);
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
@@ -600,7 +590,7 @@ int input2_init (
 
   /* If effects that are not peaked at recombination are included, extend the integration
   range up to today */
-  if ((ppt2->has_metric_in_los == _FALSE_)
+  if ((ppt2->has_pure_metric_in_los == _FALSE_)
    && ((ppt2->has_isw == _FALSE_) || (ppt2->only_early_isw == _TRUE_))
    && (ppt2->has_quad_metric_in_los == _FALSE_) && (ppt2->has_time_delay_in_los == _FALSE_)
    && (ppt2->has_redshift_in_los == _FALSE_) && (ppt2->has_lensing_in_los == _FALSE_))
@@ -667,10 +657,6 @@ int input2_init (
 
   class_read_double("primordial_local_fnl_phi", ppt2->primordial_local_fnl_phi);
 
-  class_call(parser_read_string(pfc,"match_final_time_los",&(string1),&(flag1),errmsg),errmsg,errmsg);
-  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-    ppt2->match_final_time_los = _TRUE_;
-
 
   // ====================================================================================
   // =                           Perturbations, approximations                          =
@@ -710,9 +696,8 @@ int input2_init (
    not only in the perturbations.c module, but also in the thermodynamics
    module to compute the start of the free-streaming regime. This value
    in the pth structure, in turn, will affect the starting time of the
-   second-order RSA. In order to avoid discrepancies, we set the first
-   CLASS value of radiation_streaming_trigger_tau_c_over_tau to match
-   the SONG one. */
+   second-order RSA. In order to avoid discrepancies, we set CLASS value
+   of radiation_streaming_trigger_tau_c_over_tau to match the SONG one. */
    ppr->radiation_streaming_trigger_tau_c_over_tau
      = ppt2->radiation_streaming_trigger_tau_c_over_tau;
 
@@ -782,10 +767,10 @@ int input2_init (
   }
   
   /* Set the ppt2->lm_extra parameter according to the gauge */
-  if (ppt->gauge == 0)
+  if (ppt->gauge == newtonian)
     ppt2->lm_extra = 1;
 
-  else if (ppt->gauge == 1)
+  else if (ppt->gauge == synchronous)
     ppt2->lm_extra = 3;       
   
 
@@ -934,9 +919,9 @@ int input2_init (
         "transfer2_tau_sampling=%s not supported, choose between 'bessel', 'smart' or 'custom'.", string1);
   }
 
-  /* If 'transfer2_tau_sampling=custom', choose the density of the tau-sampling for the transfer
-  functions. Older versions of SONG used the parameter tau_step_trans_song, which is related to the
-  new one by a 2*pi factor. */
+  /* Specify the density for the time sampling of the transfer function integral. Used only
+  if If transfer2_tau_sampling=smart. Older versions of SONG used the parameter tau_step_trans_song,
+  which is related to the new one by a 2*pi factor. */
 
   class_read_double("tau_step_trans_2nd_order", ppr2->tau_linstep_song); /* obsolete */
   if (flag1 == _TRUE_)
@@ -944,7 +929,6 @@ int input2_init (
   class_read_double("tau_step_trans_song", ppr2->tau_linstep_song); /* obsolete */
   if (flag1 == _TRUE_)
     ppr2->tau_linstep_song /= 2*_PI_;
-
   class_read_double("tau_linstep_song", ppr2->tau_linstep_song);
 
 
@@ -1278,11 +1262,6 @@ int input2_init (
 		for (int index_m=0; index_m<ppr2->m_size; ++index_m)
 			if (m==ppr2->m[index_m]) ppr2->compute_m[m] = _TRUE_;
 
-  /* Set the scalar, vector, tensor flags */
-  ppt2->has_scalars = ppr2->compute_m[0];
-  ppt2->has_vectors = ppr2->compute_m[1];
-  ppt2->has_tensors = ppr2->compute_m[2];
-
   /* The largest l that will be needed by SONG. The first term (pbs->l_max) is the maximum
   multipole we shall compute the spectra and bispectra in. The second term represent
   the additional l's where we need to the Bessel functions in order to compute the projection
@@ -1465,7 +1444,11 @@ int input2_default_params (
   
   /* - Flags */
   
-  ppt2->perturbations2_verbose = 0;
+  ppt2->has_cmb_temperature = _FALSE_;
+  ppt2->has_cmb_polarization_e = _FALSE_; 
+  ppt2->has_cmb_polarization_b = _FALSE_; 
+  ppt2->has_pk_matter = _FALSE_;
+
   ppt2->has_perturbations2 = _FALSE_;
   ppt2->has_polarization2  = _TRUE_;
   ppt2->has_quadratic_sources = _TRUE_;
@@ -1480,9 +1463,8 @@ int input2_default_params (
   ppt2->rescale_quadsources = _FALSE_;
 
   ppt2->has_pure_scattering_in_los = _FALSE_;
-  ppt2->has_photon_monopole_in_los = _FALSE_;
   ppt2->has_quad_scattering_in_los = _FALSE_;
-  ppt2->has_metric_in_los = _FALSE_;
+  ppt2->has_pure_metric_in_los = _FALSE_;
   ppt2->has_quad_metric_in_los = _FALSE_;
 
   ppt2->has_time_delay_in_los = _FALSE_;
@@ -1499,12 +1481,6 @@ int input2_default_params (
 	ppt2->use_test_source = _FALSE_;
 
   ppt2->has_recombination_only = _FALSE_;
-
-  /* Possible outputs at 2nd order */
-  ppt2->has_cmb_temperature = _FALSE_;
-  ppt2->has_cmb_polarization_e = _FALSE_; 
-  ppt2->has_cmb_polarization_b = _FALSE_; 
-  ppt2->has_pk_matter = _FALSE_;
   
   ppt2->has_cls = _FALSE_;
   ppt2->has_bispectra = _FALSE_;
@@ -1530,7 +1506,7 @@ int input2_default_params (
   
   ppt2->radiation_streaming_approximation = rsa2_MD;
   ppt2->radiation_streaming_trigger_tau_over_tau_k = 90;
-  ppt2->radiation_streaming_trigger_tau_c_over_tau = 5;
+  ppt2->radiation_streaming_trigger_tau_c_over_tau = 10;
   
   ppt2->ur_fluid_approximation = ufa2_none;
   ppt2->ur_fluid_trigger_tau_over_tau_k = 15;
@@ -1544,6 +1520,11 @@ int input2_default_params (
   ppt2->phi_eq = huang;
 
 
+  /* - l sampling */
+
+  ppt2->lm_extra = 1;
+  
+
   /* - Time sampling */
 
   ppt2->recombination_max_to_end_ratio = 1000;
@@ -1554,17 +1535,18 @@ int input2_default_params (
   ppt2->custom_tau_size = 2000;
   ppt2->custom_tau_mode = lin_tau_sampling;
 
-  ppt2->match_final_time_los = _FALSE_;
-
   
-  /* k sampling */
+  /* - k sampling */
+
   ppt2->k_sampling = smart_sources_k_sampling;
 
   ppt2->k3_sampling = smart_k3_sampling;
 
 
-  /* technical parameters */
+  /* - Technical parameters */
 
+  ppt2->perturbations2_verbose = 0;
+  
   ppt2->has_debug_files = _FALSE_;
   strcpy(ppt2->transfers_filename,"output/transfers2.txt");
   strcpy(ppt2->quadsources_filename,"output/quadsources.txt");

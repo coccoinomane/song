@@ -1,4 +1,4 @@
-/** @file input2.h Documented includes for input2 module */
+/** @file input2.h Documented header file for the input2 module */
 
 #ifndef __INPUT2__
 #define __INPUT2__
@@ -25,6 +25,36 @@
     /* string2 wins over string 1 */                                    \
     flag = _TRUE_;                                                      \
     if (flag2 == _TRUE_)                                                \
+      strcpy (string, string2);                                         \
+    else if (flag1 == _TRUE_)                                           \
+      strcpy (string, string1);                                         \
+    else                                                                \
+      flag = _FALSE_;                                                   \
+  } while(0);
+
+
+#define class_read_string_one_of_three(pfc,name1,name2,name3)           \
+  do {                                                                  \
+    class_call(parser_read_string(pfc,name1,&(string1),&(flag1),errmsg),\
+         errmsg,                                                        \
+         errmsg);                                                       \
+    class_call(parser_read_string(pfc,name2,&(string2),&(flag2),errmsg),\
+         errmsg,                                                        \
+         errmsg);                                                       \
+    class_call(parser_read_string(pfc,name3,&(string3),&(flag3),errmsg),\
+         errmsg,                                                        \
+         errmsg);                                                       \
+    class_test(((flag1 == _TRUE_) && (flag2 == _TRUE_))                 \
+             ||((flag1 == _TRUE_) && (flag3 == _TRUE_))                 \
+             ||((flag2 == _TRUE_) && (flag3 == _TRUE_)),                \
+         errmsg,                                                        \
+         "In input file, you can only enter one of %s, %s, %s",         \
+         name1,name2,name3);                                            \
+    /* string3 wins over string2 wins over string 1 */                  \
+    flag = _TRUE_;                                                      \
+    if (flag3 == _TRUE_)                                                \
+      strcpy (string, string3);                                         \
+    else if (flag2 == _TRUE_)                                           \
       strcpy (string, string2);                                         \
     else if (flag1 == _TRUE_)                                           \
       strcpy (string, string1);                                         \

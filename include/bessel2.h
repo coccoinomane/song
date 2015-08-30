@@ -1,4 +1,4 @@
-/** @file bessel2.h Documented includes for the second-order Bessel module */
+/** @file bessel2.h Documented header file for the second-order Bessel module */
 
 #ifndef __BESSEL2__
 #define __BESSEL2__

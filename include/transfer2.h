@@ -1,4 +1,4 @@
-/** @file transfer.h Documented includes for transfer module. */
+/** @file transfer2.h Documented header file for the second-order transfer module. */
 
 #ifndef __TRANSFER2__
 #define __TRANSFER2__
@@ -70,24 +70,22 @@ struct transfers2 {
   // =                                    Transfer functions                                  =
   // ==========================================================================================
 
-  /* Table of transfer functions for each mode, initial condition, type, multipole and wavenumber.
-  Note that the k-grid of ptr2->transfer is much finer than the k-grid of ppt2->sources, as the
-  projection functions in the line-of-sight integral (basically spherical Bessel functions) make
-  the transfer functions to oscillate wildly in the k direction.
-    
-    The ptr->transfer array should be indexed as follows:
-
-      ptr->transfer [index_tt]
-                    [index_k1]
-                    [index_k2]
-                    [index_k]
-
-  * index_tt is a composite index that includes both the field (T,E,B) and multipole (l,m) dependences;
-    it is expanded as index_tt = ptr2->index_tt2_X + ptr2->lm_array[index_l][index_m], where X is either
-    T,E or B.
-  * index_k1 goes from 0 to ppt2->k_size.    
-  * index_k2 goes from 0 to ppt2->k_size-index_k1.
-  * index_k3 goes from 0 to ppt2->k3_size[index_k1][index_k2]. */
+  /** 
+   * Array containing the transfer function T_lm(k1,k2,k3) for all required types (T,E,B).
+   *
+   * The ptr2->transfer array should be indexed as follows:
+   * 
+   *     ptr2->transfer [index_tt2]
+   *                    [index_k1]
+   *                    [index_k2]
+   *                    [index_k]
+   * 
+   * - index_tt2 is a composite index that includes both the field (x=T,E,B...) and the multipole
+   *   (l,m); it is expanded as index_tt2 = ptr2->index_tt2_X + ptr2->lm_array[index_l][index_m].
+   * - index_k1 goes from 0 to ppt2->k_size-1.    
+   * - index_k2 goes from 0 to ppt2->k_size-index_k1-1 due to symmetry reasons.
+   * - index_k goes from 0 to ptr2->k_size_k1k2[index_k1][index_k2]-1.
+   */
 
   double **** transfer; 
   
@@ -171,18 +169,30 @@ struct transfers2 {
   
 
 
-  // =================================================================================
-  // =                        Storage of intermediate results                        =
-  // =================================================================================
+  // ====================================================================================
+  // =                                 Disk storage                                     =
+  // ====================================================================================
 
-  /* Files where the transfer functions will be stored (one file for each transfer type) */
-  char transfers_dir[_FILENAMESIZE_];
-  FILE ** transfers_files;
-  char ** transfers_paths;
+  char transfers_dir[_FILENAMESIZE_];  /**< Directory containing the transfer functions. If it already exists,
+                                       and ppr2->load_transfers_from_disk==_TRUE_, the transfer functions will
+                                       be read from this folder into the array ptr2->transfer. If it does not exist, and
+                                       ppr2->store_transfers_to_disk==_TRUE_, the transfer functions will be first computed and then
+                                       written to this folder from the array ptr2->transfer. Either way, the directory contains
+                                       one binary file for each transfer type, for a total of ptr2->tt2_size files. The file
+                                       corresponding to index_tt2 is located at ptr2->transfers_paths[index_tt2]; its stream
+                                       is in ptr2->transfers_files[index_tt2]. */
 
-  /* ASCII file that will keep track how how many transfer files have been succesfully written */
-  FILE * transfers_status_file;
-  char transfers_status_path[_FILENAMESIZE_];
+
+  char ** transfers_paths; /**< transfers_paths[index_tt2] is the path to the file with the transfer functions
+                           for the transfer type indexed by index_tt2. Used only if ppr2->store_transfers_to_disk==_TRUE_ or
+                           ppr2->load_transfers_from_disk==_TRUE_. */
+
+  FILE ** transfers_files; /**< transfers_files[index_tt2] is the pointer to the file with the transfer functions
+                           for the transfer type indexed by index_tt2. Used only if ppr2->store_transfers_to_disk==_TRUE_ or
+                           ppr2->load_transfers_from_disk==_TRUE_. */
+
+  FILE * transfers_status_file;                      /**< NOT IMPLEMENTED YET */
+  char transfers_status_path[_FILENAMESIZE_];        /**< NOT IMPLEMENTED YET */
 
 
 
@@ -211,9 +221,8 @@ struct transfers2 {
   /* Logical array. If the index_k1 position is true, then ppt2->transfers[index_k1] is allocated */
   short * has_allocated_transfers;
 
-  /* If true, compute only the 2nd-order transfer functions today, and do not care about
-  other flags invoking the subsequent modules */
-  short has_transfers2_only;
+  short has_transfers2_only; /**< If _TRUE_, SONG will stop execution after having run the transfer2.c
+                             module. Useful to debug the second-order transfer functions today. */
   
 
 };

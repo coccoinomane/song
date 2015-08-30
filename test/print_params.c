@@ -92,26 +92,24 @@ int main(int argc, char **argv) {
   /* LOS effects at first order */
   // printf("* Line-of-sight effects at first order\n");
   // printf("\tpt.has_scattering_in_los = %d\n", pt.has_scattering_in_los);
-  // printf("\tpt.has_photon_monopole_in_los = %d\n", pt.has_photon_monopole_in_los);
-  // printf("\tpt.has_metric_in_los = %d*\n", pt.has_metric_in_los);
+  // printf("\tpt.has_pure_metric_in_los = %d*\n", pt.has_pure_metric_in_los);
   // printf("\tpt.has_sw = %d\n", pt.has_sw);
   // printf("\tpt.has_isw = %d\n", pt.has_isw);
 
   /* LOS effects at second order */
-  // printf("* Line-of-sight effects at second order\n");
-  // printf("\tpt2.has_pure_scattering_in_los = %d\n", pt2.has_pure_scattering_in_los);
-  // printf("\tpt2.has_photon_monopole_in_los = %d\n", pt2.has_photon_monopole_in_los);
-  // printf("\tpt2.has_quad_scattering_in_los = %d\n", pt2.has_quad_scattering_in_los);
-  // printf("\tpt2.has_metric_in_los = %d*\n", pt2.has_metric_in_los);
-  // printf("\tpt2.has_quad_metric_in_los = %d\n", pt2.has_quad_metric_in_los);
-  // printf("\tpt2.has_time_delay_in_los = %d\n", pt2.has_time_delay_in_los);
-  // printf("\tpt2.has_redshift_in_los = %d\n", pt2.has_redshift_in_los);
-  // printf("\tpt2.has_lensing_in_los = %d\n", pt2.has_lensing_in_los);
-  // printf("\tpt2.use_delta_tilde_in_los = %d\n", pt2.use_delta_tilde_in_los);
-  // printf("\tpt2.has_sw = %d*\n", pt2.has_sw);
-  // printf("\tpt2.has_isw = %d*\n", pt2.has_isw);
-  // printf("\tpt2.only_early_isw = %d\n", pt2.only_early_isw);
-  // printf("\tpt2.has_recombination_only = %d\n", pt2.has_recombination_only);
+  printf("* Line-of-sight effects at second order\n");
+  printf("\tpt2.has_pure_scattering_in_los = %d\n", pt2.has_pure_scattering_in_los);
+  printf("\tpt2.has_quad_scattering_in_los = %d\n", pt2.has_quad_scattering_in_los);
+  printf("\tpt2.has_pure_metric_in_los = %d*\n", pt2.has_pure_metric_in_los);
+  printf("\tpt2.has_quad_metric_in_los = %d\n", pt2.has_quad_metric_in_los);
+  printf("\tpt2.has_time_delay_in_los = %d\n", pt2.has_time_delay_in_los);
+  printf("\tpt2.has_redshift_in_los = %d\n", pt2.has_redshift_in_los);
+  printf("\tpt2.has_lensing_in_los = %d\n", pt2.has_lensing_in_los);
+  printf("\tpt2.use_delta_tilde_in_los = %d\n", pt2.use_delta_tilde_in_los);
+  printf("\tpt2.has_sw = %d*\n", pt2.has_sw);
+  printf("\tpt2.has_isw = %d*\n", pt2.has_isw);
+  printf("\tpt2.only_early_isw = %d\n", pt2.only_early_isw);
+  printf("\tpt2.has_recombination_only = %d\n", pt2.has_recombination_only);
 
   /* Time sampling for quadratic sources */
   // printf("* Time sampling for quadratic sources\n");
@@ -132,7 +130,6 @@ int main(int argc, char **argv) {
   // printf("\tpt2.custom_tau_end = %g\n", pt2.custom_tau_end);
   // printf("\tpt2.custom_tau_size = %d\n", pt2.custom_tau_size);
   // printf("\tpt2.custom_tau_mode = %d\n", pt2.custom_tau_mode);
-  // printf("\tpt2.match_final_time_los = %d\n", pt2.match_final_time_los);
 
   /* Wavemode sampling */
   // printf("* Wavemode sampling for second-order sources\n");

@@ -597,10 +597,11 @@ int transfer2_init(
   /* Do not evaluate the subsequent modules if ppt2->has_early_transfers2_only == _TRUE_ */
   if (ptr2->has_transfers2_only == _TRUE_) {
     ppt->has_cls = _FALSE_;
+    ppt->has_bispectra = _FALSE_;
     ppt2->has_cls = _FALSE_;
     ppt2->has_bispectra = _FALSE_;
   }
-  
+    
   return _SUCCESS_;
 }
 
@@ -1159,11 +1160,12 @@ int transfer2_get_lm_lists (
   // =                            Transfer-source correspondence                          =
   // ======================================================================================
 
-  /* In the transfer2.c module a transfer function type (index_tt) encloses both the
-  multipole (l,m) and the source type (temperature, polarization, etc). Here, we
-  connect index_tt to the corresponding source types index_tp and multipoles
-  by defining ad hoc arrays */
-  
+  /* In the transfer2.c module, a transfer type (index_tt2) encloses both the multipole
+  (l,m) and the source type (temperature, polarization, etc). The lm_array we
+  have defined above serve the purpose of generating an univocal index_tt2 given the
+  (l,m) multipole. Here, we do the inverse operation by univocally associating to index_tt2
+  the multipole indices (l,m) */
+
   /* For a given transfer type index index_tt, these arrays contain the corresponding
   indices in ptr2->l and ptr2->m */
   class_alloc (ptr2->corresponding_index_l, ptr2->tt2_size*sizeof(int), ptr2->error_message);

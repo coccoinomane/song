@@ -465,9 +465,9 @@ int main(int argc, char **argv) {
   /* The warning below is useless now, as we just print the configurations where l1>=l2>=l3
   when considering the analytical approximation */
   if ((bi.has_intrinsic_squeezed==_TRUE_) && (index_bt==bi.index_bt_intrinsic_squeezed))
-    printf ("WARNING: while printing the squeezed-limit bispectrum, keep in mind that we compute it \
-as in eq. 4.1 of Lewis 2012 (http://arxiv.org/abs/1204.5018), which is not symmetrised. Hence, you \
-should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
+    printf ("WARNING: while printing the squeezed-limit bispectrum, keep in mind that we compute it\
+ as in eq. 4.1 of Lewis 2012 (http://arxiv.org/abs/1204.5018), which is not symmetrised. Hence, you\
+ should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
 
 
   // =================================================================================
@@ -958,33 +958,32 @@ should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
         double redshift_correction = +4/8. * quadratic_correction; 
 
         /* Add or subtract quadratic corrections to the intrinsic bispectrum */
-        if ((bi.has_intrinsic == _TRUE_) 
-          && (bi.bispectrum_type[index_bt] == intrinsic_bispectrum)) {
+        if ((bi.has_intrinsic==_TRUE_) && (bi.bispectrum_type[index_bt]==intrinsic_bispectrum)) {
                 
-          /* If the user specifically asked for no quadratic sources, we kill all quadratic 
-          contributions to the bispectrum as well; this is equivalent to running SONG as
-          a first-order code */
-          if (pt2.has_quadratic_sources==_FALSE_)
-            continue;
-                
-          /* Compute which intrinsic bispectrum is which based on whether the quadratic corrections
-          where added in the bispectra module. For details on the differences betweeen different
-          intrinsic bispectra, refer to the file documentation above. */
-          if (bi.add_quadratic_correction == _TRUE_) {
-            bolometric_T = bisp;
-            brightness_T = bolometric_T - temperature_correction;
-            if (pt2.use_delta_tilde_in_los == _TRUE_)
-              delta_tilde_T = brightness_T - redshift_correction;
-            else
-              delta_tilde_T = brightness_T;
-          }
-          else {
-            delta_tilde_T = bisp;
-            if (pt2.use_delta_tilde_in_los == _TRUE_)
-              brightness_T = delta_tilde_T + redshift_correction;
-            else
-              brightness_T = delta_tilde_T;
-            bolometric_T = brightness_T + temperature_correction;
+          /* Include the quadratic contributions to the bispectrum, unless the user specifically
+          asked for no quadratic sources. In this cales we assume that the user wanted to run
+          SONG as a first-order code */
+          if (pt2.has_quadratic_sources == _TRUE_) {
+
+            /* Compute which intrinsic bispectrum is which based on whether the quadratic corrections
+            where added in the bispectra module. For details on the differences betweeen different
+            intrinsic bispectra, refer to the file documentation above. */
+            if (bi.add_quadratic_correction == _TRUE_) {
+              bolometric_T = bisp;
+              brightness_T = bolometric_T - temperature_correction;
+              if (pt2.use_delta_tilde_in_los == _TRUE_)
+                delta_tilde_T = brightness_T - redshift_correction;
+              else
+                delta_tilde_T = brightness_T;
+            }
+            else {
+              delta_tilde_T = bisp;
+              if (pt2.use_delta_tilde_in_los == _TRUE_)
+                brightness_T = delta_tilde_T + redshift_correction;
+              else
+                brightness_T = delta_tilde_T;
+              bolometric_T = brightness_T + temperature_correction;
+            }
           }
 
         } // end of if (intrinsic)
@@ -998,7 +997,7 @@ should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
         // -                                 Find out which l's to print                                -
         // ----------------------------------------------------------------------------------------------
   
-        /* First column will be 'l' */
+        /* First column will be l */
         int l;
           
         if ((PRINT_TRIANGULAR == _TRUE_) && (l1==l1_fixed) && (l2==l2_fixed)) {
@@ -1017,16 +1016,6 @@ should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
           l_short = l3;
           index_l_short = index_l3;
         }
-        /* Uncomment to print squeezed configurations where l2 and l3 are different
-        (not working yet) */
-        // else if ((PRINT_SQUEEZED_SMALL_SCALE == _TRUE_) && (l1==l_long)
-        // && (index_l2==(index_l1-1)) && (index_l3==(index_l1+1))) {
-        //     
-        //   l = l3;
-        //   l_short = l3;
-        //   index_l_short = index_l3;
-        //   
-        // } // end of if(squeezed_small_scale)
         else if ((PRINT_SQUEEZED_LARGE_SCALE == _TRUE_) && (l1==l_short) && (l2==l_short)) {          
           l = l3;
           l_long = l3;

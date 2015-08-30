@@ -607,12 +607,130 @@ int bessel2_convolution (
 
 
 
+/** 
+ * Compute the spherical Bessel function j_l1(x) using spline interpolation.
+ *
+ * Evaluates the spherical Bessel function x at a given value of x by interpolating
+ * in the pre-computed table pbs2->j_l1. This function can be called from whatever
+ * module at whatever time, provided that bessel2_init() has been called before,
+ * and bessel2_free() has not been called yet.
+ *
+ * The index for l1 refers to the array pbs2->l1, which is an extension of ptr->l.
+ */
+
+int bessel2_l1_at_x(
+    struct bessels2 * pbs2,
+    double x,
+    int index_l1,
+    double * j_l1
+    )
+{
+  
+  /* If index_l1 is too large to be in the interpolation table, return  an error */
+  class_test(index_l1 > pbs2->l1_size,
+    pbs2->error_message,
+    "index_l1=%d>l1_size=%d; increase l_max.", index_l1, pbs2->l1_size);
+
+  /* If x is too small to be in the interpolation table, return 0 */
+  if (x < pbs2->x_min_l1[index_l1]) {
+    
+    *j_l1 = 0;
+
+    return _SUCCESS_;    
+  }
+  else {
+
+    /* If x is too large to be in the interpolation table, return an error  */
+    class_test(x > pbs2->xx_max,
+      pbs2->error_message,
+      "x=%e>xx_max=%e in bessel structure",x,pbs2->xx_max);
+
+    /* Find index_x, i.e. the position of x in the table; no complicated algorithm needed,
+    since values are linearly spaced with a known step and known first value. */
+
+    int index_x = (int)((x-pbs2->x_min_l1[index_l1])/pbs2->xx_step);
+    double a = (pbs2->x_min_l1[index_l1]+pbs2->xx_step*(index_x+1) - x)/pbs2->xx_step;
+
+    /* Find result with spline interpolation */
+
+    *j_l1 = a * pbs2->j_l1[index_l1][index_x] 
+      + (1.-a) * ( pbs2->j_l1[index_l1][index_x+1]
+          - a * ((a+1.) * pbs2->ddj_l1[index_l1][index_x]
+           +(2.-a) * pbs2->ddj_l1[index_l1][index_x+1]) 
+          * pbs2->xx_step * pbs2->xx_step / 6.0);
+
+  }
+  
+  return _SUCCESS_;
+
+}
+
+
+
+
+
+/** 
+ * Compute the spherical Bessel function j_l1(x) using linear interpolation.
+ *
+ * Evaluates the spherical Bessel function x at a given value of x by interpolating
+ * in the pre-computed table pbs2->j_l1. This function can be called from whatever
+ * module at whatever time, provided that bessel2_init() has been called before,
+ * and bessel2_free() has not been called yet.
+ *
+ * The index for l1 refers to the array pbs2->l1, which is an extension of ptr->l.
+ */
+
+int bessel2_l1_at_x_linear(
+    struct bessels2 * pbs2,
+    double x,
+    int index_l1,
+    double * j_l1
+    )
+{
+  
+  /* If index_l1 is too large to be in the interpolation table, return  an error */
+  class_test(index_l1 > pbs2->l1_size,
+    pbs2->error_message,
+    "index_l1=%d>l1_size=%d; increase l_max.", index_l1, pbs2->l1_size);
+
+  /* If x is too small to be in the interpolation table, return 0 */
+  if (x < pbs2->x_min_l1[index_l1]) {
+    
+    *j_l1 = 0;
+
+    return _SUCCESS_;    
+  }
+  else {
+
+    /* If x is too large to be in the interpolation table, return an error  */
+    class_test(x > pbs2->xx_max,
+      pbs2->error_message,
+      "x=%e>xx_max=%e in bessel structure",x,pbs2->xx_max);
+
+    /* Find index_x, i.e. the position of x in the table; no complicated algorithm needed,
+    since values are linearly spaced with a known step and known first value. */
+
+    int index_x = (int)((x-pbs2->x_min_l1[index_l1])/pbs2->xx_step);
+    double a = (pbs2->x_min_l1[index_l1]+pbs2->xx_step*(index_x+1) - x)/pbs2->xx_step;
+
+    /* Find result with linear interpolation (same as spline, but keep only
+    the terms linear in a) */
+
+    *j_l1 = a * pbs2->j_l1[index_l1][index_x] 
+          + (1.-a) * pbs2->j_l1[index_l1][index_x+1];
+
+  }
+  
+  return _SUCCESS_;
+
+}
+
+
 
 /**
  * Free all memory space allocated by bessel2_init().
  *
  * To be called at the end of each run.
- *
  */
 
 int bessel2_free( 
@@ -830,8 +948,12 @@ int bessel2_get_l1_list(
 /** 
  * Determine the x-grid where J_Llm(x) will be sampled and store it in pbs2->xx.
  *
- * The projection functions J_Llm(x) are a linear combination of spherical Bessel
- * functions j_l1(x). We sample both j and J linearly.
+ * Since the projection functions J_Llm(x) are a linear combination of spherical Bessel
+ * functions j_l1(x), te sample them linearly.
+ *
+ * The step and maximum value of the linear sampling are determined in the input2.c
+ * module based on the user-given parameters ppr2->k_max_tau0_over_l_max,
+ * ppt->l_scalar_max and ppr2->bessel_x_step_song.
  * 
  */
 int bessel2_get_xx_list(
@@ -867,8 +989,8 @@ int bessel2_get_xx_list(
 
 /**
  * Compute the projection function J_Llm(x) for all values of x where it is
- * non-negligible, given L (source index), l (multipole index) and m (azimuthal
- * index).
+ * non-negligible, given the source index L, the multipole index l and the
+ * azimuthal index m.
  * 
  * The projection functions will be convolved with the second-order source
  * functions in the transfer2.c module, as described in Sec. 5.5.1 of
@@ -883,8 +1005,8 @@ int bessel2_get_xx_list(
  *   photon perturbations as seen today.
  *
  * - x is the argument of the projection function; in the line of sight integral
- *   it is equal to k(tau-tau0). Since the projection function share the same
- *   geometrical properties of the Bessel functions, this means that the largest
+ *   it is equal to k(tau-tau0). Since the projection function shares the same
+ *   geometrical properties of a Bessel function, this means that the largest
  *   contribution today at the angular scale l comes from those modes that have
  *   k~l/tau_0.
  * 
@@ -1320,7 +1442,7 @@ int bessel2_J_for_Llm (
 
 /**
  * Compute the projection function J_Llm(x) using the precomputed table of spherical
- * Bessel functions (pbs2->j_l1).
+ * Bessel functions (pbs2->j_l1) and output the result in J_Llm_x.
  *
  * The projection functions are linear combinations of spherical Bessel functions.
  * The temperature projection function (J_TT) is given in eq. 5.97 of
@@ -1473,7 +1595,8 @@ int bessel2_J_Llm (
  * To do so, use the numerical recipes subroutine bessel_j. This function might
  * be useful to debug bessel_J_Llm, but it is never used in SONG.
  * 
- * This function only supports the temperature projection function (J_TT).
+ * This function only supports the temperature projection function (J_TT);
+ * extending it to J_EE and J_EB is straightforward.
  */
 
 int bessel2_J_Llm_at_x_exact(
@@ -1532,136 +1655,14 @@ int bessel2_J_Llm_at_x_exact(
 
 
 
-
-
-
-/** 
- * Compute the spherical Bessel function j_l1(x) using spline interpolation.
- *
- * Evaluates the spherical Bessel function x at a given value of x by interpolating
- * in the pre-computed table pbs2->j_l1. This function can be called from whatever
- * module at whatever time, provided that bessel2_init() has been called before,
- * and bessel2_free() has not been called yet.
- *
- * The index for l1 refers to the array pbs2->l1, which is an extension of ptr->l.
- */
-
-int bessel2_l1_at_x(
-    struct bessels2 * pbs2,
-    double x,
-    int index_l1,
-    double * j_l1
-    )
-{
-  
-  /* If index_l1 is too large to be in the interpolation table, return  an error */
-  class_test(index_l1 > pbs2->l1_size,
-    pbs2->error_message,
-    "index_l1=%d>l1_size=%d; increase l_max.", index_l1, pbs2->l1_size);
-
-  /* If x is too small to be in the interpolation table, return 0 */
-  if (x < pbs2->x_min_l1[index_l1]) {
-    
-    *j_l1 = 0;
-
-    return _SUCCESS_;    
-  }
-  else {
-
-    /* If x is too large to be in the interpolation table, return an error  */
-    class_test(x > pbs2->xx_max,
-      pbs2->error_message,
-      "x=%e>xx_max=%e in bessel structure",x,pbs2->xx_max);
-
-    /* Find index_x, i.e. the position of x in the table; no complicated algorithm needed,
-    since values are linearly spaced with a known step and known first value. */
-
-    int index_x = (int)((x-pbs2->x_min_l1[index_l1])/pbs2->xx_step);
-    double a = (pbs2->x_min_l1[index_l1]+pbs2->xx_step*(index_x+1) - x)/pbs2->xx_step;
-
-    /* Find result with spline interpolation */
-
-    *j_l1 = a * pbs2->j_l1[index_l1][index_x] 
-      + (1.-a) * ( pbs2->j_l1[index_l1][index_x+1]
-          - a * ((a+1.) * pbs2->ddj_l1[index_l1][index_x]
-           +(2.-a) * pbs2->ddj_l1[index_l1][index_x+1]) 
-          * pbs2->xx_step * pbs2->xx_step / 6.0);
-
-  }
-  
-  return _SUCCESS_;
-
-}
-
-
-
-
-
-/** 
- * Compute the spherical Bessel function j_l1(x) using linear interpolation.
- *
- * Evaluates the spherical Bessel function x at a given value of x by interpolating
- * in the pre-computed table pbs2->j_l1. This function can be called from whatever
- * module at whatever time, provided that bessel2_init() has been called before,
- * and bessel2_free() has not been called yet.
- *
- * The index for l1 refers to the array pbs2->l1, which is an extension of ptr->l.
- */
-
-int bessel2_l1_at_x_linear(
-    struct bessels2 * pbs2,
-    double x,
-    int index_l1,
-    double * j_l1
-    )
-{
-  
-  /* If index_l1 is too large to be in the interpolation table, return  an error */
-  class_test(index_l1 > pbs2->l1_size,
-    pbs2->error_message,
-    "index_l1=%d>l1_size=%d; increase l_max.", index_l1, pbs2->l1_size);
-
-  /* If x is too small to be in the interpolation table, return 0 */
-  if (x < pbs2->x_min_l1[index_l1]) {
-    
-    *j_l1 = 0;
-
-    return _SUCCESS_;    
-  }
-  else {
-
-    /* If x is too large to be in the interpolation table, return an error  */
-    class_test(x > pbs2->xx_max,
-      pbs2->error_message,
-      "x=%e>xx_max=%e in bessel structure",x,pbs2->xx_max);
-
-    /* Find index_x, i.e. the position of x in the table; no complicated algorithm needed,
-    since values are linearly spaced with a known step and known first value. */
-
-    int index_x = (int)((x-pbs2->x_min_l1[index_l1])/pbs2->xx_step);
-    double a = (pbs2->x_min_l1[index_l1]+pbs2->xx_step*(index_x+1) - x)/pbs2->xx_step;
-
-    /* Find result with linear interpolation (same as spline, but keep only
-    the terms linear in a) */
-
-    *j_l1 = a * pbs2->j_l1[index_l1][index_x] 
-          + (1.-a) * pbs2->j_l1[index_l1][index_x+1];
-
-  }
-  
-  return _SUCCESS_;
-
-}
-
-
-
 /**
- * Compute the spherical Bessel functions for given value of l1 belonging
+ * Compute the spherical Bessel functions for the given value of l1, which must belong
  * to the array pbs2->l1, and store the result in pbs2->j_l1[index_l1].
  *
  * This function it is equivalent to bessel_j_for_l(), from CLASS. The only
- * difference is that it computes the spherical Bessels for the extended list
- * pbs2->l1 rather than for pbs->l (see bessel2_get_l1_list() for more details).
+ * differences is that it computes the spherical Bessels for the extended list
+ * pbs2->l1 rather than for pbs->l; see bessel2_get_l1_list() for more details
+ * on the l1 list.
  */
 
 int bessel2_j_for_l1(

@@ -1,4 +1,4 @@
-/** @file bispectra2.h Documented includes for intrinsic bispectra module */
+/** @file bispectra2.h Documented header file for the intrinsic bispectra module */
 
 #ifndef __BISPECTRA2__
 #define __BISPECTRA2__
