@@ -199,7 +199,8 @@ struct perturbs2
   short has_ad;                       /**< Adiabatic initial conditions */
   short has_ad_first_order;           /**< Adiabatic initial conditions, with no quadratic sources. This is a useful 
                                       debug tool when paired with quadratic_sources=no, because then SONG results
-                                      must match CLASS. */
+                                      must match CLASS results. See perturb2_initial_conditions() for further
+                                      details. */
   short has_zero_ic;                  /**< Vanishing initial conditions, for debug purposes */  
   short has_unphysical_ic;            /**< Custom initial conditions, for debug purposes */
   double primordial_local_fnl_phi;    /**< Amount of primordial non-Gaussianity of the local type */
@@ -215,8 +216,7 @@ struct perturbs2
   // ------------------------------------------------------------------------------------
   
   short has_polarization2;                  /**< Include the polarised hierarchies in the differential sytem? */  
-  short has_quadratic_sources;              /**< Include the quadratic sources in the differential system? This is a useful 
-                                            debug tool when paired with ic_song=ad, because then SONG results must match CLASS. */
+
   short has_quadratic_liouville;            /**< Include the quadratic sources in the Liouville operator? */      
   short has_quadratic_collision;            /**< Include the quadratic sources in the photon-baryon collision term? */      
 
@@ -226,6 +226,26 @@ struct perturbs2
   short has_perturbed_recombination_stz;    /**< Include the perturbation to the fraction of free electrons when computing the collision term? */
   short perturbed_recombination_use_approx; /**< Compute the perturbed fraction of free electrons using the approximation in eq. 3.23 of
                                             Senatore et al. 2009 (http://arxiv.org/abs/0812.3652)? */
+
+  /**
+   * Should we include the quadratic sources in the differential system?
+   * 
+   * If you run SONG without quadratic sources, you are effectively running a first-order
+   * code. Tranfer functions will be contant in k1 and k2, and will match those from CLASS.
+   * In general, SONG power spectra will match CLASS ones. For this reason, setting
+   * quadratic_sources=no is a great debugging tool.
+   *
+   * The intrinsic bispectrum, on the other hand, will match the local bispectrum, because
+   * in the bispectrum module we effectively integrate three first-order transfer functions
+   * together with two power spectra P(k1)*P(k2). This integral corresponds exactly to the
+   * local bispectrum with f_nl = ppt2->primordial_local_fnl_phi. For more info on this
+   * "local limit", see Sec. 6.5.3 of http://arxiv.org/abs/1405.2280.
+   * 
+   * Note that in absence of quadratic sources, the initial conditions need to have a
+   * non-vanishing amplitude, lest all perturbations vanish. This is achieved by 
+   * setting a nonzero value for primordial_local_fnl_phi.
+  */
+  short has_quadratic_sources;
 
 
   /**
