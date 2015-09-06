@@ -588,12 +588,18 @@ int input2_init (
       ppt2->only_early_isw = _TRUE_;
   }
 
-  /* If effects that are not peaked at recombination are included, extend the integration
-  range up to today */
+  /* If effects that are not peaked at recombination are not included, stop integrating the
+  second-order system just after recombination */
   if ((ppt2->has_pure_metric_in_los == _FALSE_)
    && ((ppt2->has_isw == _FALSE_) || (ppt2->only_early_isw == _TRUE_))
    && (ppt2->has_quad_metric_in_los == _FALSE_) && (ppt2->has_time_delay_in_los == _FALSE_)
    && (ppt2->has_redshift_in_los == _FALSE_) && (ppt2->has_lensing_in_los == _FALSE_))
+    ppt2->has_recombination_only = _TRUE_;
+  
+  /* Should we stop integrating the second-order system just after recombination, regardless of the
+  other flags? */
+  class_call(parser_read_string(pfc,"only_recombination",&(string1),&(flag1),errmsg),errmsg,errmsg);
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
     ppt2->has_recombination_only = _TRUE_;
 
   /* Doesn't make sense not to have polarisation, if you want to compute polarisation */
@@ -908,11 +914,14 @@ int input2_init (
 
   if (flag1 == _TRUE_) {
 
-    if (strstr(string1,"bessel") != NULL)
-      ptr2->tau_sampling = bessel_tau_sampling;
+    if ((strstr(string1,"sources") != NULL) || (strstr(string1,"source") != NULL))
+      ptr2->tau_sampling = sources_tau_sampling;
 
     else if ((strstr(string1,"custom") != NULL) || (strstr(string1,"smart") != NULL))
-      ptr2->tau_sampling = custom_transfer2_tau_sampling;
+      ptr2->tau_sampling = custom_tau_sampling;
+
+    else if (strstr(string1,"bessel") != NULL)
+      ptr2->tau_sampling = bessel_tau_sampling;
     
     else
       class_stop(errmsg,
@@ -1571,7 +1580,7 @@ int input2_default_params (
   // ============================================================
   ptr2->transfer2_verbose = 0;
   ptr2->k_sampling = class_transfer2_k3_sampling;
-  ptr2->tau_sampling = custom_transfer2_tau_sampling;
+  ptr2->tau_sampling = sources_tau_sampling;
 
 
   // ============================================================
@@ -1661,7 +1670,7 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   /* Transfer function k-sampling (used only if ptr2->k_sampling == class_transfer2_k3_sampling) */
   ppr2->q_linstep_song = 0.45;
 
-  /* Transfer function tau-sampling (used only if ptr2->tau_sampling == custom_transfer2_tau_sampling) */
+  /* Transfer function tau-sampling (used only if ptr2->tau_sampling == custom_tau_sampling) */
   ppr2->tau_linstep_song = 0.6;
   
   /* Scalars */

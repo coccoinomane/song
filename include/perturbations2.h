@@ -251,7 +251,8 @@ struct perturbs2
   /**
    * Should we stop sampling the line of sight sources at the end of recombination?
    *
-   * The flag is true if all the requested line-of-sight sources are collisional.
+   * The flag is true if all the requested line-of-sight sources are collisional,
+   * or if the user explicitly set only_recombination=yes in the parameter file.
    * The Sachs-Wolfe effect for example is collisional, but the integrated Sachs-Wolfe
    * isn't, so that requesting the latter will turn this flag off.
    * 
@@ -259,8 +260,15 @@ struct perturbs2
    * SONG to evolve the differential system and to compute the transfer functions
    * only up to the end of recombination.
    *
-   * The time marking the end of recombination is given by ppt2->index_tau_end_of_recombination
-   * and is determined by perturb2_end_of_recombination().
+   * The time marking the end of recombination is
+   *
+   *   ppt2->tau_sampling[ppt2->index_tau_end_of_recombination],
+   *
+   * where ppt2->index_tau_end_of_recombination is computed based on the parameter
+   * recombination_max_to_end_ratio.
+   *
+   * This flag is ignored if the user asked for a custom time sampling for the sources
+   * (custom_time_sampling_song_sources=yes).
    */
   int has_recombination_only;
 
@@ -1087,10 +1095,14 @@ struct perturb2_workspace
   our second-order system. These arrays depend on the (l,m) multipole considered
   and on the cosine of the angle between k and either k1 or k2. They are indexed as
   ppw2->rotation_1[lm_quad(l,m)]. */
-  double *rotation_1;           /**< Rotation coefficients for k1, indexed as ppw2->rotation_1[lm_quad(l,m)] */
-  double *rotation_2;           /**< Rotation coefficients for k2, indexed as ppw2->rotation_2[lm_quad(l,m)] */
-  double *rotation_1_minus;     /**< Rotation coefficients for k1 (negative m), indexed as ppw2->rotation_1_minus[lm_quad(l,m)] */
-  double *rotation_2_minus;     /**< Rotation coefficients for k2 (negative m), indexed as ppw2->rotation_2_minus[lm_quad(l,m)] */
+  double *rotation_1;           /**< Rotation coefficients for k1, indexed as ppw2->rotation_1[lm_quad(l,m)]; for more 
+                                details, refer to perturb2_geometrical_corner(). */
+  double *rotation_2;           /**< Rotation coefficients for k2, indexed as ppw2->rotation_2[lm_quad(l,m)]; for more 
+                                details, refer to perturb2_geometrical_corner(). */
+  double *rotation_1_minus;     /**< Rotation coefficients for k1 (negative m), indexed as ppw2->rotation_1_minus[lm_quad(l,m)];
+                                for more details, refer to perturb2_geometrical_corner(). */
+  double *rotation_2_minus;     /**< Rotation coefficients for k2 (negative m), indexed as ppw2->rotation_2_minus[lm_quad(l,m)];
+                                for more details, refer to perturb2_geometrical_corner(). */
 
   //@}
 

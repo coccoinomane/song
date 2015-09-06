@@ -180,25 +180,33 @@ int transfer2_init(
   struct transfer2_workspace ** ppw;
   class_alloc(ppw, number_of_threads*sizeof(struct transfer2_workspace*), ptr2->error_message);
     
-  /* We shall allocate the time arrays with the maximum possible number of integration steps. The
-  actual steps depend on the wavemode k considered, with the largest k's having more time steps.
-  This is because k acts as the frequency of the highly oscillatory projection functions J(k(tau0-tau)). */
+  /* We shall allocate the time arrays with the maximum possible number of integration steps */
   int tau_size_max;
 
-  if (ptr2->tau_sampling == custom_transfer2_tau_sampling) {
+  /* In the sources time sampling, the integration grid matches the sources time sampling */
+  if (ptr2->tau_sampling == sources_tau_sampling) {
+    tau_size_max = ppt2->tau_size;
+  }
+
+  /* In the custom time sampling, the number of steps depend on the considered wavemode; the
+  largest k will have more time steps because the projection function, J(k(tau0-tau)),
+  oscillates faster in time. */
+  else if (ptr2->tau_sampling == custom_tau_sampling) {
     double k_max = ptr2->k_max_k1k2[ppt2->k_size-1][ppt2->k_size-1];
     double tau_step_min = 2*_PI_/k_max*ppr2->tau_linstep_song;
     double tau_max = ppt2->tau_sampling[ppt2->tau_size-1];
     tau_size_max = ppt2->tau_size + tau_max/tau_step_min + 1;
   }
-  
+
+  /* In the bessel sampling, we take as many steps as the points where the Bessel functions
+  are sampled */
   else if (ptr2->tau_sampling == bessel_tau_sampling) {
     tau_size_max = ppt2->tau_size + pbs2->xx_size;
   }
 
   /* Print some information on the finest time grid that will be used */
   if (ptr2->transfer2_verbose > 0)
-    printf (" -> maximum number of time steps in the LOS integration = %d\n", tau_size_max);
+    printf (" -> maximum number of time steps in the LOS integration = %d\n", tau_size_max-1);
   
   /* Allocate arrays in the workspace */
   abort = _FALSE_;
@@ -2427,12 +2435,27 @@ int transfer2_get_time_grid(
   than that of the source functions. */
   double tau_step_max;
 
+  /* In the sources time sampling, we take the time sampling of the line of sight source
+  as our integration grid. In this way, we will have a sparser time sampling than with
+  the other options, but the execution will be faster because the sources will not need to
+  be interpolated. */
+
+  if (ptr2->tau_sampling == sources_tau_sampling) {
+    
+      pw->tau_grid_size = tau_size_pt;
+      
+      for (int index_tau=0; index_tau < pw->tau_grid_size; ++index_tau)
+        pw->tau_grid[index_tau] = ppt2->tau_sampling[index_tau];
+      
+      goto fill_delta_tau;
+  }
+
   /* In the custom time sampling, we reason in terms of oscillations. In the line of sight
   integral, the Bessel functions appear with argument k*(tau_0-tau), meaning that they oscillate
   in time with a frequency of roughly 2*pi/k. Here we choose a linear step in tau which is
   proportional to such frequency, via the parameter tau_linstep_song. */
 
-  if (ptr2->tau_sampling == custom_transfer2_tau_sampling) {
+  else if (ptr2->tau_sampling == custom_tau_sampling) {
     
     tau_step_max = 2*_PI_/k*ppr2->tau_linstep_song;
 
@@ -2498,8 +2521,9 @@ int transfer2_get_time_grid(
   index_tau_tr++;
   index_tau_pt++;
 
-  /* We shall take note of the position of each grid–point inside ppt2->sampling,
-  in view of table look-up for interpolating the sources. */
+  /* We shall take note of the position of each grid–point inside ppt2->tau_sampling,
+  in view of table look-up for interpolating the sources. The first grid point
+  coincides with the first point in ppt2->tau_sampling, so we give it index 0. */
   pw->index_tau_left[0] = 0;
 
   while (index_tau_pt < tau_size_pt) {
@@ -2578,6 +2602,8 @@ int transfer2_get_time_grid(
   // =                                 Fill delta_tau                                   =
   // ====================================================================================
 
+  fill_delta_tau:
+
   /* Fill tau0_minus_tau, the argument of the projection function in the line
   of sight integral */
   for (index_tau_tr=0; index_tau_tr < pw->tau_grid_size; ++index_tau_tr) 
@@ -2594,7 +2620,7 @@ int transfer2_get_time_grid(
 
   return _SUCCESS_;
 
-} // end of transfer2_get_tau_list
+} // end of transfer2_get_time_grid
 
 
 
@@ -2791,8 +2817,22 @@ int transfer2_interpolate_sources_in_time (
   double * tau_pt = ppt2->tau_sampling;
   int tau_size_tr = pw->tau_grid_size;
   double * tau_tr = pw->tau_grid;
+    
+  /* If the integration grid matches the time sampling of the sources, there is no need for
+  interpolation */
+  if (ptr2->tau_sampling == sources_tau_sampling) {
+    
+    for (int index_tau = 0; index_tau < pw->tau_grid_size; ++index_tau)     
+      interpolated_sources_in_time[index_tau]
+        = interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau];
+    
+    return _SUCCESS_;
+    
+  }
   
-  /* Find second derivative of original sources with respect to k in view of spline interpolation */
+
+  /* Find second derivative of original sources with respect to k in view of spline
+  interpolation */
   if (ppr2->sources_time_interpolation == cubic_interpolation) {
 
     class_call (array_spline_table_columns (
@@ -2807,22 +2847,30 @@ int transfer2_interpolate_sources_in_time (
          ptr2->error_message);
   }
   
-  /* Interpolate the source function at each tau value contained in pw->tau_grid, using the usual
-  spline interpolation algorithm */
-  int index_tau = 0;
-  double h = tau_pt[index_tau+1] - tau_pt[index_tau];
+  /* Interpolate the source function at each tau value contained in pw->tau_grid, using the
+  usual spline interpolation algorithm */
+
+  /* Uncomment to look for index_tau manually, rather than using pw->index_tau_left */
+  // int index_tau = 0;
+  // double h = tau_pt[index_tau+1] - tau_pt[index_tau];
 
   for (int index_tau_tr = 0; index_tau_tr < tau_size_tr; ++index_tau_tr) {
     
-    while (((index_tau+1) < tau_size_pt) && (tau_pt[index_tau+1] < tau_tr[index_tau_tr])) {
-      index_tau++;
-      h = tau_pt[index_tau+1] - tau_pt[index_tau];
-    }
-    
+    /* Determine the index to the left of tau_tr in the sources time sampling, using
+    the array pw->index_tau_left, precomputed  in transfer2_get_time_grid() */
+    int index_tau = pw->index_tau_left[index_tau_tr];
+    double h = tau_pt[index_tau+1] - tau_pt[index_tau];
+
+    /* Uncomment to look for index_tau manually, rather than using pw->index_tau_left */
+    // while (((index_tau+1) < tau_size_pt) && (tau_pt[index_tau+1] < tau_tr[index_tau_tr])) {
+    //   index_tau++;
+    //   h = tau_pt[index_tau+1] - tau_pt[index_tau];
+    // }
+
     class_test(h==0., ptr2->error_message, "stop to avoid division by zero");
     
     double b = (tau_tr[index_tau_tr] - tau_pt[index_tau])/h;
-    double a = 1.-b;
+    double a = 1-b;
 
     /* Actual interpolation */
     if (ppr2->sources_time_interpolation == linear_interpolation) {

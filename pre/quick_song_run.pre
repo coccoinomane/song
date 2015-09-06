@@ -144,9 +144,10 @@ custom_tau_end_song_sources = 1000              # enter 0 to save sources up to 
 custom_tau_size_song_sources = 500
 custom_tau_mode_song_sources = log             # either lin, log or class
 
-## Integration grid in time for 2nd-order transfer functions
+## Integration grid in time for the second-order transfer functions
+#transfer2_tau_sampling = sources
 transfer2_tau_sampling = smart
-tau_linstep_song = 0.6
+tau_linstep_song = 999
 
 
 

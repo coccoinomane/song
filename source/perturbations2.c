@@ -684,6 +684,14 @@ int perturb2_indices_of_perturbs(
     "WARNING: the radiation streaming approximation for m=1 is not implemented yet.\
  The monopole and dipole for photons and neutrinos will be set to zero.");
 
+  class_test ((ppt2->has_quadratic_sources==_FALSE_) && (ppt2->primordial_local_fnl_phi==0),
+    ppt2->error_message,
+    "If you run SONG without quadratic sources (quadratic_sources=no) and with vanishing\
+ initial conditions (primordial_local_fnl_phi=0), all your results will be exactly zero.\
+ If your intent is to run SONG as a first-order code, set primordial_local_fnl_phi=1 to\
+ recover the local bispectrum with fnl=1, or set primordial_local_fnl_phi=5/3 to match CLASS\
+ C_l.");
+
 
   // ======================================================================================
   // =                              What sources to compute?                              =
@@ -4558,45 +4566,38 @@ int perturb2_approximations (
 
 
 /**
- * Update the geometrical quantities related to the current (k1,k2,k3) wavemode
- * being evolved.
+ * Update the workspace with the geometrical properties of the next wavemode
+ * to be evolved.
  *
- * Most of the formulas used below are described in detail in Appendices A and
- * B of http://arxiv.org/abs/1405.2280.
- *
- * Here we compute many useful quantities related to the system of wavevectors
- * \vec{k}, \vec{k1}, \vec{k2}, and store them in the workspace ppw2.  Contrary
- * to first order, at second order a perturbation in \vec{k} is given by a convolution
- * integral over two dummy wavevectors, \vec{k1} and \vec{k2}, that sum up to \vec{k}.
- * That is, the following must be fulfilled at all times:
+ * At second order, a perturbation in \vec{k} is given by a convolution integral
+ * over the two dummy wavevectors \vec{k1} and \vec{k2}. The two dummy wavevectors
+ * must sum up to \vec{k} by definition:
  *
  *    kx1 + kx2 = kx,    ky1 + ky2 = ky,     kz1 + kz2 = kz.
  *
- * Due to the symmetries described in Appendix B of http://arxiv.org/abs/1405.2280,
- * we have some freedom in choosing our set of (k1, k2, k). In SONG, we choose
- * the following:
+ * Due to the statistical anisotropy of the Universe, only 3 out of the 6
+ * degrees of freedom are independent. In SONG we follow the reasoning in 
+ * Appendix B of http://arxiv.org/abs/1405.2280 and choose the following
+ * independent degrees of freedom:
  *
- * -# we align the k vector with the polar axis of our reference frame (z axis), which
- *    coincides with the symmetry axis of the spherical harmonics Y_lm(theta, phi). This
- *    implies that:
- *        kx1 + kx2 = 0,    ky1 + ky2 = 0,    kz1 + kz2 = |k|
- *    where |k| is the magnitude of k.  This choice greatly simplifies the system of
- *    differential equation, effectively decoupling the evolution of multipoles with
- *    different azimuthal number m.
+ * -# We align the k vector with the z-axis, which coincides with the polar axis
+ *    of the spherical harmonics Y_lm(theta, phi). This choice removes two degrees of
+ *    freedoms, kx=0 and ky=0, and greatly simplifies the second-order differential
+ *    system, as it effectively decouples the evolution of multipoles with different
+ *    azimuthal number m.
  *
- * -# we impose that both k1 and k2 lie in the x-z axis:
- *        ky1 = ky2 = 0.
- *    This implies that the azimuthal angle phi of the two wavevectors either vanishes
- *    or is equal to pi, making all of our equations real-valued (see last paragraph
- *    of sec. 4.2 of Pitrou et al. 2010).
+ * -# We impose that the k1 vector has azimuthal angle phi_1=0. This choice implies
+ *    that both k1 and k2 lie in the x-z plane (ky1=ky2=0) and, since kx1=-kx2, that
+ *    k2's azimuthal angle is phi_2=pi. A spherical harmonic Y_lm(theta,phi) with
+ *    phi=0 or phi=pi is always real-valued, meaning that our equations will be 
+ *    real valued (see the last paragraph of sec. 4.2 of Pitrou et al. 2010).
  *
- * Here we also compute the rotation coefficients that rotate the first-order
- * perturbations to arbitrary wavemode configurations. For details on this
- * part of the function, refer to the in-code documentation pr to appendix B
- * and sec. 6.2.1.1 of http://arxiv.org/abs/1405.2280.
+ * In this function we also compute the rotation coefficients, ppw2->rotation_1 and
+ * ppw2->rotation_2. These are needed to obtain the first-order perturbations in
+ * an arbitrary wavemode \vec{k} starting from those computed in perturbations.c,
+ * which are instead computed assuming that \vec{k} is aligned with the polar axis.
  *
- * This function is called early in perturb2_solve(), which in turn is called for
- * each (k1,k2,k) triplet.
+ * This function is called at the beginning of perturb2_solve().
  * 
  */ 
 int perturb2_geometrical_corner (
@@ -4613,21 +4614,18 @@ int perturb2_geometrical_corner (
         )
 {
 
-  // =================================================================================
-  // =                                 Compute angles                                =
-  // =================================================================================
-
+  /* Update the workspace with the wavemodes that are going to be evolved */
   ppw2->index_k1 = index_k1;
-  ppw2->index_k2 = index_k2;
-  ppw2->index_k3 = index_k3;
-
-  /* Get the Fourier modes */
   double k1 = ppw2->k1 = ppt2->k[index_k1];
+  ppw2->index_k2 = index_k2;
   double k2 = ppw2->k2 = ppt2->k[index_k2];
+  ppw2->index_k3 = index_k3;
   double k = ppw2->k = ppt2->k3[index_k1][index_k2][index_k3];
   double k_sq = ppw2->k_sq = k*k;
 
-  /* Get the angles */
+  /* Compute the angles between the various wavevectors. Here and in the following, we
+  assume that \vec{k} is aligned with the polar axis and that \vec{k1} and \vec{k2} lie
+  in the x-z plane. */
   double cosk1k2 = ppw2->cosk1k2 = (k_sq - k1*k1 - k2*k2)/(2.*k1*k2);
   double cosk1k = ppw2->cosk1k = (k1 + k2*cosk1k2)/k;
   double cosk2k = ppw2->cosk2k = (k2 + k1*cosk1k2)/k;
@@ -4639,7 +4637,7 @@ int perturb2_geometrical_corner (
   /* Scalar product between \vec{k1} and \vec{k2} */
   double k1_dot_k2 = ppw2->k1_dot_k2 = k1*k2*cosk1k2;
   
-  /* One can use alternative formulas for the sines and cosines */
+  /* Alternative formulas for the sines and cosines */
   // double cosk1k = ppw2->cosk1k = (k_sq + k1*k1 - k2*k2)/(2*k1*k);
   // double cosk2k = ppw2->cosk2k = (k_sq + k2*k2 - k1*k1)/(2*k2*k);
   // double sink1k = ppw2->sink1k = sin (theta_1);
@@ -4672,87 +4670,106 @@ int perturb2_geometrical_corner (
     k1, k2, k, cosk1k2, sink2k);
   
 
-  // ==========================================================================================
-  // =                             Compute rotation coefficients                              =
-  // ==========================================================================================
+  // ====================================================================================
+  // =                              Rotation coefficients                               =
+  // ====================================================================================
 
-  /* The first-order perturbations enter the second-order system as quadratic sources.
-  We have computed them in perturbations.c, but only for those configurations where 
-  the k wavemode is aligned with the polar axis.
+  /* The evolution of the second-order perturbations is sourced by quadratic combinations
+  of the first-order perturbations. The latter have been computed in perturbations.c, but
+  only for configurations where the \vec{k} wavemode is aligned with the polar axis.
   
-  However, to complete the second-order system, we need these first-order perturbations
-  to be evaluated in arbitrary k-configurations, not only aligned to the polar axis.
-  The statistical isotropy of the Universe allows us to obtain the arbitrary perturbations
-  by a simple rotation of the polar-aligned perturbations.
+  In the second-order system, however, the first-order perturbations appear in arbitrary
+  k-configurations. Thanks to the statistical isotropy of the Universe, we can obtain
+  them by multipying the polar-aligned perturbations with a bunch of geometrical
+  coefficients, the Wigner rotation matrices, which are basically spin-weighted 
+  spherical harmonics.
+
+  In SONG, we adopt the following simplifications:
+    
+    - No vector nor tensor modes are generated in the primordial Universe, which implies
+      that the first-order perturbations are only scalar, which in turn implies that
+      the Wigner rotation matrices reduce to spherical harmonics (spin=0).
+
+    - We assume that the dummy wavevectors k1 and k2 lay on the x-z plane, which implies
+      that their azimuthal angle (phi) is either 0 or pi. We choose phi_1=0 and phi_2=pi,
+      so that the rotation coefficients (spherical harmonics) reduce to associated Legendre
+      polynomials, P_lm, times a prefactor e^(i*phi*m)=1 for \vec{k1} and e^(i*phi*m)=(-1)^m
+      for \vec{k2}.
   
-  In the general case, the rotation coefficients are given by Wigner rotation matrices.
-  In our case, we adopt the following simplifications:
-    - the first-order perturbations are only scalar,
-    - we assume that k1 and k2 lay on the x-z plane, that is, that their azimuthal
-      angle phi is either 0 or pi.
-  Then, the rotation matrices reduce to Legendre polynomials P_lm; for more detail,
-  see sec. B.1 of http://arxiv.org/abs/1405.2280.
-  
-  We store the rotation coefficients in the array ppw2->rotation_1 for k1 and in
+  We store these rotation coefficients in the array ppw2->rotation_1 for k1 and in
   ppw2->rotation_1 for k2.
   
-  The rotations coefficients are the same regardless of the considered species. The
-  monopoles (delta_g, delta_b, ...) do not need to be rotated. The dipoles are rotated
-  by multiplication with k1[m] or k2[m]. For example, the rotation of the first-order
+  Note that the rotations coefficients are the same regardless of the considered species.
+  They are equal to one for the monopoles (l=m=0), which means that the density contrasts
+  computed in CLASS do not need to be rotated; for the dipoles (l=1), the coefficients 
+  reduce to k1[m] and k2[m], respectively. For example, the rotation of the first-order
   velocity is given by this simple formula:
-     v_m(k1) = i k1_m * vpot(k1)
-     v_m(k2) = i k2_m * vpot(k2), 
-  where vpot is the scalar potential of the irrotation velocity: v^i = dv/dx^i;
-  the formulas are equivalent to eq. A.38 of Pitrou et al. 2010. Things get more
-  complicated for higher moments.
+     v_m(k1) = i k1[m] * v_pot(k1)
+     v_m(k2) = i k2[m] * v_pot(k2), 
+  where v_pot is the scalar potential of the irrotation velocity: v^i = dv/dx^i;
+  see also eq. A.38 of Pitrou et al. 2010. For higher moments (l>1), things get more
+  complicated.
   
-  For more detail on rotations and statistical isotropy see appendix B and sec.
-  6.2.1.1 of http://arxiv.org/abs/1405.2280see, eq. A.6 of Beneke, Fidler &
-  Klingmuller 2011, eq. A.37 of Pitrou et al. 2010. */
+  For more detail on rotations and statistical isotropy see the following references:
     
+   - Appendix B of http://arxiv.org/abs/1405.2280.
+   - Sec. 6.2.1.1 of http://arxiv.org/abs/1405.2280.
+   - Eq. A.6 of Beneke, Fidler & Klingmuller 2011.
+   - Eq. A.37 of Pitrou, Uzan & Bernardeau 2010. */
+
   for (int l=0; l<=ppt2->largest_l_quad; ++l) {
     
     for (int m=0; m<=l; ++m) {
 
-      /* The rotation coefficients for the first-order quantities are defined as
-          sqrt(4pi/(2l+1)) Y_lm(theta,phi)
-      and they appear in the the rotation formula (eq. B.9 of http://arxiv.org/abs/1405.2280)
-          Delta_lm(\vec{k1}) = sqrt(4pi/(2l+1)) Y_lm(theta,phi) Delta_l(k1)
-      where Delta_l is the first-order multipole computed with k1 aligned with the zenith.
-      Since Delta_l is real, Delta_lm under complex conjugation behaves like the spherical
-      harmonic:
-          Delta_lm = (-1)^m Delta*_l-m.
-      Since we choose phi_1=0 and phi_2=pi, Y_lm(theta,phi) is real too. Then we have that
-          Delta_lm = (-1)^m Delta_l-m.
-      This justifies the (-1)^m factor that we include below.
-
-      The spherical harmonics are given by Y_lm(theta,phi) = P_lm(costheta) exp(i*m*phi).
-      Since we choose phi_1=0 and phi_2=pi, the rotation coefficients for \vec{k2} have
-      an extra (-1)^m factor arising from the identity exp(i*m*pi) = (-1)^m. */
       if (ppt2->rescale_quadsources == _FALSE_) { 
+
+        /* The rotation coefficients are basically Wigner matrices, which in turn are spin
+        weighted spherical harmonics. For scalar perturbations (spin=0) that lie on the x-z
+        axis (phi_1=0), the Wigner matrix reduces to an associated Legendre polynomial. Note
+        that these Legendre polynomials include the normalisation from the spherical
+        harmonics, that is, the factor sqrt((2l+1)/(4pi) * (l-m)!/(l+m)!). */
         ppw2->rotation_1[lm_quad(l,m)] = plegendre_lm(l,m,cosk1k);
+
+        /* We chose the azimuthal angle for \vec{k2} to be phi_2=pi. Since
+        Y_lm = P_lm * e^(i*phi*m), this results into an additional (-1)^m factor in the
+        rotation coefficients */
         ppw2->rotation_2[lm_quad(l,m)] = ALTERNATING_SIGN(m) * plegendre_lm(l,m,cosk2k);
+
+        /* The rotation coefficients with negative m are related to the m>0 coefficients by
+        a (-1)^m factor. This follow from the property of the spherical harmonics,
+        Y_l-m = (-1)^m Y^*_lm, and by the fact that Y^*_lm=Y_lm for phi=0 or pi. */
         ppw2->rotation_1_minus[lm_quad(l,m)] = ALTERNATING_SIGN(m) * ppw2->rotation_1[lm_quad(l,m)];
         ppw2->rotation_2_minus[lm_quad(l,m)] = ALTERNATING_SIGN(m) * ppw2->rotation_2[lm_quad(l,m)];
       }
 
-      /* Divide the rotation coefficients by a factor sin(theta_k1)^m, if asked. This is the
-      same as rescaling the transfer functions by the same factor. The pow(k1/k2) factors
-      come from the fact that sin(theta_k2) = k1/k2 sin(theta_k1). Note that for m<0, we multiply
-      the  coefficients by sin(theta_1)^|m|. We do so because in order to compute the bispectrum
-      of the CMB we need the function T_lm / Y_mm(k1) which is proportional to
-      T_lm / sin(theta_k1)^|m| (see sec. 6.2.1.2 of http://arxiv.org/abs/1405.2280). Because of the
-      presence of the absolute value, |m|, the rescaling that we perform here corresponds to Y_mm
-      only for m>=0. This is not a problem because we need the transfer functions for m>=0 in any
-      case. */
+      /* To compute the bispectrum it is convenient to rescale the second-order transfer
+      function by a factor sin(theta_1)^(-|m|), where theta_1 is the angle between \vec{k}
+      and \vec{k1}. Please refer to sec. 6.2.1.2 of http://arxiv.org/abs/1405.2280 to see
+      why this is helpful.
+
+      The same effect can be achieved by rescaling the rotation coefficients instead of
+      the transfer functions, provided we use a factor sin(theta_1)^(-m) instead of
+      sin(theta_1)^(-|m|). This little change won't make any difference for the bispectrum
+      module, because it uses only the transfer functions with m>=0. */
 
       else {
+        
+        /* Dividing the rotation coefficients by sin(theta_k1)^|m| would lead to numerical
+        instability, because theta_1 can be very small. Therefore, we implement the rescaling
+        directly in the algorithm for the Legendre polynomials, in the function
+        plegendre_lm_rescaled() */
         ppw2->rotation_1[lm_quad(l,m)] = plegendre_lm_rescaled(l,m,cosk1k);
-        ppw2->rotation_2[lm_quad(l,m)] =
-          (ALTERNATING_SIGN(m) * plegendre_lm_rescaled(l,m,cosk2k)) * pow(k1/k2,m);
+        
+        /* To obtain the rescaled coefficients for \vec{k2}, we multiply the rescaled P_lm in
+        \vec{k2} by a factor (-1)^m * (k1/k2)^m. The (-1)^m factor comes from the fact that
+        phi_2=pi, which leads to a factor e^(i*pi*m) = (-1)^m. The (k1/k2)^m factor comes from
+        the fact that the wavemodes satisfy sin(theta_k2) = k1/k2*sin(theta_k1) (appendix B of
+        http://arxiv.org/abs/1405.2280). */
+        ppw2->rotation_2[lm_quad(l,m)] = (ALTERNATING_SIGN(m) * plegendre_lm_rescaled(l,m,cosk2k)) * pow(k1/k2,m);
+        
+        /* For negative m, we do the same as above with m -> -m */
         ppw2->rotation_1_minus[lm_quad(l,m)] = plegendre_lm_rescaled(l,-m,cosk1k);
-        ppw2->rotation_2_minus[lm_quad(l,m)] =
-          (ALTERNATING_SIGN(m) * plegendre_lm_rescaled(l,-m,cosk2k)) * pow(k1/k2,-m);
+        ppw2->rotation_2_minus[lm_quad(l,m)] = (ALTERNATING_SIGN(m) * plegendre_lm_rescaled(l,-m,cosk2k)) * pow(k1/k2,-m);
       }
       
       /* Check that the rotation coefficients for positive and negative m's coincide for m=0 */
@@ -4764,15 +4781,16 @@ int perturb2_geometrical_corner (
       }
 
       
-      /* Sqrt(4*pi/(2*l+1)) factor from the definition of the Wigner rotation (see
-      Beneke & Fidler 2011, eq. A.6,  or Pitrou et al. 2010 eq. A.37). */    
+      /* We include an extra factor to match the definition of the Wigner rotation matrices
+      (eq. 6.12 of http://arxiv.org/abs/1405.2280, or eq. A.6 of Beneke & Fidler 2011, or 
+      eq. A.37 of Pitrou et al. 2010). */    
       double pre_factor = sqrt(4*_PI_/(2*l+1));
       ppw2->rotation_1[lm_quad(l,m)] *= pre_factor;
       ppw2->rotation_2[lm_quad(l,m)] *= pre_factor;
       ppw2->rotation_1_minus[lm_quad(l,m)] *= pre_factor;
       ppw2->rotation_2_minus[lm_quad(l,m)] *= pre_factor;
 
-      /* Debug the values of the rotation coefficients */
+      /* Print the values of the rotation coefficients */
       if (ppt2->perturbations2_verbose > 4) {
         if ((index_k1==14) && (index_k2==12) && (index_k3==4)) {
           printf("Rotation coefficients at (l,m)=(%3d,%3d), with lm_quad(l,m)=%3d: ",
@@ -4788,6 +4806,7 @@ int perturb2_geometrical_corner (
   } // end of cycle on 'l'
   
   
+
   // ==================================================================================
   // =                              Spherical coordinates                             =
   // ==================================================================================

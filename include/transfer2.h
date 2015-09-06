@@ -25,8 +25,10 @@ enum transfer2_k3_sampling {
  * methods use the grid in ppt2->tau_sampling plus some extra points.
  */
 enum transfer2_tau_sampling {
-  bessel_tau_sampling, /**< add extra points to the integration grid based on the x-sampling of the Bessel functions */
-  custom_transfer2_tau_sampling /**< add extra points to the integration grid based on input from user */
+  sources_tau_sampling, /**< Use the same sampling as the line-of-sight sources (ppt2->tau_sampling). This is the only
+                        option that does not requires interpolation of the sources. */ 
+  custom_tau_sampling,  /**< Add extra points to the sources sampling based on input from user */
+  bessel_tau_sampling,  /**< Add extra points to the sources sampling based on the x-sampling of the Bessel functions */
 };
 
 
