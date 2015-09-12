@@ -203,7 +203,6 @@ int main (int argc, char **argv) {
 
 
   /* Find the indices associated to l and m */
-  printf ("l = %d\n", l);
   int index_l = tr.index_l[l];
   int index_m = pr2.index_m[m];
   if (index_l<0) {

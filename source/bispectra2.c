@@ -834,47 +834,27 @@ int bispectra2_intrinsic_workspace_init (
   // =                                    Prepare integration grid                                     =
   // ===================================================================================================
 
+  class_call (bispectra_get_r_grid (
+                ppr,
+                pba,
+                pth,
+                ppt,
+                pbi,
+                ppt2->tau_sampling,
+                ppt2->tau_size,
+                &(pwb->r),
+                &(pwb->r_size),
+                &(pwb->r_min),
+                &(pwb->r_max),
+                &(pwb->delta_r)),
+    pbi->error_message,
+    pbi->error_message);
 
-  // ------------------------------------------------------------
-  // -                         Grid in r                        -
-  // ------------------------------------------------------------
 
-  /* We set the r-sampling as if it were a time sampling.  We do so because 'r' has the
-  right dimensions, and it always appears in the argument of a Bessel function multiplying
-  a wavemode, just as it was for conformal time in the line-of-sight integral. */
-
-  pwb->r_size = ppr->r_size;
-
-  if (ppr->bispectra_r_sampling == custom_r_sampling) {
-    pwb->r_min = ppr->r_min;
-    pwb->r_max = ppr->r_max;
-  }
-  /* Centre the r-grid on tau0-tau_rec */
-  else if (ppr->bispectra_r_sampling == centred_r_sampling) {
-    double centre = pba->conformal_age - pth->tau_rec;
-    pwb->r_min = MAX (0, centre - ppr->r_left*pth->tau_rec);
-    pwb->r_max = centre + ppr->r_right*pth->tau_rec;
-  }
-
-  /* We sample r linearly */
-  class_alloc (pwb->r, pwb->r_size*sizeof(double), pbi->error_message);
-  lin_space (pwb->r, pwb->r_min, pwb->r_max, pwb->r_size);
-    
-  /* Allocate & fill delta_r, the measure for the trapezoidal integration over r */
-  class_alloc (pwb->delta_r, pwb->r_size * sizeof(double), pbi->error_message);
-
-  /* Fill pwb->delta_r */
-  pwb->delta_r[0] = pwb->r[1] - pwb->r[0];
-      
-  for (int index_r=1; index_r < pwb->r_size-1; ++index_r)
-    pwb->delta_r[index_r] = pwb->r[index_r+1] - pwb->r[index_r-1];
-      
-  pwb->delta_r[pwb->r_size-1] = pwb->r[pwb->r_size-1] - pwb->r[pwb->r_size-2];
-
-  /* Print the r-grid */
-  // printf ("# ~~~ r-sampling for the bispectrum integration ~~~\n");
-  // for (index_r=0; index_r < pwb->r_size; ++index_r)
-  //   printf ("%d %g\n", index_r, pwb->r[index_r]);
+  /* Debug - Print the r-grid */
+  // for (int index_r=0; index_r < pwb->r_size; ++index_r) {
+  //   fprintf (stderr, "%12d %16g\n", index_r, pwb->r[index_r]);
+  // }
 
 
   // -----------------------------------------------------------------------
@@ -2243,10 +2223,11 @@ int bispectra2_intrinsic_integrate_over_k1 (
             ++pwb->count_memorised_for_integral_over_k1;
 
             /* Print the integral as a function of r */
-            // if ((pwb->abs_M3==1) && (pwb->offset_L3==0) && (offset_L1==0))
-            //     if ((l1==200) && (l2==200) && (pbi->l[index_l3]==200))
-            //       fprintf (stderr, "%17.7g %17.7g\n",
-            //         pwb->r[index_r], pwb->integral_over_k1[index_l3][index_l2][index_l1-index_l1_min][index_r]);
+            // if ((pwb->abs_M3==0) && (pwb->offset_L3==0) && (offset_L1==0))
+            //   if ((pwb->X==pbi->index_bf_t) && (pwb->Y==pbi->index_bf_t) && (pwb->Z==pbi->index_bf_t))
+            //     if ((pbi->l[index_l1]==2) && (pbi->l[index_l2]==2) && (pbi->l[index_l3]==2))
+            //         fprintf (stderr, "%17.7g %17.7g\n",
+            //           pwb->r[index_r], pwb->integral_over_k1[index_l3][index_l2][index_l1-index_l1_min][index_r]);
 
             #pragma omp flush(abort)
   

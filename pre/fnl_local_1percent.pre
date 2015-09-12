@@ -1,0 +1,29 @@
+## Precision settings for ~1% precision on f_nl^local for temperature
+## and polarisation, with l_max=2500.
+
+
+# k-sampling of the transfer functions
+k_min_tau0 = 0.08
+k_step_sub = 0.15
+k_step_super = 0.05
+k_logstep_super = 1.4
+k_max_tau0_over_l_max = 1.6
+
+# Linear step in the sampling of the Bessel functions
+bessel_x_step = 0.1
+
+# Sampling in multipole space
+l_logstep = 1.35
+l_linstep = 50
+
+# Parameters for the bispectrum integration
+bispectra_r_sampling = centred
+r_left = 1.5
+r_right = 1.5
+r_size = 75
+
+# Uncomment to include contributions from r<tau0-tau_rec
+# bispectra_r_sampling = sources
+# r_left = 1.5
+# r_right = 1.5
+# r_size = 75

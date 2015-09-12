@@ -612,7 +612,7 @@ int input2_init (
   class_test ((ppt2->use_delta_tilde_in_los==_TRUE_) && (ppt2->has_redshift_in_los==_TRUE_),
     errmsg,
     "the delta_tilde options are not compatible with 'include_redshift_in_los_2nd_order'");
-		
+
 	/* This option should be last. If true, compute only the test source term */
   class_call(parser_read_string(pfc,"use_test_source",&(string1),&(flag1),errmsg),errmsg,errmsg);
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL))) {

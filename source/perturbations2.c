@@ -1946,7 +1946,7 @@ int perturb2_timesampling_for_sources (
 
     /* Using bisection, search the time such that the ratio between the Hubble
     time-scale tau_h = 1/aH and the Compton time-scale 1/kappa_dot is equal to
-    ppt2->start_sources_at_tau_c_over_tau_h. Usually, this parameter is about
+    ppr->start_sources_at_tau_c_over_tau_h. Usually, this parameter is about
     0.01, which means that we start sampling the sources in the tight coupling
     regime (tau_c<<tau_h), where the visibility function is still small.  */
 
@@ -2212,6 +2212,12 @@ int perturb2_timesampling_for_sources (
     ppt2->tau_size = ppt2->index_tau_end_of_recombination;
   }
 
+
+  /* Debug - Print time sampling */
+  // printf ("# ~~~ tau-sampling for the source function ~~~\n");
+  // for (int index_tau=0; index_tau < ppt2->tau_size; ++index_tau) {
+  //   printf ("%12d %16g\n", index_tau, ppt2->tau_sampling[index_tau]);
+  // }
 
 
   // ====================================================================================
@@ -4812,8 +4818,7 @@ int perturb2_geometrical_corner (
   // ==================================================================================
   
   /* Spherical coordinates of the Fourier modes \vec{k1} and \vec{k2}.
-  
-  Note that when rescaling is turned on, these quantities are rescaled with respect
+  When rescaling is turned on, these quantities are rescaled with respect
   to the actual spherical coordinates. */
   double k1_M1 = ppw2->k1_m[-1 +1] = k1*rot_1(1,-1);
   double k1_0  = ppw2->k1_m[ 0 +1] = k1*rot_1(1, 0); /* = k1*cosk1k */
@@ -10809,6 +10814,7 @@ int perturb2_sources (
   
   double a = pvecback[pba->index_bg_a];
   double a_sq = a*a;
+  double z = 1/a-1;
   double Hc = pvecback[pba->index_bg_H]*a;
   double Hc_sq = Hc*Hc;
   double H = pvecback[pba->index_bg_H];
@@ -10818,7 +10824,7 @@ int perturb2_sources (
   class_call (thermodynamics_at_z(
                 pba,
                 pth,
-                1./pvecback[pba->index_bg_a]-1.,  /* redshift z=1/a-1 */
+                z,
                 pth->inter_closeby,
                 &(ppw2->last_index_thermo),
                 ppw2->pvecback,
@@ -10943,7 +10949,8 @@ int perturb2_sources (
       (See eqs. 3.22, 4.97, 4.100 of my thesis for details.) Using one or the other representation
       does not affect the final result as long as we include all the sources in the line-of-sight
       integration. The result is affected, however, if we only include some of the sources,
-      e.g. when including SW, ISW or quad_metric separately (cfr 4.97 and 4.100 of my thesis). */
+      e.g. when including SW, ISW or quad_metric separately (cfr 4.97 and 4.100 of
+      http://arxiv.org/abs/1405.2280). */
       phi_exp = phi + 2*phi_1*phi_2;
       psi_exp = psi - 2*psi_1*psi_2;
       phi_exp_prime = phi_prime + 2*(phi_1*phi_prime_2 + phi_prime_1*phi_2);
@@ -11030,8 +11037,8 @@ int perturb2_sources (
 
       switch_isw = 1;
   
-      /* If the user asked for only the early ISW effect, then turn it off after recombination */
-      if ((ppt2->only_early_isw == _TRUE_) && (index_tau >= ppt2->index_tau_end_of_recombination))
+      /* Turn off the late ISW effect if requested */
+      if ((ppt2->only_early_isw == _TRUE_) && (z < ppt->eisw_lisw_split_z))
         switch_isw = 0;    
     }
 
@@ -11076,7 +11083,7 @@ int perturb2_sources (
           if ((ppt2->has_quad_metric_in_los==_TRUE_) && (ppt2->use_exponential_potentials==_FALSE_))
             source += 8 * (phi_1*phi_prime_2 + phi_2*phi_prime_1);
 
-        } // end of monopole
+        }
 
 
         /* - Dipole source */
@@ -11099,14 +11106,14 @@ int perturb2_sources (
           /* Quadratic metric contribution from the Liouville operator  */
           if (ppt2->has_quad_metric_in_los == _TRUE_) {
             /* Using the exponential potentials induces a sign difference in the dipole term
-            (cfr 4.97 and 4.100 of my thesis) */
+            (cfr 4.97 and 4.100 of http://arxiv.org/abs/1405.2280) */
             if (ppt2->use_exponential_potentials == _FALSE_)
               source += - 4 * (k1_m[m+1]*psi_1*(psi_2-phi_2) + k2_m[m+1]*psi_2*(psi_1-phi_1));
             else
               source += - 4 * (k1_m[m+1]*psi_1*(-psi_2-phi_2) + k2_m[m+1]*psi_2*(-psi_1-phi_1));
           }
 
-        } // end of dipole
+        }
 
 
         /* - Quadrupole source */
@@ -11124,7 +11131,7 @@ int perturb2_sources (
             if (m == 2) source += switch_isw * (4 * gamma_m2_prime);
           }
 
-        } // end of quadrupole
+        }
 
   
         /* Scattering from quadratic sources of the form multipole times baryon_velocity */

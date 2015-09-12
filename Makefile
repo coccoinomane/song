@@ -99,8 +99,9 @@ FISHER = fisher.o
 default: class song print_params print_sources1 print_sources2 print_transfers1 print_transfers2 print_bispectra
 
 # CLASS executables
+.PHONY: libclass.a class test_background test_thermodynamics test_perturbations test_transfer classy tar
 libclass.a class test_background test_thermodynamics test_perturbations test_transfer classy tar: 
-	cd $(CLASS_DIR); export WITH_BISPECTRA=1; export WITH_SONG_SUPPORT=1; make $@
+	cd $(CLASS_DIR); export WITH_BISPECTRA=1; export WITH_SONG_SUPPORT=1; make $@; mv $@ ..
 
 # SONG executables
 SONG = song.o

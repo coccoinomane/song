@@ -1,4 +1,4 @@
-## Precision file for SONG intended to quickly compute the intrinisc bispectrum 
+## Precision file for SONG intended to quickly compute the intrinsic bispectrum
 ## and to explain the precision parameters.
 
 
@@ -129,7 +129,7 @@ custom_tau_mode_quadsources = log               # either lin, log or class (best
 
 ## Timesampling for the first-order line-of-sight sources
 start_sources_at_tau_c_over_tau_h = 0.01
-perturb_sampling_stepsize = 0.05
+perturb_sampling_stepsize = 0.1
 match_final_time_los = no
 
 ## Time sampling of the second-order line-of-sight sources (overridden if using custom
@@ -145,7 +145,6 @@ custom_tau_size_song_sources = 500
 custom_tau_mode_song_sources = log             # either lin, log or class
 
 ## Integration grid in time for the second-order transfer functions
-#transfer2_tau_sampling = sources
 transfer2_tau_sampling = smart
 tau_linstep_song = 999
 
@@ -182,18 +181,30 @@ l_max_ur = 15
 # ===========================================================================
 
 # Integration of the bispectrum along the r-direction.
-#  - If bispectra_r_sampling=custom, then the r will be sampled r_size
+#
+#  - If bispectra_r_sampling=custom, then r will be linearly sampled r_size
 # times between r_min and r_right.
-#  - If bispectra_r_sampling=centred, then the r will be sampled r_size 
+#
+#  - If bispectra_r_sampling=centred, then r will be linearly sampled r_size 
 # times between (tau0-tau_rec)-tau_rec*r_left and (tau0-tau_rec)+tau_rec*r_right.
+#
+#  - If bispectra_r_sampling=sources, then r will have the same sampling as the
+# line of sight sources up to (tau0-tau_rec)-tau_rec*r_left; after that, r will
+# be sampled linearly until (tau0-tau_rec)+tau_rec*r_right with r_size points,
+# unless r_size=-1, in which case the step of the linear sampling will be 
+# the same as that of the sources at recombination (usually very small).
+#
 # This choice is justified by the fact that the transfer functions in the
-# bispectrum integral are peaked at recombination which, due to the
-# presence of the Bessel functions with argument k*r, makes the integrand
-# function peaked at r=tau0-tau.
-bispectra_r_sampling = centred
+# bispectrum integral are peaked at recombination which, due to the presence
+# of the Bessel functions with argument k*r and k*(tau0-tau), makes the
+# integrand function peaked at r=tau0-tau. See documentation of
+# bispectra_get_r_grid() for details.
+
+bispectra_r_sampling = sources
 r_size = 50
 r_left = 1
 r_right = 1
+
 
 ## Extrapolation of the transfer functions for the bispectrum integration;
 ## choose between no_extrapolation and flat_extrapolation.

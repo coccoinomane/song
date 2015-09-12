@@ -7,18 +7,6 @@
 #include "perturbations.h"
 #include "common2.h"
 
-/**
- * Maximum number of k-modes that SONG can handle in one run, lest run
- * into memory issues.
- */
-#define K_SIZE_MAX 50000
-
-/**
- * Maximum number of points in the time samplings.
- */
-#define TAU_SIZE_MAX 500000
-
-
 
 
 // ======================================================================================
