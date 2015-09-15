@@ -11,8 +11,11 @@
 ##
 ##  ./print_sources2 ini/intrinsic.ini pre/transfer_function.pre tau 1 0 25 2> result.dat
 ## 
-## The exact values of k1, k2 and l can be changed by tweaking k_max_custom_song,
-## k_min_custom_song, l_max_scalars and l_linstep.
+## The exact values of k1, k2 are controlled by k_max_custom_song and
+## k_min_custom_song. The value of the multipole l can be tweaked with
+## the parameters l_max_scalars and l_linstep. 
+##
+## P.S. If CLASS complains about a buggy q-sampling, reduce the parameter q_linstep.
 
 # Consider only three l-values (l=2, l=502, l=1000)
 l_max_scalars = 1000
@@ -28,10 +31,17 @@ k_size_custom_song = 2
 # We need enough points in k3 to interpolate the sources
 sources2_k3_sampling = lin
 k3_size = 100
+sources_k3_interpolation = cubic
 
-# Second-order k-sampling for the transfer functions
-q_linstep_song = 0.1
+# Second-order k-sampling for the transfer functions; decrease
+# to add more points to the output file
 transfer2_k3_sampling = smart
+q_linstep_song = 0.05
+
+# Decrease to add more points to the time integration grid at
+# late times
+transfer2_tau_sampling = smart
+tau_linstep_song = 0.1
 
 # Multipoles to include in the line of sight sources
 l_max_los_t = 5

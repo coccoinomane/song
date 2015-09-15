@@ -378,9 +378,8 @@ int bessel2_init(
   for (int index_J = 0; index_J < pbs2->J_size; ++index_J)
     for (int index_L = 0; index_L < pbs2->L_size; ++index_L)
       for (int index_l = 0; index_l < pbs->l_size; ++index_l)
-        for (int index_m = 0; index_m < MIN(ppr2->index_m_max[pbs2->L[index_L]],ppr2->index_m_max[pbs->l[index_l]])+1; ++index_m)   
-          if (pbs2->x_size_J[index_J][index_L][index_l][index_m] > pbs2->x_size_max_J)
-            pbs2->x_size_max_J = pbs2->x_size_J[index_J][index_L][index_l][index_m];
+        for (int index_m = 0; index_m < MIN(ppr2->index_m_max[pbs2->L[index_L]],ppr2->index_m_max[pbs->l[index_l]])+1; ++index_m)                 
+          pbs2->x_size_max_J = MAX (pbs2->x_size_max_J, pbs2->x_size_J[index_J][index_L][index_l][index_m]);
   
   /* Print information on the used memory */
   if (pbs2->bessels2_verbose > 1)

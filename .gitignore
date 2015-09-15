@@ -30,3 +30,6 @@ class
 # Valgrind related files
 *.supp
 *.dSYM
+
+# Configurations file
+.gdb_history

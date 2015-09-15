@@ -1873,8 +1873,10 @@ int transfer2_compute (
         )
 {
     
+
   if (ptr2->transfer2_verbose > 4)
     printf("     * computing transfer function for (l,m) = (%d,%d)\n", ptr2->l[index_l], ptr2->m[index_m]);
+
 
   /* Determine what we are deasling with: temperature, E-modes or B-modes? */
   int transfer_type = ptr2->index_tt2_monopole[index_tt];
@@ -1888,7 +1890,7 @@ int transfer2_compute (
   
     /* Number of multipole sources to consider */
     pw->L_max = ppr2->l_max_los_t;
-  
+
     /* The transfer function for photon intensity requires a single evaluation of the
     line of sight integral, as in eq. 5.95 of http://arxiv.org/abs/1405.2280. */
     class_call (transfer2_integrate(
@@ -2180,47 +2182,9 @@ int transfer2_integrate (
     ceil(k*pw->tau0_minus_tau[0]/ppr->k_max_tau0_over_l_max),
     pbs2->xx_max/pw->tau0_minus_tau[0]);
 #endif // DEBUG
-
-
-  // ====================================================================================
-  // =                              Enforce upper limit                                =
-  // ====================================================================================
-
-  /* The line of sight integral is the convolution of the source functions with the
-  projection functions J_Llm(x); the latter is basically a Bessel function with order l,
-  and it vanishes when x<<l. Since its argument is x=k*(tau_0-tau), this means that J
-  vanishes when tau is much larger than tau_0-l/k; that is, high-l multipoles do not get
-  contributions from low-k modes. Here we adjust the integration grid to reflect this fact,
-  by imposing an upper limit on tau */
-  
-  /* Value of x above which the J_Llm(x) start to be non-negligible. This x_min varies
-  depending on the considered L; we conservatively pick the highest L because it
-  corresponds to the smallest x_min (see eq. 5.97 of http://arxiv.org/abs/1405.2280). 
-  We shall refine this conservative choice below, in the loop over L. */
-  double x_min_bessel = pbs2->x_min_J[index_J][pw->L_max][index_l][index_m];
-
-  /* We define index_tau_max as the first point in the grid where J is negligible;
-  later we shall exclude from the integration all grid points with index_tau>=index_tau_max.
-  If index_tau_max ends up being negative, it means that the projection functions are always
-  negligible. */
-  int index_tau_max = pw->tau_grid_size-1;
-  while ((index_tau_max >= 0) && (k*pw->tau0_minus_tau[index_tau_max] < x_min_bessel))
-    index_tau_max--;
-
-  if ((ptr2->transfer2_verbose > 4) && (index_tau_max!=(pw->tau_grid_size-1)))
-    printf("     \\ adjusted integration range from tau=[%g,%g] to tau=[%g,%g]\n",
-      pw->tau_grid[0], pw->tau_grid[pw->tau_grid_size-1], pw->tau_grid[0], pw->tau_grid[index_tau_max]);
-
-  /* Adjust the upper limit of the integration grid accordingly */
-  int tau_grid_size_adjusted = index_tau_max + 1;
-  
-  /* Adjust the trapezoidal measure to take into account the new upper limit */
-  if (tau_grid_size_adjusted > 1)
-    pw->delta_tau[tau_grid_size_adjusted-1] =
-      pw->tau_grid[tau_grid_size_adjusted-1]-pw->tau_grid[tau_grid_size_adjusted-2];
-
     
-  
+
+
   // =====================================================================================
   // =                             Perform the integration                               =
   // =====================================================================================
@@ -2228,12 +2192,11 @@ int transfer2_integrate (
   /* Solve the line of sight integral by looping over time. The integral is in eq. 5.95
   of http://arxiv.org/abs/1405.2280. The time grid is built in transfer2_get_time_grid()
   to match the sampling of the line of sight sources (ppt2->tau_sampling), with the addition
-  of extra points to follow the oscillations of the projection functions J. We also
-  set an upper limit in time to exclude those points where the J is negligible. We implement
+  of extra points to follow the oscillations of the projection functions J. We implement
   the integration following the positive direction of time, which is the negative direction
   of x=k(tau0-tau). */
   
-  for (int index_tau=0; index_tau < tau_grid_size_adjusted; ++index_tau) {
+  for (int index_tau=0; index_tau < pw->tau_grid_size; ++index_tau) {
   
     /* Argument of the projection function at the considered time */
     double x = k * pw->tau0_minus_tau[index_tau];
@@ -2265,16 +2228,19 @@ int transfer2_integrate (
       value in pbs2->xx where J_Llm(x) is non-negligible */
       int index_x_min = pbs2->index_xmin_J[index_J][index_L][index_l][index_m];
 
-      /* Skip the contribution to the integral from this L if the projection function is negligible.
-      This check is a refinement of the check we made above, because here we use the actual L instead
-      of pw->L_max. If you do not include this check, you will get random segmentation faults, because
-      you would end up addressing J_Llm_x with a negative x index. Note that this check also ensures
-      that we skip L<2 configurations for polarisation, as it should be. */
+      /* Skip the contribution to the integral from this L if the projection function is
+      negligible. The projection function J_Llm(x) is basically a Bessel function of order l,
+      so it vanishes when x<<l. Since its argument is x=k*(tau_0-tau), this means that J
+      vanishes when tau is much larger than tau_0-l/k; that is, high-l multipoles do not get
+      contributions from low-k modes. If you do not include this check, you will get random
+      segmentation faults, because you would end up addressing J_Llm_x with a negative x index.
+      Note that this check also ensures that we skip L<2 configurations for polarisation,
+      as it should be. */
       if (index_x < index_x_min)
         continue;
   
-      /* Index needed to address the x-level of the projection function array, pbs2->J_Llm_x. The above
-      check ensures that the index is non-negative. */
+      /* Index needed to address the x-level of the projection function array, pbs2->J_Llm_x.
+      The above check ensures that the index is non-negative. */
       int index_x_in_J = index_x - index_x_min;
       
 #ifdef DEBUG
@@ -2312,7 +2278,7 @@ int transfer2_integrate (
       }
 
       /* Debug - Check the interpolation of the projection function */
-      // if ((index_tau == 50) && (pw->index_k1==1) && (pw->index_k2==1)) {
+      // if ((index_tau == ppt2->index_tau_rec) && (pw->index_k1==1) && (pw->index_k2==0)) {
       //
       //   int index_xmin_J = pbs2->index_xmin_J[index_J][index_L][index_l][index_m];
       //   double x_left = pbs2->xx[index_x-index_xmin_J];
@@ -2456,7 +2422,7 @@ int transfer2_get_time_grid(
   proportional to such frequency, via the parameter tau_linstep_song. */
 
   else if (ptr2->tau_sampling == custom_tau_sampling) {
-    
+
     tau_step_max = 2*_PI_/k*ppr2->tau_linstep_song;
 
   }
@@ -2700,7 +2666,22 @@ int transfer2_interpolate_sources_in_k(
   spline interpolation algorithm */
   int index_k = 0;
   double h = k_pt[index_k+1] - k_pt[index_k];
-    
+
+  /* Debug - Print the sources as a function of time */
+  // index_K = 50;
+  // if ((index_k1 == 1) && (index_k2 == 0))
+  //   if (index_tp2 == (ppt2->index_tp2_T + lm(2,0)))
+  //     for (int index_tau = 0; index_tau < ppt2->tau_size; index_tau++)
+  //         printf ("%12g %12g\n", ppt2->tau_sampling[index_tau], sources(index_tau,index_K));
+
+  /* Debug - Print the sources as a function of k3 */
+  // int index_tau = ppt2->index_tau_rec;
+  // if ((index_k1 == 1) && (index_k2 == 0))
+  //   if (index_tp2 == (ppt2->index_tp2_T + lm(1,0)))
+  //     for (int index_k=0; index_k < ppt2->k3_size[index_k1][index_k2]; ++index_k)
+  //       printf ("%12g %12g\n", ppt2->k3[index_k1][index_k2][index_k], sources(index_tau,index_k));
+
+
   for (int index_k_tr = first_physical_index; index_k_tr <= last_physical_index; ++index_k_tr) {
     
     while (((index_k+1) < k_pt_size) && (k_pt[index_k+1] < k_tr[index_k_tr])) {
@@ -2708,11 +2689,11 @@ int transfer2_interpolate_sources_in_k(
       h = k_pt[index_k+1] - k_pt[index_k];
     }
     
-    class_test(h==0., ptr2->error_message, "stop to avoid division by zero");
+    class_test(h==0, ptr2->error_message, "stop to avoid division by zero");
     
     double b = (k_tr[index_k_tr] - k_pt[index_k])/h;
-    double a = 1.-b;
-      
+    double a = 1-b;
+
     /* We shall interpolate for each value of conformal time, hence the loop
     on index_tau */
     if (ppr2->sources_k3_interpolation == linear_interpolation) {
@@ -2729,6 +2710,14 @@ int transfer2_interpolate_sources_in_k(
     }
 
   } // end of for (index_k_tr)
+
+
+  /* Debug - Print the sources as a function of the new grid */
+  // int index_tau = ppt2->index_tau_rec;
+  // if ((index_k1 == 1) && (index_k2 == 0))
+  //   if (index_tp2 == (ppt2->index_tp2_T + lm(1,0)))
+  //     for (int index_k_tr = first_physical_index; index_k_tr <= last_physical_index; ++index_k_tr)
+  //       printf ("%12g %12g\n", k_tr[index_k_tr], interpolated_sources_in_k[index_k_tr*ppt2->tau_size + index_tau]);
 
 
   // ====================================================================================
@@ -2826,101 +2815,96 @@ int transfer2_interpolate_sources_in_time (
       interpolated_sources_in_time[index_tau]
         = interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau];
     
-    return _SUCCESS_;
-    
   }
   
+  else {
 
-  /* Find second derivative of original sources with respect to k in view of spline
-  interpolation */
-  if (ppr2->sources_time_interpolation == cubic_interpolation) {
+    /* Find second derivative of original sources with respect to k in view of spline
+    interpolation */
+    if (ppr2->sources_time_interpolation == cubic_interpolation) {
 
-    class_call (array_spline_table_columns (
-                  tau_pt,
-                  tau_size_pt,
-                  interpolated_sources_in_k + pw->index_k * tau_size_pt, /* start from index_k */
-                  1,  /* we interpolate in time for only 1 k-value (pw->index_k) */
-                  sources_time_spline,
-                  _SPLINE_EST_DERIV_,
-                  ptr2->error_message),
-         ptr2->error_message,
-         ptr2->error_message);
-  }
-  
-  /* Interpolate the source function at each tau value contained in pw->tau_grid, using the
-  usual spline interpolation algorithm */
-
-  /* Uncomment to look for index_tau manually, rather than using pw->index_tau_left */
-  // int index_tau = 0;
-  // double h = tau_pt[index_tau+1] - tau_pt[index_tau];
-
-  for (int index_tau_tr = 0; index_tau_tr < tau_size_tr; ++index_tau_tr) {
-    
-    /* Determine the index to the left of tau_tr in the sources time sampling, using
-    the array pw->index_tau_left, precomputed  in transfer2_get_time_grid() */
-    int index_tau = pw->index_tau_left[index_tau_tr];
-    double h = tau_pt[index_tau+1] - tau_pt[index_tau];
-
-    /* Uncomment to look for index_tau manually, rather than using pw->index_tau_left */
-    // while (((index_tau+1) < tau_size_pt) && (tau_pt[index_tau+1] < tau_tr[index_tau_tr])) {
-    //   index_tau++;
-    //   h = tau_pt[index_tau+1] - tau_pt[index_tau];
-    // }
-
-    class_test(h==0., ptr2->error_message, "stop to avoid division by zero");
-    
-    double b = (tau_tr[index_tau_tr] - tau_pt[index_tau])/h;
-    double a = 1-b;
-
-    /* Actual interpolation */
-    if (ppr2->sources_time_interpolation == linear_interpolation) {
-
-      interpolated_sources_in_time[index_tau_tr] = 
-        a * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau]
-        + b * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau+1];
+      class_call (array_spline_table_columns (
+                    tau_pt,
+                    tau_size_pt,
+                    interpolated_sources_in_k + pw->index_k * tau_size_pt, /* start from index_k */
+                    1,  /* we interpolate in time for only 1 k-value (pw->index_k) */
+                    sources_time_spline,
+                    _SPLINE_EST_DERIV_,
+                    ptr2->error_message),
+           ptr2->error_message,
+           ptr2->error_message);
     }
-    else if (ppr2->sources_time_interpolation == cubic_interpolation) {
-
-      interpolated_sources_in_time[index_tau_tr] = 
-        a * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau]
-        + b * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau+1]
-        + ((a*a*a-a) * sources_time_spline[index_tau]
-        +(b*b*b-b) * sources_time_spline[index_tau+1])*h*h/6.0;
-    }
-
-    /* Debug - Print information for the current time of interpolation */
-    // if ((index_tp2==0) && (pw->index_k1==1) && (pw->index_k2==1) && (pw->index_k==1000)) {
-    //   printf("index_tau_tr = %d, index_tau = %d\n", index_tau_tr, index_tau);
-    //   printf("tau_tr = %g\n", tau_tr[index_tau_tr]);
-    //   printf("interpolated_sources_in_time[index_tau_tr] = %g\n", interpolated_sources_in_time[index_tau_tr]);
-    //   printf("a = %g, b = %g\n", a, b);
-    //   printf("tau_pt = %g, source = %g, dd = %g\n",
-    //     tau_pt[index_tau], interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau],
-    //       (a*a*a-a)*sources_time_spline[index_tau]*h*h/6.0);
-    //   printf("tau_pt[+1] = %g, source = %g, dd = %g\n",
-    //     tau_pt[index_tau+1], interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau+1],
-    //       (b*b*b-b)*sources_time_spline[index_tau+1]*h*h/6.0);
-    //   printf("\n");
-    // }
   
-  } // end of for (index_tau_tr)
+    /* Interpolate the source function at each tau value contained in pw->tau_grid, using the
+    usual spline interpolation algorithm */
+
+    for (int index_tau_tr = 0; index_tau_tr < tau_size_tr; ++index_tau_tr) {
+    
+      /* Determine the index to the left of tau_tr in the sources time sampling, using
+      the array pw->index_tau_left, precomputed  in transfer2_get_time_grid() */
+      int index_tau = pw->index_tau_left[index_tau_tr];
+      double h = tau_pt[index_tau+1] - tau_pt[index_tau];
+
+      class_test(h==0., ptr2->error_message, "stop to avoid division by zero");
+    
+      double b = (tau_tr[index_tau_tr] - tau_pt[index_tau])/h;
+      double a = 1-b;
+
+      /* Actual interpolation */
+      if (ppr2->sources_time_interpolation == linear_interpolation) {
+
+        interpolated_sources_in_time[index_tau_tr] = 
+          a * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau]
+          + b * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau+1];
+      }
+      else if (ppr2->sources_time_interpolation == cubic_interpolation) {
+
+        interpolated_sources_in_time[index_tau_tr] = 
+          a * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau]
+          + b * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau+1]
+          + ((a*a*a-a) * sources_time_spline[index_tau]
+          +(b*b*b-b) * sources_time_spline[index_tau+1])*h*h/6.0;
+      }
+
+      /* Debug - Print information for the current time of interpolation */
+      // if ((index_tp2==0) && (pw->index_k1==1) && (pw->index_k2==1) && (pw->index_k==1000)) {
+      //   printf("index_tau_tr = %d, index_tau = %d\n", index_tau_tr, index_tau);
+      //   printf("tau_tr = %g\n", tau_tr[index_tau_tr]);
+      //   printf("interpolated_sources_in_time[index_tau_tr] = %g\n", interpolated_sources_in_time[index_tau_tr]);
+      //   printf("a = %g, b = %g\n", a, b);
+      //   printf("tau_pt = %g, source = %g, dd = %g\n",
+      //     tau_pt[index_tau], interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau],
+      //       (a*a*a-a)*sources_time_spline[index_tau]*h*h/6.0);
+      //   printf("tau_pt[+1] = %g, source = %g, dd = %g\n",
+      //     tau_pt[index_tau+1], interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau+1],
+      //       (b*b*b-b)*sources_time_spline[index_tau+1]*h*h/6.0);
+      //   printf("\n");
+      // }
+  
+    } // end of for (index_tau_tr)
+    
+  } // end of if not sources time sampling
 
   
   /* Debug - Print the source function at the node points together with its interpolated value */
-  // if ((index_tp2==0) && (pw->index_k1==1) && (pw->index_k2==1) && (pw->index_k==1000)) {
-  // 
-  //   fprintf (stderr, "\n\n");
-  //   
-  //   for (index_tau=0; index_tau < tau_size_pt; ++index_tau)
-  //     fprintf (stderr, "%17.7g %17.7g\n", tau_pt[index_tau], interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau]);
-  // 
-  //   fprintf (stderr, "\n");
-  // 
-  //   for (index_tau_tr = 0; index_tau_tr < tau_size_tr; ++index_tau_tr)
-  //     fprintf (stderr, "%17.7g %17.7g\n", tau_tr[index_tau_tr], interpolated_sources_in_time[index_tau_tr]);
-  // 
-  //   fprintf (stderr, "\n\n");
-  // } 
+  // if ((pw->index_k1==1) && (pw->index_k2==0) && (pw->index_k==50)) {
+  //
+  //   if (index_tp2 == (ppt2->index_tp2_T + lm(2,0))) {
+  //
+  //     fprintf (stderr, "\n\n");
+  //
+  //     for (int index_tau=0; index_tau < tau_size_pt; ++index_tau)
+  //       fprintf (stderr, "%17.7g %17.7g\n", tau_pt[index_tau], interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau]);
+  //
+  //     fprintf (stderr, "\n");
+  //
+  //     for (int index_tau_tr = 0; index_tau_tr < tau_size_tr; ++index_tau_tr)
+  //       fprintf (stderr, "%17.7g %17.7g\n", tau_tr[index_tau_tr], interpolated_sources_in_time[index_tau_tr]);
+  //
+  //     fprintf (stderr, "\n\n");
+  //
+  //   }
+  // }
 
   
   return _SUCCESS_;

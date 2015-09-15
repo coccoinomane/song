@@ -588,13 +588,19 @@ int input2_init (
       ppt2->only_early_isw = _TRUE_;
   }
 
-  /* If effects that are not peaked at recombination are not included, stop integrating the
-  second-order system just after recombination */
+  /* If late time effects are not included, stop integrating the second-order system just
+  after recombination */
   if ((ppt2->has_pure_metric_in_los == _FALSE_)
+   && (ppt2->has_quad_metric_in_los == _FALSE_)
    && ((ppt2->has_isw == _FALSE_) || (ppt2->only_early_isw == _TRUE_))
-   && (ppt2->has_quad_metric_in_los == _FALSE_) && (ppt2->has_time_delay_in_los == _FALSE_)
-   && (ppt2->has_redshift_in_los == _FALSE_) && (ppt2->has_lensing_in_los == _FALSE_))
+   && (ppt2->has_time_delay_in_los == _FALSE_)
+   && (ppt2->has_redshift_in_los == _FALSE_)
+   && (ppt2->has_lensing_in_los == _FALSE_))
     ppt2->has_recombination_only = _TRUE_;
+  
+  /* If the user asked to include reionisation, then integrate the system all the way to today */
+  if (pth->reio_parametrization != reio_none)
+    ppt2->has_recombination_only = _FALSE_;
   
   /* Should we stop integrating the second-order system just after recombination, regardless of the
   other flags? */
@@ -1689,7 +1695,7 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
 
   ppr2->bessel_j_cut_song = 1e-12;
   ppr2->bessel_J_cut_song = 1e-6;
-  ppr2->bessel_x_step_song = 0.3;
+  ppr2->bessel_x_step_song = 0.2;
 
 
 

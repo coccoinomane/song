@@ -407,9 +407,6 @@ int perturb2_allocate_k1_level(
   
   for (int index_type = 0; index_type < ppt2->tp2_size; index_type++) {
 
-    /* Allocate only the level corresponding to the considered 'm' mode */
-    // if (ppt2->corresponding_index_m[index_type] != index_m) continue;
-
     /* Allocate k2 level.  Note that the size of this level is smaller than ppt2->k_size,
     and depends on k1.  The reason is that we shall solve the system only for those k2's
     that are smaller than k1 (our equations are symmetrised wrt to k1<->k2) */
@@ -615,9 +612,9 @@ int perturb2_indices_of_perturbs(
 
   /* E-modes and B-modes start from l=2 */
   class_test (
-    (ppr2->l_max_los_p<2) || (ppr2->l_max_los_p<2),
+    ((ppt2->has_cmb_polarization_e==_TRUE_) || (ppt2->has_cmb_polarization_b==_TRUE_)) && (ppr2->l_max_los_p<2),
     ppt2->error_message,
-    "specify l_max_los_p>1 for polarisation");
+    "specify l_max_los_p>=2 for polarisation");
     
   /* Check that the m-list is within bounds */
   class_test (
@@ -1135,8 +1132,8 @@ int perturb2_get_lm_lists (
   /* We compute the coupling coefficients only up to ppr2->l_max_los_quadratic, because
   this is the highest multipole we are gonna consider for the delta_tilde transformation.
   It is given by MAX(lmax_los_quadratic_t, lmax_los_quadratic_p). */
-  ppt2->l1_max = ppr2->l_max_los_quadratic;
-  ppt2->l2_max = ppr2->l_max_los_quadratic;
+  ppt2->l1_max = MAX (ppr2->l_max_los_quadratic, ppr2->l_max_los_quadratic_p);
+  ppt2->l2_max = MAX (ppr2->l_max_los_quadratic, ppr2->l_max_los_quadratic_p);
 
   /* Derived limits */
   int m1_min = -ppt2->l1_max;
@@ -2213,6 +2210,7 @@ int perturb2_timesampling_for_sources (
   }
 
 
+
   /* Debug - Print time sampling */
   // printf ("# ~~~ tau-sampling for the source function ~~~\n");
   // for (int index_tau=0; index_tau < ppt2->tau_size; ++index_tau) {
@@ -2701,28 +2699,15 @@ int perturb2_end_of_recombination (
   int dump;
 
   /* Extract from the thermodynamics module the redshift and conformal time where
-  the visibility function 'g' peaks */
-  double tau_rec;
-  double z_max = pth->z_rec;
-  class_call (background_tau_of_z (pba, z_max, &tau_rec),
-    pba->error_message, ppt2->error_message);
-
-  /* Interpolate background quantities at z_max */
-  class_call (background_at_tau(
-                pba,
-                tau_rec, 
-                pba->normal_info, 
-                pba->inter_normal, 
-                &dump, 
-                pvecback),
-    pba->error_message,
-    ppt2->error_message);
+  the visibility function g peaks */
+  double tau_rec = pth->tau_rec;
+  double z_rec = pth->z_rec;
 
   /* Interpolate thermodynamics quantities at z_max */
   class_call (thermodynamics_at_z(
                 pba,
                 pth,
-                z_max,
+                z_rec,
                 pth->inter_normal,
                 &dump,
                 pvecback,
@@ -2736,6 +2721,9 @@ int perturb2_end_of_recombination (
   /* Value of the visibility function when recombination ends */
   double g_end = g_max/ppt2->recombination_max_to_end_ratio;
 
+  /* Initialise time index corresponding to recombination */
+  ppt2->index_tau_rec = ppt2->tau_size-1;
+
   /* Now, find the time index in the sources sampling corresponding to
   the peak of recombination by looping over ppt2->tau_sampling */
   for (int index_tau=0; index_tau < ppt2->tau_size; ++index_tau) {
@@ -2744,7 +2732,10 @@ int perturb2_end_of_recombination (
     if (ppt2->tau_sampling[index_tau] < tau_rec)
       continue;
 
-    /* Interpolate background quantities */
+    /* En passant, let's take note of the time index at recombination */
+    ppt2->index_tau_rec = MIN (index_tau, ppt2->index_tau_rec);
+
+    /* Find current redshift */
     class_call (background_at_tau(
                   pba,
                   ppt2->tau_sampling[index_tau], 
@@ -2755,13 +2746,13 @@ int perturb2_end_of_recombination (
       pba->error_message,
       ppt2->error_message);
 
-    double a = pvecback[pba->index_bg_a];
+    double z = 1/pvecback[pba->index_bg_a]-1;
 
     /* Interpolate thermodynamics quantities */
     class_call (thermodynamics_at_z(
                   pba,
                   pth,
-                  1./a-1.,
+                  z,
                   pth->inter_normal,
                   &dump,
                   pvecback,
@@ -8917,13 +8908,14 @@ int perturb2_rsa_variables (
       /* In absence of perturbed recombination/reionisation, the fastest growing term in the
       dipole of the quadratic collision term is the baryon velocity squared, which goes as (k*tau)^2.
       On subhorizon scales, it is expected to be much smaller than the second-order baryon dipole,
-      b_110, which goes as (k*tau)^3. However, if perturbed recombination is turned on, during
-      reionisation the perturbation to the fraction of free electrons (xe^(1)/xe^(0) in eq. 4.151)
-      becomes equal and opposite to delta_b. Therefore, the fastest growing term in
-      quadC_I_10 becomes then delta*velocity, which grows as (k*tau)^3 and is thus comparable
-      with b_110. In fact, the two terms partially cancel, so that the effect of reionisation
-      on the photon monopole at second order is very small due to the effect of perturbing
-      the free–electron fraction. Uncomment if you want to exclude this effect. */
+      b_110, which goes as (k*tau)^3. However, in the perturbed recombination scheme implemented in
+      SONG (http://arxiv.org/abs/0812.3652), during reionisation the perturbation to the fraction
+      of free electrons (xe^(1)/xe^(0) in eq. 4.151) on small scales (k>0.01) becomes equal and
+      opposite to delta_b. Therefore, the fastest growing term in quadC_I_10 becomes then
+      delta*velocity, which grows as (k*tau)^3 and is thus comparable with b_110. In fact, the
+      two terms partially cancel, so that the effect of reionisation on the photon monopole at
+      second order is very small on small scales due to the effect of perturbing the
+      free–electron fraction. Uncomment if you want to exclude this effect. */
       ppw2->delta_g_rsa += -quadC_I_10/(k*tau_c);
 
     }
@@ -9052,7 +9044,7 @@ int perturb2_rsa_variables (
             );
         
         /* Uncomment to use a different version of the RSA dipole equation which does not
-        include the effect of perturbed recombination. */
+        include the effect of perturbed reionisation */
         // double delta_u_prime_b = ppw2->delta_b_1_prime*ppw2->u_b_2[0] + ppw2->delta_b_2_prime*ppw2->u_b_1[0]
         //                        + ppw2->delta_b_1*ppw2->u_b_2_prime[0] + ppw2->delta_b_2*ppw2->u_b_1_prime[0];
         // ppw2->u_g_rsa[0] += 3 * tau_c_dot * quadC_I_10 / (4*k*k*tau_c*tau_c)
@@ -11258,13 +11250,14 @@ int perturb2_sources (
         // -                              Sum up the sources                               -
         // ---------------------------------------------------------------------------------
         
-        /* Uncomment to include in the LOS sources all the terms that were included in the differential system */
+        /* Uncomment to include in the LOS sources all the terms that were included in the
+        differential system */
         // source = dI_qs2(l,m);
   
         /* All the sources in the line of sight integration are multiplied by exp(-kappa(tau,tau0)),
         which is extremely small before recombination. */
         source *= exp_minus_kappa;
-  
+
         /* Fill the ppt2->sources array, and assign the labels */
         int index_tp = ppt2->index_tp2_T + lm(l,m);
         sources(index_tp) = source;
@@ -11419,7 +11412,8 @@ int perturb2_sources (
         // -                              Sum up the sources                               -
         // ---------------------------------------------------------------------------------
         
-        /* Uncomment to include in the LOS sources only the terms that were included in the differential system */
+        /* Uncomment to include in the LOS sources only the terms that were included in the
+        differential system */
         // source = dE_qs2(l,m) + kappa_dot*dE_qs2(l,m);
   
         /* All the sources in the line of sight integration are multiplied by exp(-kappa(tau,tau0)),
@@ -11566,7 +11560,8 @@ int perturb2_sources (
         // -                              Sum up the sources                               -
         // ---------------------------------------------------------------------------------
         
-        /* Uncomment to include in the LOS sources only the terms that were included in the differential system */
+        /* Uncomment to include in the LOS sources only the terms that were included in the
+        differential system */
         // source = dB_qs2(l,m) + kappa_dot*dB_qs2(l,m);
   
         /* All the sources in the line of sight integration are multiplied by exp(-kappa(tau,tau0)),

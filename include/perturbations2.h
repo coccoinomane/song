@@ -239,11 +239,11 @@ struct perturbs2
   /**
    * Should we stop sampling the line of sight sources at the end of recombination?
    *
-   * The flag is true if all the requested line-of-sight sources are collisional,
-   * or if the user explicitly set only_recombination=yes in the parameter file.
-   * The Sachs-Wolfe effect for example is collisional, but the integrated Sachs-Wolfe
-   * isn't, so that requesting the latter will turn this flag off.
-   * 
+   * The CMB is sourced by recombination effects (Sachs-Wolfe, doppler, early ISW)
+   * and late-time effects (reionisation and late ISW). If the user requested only
+   * recombination effects, this flag will be true and the evolution of the 
+   * differential system will stop shortly after recombination.
+   *
    * Computing only the collisional sources is a major speed-up, because it allows
    * SONG to evolve the differential system and to compute the transfer functions
    * only up to the end of recombination.
@@ -253,10 +253,11 @@ struct perturbs2
    *   ppt2->tau_sampling[ppt2->index_tau_end_of_recombination],
    *
    * where ppt2->index_tau_end_of_recombination is computed based on the parameter
-   * recombination_max_to_end_ratio.
+   * recombination_max_to_end_ratio, in the function perturb2_timesampling_for_sources().
    *
    * This flag is ignored if the user asked for a custom time sampling for the sources
-   * (custom_time_sampling_song_sources=yes).
+   * (custom_time_sampling_song_sources=yes), while it is always true if the user
+   * explicitly set only_recombination=yes in the parameter file.
    */
   int has_recombination_only;
 
@@ -807,6 +808,8 @@ struct perturbs2
   int tau_size; /**< Size of ppt2->tau_sampling */
 
   int index_tau_end_of_recombination; /**< Index in ppt2->tau_sampling that marks the end of recombination */
+
+  int index_tau_rec; /**< Index in ppt2->tau_sampling where the visibility function peaks */
 
   /** Value of g/g(tau_rec) when to stop sampling the line of sight sources, where g is the
   visibility function. For example, if set to 100, then the last conformal time used
