@@ -808,6 +808,8 @@ struct perturbs2
 
   int index_tau_end_of_recombination; /**< Index in ppt2->tau_sampling that marks the end of recombination */
 
+  int index_tau_rec; /**< Index in ppt2->tau_sampling where the visibility function peaks */
+
   /** Value of g/g(tau_rec) when to stop sampling the line of sight sources, where g is the
   visibility function. For example, if set to 100, then the last conformal time used
   to sample the sources will satisfy g(tau)=100*g(tau_rec). This parameter is ignored
