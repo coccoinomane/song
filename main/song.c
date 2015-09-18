@@ -150,9 +150,11 @@ int main(int argc, char **argv) {
     FILE * matterkernel;
     matterkernel = fopen("matterkernel.dat","w");
     double ddk,val;
+    double Hc;
     //    for (index_tau = 0; index_tau < ppt2->tau_size; index_tau++){
     for (index_tau = 0; index_tau < ppt2->tau_size; index_tau++){
       background_at_tau(&ba,ppt2->tau_sampling[index_tau], ba.normal_info,ba.inter_closeby,&(last_index), pvecback);
+      Hc = pvecback[ba.index_bg_H] * pvecback[ba.index_bg_a];
       for (index_k1 = 0; index_k1 < ppt2->k_size; index_k1++) {
         for (index_k2 = 0; index_k2 <= index_k1; index_k2++) {
           k3_size = ppt2->k3_size[index_k1][index_k2];
@@ -161,8 +163,8 @@ int main(int argc, char **argv) {
                                                                            &val,&ddk, errmsg),
                        errmsg);
             fprintf(matterkernel, "%.16e %.16e %.16e %.16e %.16e %.16e %.16e %.16e\n",
-                    pvecback[ba.index_bg_a]/ba.a_eq,
-                    pvecback[ba.index_bg_H] * pvecback[ba.index_bg_a],
+                    pvecback[ba.index_bg_a],
+                    Hc,
                     ppt2->k[index_k1],
                     ppt2->k[index_k2],
                     ppt2->k3[index_k1][index_k2][index_k3],
