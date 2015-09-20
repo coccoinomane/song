@@ -40,7 +40,7 @@ q_linstep_song = 0.05
 
 # Decrease to add more points to the time integration grid at
 # late times
-transfer2_tau_sampling = smart
+transfer2_tau_sampling = sources
 tau_linstep_song = 0.1
 
 # Multipoles to include in the line of sight sources

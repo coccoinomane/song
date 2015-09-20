@@ -339,7 +339,10 @@ int input2_init (
     ppr2->start_small_k_at_tau_c_over_tau_h_song);
   class_read_double("start_large_k_at_tau_h_over_tau_k_song",
     ppr2->start_large_k_at_tau_h_over_tau_k_song);
-  
+
+  class_read_double("perturb_sampling_late_time_boost",
+    ppr2->perturb_sampling_late_time_boost);
+    
 
   // ===========================================================================
   // =                        Perturbations, k-sampling                        =
@@ -800,22 +803,22 @@ int input2_init (
 
     class_call(parser_read_string(pfc,"transfers_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);  
     if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_))
-      strcpy(ppt2->transfers_filename, string1);
+      sprintf(ppt2->transfers_filename, "%s/%s", pop->root, string1);
     class_open(ppt2->transfers_file,ppt2->transfers_filename,"w",errmsg);
 
     class_call(parser_read_string(pfc,"quadsources_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);      
     if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_))
-      strcpy(ppt2->quadsources_filename, string1);
+      sprintf(ppt2->quadsources_filename, "%s/%s", pop->root, string1);
     class_open(ppt2->quadsources_file,ppt2->quadsources_filename,"w",errmsg);
 
     class_call(parser_read_string(pfc,"quadliouville_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);  
     if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_))
-      strcpy(ppt2->quadliouville_filename, string1);
+      sprintf(ppt2->quadliouville_filename, "%s/%s", pop->root, string1);
     class_open(ppt2->quadliouville_file,ppt2->quadliouville_filename,"w",errmsg);
 
     class_call(parser_read_string(pfc,"quadcollision_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);      
     if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_))
-      strcpy(ppt2->quadcollision_filename, string1);
+      sprintf(ppt2->quadcollision_filename, "%s/%s", pop->root, string1);
     class_open(ppt2->quadcollision_file,ppt2->quadcollision_filename,"w",errmsg);
 
     class_read_int("index_k1_debug", ppt2->index_k1_debug);
@@ -945,6 +948,10 @@ int input2_init (
   if (flag1 == _TRUE_)
     ppr2->tau_linstep_song /= 2*_PI_;
   class_read_double("tau_linstep_song", ppr2->tau_linstep_song);
+  
+  /* If the user sets a negative value, do not add points to the time grid */
+  if (ppr2->tau_linstep_song < 0)
+    ppr2->tau_linstep_song = _HUGE_;
 
 
   
@@ -1656,6 +1663,7 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
 
   ppr2->custom_tau_start_evolution = 0;
   ppr2->perturb_sampling_stepsize_song = 0.4;
+  ppr2->perturb_sampling_late_time_boost = 1;
   ppr2->start_small_k_at_tau_c_over_tau_h_song = 0.0015;  /* decrease to start earlier in time */
   ppr2->start_large_k_at_tau_h_over_tau_k_song = 0.07;    /* decrease to start earlier in time */
 

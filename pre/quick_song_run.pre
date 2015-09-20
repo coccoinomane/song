@@ -135,6 +135,7 @@ match_final_time_los = no
 ## Time sampling of the second-order line-of-sight sources (overridden if using custom
 ## time sampling for LOS sources)
 perturb_sampling_stepsize_song = 0.4
+perturb_sampling_late_time_boost = 16
 recombination_max_to_end_ratio = 250
 
 ## Custom timesampling for the second-order line-of-sight sources
@@ -145,7 +146,7 @@ custom_tau_size_song_sources = 500
 custom_tau_mode_song_sources = log             # either lin, log or class
 
 ## Integration grid in time for the second-order transfer functions
-transfer2_tau_sampling = smart
+transfer2_tau_sampling = sources
 tau_linstep_song = 999
 
 

@@ -2132,21 +2132,29 @@ int perturb2_timesampling_for_sources (
         double a_primeprime_over_a = a*H_prime + 2*Hc*Hc;
         double rate_isw_squared = fabs (2*a_primeprime_over_a - Hc*Hc);
 
+        /* Add points to the late-time part of the time sampling, in view of the
+        time integration in transfer2.c */
+        rate_isw_squared *= pow (ppr2->perturb_sampling_late_time_boost, 2);
+
         /* Compute rate */
         timescale_source = 1/sqrt(rate_thermo*rate_thermo + rate_isw_squared);
+
+        /* Debug - Print ratio between timescales */
+        // printf ("%12g %12g %12g %12g%12g\n", tau, rate_thermo/sqrt(rate_isw_squared),
+        //   rate_thermo, sqrt(rate_isw_squared), timescale_source);
 
       }
     
       /* If the CMB is not requested, we use as sampling frequency the conformal Hubble
       rate aH, which is the natural time scale of the differential system. Since 1/aH is
-      propotional to the conformal time tau, this sampling roughly corresponds to a logarithmic
-      sampling in tau. */
+      proportional to the conformal time tau, this sampling roughly corresponds to a
+      logarithmic sampling in tau. */
     
       else {
 
         /* Variation rate given by Hubble time */
         timescale_source = 1/Hc;
-
+        
       }
 
       /* Update the time-sampling array with the new value */

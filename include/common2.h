@@ -104,6 +104,13 @@ struct precision2
   spectrum it is simply the Hubble time. */
   double perturb_sampling_stepsize_song;
   
+  /** If larger than one, this parameter adds points to the time sampling of the
+  CMB source function at late times. It appears as a multiplicative factor for the 
+  Hubble rate in perturbations2_timesampling_for_sources(). The idea is to make
+  the integration grid in the transfer module more dense in order to capture the
+  oscillations of the projection functions at late times. */
+  double perturb_sampling_late_time_boost;
+  
   /** Frequency of the time sampling for the line of sight integration. This parameter
   is used when the time-sampling of the sources, ppt2->tau_sampling, is not dense enough
   to capture the frequent oscillations of the Bessel functions. */

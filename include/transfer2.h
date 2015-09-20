@@ -287,6 +287,26 @@ struct transfer2_workspace {
 };
 
 
+// ------------------------------------------------------------------------------------
+// -                                 Debug shortcuts                                  -
+// ------------------------------------------------------------------------------------
+
+
+#undef fprintf_k_debug
+#define fprintf_k_debug(args...) {                                  \
+  if((pw->index_k1==ppt2->index_k1_debug) &&                      \
+     (pw->index_k2==ppt2->index_k2_debug) &&                      \
+     (pw->index_k==ppt2->index_k3_debug)) {                      \
+    fprintf (args);                                                 \
+  }                                                                 \
+}
+
+#undef printf_k_debug
+#define printf_k_debug(args...) {                                   \
+  fprintf_k_debug (stdout, args)                                    \
+}
+
+
 /*************************************************************************************************************/
 
 /*

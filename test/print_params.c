@@ -97,19 +97,19 @@ int main(int argc, char **argv) {
   // printf("\tpt.has_isw = %d\n", pt.has_isw);
 
   /* LOS effects at second order */
-  printf("* Line-of-sight effects at second order\n");
-  printf("\tpt2.has_pure_scattering_in_los = %d\n", pt2.has_pure_scattering_in_los);
-  printf("\tpt2.has_quad_scattering_in_los = %d\n", pt2.has_quad_scattering_in_los);
-  printf("\tpt2.has_pure_metric_in_los = %d*\n", pt2.has_pure_metric_in_los);
-  printf("\tpt2.has_quad_metric_in_los = %d\n", pt2.has_quad_metric_in_los);
-  printf("\tpt2.has_time_delay_in_los = %d\n", pt2.has_time_delay_in_los);
-  printf("\tpt2.has_redshift_in_los = %d\n", pt2.has_redshift_in_los);
-  printf("\tpt2.has_lensing_in_los = %d\n", pt2.has_lensing_in_los);
-  printf("\tpt2.use_delta_tilde_in_los = %d\n", pt2.use_delta_tilde_in_los);
-  printf("\tpt2.has_sw = %d*\n", pt2.has_sw);
-  printf("\tpt2.has_isw = %d*\n", pt2.has_isw);
-  printf("\tpt2.only_early_isw = %d\n", pt2.only_early_isw);
-  printf("\tpt2.has_recombination_only = %d\n", pt2.has_recombination_only);
+  // printf("* Line-of-sight effects at second order\n");
+  // printf("\tpt2.has_pure_scattering_in_los = %d\n", pt2.has_pure_scattering_in_los);
+  // printf("\tpt2.has_quad_scattering_in_los = %d\n", pt2.has_quad_scattering_in_los);
+  // printf("\tpt2.has_pure_metric_in_los = %d*\n", pt2.has_pure_metric_in_los);
+  // printf("\tpt2.has_quad_metric_in_los = %d\n", pt2.has_quad_metric_in_los);
+  // printf("\tpt2.has_time_delay_in_los = %d\n", pt2.has_time_delay_in_los);
+  // printf("\tpt2.has_redshift_in_los = %d\n", pt2.has_redshift_in_los);
+  // printf("\tpt2.has_lensing_in_los = %d\n", pt2.has_lensing_in_los);
+  // printf("\tpt2.use_delta_tilde_in_los = %d\n", pt2.use_delta_tilde_in_los);
+  // printf("\tpt2.has_sw = %d*\n", pt2.has_sw);
+  // printf("\tpt2.has_isw = %d*\n", pt2.has_isw);
+  // printf("\tpt2.only_early_isw = %d\n", pt2.only_early_isw);
+  // printf("\tpt2.has_recombination_only = %d\n", pt2.has_recombination_only);
 
   /* Time sampling for quadratic sources */
   // printf("* Time sampling for quadratic sources\n");
@@ -121,15 +121,16 @@ int main(int argc, char **argv) {
   // printf("\tpt.custom_tau_mode_quadsources = %d\n", pt.custom_tau_mode_quadsources);
   
   /* Time sampling for second-order sources */
-  // printf("* Time sampling for second-order sources\n");
-  // printf("\tpr2.perturb_sampling_stepsize_song = %g\n", pr2.perturb_sampling_stepsize_song);
-  // printf("\tpt2.tau_start_evolution = %g\n", pt2.tau_start_evolution);
-  // printf("\tpt2.recombination_max_to_end_ratio = %g\n", pt2.recombination_max_to_end_ratio);
-  // printf("\tpt2.has_custom_timesampling = %d\n", pt2.has_custom_timesampling);
-  // printf("\tpt2.custom_tau_ini = %g\n", pt2.custom_tau_ini);
-  // printf("\tpt2.custom_tau_end = %g\n", pt2.custom_tau_end);
-  // printf("\tpt2.custom_tau_size = %d\n", pt2.custom_tau_size);
-  // printf("\tpt2.custom_tau_mode = %d\n", pt2.custom_tau_mode);
+  printf("* Time sampling for second-order sources\n");
+  printf("\tpr2.perturb_sampling_stepsize_song = %g\n", pr2.perturb_sampling_stepsize_song);
+  printf("\tpr2.perturb_sampling_late_time_boost = %g\n", pr2.perturb_sampling_late_time_boost);
+  printf("\tpr2.custom_tau_start_evolution = %g\n", pr2.custom_tau_start_evolution);
+  printf("\tpt2.recombination_max_to_end_ratio = %g\n", pt2.recombination_max_to_end_ratio);
+  printf("\tpt2.has_custom_timesampling = %d\n", pt2.has_custom_timesampling);
+  printf("\tpt2.custom_tau_ini = %g\n", pt2.custom_tau_ini);
+  printf("\tpt2.custom_tau_end = %g\n", pt2.custom_tau_end);
+  printf("\tpt2.custom_tau_size = %d\n", pt2.custom_tau_size);
+  printf("\tpt2.custom_tau_mode = %d\n", pt2.custom_tau_mode);
 
   /* Wavemode sampling */
   // printf("* Wavemode sampling for second-order sources\n");
@@ -207,23 +208,23 @@ int main(int argc, char **argv) {
   // printf("\tfi.squeezed_ratio = %g\n", fi.squeezed_ratio);
 
   /* Precision parameters - multipoles */
-  printf("* Precision parameters - multipoles\n");
-  printf("\tpr2.m_size = %d, ", pr2.m_size);
-  printf("\tpr2.m_max_2nd_order = %d, ", pr2.m_max_2nd_order);
-  printf("\tpr2.m = ");
-  int index_m;
-  for (index_m=0; index_m < pr2.m_size; ++index_m)
-    printf("%d%s ", pr2.m[index_m], index_m!=(pr2.m_size-1)?",":"\n");
-  printf("\tpr2.l_max_g = %d\n", pr2.l_max_g);
-  printf("\tpr2.l_max_pol_g = %d\n", pr2.l_max_pol_g);
-  printf("\tpr2.l_max_ur = %d\n", pr2.l_max_ur);
-  printf("\tpr2.l_max_g_quadsources = %d\n", pr2.l_max_g_quadsources);
-  printf("\tpr2.l_max_pol_g_quadsources = %d\n", pr2.l_max_pol_g_quadsources);
-  printf("\tpr2.l_max_ur_quadsources = %d\n", pr2.l_max_ur_quadsources);
-  printf("\tpr2.l_max_los_t = %d\n", pr2.l_max_los_t);
-  printf("\tpr2.l_max_los_quadratic_t = %d\n", pr2.l_max_los_quadratic_t);
-  printf("\tpr2.l_max_los_p = %d\n", pr2.l_max_los_p);
-  printf("\tpr2.l_max_los_quadratic_p = %d\n", pr2.l_max_los_quadratic_p);
+  // printf("* Precision parameters - multipoles\n");
+  // printf("\tpr2.m_size = %d, ", pr2.m_size);
+  // printf("\tpr2.m_max_2nd_order = %d, ", pr2.m_max_2nd_order);
+  // printf("\tpr2.m = ");
+  // int index_m;
+  // for (index_m=0; index_m < pr2.m_size; ++index_m)
+  //   printf("%d%s ", pr2.m[index_m], index_m!=(pr2.m_size-1)?",":"\n");
+  // printf("\tpr2.l_max_g = %d\n", pr2.l_max_g);
+  // printf("\tpr2.l_max_pol_g = %d\n", pr2.l_max_pol_g);
+  // printf("\tpr2.l_max_ur = %d\n", pr2.l_max_ur);
+  // printf("\tpr2.l_max_g_quadsources = %d\n", pr2.l_max_g_quadsources);
+  // printf("\tpr2.l_max_pol_g_quadsources = %d\n", pr2.l_max_pol_g_quadsources);
+  // printf("\tpr2.l_max_ur_quadsources = %d\n", pr2.l_max_ur_quadsources);
+  // printf("\tpr2.l_max_los_t = %d\n", pr2.l_max_los_t);
+  // printf("\tpr2.l_max_los_quadratic_t = %d\n", pr2.l_max_los_quadratic_t);
+  // printf("\tpr2.l_max_los_p = %d\n", pr2.l_max_los_p);
+  // printf("\tpr2.l_max_los_quadratic_p = %d\n", pr2.l_max_los_quadratic_p);
 
   /* Precision parameters - integration */
   // printf("* Precision parameters - integration\n");    

@@ -195,7 +195,7 @@ int transfer2_init(
     double k_max = ptr2->k_max_k1k2[ppt2->k_size-1][ppt2->k_size-1];
     double tau_step_min = 2*_PI_/k_max*ppr2->tau_linstep_song;
     double tau_max = ppt2->tau_sampling[ppt2->tau_size-1];
-    tau_size_max = ppt2->tau_size + tau_max/tau_step_min + 1;
+    tau_size_max = ppt2->tau_size + ceil(tau_max/tau_step_min) + 1;
   }
 
   /* In the bessel sampling, we take as many steps as the points where the Bessel functions
@@ -206,7 +206,7 @@ int transfer2_init(
 
   /* Print some information on the finest time grid that will be used */
   if (ptr2->transfer2_verbose > 0)
-    printf (" -> maximum number of time steps in the LOS integration = %d\n", tau_size_max-1);
+    printf (" -> maximum number of time steps in the LOS integration = %d\n", tau_size_max);
   
   /* Allocate arrays in the workspace */
   abort = _FALSE_;
@@ -2323,9 +2323,12 @@ int transfer2_integrate (
     /* Increment the result with the contribution from the considered time-step */
     *integral += integrand * pw->delta_tau[index_tau];
   
-    /* Some debug */
-    // if (index_tau == index_tau_max-2)
-    //   printf("transfer = %g\n", *integral);
+    /* Debug - Output the integrand as a function of time */
+    // if (l == 2) {
+    //   if (index_tau==0)
+    //     fprintf_k_debug (stderr, "# k1=%g, k2=%g, k=%g\n", ppt2->k[index_k1], ppt2->k[index_k2], k);
+    //   p2 (pw->tau_grid[index_tau], integrand);
+    // }
   
   } // end of for(index_tau)
 
