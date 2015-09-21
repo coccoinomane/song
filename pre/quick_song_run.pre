@@ -325,7 +325,7 @@ radiation_streaming_trigger_tau_c_over_tau = 5
 ## the 2nd-order RSA as it is used in the thermodynamics module to determine the
 ## start of the free streaming regime. Therefore, we automatically set the variable
 ## in CLASS to match whatever we choose in SONG.
-radiation_streaming_approximation_song = 1
+radiation_streaming_approximation_song = 2
 radiation_streaming_trigger_tau_over_tau_k_song = 45
 radiation_streaming_trigger_tau_c_over_tau_song = 5
 
