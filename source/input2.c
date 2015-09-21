@@ -168,6 +168,7 @@ int input2_init (
   int found;
   double param1,param2,param3;
   int entries_read;
+  double * pointer, * pointer1, * pointer2;
   int * int_pointer, * int_pointer1, * int_pointer2;
   int * pointer_to_int;
   char string1[_ARGUMENT_LENGTH_MAX_];
@@ -795,6 +796,9 @@ int input2_init (
 
   class_read_int("perturbations2_verbose",ppt2->perturbations2_verbose);
 
+  /* Write perturbations to file according to the given list of (index_k1, index_k2,
+  index_k3) indices */
+
   class_call(parser_read_string(pfc,"dump_debug_files",&(string1),&(flag1),errmsg),errmsg,errmsg);
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
     ppt2->has_debug_files = _TRUE_;
@@ -827,6 +831,191 @@ int input2_init (
     class_read_int("l_max_debug", ppt2->l_max_debug);
   
   } // end of if has_debug_files
+
+
+
+  /* Read values of (k1,k2,k3) for which to write output files */
+
+  class_call(parser_read_list_of_doubles(
+               pfc,
+              "k1_out",
+              &(int1),
+              &(pointer1),
+              &flag1,
+              errmsg),
+    errmsg,
+    errmsg);
+
+  if (flag1 == _TRUE_) {
+    
+    class_test(int1 > _MAX_NUMBER_OF_K_FILES_, errmsg,
+      "increase _MAX_NUMBER_OF_K_FILES_ in include/perturbations.h to at least %d",
+      int1);
+    
+    ppt2->k_out_size = int1;
+
+    for (i=0; i<int1; i++)
+      ppt2->k1_out[i] = pointer1[i];
+    
+    free (pointer1);
+
+  }
+
+  class_call(parser_read_list_of_doubles(
+               pfc,
+              "k2_out",
+              &(int1),
+              &(pointer1),
+              &flag1,
+              errmsg),
+    errmsg,
+    errmsg);
+
+  if (flag1 == _TRUE_) {
+    
+    class_test(int1 != ppt2->k_out_size, errmsg,
+      "specify the same number of values in k1_out, k2_out and k3_out",
+      int1);
+    
+    for (i=0; i<int1; i++)
+      ppt2->k2_out[i] = pointer1[i];
+    
+    free (pointer1);
+
+  }
+
+  class_call(parser_read_list_of_doubles(
+               pfc,
+              "k3_out",
+              &(int1),
+              &(pointer1),
+              &flag1,
+              errmsg),
+    errmsg,
+    errmsg);
+
+  if (flag1 == _TRUE_) {
+    
+    class_test(int1 != ppt2->k_out_size, errmsg,
+      "specify the same number of values in k1_out, k1_out and k3_out",
+      int1);
+    
+    for (i=0; i<int1; i++)
+      ppt2->k3_out[i] = pointer1[i];
+    
+    free (pointer1);
+
+  }
+
+
+  /* Check that the added k values satisfy the triangular condition */
+
+  for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
+
+    double k1 = ppt2->k1_out[index_k_out];
+    double k2 = ppt2->k2_out[index_k_out];
+    double k3 = ppt2->k3_out[index_k_out];
+
+    class_test (((k1+k2)<k3) || (fabs(k1-k2)>k3),
+      errmsg,
+      "the k_out triplet #%d does not satisfy the triangular condition", index_k_out+1);
+  }
+
+
+  /* Read values of (k1_index,k2_index,k3_index) for which to write output files */
+
+  class_call(parser_read_list_of_integers(
+               pfc,
+              "k1_index_out",
+              &(int1),
+              &(int_pointer1),
+              &flag1,
+              errmsg),
+    errmsg,
+    errmsg);
+
+  if (flag1 == _TRUE_) {
+    
+    class_test((int1+ppt2->k_out_size) > _MAX_NUMBER_OF_K_FILES_, errmsg,
+      "increase _MAX_NUMBER_OF_K_FILES_ in include/perturbations.h to at least %d",
+      int1);
+    
+    ppt2->k_index_out_size = int1;
+
+    for (i=0; i<int1; i++)
+      ppt2->k1_index_out[i] = int_pointer1[i];
+    
+    free (int_pointer1);
+
+  }
+
+  class_call(parser_read_list_of_integers(
+               pfc,
+              "k2_index_out",
+              &(int1),
+              &(int_pointer1),
+              &flag1,
+              errmsg),
+    errmsg,
+    errmsg);
+
+  if (flag1 == _TRUE_) {
+    
+    class_test(int1 != ppt2->k_index_out_size, errmsg,
+      "specify the same number of values in k1_index_out, k2_index_out and k3_index_out",
+      int1);
+    
+    for (i=0; i<int1; i++)
+      ppt2->k2_index_out[i] = int_pointer1[i];
+    
+    free (int_pointer1);
+
+  }
+
+  class_call(parser_read_list_of_integers(
+               pfc,
+              "k3_index_out",
+              &(int1),
+              &(int_pointer1),
+              &flag1,
+              errmsg),
+    errmsg,
+    errmsg);
+
+  if (flag1 == _TRUE_) {
+    
+    class_test(int1 != ppt2->k_index_out_size, errmsg,
+      "specify the same number of values in k1_index_out, k1_index_out and k3_index_out",
+      int1);
+    
+    for (i=0; i<int1; i++)
+      ppt2->k3_index_out[i] = int_pointer1[i];
+    
+    free (int_pointer1);
+
+  }
+
+
+  /* Create and open output files for the desired k-values */
+
+  int k_out_size = ppt2->k_out_size + ppt2->k_index_out_size;
+
+  if (k_out_size > 0) {
+
+    for (int index_k_out=0; index_k_out < k_out_size; ++index_k_out) {
+
+      sprintf (ppt2->perturbations_filenames[index_k_out],
+        "%s/perturbations_song_%03d.dat",
+        pop->root,
+        index_k_out);
+
+      class_open(ppt2->perturbations_files[index_k_out],
+        ppt2->perturbations_filenames[index_k_out],
+        "w",
+        errmsg);
+
+    }
+  }
 
 
   // =================================================================================
@@ -1393,6 +1582,15 @@ int input2_init (
     pbs2->xx_max = ppr2->k_max_custom * tau0_guess;
   }
 
+  /* Accomodate for the case where the user asked to output custom k-values */    
+  if (ppt2->k_out_size > 0) {
+    double k_max = 0;
+    for (int i=0; i < ppt2->k_out_size; ++i)
+      k_max = MAX (MAX (MAX (ppt2->k1_out[i],ppt2->k2_out[i]), ppt2->k3_out[i]), k_max);
+    double tau0_guess = 18000;
+    pbs2->xx_max = MAX (pbs2->xx_max, k_max * tau0_guess);
+  }
+
   /* Copy the step size in xx to the bessel2 structure */
   pbs2->xx_step = ppr2->bessel_x_step_song;
 
@@ -1574,6 +1772,9 @@ int input2_default_params (
   strcpy(ppt2->quadsources_filename,"output/quadsources.txt");
   strcpy(ppt2->quadliouville_filename,"output/quadliouville.txt");
   strcpy(ppt2->quadcollision_filename,"output/quadcollision.txt");
+
+  ppt2->k_out_size=0;
+  ppt2->k_index_out_size=0;
 
   ppt2->index_k1_debug = 0;
   ppt2->index_k2_debug = 0;

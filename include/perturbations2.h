@@ -5,6 +5,7 @@
 
 #include "perturbations2_macros.h"
 #include "perturbations.h"
+#include "input.h"
 #include "common2.h"
 
 
@@ -971,6 +972,26 @@ struct perturbs2
   int index_k3_debug;      /**< Which k3=ppt2->k[index_k3_debug] value should we dump to file? */
   int l_max_debug;         /**< For any hierarchy, how many l values should we dump to file? */
   //@}
+
+  /**
+   * Parameters related to the creation of the perturbations output files
+   */
+  //@{
+  int k_out_size;                               /**< Number of (k1,k2,k3) triplets where to output the perturbations (default=0) */
+  int k_index_out_size;                         /**< Number of (index_k1,index_k2,index_k3) triplets where to output the perturbations (default=0) */
+  double k1_out[_MAX_NUMBER_OF_K_FILES_];       /**< List of k1 values where perturbation output is requested, with size k_out_size; filled in the input2.c module. */
+  double k2_out[_MAX_NUMBER_OF_K_FILES_];       /**< List of k2 values where perturbation output is requested, with size k_out_size; filled in the input2.c module. */
+  double k3_out[_MAX_NUMBER_OF_K_FILES_];       /**< List of k3 values where perturbation output is requested, with size k_out_size; filled in the input2.c module. */
+  double k1_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of index_k1 values where perturbation output is requested, with size k_index_out_size; filled in the input2.c module. */
+  double k2_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of index_k2 values where perturbation output is requested, with size k_index_out_size; filled in the input2.c module. */
+  double k3_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of index_k3 values where perturbation output is requested, with size k_index_out_size; filled in the input2.c module. */
+  int index_k1_out[_MAX_NUMBER_OF_K_FILES_];    /**< index_k1_out[index_k1_output] is the index in ppt2->k corresponding to k1=k1_out[index_k1_output]; filled in the perturbations2.c module. */
+  int index_k2_out[_MAX_NUMBER_OF_K_FILES_];    /**< index_k2_out[index_k2_output] is the index in ppt2->k corresponding to k2=k2_out[index_k2_output]; filled in the perturbations2.c module. */
+  int index_k3_out[_MAX_NUMBER_OF_K_FILES_];    /**< index_k3_out[index_k3_output] is the index in ppt2->k[index_k1][index_k2] corresponding to k3=k3_out[index_k3_output]; it is filled in the perturbations2.c module. */
+  char perturbations_filenames[_MAX_NUMBER_OF_K_FILES_][_FILENAMESIZE_]; /**< Path of the files that will contain the perturbations at the desired k values; filled in the input2.c module. */
+  FILE * perturbations_files[_MAX_NUMBER_OF_K_FILES_]; /**< Files that will contain the perturbations at the desired k values; filled in the input2.c module. */
+  //@}
+
 
 };
 

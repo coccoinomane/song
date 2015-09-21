@@ -1379,7 +1379,7 @@ int perturb2_get_k_lists (
 
   
   // -------------------------------------------------------------------------------
-  // -                              Logarithmic sampling                           -
+  // -                             Logarithmic sampling                            -
   // -------------------------------------------------------------------------------
 
   if (ppt2->k_sampling == log_k_sampling) {
@@ -1399,7 +1399,7 @@ int perturb2_get_k_lists (
   
 
   // -------------------------------------------------------------------------------
-  // -                                Linear sampling                              -
+  // -                               Linear sampling                               -
   // -------------------------------------------------------------------------------
 
   else if (ppt2->k_sampling == lin_k_sampling) {
@@ -1419,7 +1419,7 @@ int perturb2_get_k_lists (
 
 
   // -------------------------------------------------------------------------------
-  // -                                Smart sampling                               -
+  // -                               Smart sampling                                -
   // -------------------------------------------------------------------------------
 
   /* Adopt the same k-sampling algorithm as the one adopted in vanilla CLASS, which
@@ -1516,11 +1516,117 @@ int perturb2_get_k_lists (
   } // end of if(smart_sources_k_sampling)
   
 
+  // -------------------------------------------------------------------------------
+  // -                             Add output values                               -
+  // -------------------------------------------------------------------------------
+
+  /* The user might have asked to output the perturbations at specific configurations
+  of (k1,k2,k3) using the k1_out, k2_out and k3_out parameters. Here we add these
+  k-values to the list of computed k in SONG, that is, to ppt2->k. */
+
+  if (ppt2->k_out_size > 0) {
+
+    /* Build a 1D array with all k-points to be added */  
+    double * k_out_sorted;
+    class_alloc (k_out_sorted, 3*ppt2->k_out_size*sizeof(double), ppt2->error_message);
+
+    for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
+      k_out_sorted[3*index_k_out] = ppt2->k1_out[index_k_out];
+      k_out_sorted[3*index_k_out+1] = ppt2->k2_out[index_k_out];
+      k_out_sorted[3*index_k_out+2] = ppt2->k3_out[index_k_out];
+    }
+
+    /* Sort the array in ascending order */
+    qsort (k_out_sorted, 3*ppt2->k_out_size, sizeof(double), compare_doubles);
+
+    /* Count duplicates */
+    int n_duplicates = 0;
+
+    for (int i=0; i < (3*ppt2->k_out_size-1); ++i)
+      if (k_out_sorted[i+1] == k_out_sorted[i])
+        n_duplicates++;
+
+    int n_to_add = 3*ppt2->k_out_size - n_duplicates;
+    
+    /* Extend size of k list */
+    class_realloc(ppt2->k,
+                  ppt2->k,
+                  (ppt2->k_size + n_to_add)*sizeof(double),
+                  ppt2->error_message);
+
+    /* Merge ppt2->k and the array with the k values to add */  
+    int index_k = 0;
+    for (int i=0; i < (3*ppt2->k_out_size-1); ++i)
+      if (k_out_sorted[i+1] != k_out_sorted[i])
+        ppt2->k[ppt2->k_size+index_k++] = k_out_sorted[i];
+    ppt2->k[ppt2->k_size+index_k] = k_out_sorted[3*ppt2->k_out_size-1];
+
+    /* Update the size of ppt2->k to reflect the new k points added */
+    ppt2->k_size += n_to_add;
+
+    /* Sort ppt2->k in ascending order */
+    qsort (ppt2->k, ppt2->k_size, sizeof(double), compare_doubles);
+
+    /* Check that there are no duplicates */
+    for (int index_k=0; index_k < (ppt2->k_size-1); ++index_k)
+      class_test (ppt2->k[index_k+1] <= ppt2->k[index_k],
+        ppt2->error_message,
+        "sorting failed");
+
+    /* Assign to each added value of k the corresponding index in ppt2->k */
+    for (int i=0; i < (3*ppt2->k_out_size-1); ++i) {
+     
+      /* Find index in ppt2->k corresponding to the current output k */
+      int index_k = 0;
+      while (ppt2->k[index_k] != k_out_sorted[i])
+        index_k++; 
+     
+      class_test (index_k >= ppt2->k_size,
+        ppt2->error_message,
+        "index_k out of bounds: something went wrong while adding k output values");
+     
+      /* Store the index in the index_kX_out arrays */
+      int index_k_out = (i - i%3)/3;
+
+      if (i%3 == 0)
+        ppt2->index_k1_out[index_k_out] = index_k;
+      else if (i%3 == 1)
+        ppt2->index_k2_out[index_k_out] = index_k;
+      else if (i%3 == 2)
+        ppt2->index_k3_out[index_k_out] = index_k;
+    }
+
+    free (k_out_sorted);
+
+  } // end of if k_out
+
+
+  /* The user might also ask to output the perturbations using the indices
+  index_k1, index_k2 and index_k3. We implement this feature here. */
+
+  if (ppt2->k_index_out_size > 0) {
+    
+    for (int k_index_out=0; k_index_out < ppt2->k_index_out_size; ++k_index_out) {
+      ppt2->index_k1_out[ppt2->k_out_size + k_index_out] = ppt2->k1_index_out[k_index_out];
+      ppt2->index_k2_out[ppt2->k_out_size + k_index_out] = ppt2->k2_index_out[k_index_out];
+      ppt2->index_k3_out[ppt2->k_out_size + k_index_out] = ppt2->k3_index_out[k_index_out];   
+    }
+
+    ppt2->k_out_size += ppt2->k_index_out_size;
+  }
+  
+
   /* Debug - Print out the k-list */
-  // printf ("# ~~~ k-sampling for k1 and k2 (size=%d) ~~~\n", ppt2->k_size);
-  // for (int index_k=0; index_k < ppt2->k_size; ++index_k) {
-  //   printf ("%17d %17.7g\n", index_k, ppt2->k[index_k]);
-  // }
+  printf ("# ~~~ k-sampling for k1 and k2 (size=%d) ~~~\n", ppt2->k_size);
+  for (int index_k=0; index_k < ppt2->k_size; ++index_k) {
+    printf ("%17d %17.7g", index_k, ppt2->k[index_k]);
+    for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
+      if (index_k==ppt2->index_k1_out[index_k_out]) printf (" (k1_out) ");
+      if (index_k==ppt2->index_k2_out[index_k_out]) printf (" (k2_out) ");
+      if (index_k==ppt2->index_k3_out[index_k_out]) printf (" (k3_out) ");
+    }
+    printf ("\n");
+  }
   
   /* Check that the minimum and maximum values of ppt2->k are different. This
   test might fire if the user set a custom time sampling with two equal k-values */
@@ -5319,13 +5425,19 @@ int perturb2_solve (
     ppt2->error_message,
     ppt2->error_message);
         
-  /* Should we create debug files for this particular (k1,k2,k3)? */
+  /* Should we fill an output file for this particular (k1,k2,k3)? */
   ppw2->print_function = NULL;
-  if ((ppt2->has_debug_files == _TRUE_)
-     && (index_k1 == ppt2->index_k1_debug)
-     && (index_k2 == ppt2->index_k2_debug)
-     && (index_k3 == ppt2->index_k3_debug))
-    ppw2->print_function = perturb2_save_early_transfers;
+  // if ((ppt2->has_debug_files == _TRUE_)
+  //    && (index_k1 == ppt2->index_k1_debug)
+  //    && (index_k2 == ppt2->index_k2_debug)
+  //    && (index_k3 == ppt2->index_k3_debug))
+  //   ppw2->print_function = perturb2_save_early_transfers;
+
+  for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out)
+    if (index_k1 == ppt2->index_k1_out[index_k_out])
+      if (index_k2 == ppt2->index_k2_out[index_k_out])
+        if (index_k3 == ppt2->index_k3_out[index_k_out])
+          ppw2->print_function = perturb2_save_early_transfers;
 
   /* Initialize indices relevant for back/thermo tables search */
   ppw2->last_index_back=0;
@@ -11815,7 +11927,7 @@ int perturb2_save_early_transfers (
   // =                          Interpolate needed quantities                             =
   // ======================================================================================
 
-  /* Call functions that will fill pvec___ arrays with useful quantities.  Do not alter
+  /* Call functions that will fill pvec__ arrays with useful quantities.  Do not alter
   the order in which these functions are called, since they all rely on the quantities
   computed by the previous ones. */
 
@@ -12299,13 +12411,17 @@ int perturb2_save_early_transfers (
   // =                                  Print to file                                   =
   // ====================================================================================
 
-  /* Shortcut to the file where we shall print the transfer functions. */
+  /* Shortcut to the file where we shall print the transfer functions */
   FILE * file_tr = ppt2->transfers_file;
+  // FILE * file_tr = ppt2->perturbations_files[index_k_out];
   int index_print_tr = 1;
 
   /* Shortcut to the file where we shall print all the quadratic sources */
   FILE * file_qs = ppt2->quadsources_file;
   int index_print_qs = 1;
+  
+  /* Uncomment to disable printing the quadratic sources */
+  // FILE * file_qs = fopen("/dev/null", "w");
 
   /* Choose how label & values should be formatted */
   char format_label[64] = "%18s(%02d) ";

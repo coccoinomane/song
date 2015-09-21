@@ -121,16 +121,16 @@ int main(int argc, char **argv) {
   // printf("\tpt.custom_tau_mode_quadsources = %d\n", pt.custom_tau_mode_quadsources);
   
   /* Time sampling for second-order sources */
-  printf("* Time sampling for second-order sources\n");
-  printf("\tpr2.perturb_sampling_stepsize_song = %g\n", pr2.perturb_sampling_stepsize_song);
-  printf("\tpr2.perturb_sampling_late_time_boost = %g\n", pr2.perturb_sampling_late_time_boost);
-  printf("\tpr2.custom_tau_start_evolution = %g\n", pr2.custom_tau_start_evolution);
-  printf("\tpt2.recombination_max_to_end_ratio = %g\n", pt2.recombination_max_to_end_ratio);
-  printf("\tpt2.has_custom_timesampling = %d\n", pt2.has_custom_timesampling);
-  printf("\tpt2.custom_tau_ini = %g\n", pt2.custom_tau_ini);
-  printf("\tpt2.custom_tau_end = %g\n", pt2.custom_tau_end);
-  printf("\tpt2.custom_tau_size = %d\n", pt2.custom_tau_size);
-  printf("\tpt2.custom_tau_mode = %d\n", pt2.custom_tau_mode);
+  // printf("* Time sampling for second-order sources\n");
+  // printf("\tpr2.perturb_sampling_stepsize_song = %g\n", pr2.perturb_sampling_stepsize_song);
+  // printf("\tpr2.perturb_sampling_late_time_boost = %g\n", pr2.perturb_sampling_late_time_boost);
+  // printf("\tpr2.custom_tau_start_evolution = %g\n", pr2.custom_tau_start_evolution);
+  // printf("\tpt2.recombination_max_to_end_ratio = %g\n", pt2.recombination_max_to_end_ratio);
+  // printf("\tpt2.has_custom_timesampling = %d\n", pt2.has_custom_timesampling);
+  // printf("\tpt2.custom_tau_ini = %g\n", pt2.custom_tau_ini);
+  // printf("\tpt2.custom_tau_end = %g\n", pt2.custom_tau_end);
+  // printf("\tpt2.custom_tau_size = %d\n", pt2.custom_tau_size);
+  // printf("\tpt2.custom_tau_mode = %d\n", pt2.custom_tau_mode);
 
   /* Wavemode sampling */
   // printf("* Wavemode sampling for second-order sources\n");
@@ -212,8 +212,7 @@ int main(int argc, char **argv) {
   // printf("\tpr2.m_size = %d, ", pr2.m_size);
   // printf("\tpr2.m_max_2nd_order = %d, ", pr2.m_max_2nd_order);
   // printf("\tpr2.m = ");
-  // int index_m;
-  // for (index_m=0; index_m < pr2.m_size; ++index_m)
+  // for (int index_m=0; index_m < pr2.m_size; ++index_m)
   //   printf("%d%s ", pr2.m[index_m], index_m!=(pr2.m_size-1)?",":"\n");
   // printf("\tpr2.l_max_g = %d\n", pr2.l_max_g);
   // printf("\tpr2.l_max_pol_g = %d\n", pr2.l_max_pol_g);
@@ -242,17 +241,20 @@ int main(int argc, char **argv) {
   // printf("\tpr2.compute_only_odd_ls = %d\n", pr2.compute_only_odd_ls);
   // printf("\tbs2.extend_l1_using_m = %d\n", bs2.extend_l1_using_m);
 
-  /* Debug parameters */
-  // printf("* Debug parameters\n");
-  // printf("\tpt2.has_debug_files = %d\n", pt2.has_debug_files);
-  // printf("\tpt2.transfers_filename = %s\n", pt2.transfers_filename);
-  // printf("\tpt2.quadsources_filename = %s\n", pt2.quadsources_filename);
-  // printf("\tpt2.quadliouville_filename = %s\n", pt2.quadliouville_filename);
-  // printf("\tpt2.quadcollision_filename = %s\n", pt2.quadcollision_filename);
-  // printf("\tpt2.index_k1_debug = %d\n", pt2.index_k1_debug);
-  // printf("\tpt2.index_k2_debug = %d\n", pt2.index_k2_debug);
-  // printf("\tpt2.index_k3_debug = %d\n", pt2.index_k3_debug);
-  // printf("\tpt2.l_max_debug = %d\n", pt2.l_max_debug);
+  /* Perturbations output and debug parameters */
+  printf("* Debug parameters\n");
+  printf("\tpt2.has_debug_files = %d\n", pt2.has_debug_files);
+  printf("\tpt2.transfers_filename = %s\n", pt2.transfers_filename);
+  printf("\tpt2.quadsources_filename = %s\n", pt2.quadsources_filename);
+  printf("\tpt2.quadliouville_filename = %s\n", pt2.quadliouville_filename);
+  printf("\tpt2.quadcollision_filename = %s\n", pt2.quadcollision_filename);
+  printf("\tpt2.index_k1_debug = %d\n", pt2.index_k1_debug);
+  printf("\tpt2.index_k2_debug = %d\n", pt2.index_k2_debug);
+  printf("\tpt2.index_k3_debug = %d\n", pt2.index_k3_debug);
+  printf("\tpt2.l_max_debug = %d\n", pt2.l_max_debug);
+  printf("\tpt2.k_out_size = %d\n", pt2.k_out_size);
+  for (int index_k_out=0; index_k_out < pt2.k_out_size; ++index_k_out)
+    printf("%12g %12g %12g\n", pt2.k1_out[index_k_out], pt2.k2_out[index_k_out], pt2.k3_out[index_k_out]);
 
   /* Storage parameters */
   // printf("* Parameters related to the storage of intermediate results\n");
