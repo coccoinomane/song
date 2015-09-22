@@ -977,19 +977,32 @@ struct perturbs2
    * Parameters related to the creation of the perturbations output files
    */
   //@{
-  int k_out_size;                               /**< Number of (k1,k2,k3) triplets where to output the perturbations (default=0) */
-  int k_index_out_size;                         /**< Number of (index_k1,index_k2,index_k3) triplets where to output the perturbations (default=0) */
-  double k1_out[_MAX_NUMBER_OF_K_FILES_];       /**< List of k1 values where perturbation output is requested, with size k_out_size; filled in the input2.c module. */
-  double k2_out[_MAX_NUMBER_OF_K_FILES_];       /**< List of k2 values where perturbation output is requested, with size k_out_size; filled in the input2.c module. */
-  double k3_out[_MAX_NUMBER_OF_K_FILES_];       /**< List of k3 values where perturbation output is requested, with size k_out_size; filled in the input2.c module. */
-  double k1_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of index_k1 values where perturbation output is requested, with size k_index_out_size; filled in the input2.c module. */
-  double k2_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of index_k2 values where perturbation output is requested, with size k_index_out_size; filled in the input2.c module. */
-  double k3_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of index_k3 values where perturbation output is requested, with size k_index_out_size; filled in the input2.c module. */
-  int index_k1_out[_MAX_NUMBER_OF_K_FILES_];    /**< index_k1_out[index_k1_output] is the index in ppt2->k corresponding to k1=k1_out[index_k1_output]; filled in the perturbations2.c module. */
-  int index_k2_out[_MAX_NUMBER_OF_K_FILES_];    /**< index_k2_out[index_k2_output] is the index in ppt2->k corresponding to k2=k2_out[index_k2_output]; filled in the perturbations2.c module. */
-  int index_k3_out[_MAX_NUMBER_OF_K_FILES_];    /**< index_k3_out[index_k3_output] is the index in ppt2->k[index_k1][index_k2] corresponding to k3=k3_out[index_k3_output]; it is filled in the perturbations2.c module. */
-  char perturbations_filenames[_MAX_NUMBER_OF_K_FILES_][_FILENAMESIZE_]; /**< Path of the files that will contain the perturbations at the desired k values; filled in the input2.c module. */
-  FILE * perturbations_files[_MAX_NUMBER_OF_K_FILES_]; /**< Files that will contain the perturbations at the desired k values; filled in the input2.c module. */
+  int k_out_size; /**< Number of (k1,k2,k3) triplets where to output the perturbations (default=0) */
+  int k_index_out_size;  /**< Number of (index_k1,index_k2,index_k3) triplets where to output the
+                         perturbations (default=0) */
+  double k1_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of k1 values where perturbation output is requested,
+                                          with size k_out_size; filled in input2.c */
+  double k2_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of k2 values where perturbation output is requested,
+                                          with size k_out_size; filled in input2.c */
+  double k3_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of k3 values where perturbation output is requested,
+                                          with size k_out_size; filled in input2.c */
+  double k1_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of indices in ppt2->k where perturbation output is requested,
+                                                with size k_index_out_size; filled in input2 */
+  double k2_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of indices in ppt2->k where perturbation output is requested,
+                                                with size k_index_out_size; filled in input2.c */
+  double k3_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of indices in ppt2->k3[index_k1][index_k2] where perturbation
+                                                output is requested, with size k_index_out_size; filled in input2.c */
+  int index_k1_out[_MAX_NUMBER_OF_K_FILES_]; /**< index_k1_out[index_k1_output] is the index in ppt2->k corresponding to
+                                             k1=k1_out[index_k1_output]; filled in perturbations2.c */
+  int index_k2_out[_MAX_NUMBER_OF_K_FILES_]; /**< index_k2_out[index_k2_output] is the index in ppt2->k corresponding to
+                                             k2=k2_out[index_k2_output]; filled in perturbations2.c */
+  int index_k3_out[_MAX_NUMBER_OF_K_FILES_]; /**< index_k3_out[index_k3_output] is the index in ppt2->k[index_k1][index_k2]
+                                             corresponding to k3=k3_out[index_k3_output]. If k3 does not satisfy the triangular
+                                             condition, its location in the array will contain -1. Filled in perturbations2.c */
+  char k_out_filenames[_MAX_NUMBER_OF_K_FILES_][_FILENAMESIZE_]; /**< Path of the files that will contain the perturbations at the
+                                                                 desired k values; filled in the input2.c module */
+  FILE * k_out_files[_MAX_NUMBER_OF_K_FILES_]; /**< Files that will contain the perturbations at the desired k values; filled in
+                                               the input2.c module */
   //@}
 
 
@@ -1426,6 +1439,12 @@ struct perturb2_workspace
   // ====================================================================================
   // =                                    Debug                                         =
   // ====================================================================================
+  
+  int index_k_out;    /**< If negative, the current (k1,k2,k3) wavemode will not be output
+                      to file. If positive, the wavemode will be output to the file whose 
+                      path is ppt2->k_out_filenames[index_k_out]; index_k_out is also the
+                      index corresponding to k1, k2 and k3 in ppt2->k1_out, ppt2->k2_out and
+                      ppt2->k3_out arrays. */
   
   int derivs_count;   /**< Counter to keep track of how many times the function perturb2_derivs
                       has been called for the considered set of (k1,k2,k3). */

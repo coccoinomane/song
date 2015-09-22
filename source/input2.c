@@ -1004,15 +1004,27 @@ int input2_init (
 
     for (int index_k_out=0; index_k_out < k_out_size; ++index_k_out) {
 
-      sprintf (ppt2->perturbations_filenames[index_k_out],
+      /* Build filenames */
+      sprintf (ppt2->k_out_filenames[index_k_out],
         "%s/perturbations_song_%03d.dat",
         pop->root,
         index_k_out);
 
-      class_open(ppt2->perturbations_files[index_k_out],
-        ppt2->perturbations_filenames[index_k_out],
+      /* Open files */
+      class_open(ppt2->k_out_files[index_k_out],
+        ppt2->k_out_filenames[index_k_out],
         "w",
         errmsg);
+
+      /* Issue a warning if the user asked for configurations with k1<k2 */
+      if (((index_k_out < ppt2->k_out_size) && (ppt2->k1_out[index_k_out] < ppt2->k2_out[index_k_out])) ||
+          ((index_k_out >= ppt2->k_out_size) && (ppt2->k1_index_out[index_k_out-ppt2->k_out_size] < ppt2->k2_index_out[index_k_out-ppt2->k_out_size])))
+        fprintf (ppt2->k_out_files[index_k_out],
+          "NOTE: This file is empty because you specified a triplet where k1<k2, while SONG only\
+ computes configurations where k1>=k2. To obtain the transfer functions for k1<k2, switch\
+ k1 and k2 for this triplet in the parameter file and multiply the resulting output file\
+ by a factor (-1)^m. For scalar quantities, this factor is 1. For a more detailed explanation,\
+ please refer to Sec. B.2 of http://arxiv.org/abs/1405.2280.\n");
 
     }
   }

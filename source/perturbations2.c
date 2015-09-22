@@ -1517,7 +1517,7 @@ int perturb2_get_k_lists (
   
 
   // -------------------------------------------------------------------------------
-  // -                             Add output values                               -
+  // -                             Add output points                               -
   // -------------------------------------------------------------------------------
 
   /* The user might have asked to output the perturbations at specific configurations
@@ -1526,104 +1526,78 @@ int perturb2_get_k_lists (
 
   if (ppt2->k_out_size > 0) {
 
-    /* Build a 1D array with all k-points to be added */  
-    double * k_out_sorted;
-    class_alloc (k_out_sorted, 3*ppt2->k_out_size*sizeof(double), ppt2->error_message);
-
+    /* Build a 1D array with the output values for k1 and k2 */
+    double * k_out;
+    class_alloc (k_out, 2*ppt2->k_out_size*sizeof(double), ppt2->error_message);
     for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
-      k_out_sorted[3*index_k_out] = ppt2->k1_out[index_k_out];
-      k_out_sorted[3*index_k_out+1] = ppt2->k2_out[index_k_out];
-      k_out_sorted[3*index_k_out+2] = ppt2->k3_out[index_k_out];
+      k_out[2*index_k_out] = ppt2->k1_out[index_k_out];
+      k_out[2*index_k_out + 1] = ppt2->k2_out[index_k_out];
     }
-
-    /* Sort the array in ascending order */
-    qsort (k_out_sorted, 3*ppt2->k_out_size, sizeof(double), compare_doubles);
-
-    /* Count duplicates */
-    int n_duplicates = 0;
-
-    for (int i=0; i < (3*ppt2->k_out_size-1); ++i)
-      if (k_out_sorted[i+1] == k_out_sorted[i])
-        n_duplicates++;
-
-    int n_to_add = 3*ppt2->k_out_size - n_duplicates;
     
-    /* Extend size of k list */
-    class_realloc(ppt2->k,
+    /* Merge ppt2->k with the k1 and k2 output points, sort the resulting array and
+    remove the duplicates in it */
+    class_call (merge_arrays_double (
                   ppt2->k,
-                  (ppt2->k_size + n_to_add)*sizeof(double),
-                  ppt2->error_message);
+                  ppt2->k_size,
+                  k_out,
+                  2*ppt2->k_out_size,
+                  &(ppt2->k),
+                  &(ppt2->k_size),
+                  compare_doubles,
+                  ppt2->error_message
+                  ),
+      ppt2->error_message,
+      ppt2->error_message);
 
-    /* Merge ppt2->k and the array with the k values to add */  
-    int index_k = 0;
-    for (int i=0; i < (3*ppt2->k_out_size-1); ++i)
-      if (k_out_sorted[i+1] != k_out_sorted[i])
-        ppt2->k[ppt2->k_size+index_k++] = k_out_sorted[i];
-    ppt2->k[ppt2->k_size+index_k] = k_out_sorted[3*ppt2->k_out_size-1];
-
-    /* Update the size of ppt2->k to reflect the new k points added */
-    ppt2->k_size += n_to_add;
-
-    /* Sort ppt2->k in ascending order */
-    qsort (ppt2->k, ppt2->k_size, sizeof(double), compare_doubles);
-
-    /* Check that there are no duplicates */
-    for (int index_k=0; index_k < (ppt2->k_size-1); ++index_k)
-      class_test (ppt2->k[index_k+1] <= ppt2->k[index_k],
-        ppt2->error_message,
-        "sorting failed");
-
-    /* Assign to each added value of k the corresponding index in ppt2->k */
-    for (int i=0; i < (3*ppt2->k_out_size-1); ++i) {
+    /* Assign to each output k the corresponding index in ppt2->k */
+    for (int i=0; i < 2*ppt2->k_out_size; ++i) {
      
       /* Find index in ppt2->k corresponding to the current output k */
       int index_k = 0;
-      while (ppt2->k[index_k] != k_out_sorted[i])
+      while (ppt2->k[index_k] != k_out[i])
         index_k++; 
      
       class_test (index_k >= ppt2->k_size,
         ppt2->error_message,
         "index_k out of bounds: something went wrong while adding k output values");
      
-      /* Store the index in the index_kX_out arrays */
-      int index_k_out = (i - i%3)/3;
+      /* Store the index in the index_k_out arrays */
+      int index_k_out = (i - i%2)/2;
 
-      if (i%3 == 0)
+      if (i%2 == 0)
         ppt2->index_k1_out[index_k_out] = index_k;
-      else if (i%3 == 1)
+      else if (i%2 == 1)
         ppt2->index_k2_out[index_k_out] = index_k;
-      else if (i%3 == 2)
-        ppt2->index_k3_out[index_k_out] = index_k;
+      
+      /* Debug - Print the k->k_out correspondence */
+      // printf ("k_out=%g[%d] -> k=%g[%d]\n",
+      //   k_out[i], i, ppt2->k[index_k], index_k);       
     }
 
-    free (k_out_sorted);
+    free (k_out);
 
   } // end of if k_out
 
 
-  /* The user might also ask to output the perturbations using the indices
-  index_k1, index_k2 and index_k3. We implement this feature here. */
-
+  /* The user might also ask to output the perturbations via the indices
+  index_k1 and index_k2 rather than with the exact values k1 and k2. We
+  implement this feature here. */
   if (ppt2->k_index_out_size > 0) {
-    
     for (int k_index_out=0; k_index_out < ppt2->k_index_out_size; ++k_index_out) {
       ppt2->index_k1_out[ppt2->k_out_size + k_index_out] = ppt2->k1_index_out[k_index_out];
       ppt2->index_k2_out[ppt2->k_out_size + k_index_out] = ppt2->k2_index_out[k_index_out];
-      ppt2->index_k3_out[ppt2->k_out_size + k_index_out] = ppt2->k3_index_out[k_index_out];   
     }
-
     ppt2->k_out_size += ppt2->k_index_out_size;
   }
-  
+
 
   /* Debug - Print out the k-list */
   printf ("# ~~~ k-sampling for k1 and k2 (size=%d) ~~~\n", ppt2->k_size);
   for (int index_k=0; index_k < ppt2->k_size; ++index_k) {
     printf ("%17d %17.7g", index_k, ppt2->k[index_k]);
     for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
-      if (index_k==ppt2->index_k1_out[index_k_out]) printf (" (k1_out) ");
-      if (index_k==ppt2->index_k2_out[index_k_out]) printf (" (k2_out) ");
-      if (index_k==ppt2->index_k3_out[index_k_out]) printf (" (k3_out) ");
+      if (index_k==ppt2->index_k1_out[index_k_out]) printf ("\t(triplet #%d, k1) ", index_k_out);
+      if (index_k==ppt2->index_k2_out[index_k_out]) printf ("\t(triplet #%d, k2) ", index_k_out);
     }
     printf ("\n");
   }
@@ -1873,6 +1847,115 @@ int perturb2_get_k_lists (
   
       } // end of smart sampling
       
+
+      // -------------------------------------------------------------------------------
+      // -                             Add k3 output points                            -
+      // -------------------------------------------------------------------------------
+
+      /* Add the output values to the k3 sampling. These values are contained in
+      ppt2->k3_out and satisfy the triangular condition. Note that we enter the block
+      only if index_k1 and index_k2 are both requested as part of an output triplet */
+
+      for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
+        
+        if ((index_k1==ppt2->index_k1_out[index_k_out]) && (index_k2==ppt2->index_k2_out[index_k_out])) {
+
+          /* If this k3 output value was added by specifying an exact value, then we do need to
+          add this value to the k3 grid */
+          
+          if (index_k_out < (ppt2->k_out_size - ppt2->k_index_out_size)) {
+
+            /* k3 value to be added to the grid */
+            double k3 = ppt2->k3_out[index_k_out];
+          
+            /* Alert the user if k3 is either larger than k3_max or smaller than k3_min, which
+            are the limits that SONG would would have imposed on k3 if no output were requested */
+            if (k3 < k3_min)
+              fprintf (ppt2->k_out_files[index_k_out],
+              "# NOTE: this k=%.17f was smaller than k3_min=%.17f (|k1-k2|=%.17f)\n",
+              k3, k3_min, fabs(k1-k2));
+
+            if (k3 > k3_max)
+              fprintf (ppt2->k_out_files[index_k_out],
+              "# NOTE: this k=%.17f was larger than k3_max=%.17f (|k1-k2|=%.17f)\n",
+              k3, k3_max, k1+k2);
+
+            /* Add the considered k3 point to the grid in ppt2->k3[index_k1][index_k2] */
+            class_call (merge_arrays_double (
+                          ppt2->k3[index_k1][index_k2],
+                          ppt2->k3_size[index_k1][index_k2],
+                          &k3,
+                          1,
+                          &(ppt2->k3[index_k1][index_k2]),
+                          &(ppt2->k3_size[index_k1][index_k2]),
+                          compare_doubles,
+                          ppt2->error_message
+                          ),
+              ppt2->error_message,
+              ppt2->error_message);
+
+            /* Find the index corresponding to k3 in the new k3 grid */
+            int index_k3 = ppt2->k3_size[index_k1][index_k2] - 1;
+            while ((index_k3 >= 0) && (ppt2->k3[index_k1][index_k2][index_k3] != k3))
+              index_k3--;
+
+            class_test (index_k3<0,
+              ppt2->error_message,
+              "k3_out=%g not found for index_k1=%d, index_k2=%d; bug in merge_arrays_double?",
+              index_k1,index_k2);
+
+            ppt2->index_k3_out[index_k_out] = index_k3;
+            
+          } // end of if 
+
+
+          /* If this k3 output value was added by specifying an index rather than an exact
+          value, then the value is already in the k3 grid and we do not need to add it */
+
+          else {
+
+            int first_index_k_out = ppt2->k_out_size - ppt2->k_index_out_size;
+
+            /* Copy the index_k3 provided directly by the user */
+            ppt2->index_k3_out[index_k_out] = ppt2->k3_index_out[index_k_out-first_index_k_out];
+
+            /* If the user gave a value of index_k3 which is not included in the sampling,
+            set index_k3 to the largest possible value */
+            
+            int k3_size = ppt2->k3_size[index_k1][index_k2];
+            
+            if (ppt2->index_k3_out[index_k_out] >= k3_size) {
+
+              fprintf (ppt2->k_out_files[index_k_out],
+               "NOTE: The requested index_k3=%d is larger than or equal to the size of the\
+ k3 grid for the requested index_k1=%d and index_k2=%d; we have set index_k3 to the highest\
+ possible value: index_k3=k3_size-1=%d.\n",
+               ppt2->index_k3_out[index_k_out], index_k1, index_k2, k3_size-1);
+
+              ppt2->index_k3_out[index_k_out] = k3_size-1;
+            }
+          
+          } // end of if(index or value)
+                    
+
+          /* Debug - Print the k3 grid for all (k1,k2) configurations requested as output */
+          fprintf (stderr, "k1[%d]=%g, k2[%d]=%g, k3_size=%d, k3_min=%g, k3_max=%g\n",
+            index_k1, k1, index_k2, k2, ppt2->k3_size[index_k1][index_k2], k3_min, k3_max);
+
+          for (int index_k3=0; index_k3 < ppt2->k3_size[index_k1][index_k2]; ++index_k3) {
+            double k3 = ppt2->k3[index_k1][index_k2][index_k3];
+            fprintf(stderr, "%3d %12g ", index_k3, k3);
+            if (index_k3 == ppt2->index_k3_out[index_k_out])
+              fprintf (stderr, "\t(triplet #%d) ", index_k_out);
+            fprintf (stderr, "\n");
+          }
+          fprintf (stderr, "\n\n");
+
+        } // end of if (k1==k1_out && k2==k2_out)
+
+      } // end of for k_out
+      
+
       /* Update counter of k-configurations */
       ppt2->count_k_configurations += ppt2->k3_size[index_k1][index_k2];
 
@@ -5426,18 +5509,17 @@ int perturb2_solve (
     ppt2->error_message);
         
   /* Should we fill an output file for this particular (k1,k2,k3)? */
+  ppw2->index_k_out = -1;
   ppw2->print_function = NULL;
-  // if ((ppt2->has_debug_files == _TRUE_)
-  //    && (index_k1 == ppt2->index_k1_debug)
-  //    && (index_k2 == ppt2->index_k2_debug)
-  //    && (index_k3 == ppt2->index_k3_debug))
-  //   ppw2->print_function = perturb2_save_early_transfers;
 
-  for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out)
-    if (index_k1 == ppt2->index_k1_out[index_k_out])
-      if (index_k2 == ppt2->index_k2_out[index_k_out])
-        if (index_k3 == ppt2->index_k3_out[index_k_out])
-          ppw2->print_function = perturb2_save_early_transfers;
+  for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
+    if ((index_k1 == ppt2->index_k1_out[index_k_out]) &&
+        (index_k2 == ppt2->index_k2_out[index_k_out]) &&
+        (index_k3 == ppt2->index_k3_out[index_k_out])) {
+      ppw2->index_k_out = index_k_out;
+      ppw2->print_function = perturb2_save_early_transfers;
+    }
+  }
 
   /* Initialize indices relevant for back/thermo tables search */
   ppw2->last_index_back=0;
@@ -5720,21 +5802,14 @@ int perturb2_solve (
   free (interval_limit); 
   free(interval_number_of);
 
+  fclose (ppt2->k_out_files[ppw2->index_k_out]);
+
   return _SUCCESS_;
           
 }
           
           
           
-          
-
-
-
-
-
-
-
-
 
 /**
  * Assign which perturbations should be evolved for the considered time interval,
@@ -11887,7 +11962,7 @@ int perturb2_save_early_transfers (
           ErrorMsg error_message
           )
 {
-  
+
   /* Shortcuts for the structures */
   struct perturb2_parameters_and_workspace * pppaw2 = parameters_and_workspace;
   struct precision * ppr = pppaw2->ppr;
@@ -12412,17 +12487,13 @@ int perturb2_save_early_transfers (
   // ====================================================================================
 
   /* Shortcut to the file where we shall print the transfer functions */
-  FILE * file_tr = ppt2->transfers_file;
-  // FILE * file_tr = ppt2->perturbations_files[index_k_out];
+  FILE * file_tr = ppt2->k_out_files[ppw2->index_k_out];
   int index_print_tr = 1;
 
   /* Shortcut to the file where we shall print all the quadratic sources */
   FILE * file_qs = ppt2->quadsources_file;
   int index_print_qs = 1;
   
-  /* Uncomment to disable printing the quadratic sources */
-  // FILE * file_qs = fopen("/dev/null", "w");
-
   /* Choose how label & values should be formatted */
   char format_label[64] = "%18s(%02d) ";
   char format_value[64] = "%+22.11e ";
