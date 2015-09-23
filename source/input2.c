@@ -236,22 +236,26 @@ int input2_init (
       ppt2->has_perturbations2 = _TRUE_;
     }
 
-    if ((strstr(string1,"early_transfers1") != NULL) || (strstr(string1,"ET1") != NULL)) {
-      ppt2->has_early_transfers1_only = _TRUE_;
+    if ((strstr(string1,"stop_at_perturbations1") != NULL) || (strstr(string1,"P1") != NULL)) {
+      ppt2->stop_at_perturbations1 = _TRUE_;
       ppt2->has_perturbations2 = _TRUE_;
     }
 
-    if ((strstr(string1,"early_transfers2") != NULL) || (strstr(string1,"ET2") != NULL)) {
-      ppt2->has_early_transfers2_only = _TRUE_;
+    if ((strstr(string1,"stop_at_perturbations2") != NULL) || (strstr(string1,"P2") != NULL)) {
+      ppt2->stop_at_perturbations2 = _TRUE_;
       ppt2->has_perturbations2 = _TRUE_;      
-      ppt2->has_cls = _FALSE_;
     }
-    else {
-      if ((strstr(string1,"transfers2") != NULL) || (strstr(string1,"T2") != NULL)) {
-        ptr2->has_transfers2_only = _TRUE_;
-        ppt2->has_perturbations2 = _TRUE_;
-        ppt2->has_cls = _TRUE_;
-      }
+
+    if ((strstr(string1,"stop_at_transfers2") != NULL) || (strstr(string1,"T2") != NULL)) {
+      ptr2->has_transfers2_only = _TRUE_;
+      ppt2->has_perturbations2 = _TRUE_;
+      ppt2->has_cls = _TRUE_;
+    }
+
+    if (strstr(string1,"k_out") != NULL) {
+      ppt2->k_out_mode = _TRUE_;
+      ppt2->stop_at_perturbations2 = _TRUE_;
+      ppt2->has_perturbations2 = _TRUE_;
     }
     
   } // end of output parsing
@@ -922,76 +926,91 @@ int input2_init (
   }
 
 
-  /* Read values of (k1_index,k2_index,k3_index) for which to write output files */
+  /* Make sure that the user specified some k if running in k_out_mode */
 
-  class_call(parser_read_list_of_integers(
-               pfc,
-              "k1_index_out",
-              &(int1),
-              &(int_pointer1),
-              &flag1,
-              errmsg),
+  class_test ((ppt2->k_out_mode == _TRUE_) && (ppt2->k_out_size <= 0),
     errmsg,
-    errmsg);
+    "you asked to run SONG in k_out_mode (output=k_out) but you did not specify\
+ any output k value. Either turn off the k_out_mode or fill the k1_out, k2_out\
+ and k3_out parameters");
 
-  if (flag1 == _TRUE_) {
-    
-    class_test((int1+ppt2->k_out_size) > _MAX_NUMBER_OF_K_FILES_, errmsg,
-      "increase _MAX_NUMBER_OF_K_FILES_ in include/perturbations.h to at least %d",
-      int1);
-    
-    ppt2->k_index_out_size = int1;
 
-    for (i=0; i<int1; i++)
-      ppt2->k1_index_out[i] = int_pointer1[i];
+  /* Read values of index_k1, index_k2 and index_k3 for which to write output files.
+  If SONG is running in k_out_mode, we ignore these settings, lest there is no k
+  to compute */
     
-    free (int_pointer1);
+  if (ppt2->k_out_mode == _FALSE_) {
 
-  }
+    class_call(parser_read_list_of_integers(
+                 pfc,
+                "k1_index_out",
+                &(int1),
+                &(int_pointer1),
+                &flag1,
+                errmsg),
+      errmsg,
+      errmsg);
 
-  class_call(parser_read_list_of_integers(
-               pfc,
-              "k2_index_out",
-              &(int1),
-              &(int_pointer1),
-              &flag1,
-              errmsg),
-    errmsg,
-    errmsg);
+    if (flag1 == _TRUE_) {
+    
+      class_test((int1+ppt2->k_out_size) > _MAX_NUMBER_OF_K_FILES_, errmsg,
+        "increase _MAX_NUMBER_OF_K_FILES_ in include/perturbations.h to at least %d",
+        int1);
+    
+      ppt2->k_index_out_size = int1;
 
-  if (flag1 == _TRUE_) {
+      for (i=0; i<int1; i++)
+        ppt2->k1_index_out[i] = int_pointer1[i];
     
-    class_test(int1 != ppt2->k_index_out_size, errmsg,
-      "specify the same number of values in k1_index_out, k2_index_out and k3_index_out",
-      int1);
-    
-    for (i=0; i<int1; i++)
-      ppt2->k2_index_out[i] = int_pointer1[i];
-    
-    free (int_pointer1);
+      free (int_pointer1);
 
-  }
+    }
 
-  class_call(parser_read_list_of_integers(
-               pfc,
-              "k3_index_out",
-              &(int1),
-              &(int_pointer1),
-              &flag1,
-              errmsg),
-    errmsg,
-    errmsg);
+    class_call(parser_read_list_of_integers(
+                 pfc,
+                "k2_index_out",
+                &(int1),
+                &(int_pointer1),
+                &flag1,
+                errmsg),
+      errmsg,
+      errmsg);
 
-  if (flag1 == _TRUE_) {
+    if (flag1 == _TRUE_) {
     
-    class_test(int1 != ppt2->k_index_out_size, errmsg,
-      "specify the same number of values in k1_index_out, k1_index_out and k3_index_out",
-      int1);
+      class_test(int1 != ppt2->k_index_out_size, errmsg,
+        "specify the same number of values in k1_index_out, k2_index_out and k3_index_out",
+        int1);
     
-    for (i=0; i<int1; i++)
-      ppt2->k3_index_out[i] = int_pointer1[i];
+      for (i=0; i<int1; i++)
+        ppt2->k2_index_out[i] = int_pointer1[i];
     
-    free (int_pointer1);
+      free (int_pointer1);
+
+    }
+
+    class_call(parser_read_list_of_integers(
+                 pfc,
+                "k3_index_out",
+                &(int1),
+                &(int_pointer1),
+                &flag1,
+                errmsg),
+      errmsg,
+      errmsg);
+
+    if (flag1 == _TRUE_) {
+    
+      class_test(int1 != ppt2->k_index_out_size, errmsg,
+        "specify the same number of values in k1_index_out, k1_index_out and k3_index_out",
+        int1);
+    
+      for (i=0; i<int1; i++)
+        ppt2->k3_index_out[i] = int_pointer1[i];
+    
+      free (int_pointer1);
+
+    }
 
   }
 
@@ -1044,7 +1063,9 @@ int input2_init (
       pop->write_perturbations = _FALSE_;
     }
 
-  }
+  } // if k_out
+
+
 
 
   // =================================================================================
@@ -1581,7 +1602,7 @@ int input2_init (
   ppt2->rescale_quadsources = _TRUE_;
   
   /* Uncomment if you want the output functions to output non-rescaled functions */
-  if ((ppt2->has_early_transfers2_only == _TRUE_) || (ptr2->has_transfers2_only == _TRUE_))
+  if ((ppt2->stop_at_perturbations2 == _TRUE_) || (ptr2->has_transfers2_only == _TRUE_))
     ppt2->rescale_quadsources = _FALSE_;
 
   /* Uncomment if you want the m=0 sources to be computed without the rescaling, when they are
@@ -1734,8 +1755,8 @@ int input2_default_params (
   ppt2->has_cls = _FALSE_;
   ppt2->has_bispectra = _FALSE_;
   
-  ppt2->has_early_transfers2_only = _FALSE_;
-  ppt2->has_early_transfers1_only = _FALSE_;
+  ppt2->stop_at_perturbations2 = _FALSE_;
+  ppt2->stop_at_perturbations1 = _FALSE_;
   
 
   /* - Initial conditions */
@@ -1802,10 +1823,11 @@ int input2_default_params (
   strcpy(ppt2->quadliouville_filename,"output/quadliouville.txt");
   strcpy(ppt2->quadcollision_filename,"output/quadcollision.txt");
 
-  ppt2->k_out_size=0;
-  ppt2->k_index_out_size=0;
-  ppt2->output_class_perturbations=_TRUE_;
-
+  ppt2->k_out_size = 0;
+  ppt2->k_index_out_size = 0;
+  ppt2->output_class_perturbations = _TRUE_;
+  ppt2->k_out_mode = _FALSE_;
+     
   ppt2->index_k1_debug = 0;
   ppt2->index_k2_debug = 0;
   ppt2->index_k3_debug = 0;

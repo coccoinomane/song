@@ -112,8 +112,8 @@ int main (int argc, char **argv) {
     return _FAILURE_;
   }
 
-  if (pt2.has_early_transfers2_only == _TRUE_) {
-    printf ("\n\nCannot compute late transfer function if pt2.has_early_transfers2_only is on");
+  if (pt2.stop_at_perturbations2 == _TRUE_) {
+    printf ("\n\nCannot compute late transfer function if pt2.stop_at_perturbations2 is on");
     return _FAILURE_;
   }
 

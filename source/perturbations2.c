@@ -158,12 +158,17 @@ int perturb2_init (
     ppt->error_message, ppt2->error_message);
   
 
-  /* If the user asked to output only the 1st-order transfer functions needed by the second-order module,
-  then we stop here. */
-  if (ppt2->has_early_transfers1_only == _TRUE_) {
+  /* Stop here if the user asked to compute only the first-order perturbations */
+  if (ppt2->stop_at_perturbations1 == _TRUE_) {
+
+    ppt->has_perturbations = _FALSE_;
+    ppt->has_cls = _FALSE_;
+    ppt->has_bispectra = _FALSE_;
+    ppt2->has_cls = _FALSE_;
+    ppt2->has_bispectra = _FALSE_;
 
     if (ppt2->perturbations2_verbose > 0)
-      printf("Computed first-order early transfer functions, exiting with success.\n");
+      printf(" -> Exiting after computation of first-order perturbations\n");
       
     return _SUCCESS_;
   }
@@ -364,8 +369,9 @@ int perturb2_init (
       "there is a mismatch between allocated (%ld) and used (%ld) space!",
       ppt2->count_allocated_sources, ppt2->count_memorised_sources);
 
-  /* Do not evaluate the subsequent modules if ppt2->has_early_transfers2_only == _TRUE_ */
-  if (ppt2->has_early_transfers2_only == _TRUE_) {
+  /* Do not evaluate the subsequent modules if ppt2->stop_at_perturbations2 == _TRUE_ */
+  if (ppt2->stop_at_perturbations2 == _TRUE_) {
+    ppt->has_perturbations = _FALSE_;
     ppt->has_cls = _FALSE_;
     ppt->has_bispectra = _FALSE_;
     ppt2->has_cls = _FALSE_;
@@ -1529,6 +1535,11 @@ int perturb2_get_k_lists (
 
   if (ppt2->k_out_size > 0) {
 
+    /* If we are running in k_out_mode, SONG will compute only the k values specified
+    here, and ignore the previously added k. Therefore, we erase the k grid completely */
+    if (ppt2->k_out_mode == _TRUE_)
+      ppt2->k_size = 0;
+
     /* Build a 1D array with the output values for k1 and k2 */
     double * k_out;
     class_alloc (k_out, 2*ppt2->k_out_size*sizeof(double), ppt2->error_message);
@@ -1630,19 +1641,19 @@ int perturb2_get_k_lists (
 
 
   /* Debug - Print out the k-list */
-  printf ("# ~~~ k-sampling for k1 and k2 (size=%d) ~~~\n", ppt2->k_size);
-  for (int index_k=0; index_k < ppt2->k_size; ++index_k) {
-    printf ("%17d %17.7g", index_k, ppt2->k[index_k]);
-    for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
-      if (index_k==ppt2->index_k1_out[index_k_out]) printf ("\t(triplet #%d, k1) ", index_k_out);
-      if (index_k==ppt2->index_k2_out[index_k_out]) printf ("\t(triplet #%d, k2) ", index_k_out);
-    }
-    printf ("\n");
-  }
+  // printf ("# ~~~ k-sampling for k1 and k2 (size=%d) ~~~\n", ppt2->k_size);
+  // for (int index_k=0; index_k < ppt2->k_size; ++index_k) {
+  //   printf ("%17d %17.7g", index_k, ppt2->k[index_k]);
+  //   for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
+  //     if (index_k==ppt2->index_k1_out[index_k_out]) printf ("\t(triplet #%d, k1) ", index_k_out);
+  //     if (index_k==ppt2->index_k2_out[index_k_out]) printf ("\t(triplet #%d, k2) ", index_k_out);
+  //   }
+  //   printf ("\n");
+  // }
   
   /* Check that the minimum and maximum values of ppt2->k are different. This
   test might fire if the user set a custom time sampling with two equal k-values */
-  class_test (ppt2->k[0]>=ppt2->k[ppt2->k_size-1],
+  class_test ((ppt2->k[0]>=ppt2->k[ppt2->k_size-1]) && (ppt2->k_out_mode==_FALSE_),
     ppt2->error_message,
     "first and last value of ppt2->k coincide; maybe you set k_min_custom>=k_max_custom?");
   
@@ -1664,6 +1675,10 @@ int perturb2_get_k_lists (
   
   /* Initialize counter of total k-configurations */
   ppt2->count_k_configurations = 0;
+  
+  /* Initialise minimum and maxumum values of k */
+  ppt2->k_min = _HUGE_;
+  ppt2->k_max = 0;
   
   /* Allocate k1 level */
   int k1_size = ppt2->k_size;
@@ -1710,7 +1725,7 @@ int perturb2_get_k_lists (
       k3_max = MIN (k3_max, ppt2->k[ppt2->k_size-1]);
       
       /* Check that the chosen k3_min and k3_max make sense */
-      class_test (k3_min >= k3_max,
+      class_test ((k3_min >= k3_max) && (ppt2->k_out_mode == _FALSE_),
         ppt2->error_message,
         "found k3_min=%g>k3_max=%g for k1(%d)=%g and k2(%d)=%g",
         k3_min, k3_max, index_k1, k1, index_k2, k2);
@@ -1890,6 +1905,11 @@ int perturb2_get_k_lists (
       // -                             Add k3 output points                            -
       // -------------------------------------------------------------------------------
 
+      /* If SONG is running in k_out_mode, we ignore the k3 grid computed above
+      and start over */
+      if (ppt2->k_out_mode == _TRUE_)
+        ppt2->k3_size[index_k1][index_k2] = 0;
+
       /* Add the output values to the k3 sampling. These values are contained in
       ppt2->k3_out and satisfy the triangular condition. Note that we enter the block
       only if index_k1 and index_k2 are both requested as part of an output triplet */
@@ -1978,17 +1998,17 @@ int perturb2_get_k_lists (
                     
 
           /* Debug - Print the k3 grid for all (k1,k2) configurations requested as output */
-          fprintf (stderr, "k1[%d]=%g, k2[%d]=%g, k3_size=%d, k3_min=%g, k3_max=%g\n",
-            index_k1, k1, index_k2, k2, ppt2->k3_size[index_k1][index_k2], k3_min, k3_max);
-
-          for (int index_k3=0; index_k3 < ppt2->k3_size[index_k1][index_k2]; ++index_k3) {
-            double k3 = ppt2->k3[index_k1][index_k2][index_k3];
-            fprintf(stderr, "%3d %12g ", index_k3, k3);
-            if (index_k3 == ppt2->index_k3_out[index_k_out])
-              fprintf (stderr, "\t(triplet #%d) ", index_k_out);
-            fprintf (stderr, "\n");
-          }
-          fprintf (stderr, "\n\n");
+          // fprintf (stderr, "k1[%d]=%g, k2[%d]=%g, k3_size=%d, k3_min=%g, k3_max=%g\n",
+          //   index_k1, k1, index_k2, k2, ppt2->k3_size[index_k1][index_k2], k3_min, k3_max);
+          //
+          // for (int index_k3=0; index_k3 < ppt2->k3_size[index_k1][index_k2]; ++index_k3) {
+          //   double k3 = ppt2->k3[index_k1][index_k2][index_k3];
+          //   fprintf(stderr, "%3d %12g ", index_k3, k3);
+          //   if (index_k3 == ppt2->index_k3_out[index_k_out])
+          //     fprintf (stderr, "\t(triplet #%d) ", index_k_out);
+          //   fprintf (stderr, "\n");
+          // }
+          // fprintf (stderr, "\n\n");
 
         } // end of if (k1==k1_out && k2==k2_out)
 
@@ -1997,6 +2017,13 @@ int perturb2_get_k_lists (
 
       /* Update counter of k-configurations */
       ppt2->count_k_configurations += ppt2->k3_size[index_k1][index_k2];
+
+      /* Set the minimum and maximum k-values ever used in SONG */
+      for (int index_k3=0; index_k3 < ppt2->k3_size[index_k1][index_k2]; ++index_k3) {
+        double k3 = ppt2->k3[index_k1][index_k2][index_k3];
+        ppt2->k_min = MIN (MIN (ppt2->k_min, k3), ppt2->k[0]);
+        ppt2->k_max = MAX (MAX (ppt2->k_max, k3), ppt2->k[ppt2->k_size-1]);
+      }
 
       /* Debug - Print out the k3 list for a special configuration */
       // if ((index_k1==ppt2->index_k1_debug) && (index_k2==ppt2->index_k2_debug)) {
@@ -2014,15 +2041,10 @@ int perturb2_get_k_lists (
 
   } // end of for (index_k1)
 
-
-  /* Set the minimum and maximum k-values ever used in SONG */
-  ppt2->k_min = ppt2->k3[0][0][0];
-  ppt2->k_max = ppt2->k3[ppt2->k_size-1][ppt2->k_size-1]
-                        [ppt2->k3_size[ppt2->k_size-1][ppt2->k_size-1]-1];
-
   class_test ((ppt2->k_min==0) || (ppt2->k_max==0),
     ppt2->error_message,
-    "found vanishing k value");
+    "found vanishing value in either k_min (%g) or k_max (%g)",
+    ppt2->k_min, ppt2->k_max);
 
 
 
@@ -2123,8 +2145,8 @@ int perturb2_get_k_lists (
     }
 
     /* Debug - Print the first-order output values and indices */
-    for (int index_k_out=0; index_k_out < ppt->k_output_values_num; ++index_k_out)
-      printf ("%4d %12d %12g\n", index_k_out, ppt->index_k_output_values[index_k_out], ppt->k_output_values[index_k_out]);
+    // for (int index_k_out=0; index_k_out < ppt->k_output_values_num; ++index_k_out)
+    //   printf ("%4d %12d %12g\n", index_k_out, ppt->index_k_output_values[index_k_out], ppt->k_output_values[index_k_out]);
     
     free (k_out_class);
     
@@ -5678,14 +5700,15 @@ int perturb2_solve (
   we sampled the first-order system */
   class_test (ppw2->tau_start_evolution < ppt->tau_sampling_quadsources[0],
     ppt2->error_message,
-    "tau_ini for the second-order system should be larger than the time\
- where we start to sample the 1st-order quantities");
+    "tau_ini (%g) should be larger than when we start to sample the first-order quantities (%g)",
+    ppw2->tau_start_evolution, ppt->tau_sampling_quadsources[0]);
 
   /* The initial integration time should be smaller than the lowest time
   were we need to sample the line-of-sight sources */    
   class_test (ppw2->tau_start_evolution > ppt2->tau_sampling[0],
     ppt2->error_message,
-    "tau_ini shoud be larger than first point in the sources time sampling");
+    "tau_ini (%g) shoud be larger than first point in the sources time sampling (%g)",
+    ppw2->tau_start_evolution, ppt2->tau_sampling[0]);
 
   /* Print information on the starting integration time */
   printf_log_if (ppt2->perturbations2_verbose, 3,
@@ -6694,7 +6717,7 @@ int perturb2_free(
 {
 
   /* Do not free memory if SONG was run only partially for debug purposes */
-  if (ppt2->has_early_transfers1_only == _FALSE_)
+  if (ppt2->stop_at_perturbations1 == _FALSE_)
     return _SUCCESS_;
 
   if (ppt2->has_perturbations2 == _TRUE_) {

@@ -943,9 +943,9 @@ struct perturbs2
   
   long int count_k_configurations;    /**< Number of k-modes for which we shall solve the differential system */
 
-  short has_early_transfers1_only;    /**< If _TRUE_, SONG will stop execution after having run the perturbations.c 
+  short stop_at_perturbations1;    /**< If _TRUE_, SONG will stop execution after having run the perturbations.c 
                                       module. Useful to debug the first-order transfer functions at recombination. */
-  short has_early_transfers2_only;    /**< If _TRUE_, SONG will stop execution after having run the perturbations2.c
+  short stop_at_perturbations2;    /**< If _TRUE_, SONG will stop execution after having run the perturbations2.c
                                       module. Useful to debug the second-order transfer functions at recombination. */
 
   short compute_quadsources_derivatives; /**< Should we compute the first, third and fourth derivatives of the quadratic
@@ -1006,6 +1006,18 @@ struct perturbs2
                                                the input2.c module */
   short output_class_perturbations; /** If _TRUE_, output the first-order perturbations for all the values contained in ppt2->k1_out
                                     and ppt2->k2_out */
+
+  /**
+   * Should SONG compute only a specific set of wavemodes?
+   *
+   * If _TRUE_, SONG will only compute the wavemodes in k1_out, k2_out and k3_out,
+   * and stop execution before computing any other observable.
+   *
+   * This is a quick way to output the transfer functions from the perturbations2.c
+   * module without having to do a full run.
+   */
+  short k_out_mode;
+
   //@}
 
 

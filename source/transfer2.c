@@ -602,7 +602,7 @@ int transfer2_init(
       ptr2->error_message,
       "there is a mismatch between allocated (%ld) and used (%ld) space!", ptr2->count_allocated_transfers, ptr2->count_memorised_transfers);
   
-  /* Do not evaluate the subsequent modules if ppt2->has_early_transfers2_only == _TRUE_ */
+  /* Do not evaluate the subsequent modules if ppt2->has_transfers2_only == _TRUE_ */
   if (ptr2->has_transfers2_only == _TRUE_) {
     ppt->has_cls = _FALSE_;
     ppt->has_bispectra = _FALSE_;

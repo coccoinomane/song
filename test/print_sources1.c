@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
     
     /* Compute only the first-order early transfer functions, no matter what is specified in
     the input files */
-    pt2.has_early_transfers1_only = _TRUE_;
+    pt2.stop_at_perturbations1 = _TRUE_;
   }
 
   if (background_init(&pr,&ba) == _FAILURE_) {
