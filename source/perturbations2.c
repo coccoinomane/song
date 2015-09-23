@@ -689,6 +689,9 @@ int perturb2_indices_of_perturbs(
  recover the local bispectrum with fnl=1, or set primordial_local_fnl_phi=5/3 to match CLASS\
  C_l.");
 
+  class_test ((ppt->has_vectors == _TRUE_) || (ppt->has_tensors == _TRUE_),
+    ppt2->error_message,
+    "SONG does not support neither vector nor tensor modes at first order");
 
   // ======================================================================================
   // =                              What sources to compute?                              =
@@ -1582,12 +1585,47 @@ int perturb2_get_k_lists (
   /* The user might also ask to output the perturbations via the indices
   index_k1 and index_k2 rather than with the exact values k1 and k2. We
   implement this feature here. */
+
   if (ppt2->k_index_out_size > 0) {
+
     for (int k_index_out=0; k_index_out < ppt2->k_index_out_size; ++k_index_out) {
-      ppt2->index_k1_out[ppt2->k_out_size + k_index_out] = ppt2->k1_index_out[k_index_out];
-      ppt2->index_k2_out[ppt2->k_out_size + k_index_out] = ppt2->k2_index_out[k_index_out];
+      
+      /* Copy the index_k1 and index_k2 provided directly by the user at the end
+      of the index_k_out arrays */
+      int first_index_k_out = ppt2->k_out_size;
+      ppt2->index_k1_out[first_index_k_out + k_index_out] = ppt2->k1_index_out[k_index_out];
+      ppt2->index_k2_out[first_index_k_out + k_index_out] = ppt2->k2_index_out[k_index_out];
+
+      /* If the user gave a value of index_k1 or index_k2 which is not included in the sampling,
+      set them to the largest possible value */
+      
+      if (ppt2->index_k1_out[first_index_k_out + k_index_out] >= ppt2->k_size) {
+
+        fprintf (ppt2->k_out_files[first_index_k_out + k_index_out],
+          "NOTE: The requested k1_index_out=%d is too large; we set it to the highest possible value: ppt2->k_size-1=%d.\n",
+          ppt2->index_k1_out[first_index_k_out + k_index_out], ppt2->k_size-1);
+
+        ppt2->index_k1_out[first_index_k_out + k_index_out] = ppt2->k_size-1;
+      }
+
+      if (ppt2->index_k2_out[first_index_k_out + k_index_out] >= ppt2->k_size) {
+
+        fprintf (ppt2->k_out_files[first_index_k_out + k_index_out],
+          "NOTE: The requested k2_index_out=%d is too large; we set it to the highest possible value: ppt2->k_size-1=%d.\n",
+           ppt2->index_k2_out[first_index_k_out + k_index_out], ppt2->k_size-1);
+
+        ppt2->index_k2_out[first_index_k_out + k_index_out] = ppt2->k_size-1;
+      }
+
+      /* Add the k1 and k2 values to the ppt2->k1_out and ppt2->k2_out arrays */
+      ppt2->k1_out[first_index_k_out + k_index_out] = ppt2->k[ppt2->index_k1_out[first_index_k_out + k_index_out]];
+      ppt2->k2_out[first_index_k_out + k_index_out] = ppt2->k[ppt2->index_k2_out[first_index_k_out + k_index_out]];
+
     }
+
+    /* Update the number of k-triplet to output */
     ppt2->k_out_size += ppt2->k_index_out_size;
+
   }
 
 
@@ -1872,13 +1910,13 @@ int perturb2_get_k_lists (
             are the limits that SONG would would have imposed on k3 if no output were requested */
             if (k3 < k3_min)
               fprintf (ppt2->k_out_files[index_k_out],
-              "# NOTE: this k=%.17f was smaller than k3_min=%.17f (|k1-k2|=%.17f)\n",
-              k3, k3_min, fabs(k1-k2));
+                "# NOTE: this k=%.17f was smaller than k3_min=%.17f (|k1-k2|=%.17f)\n",
+                k3, k3_min, fabs(k1-k2));
 
             if (k3 > k3_max)
               fprintf (ppt2->k_out_files[index_k_out],
-              "# NOTE: this k=%.17f was larger than k3_max=%.17f (|k1-k2|=%.17f)\n",
-              k3, k3_max, k1+k2);
+                "# NOTE: this k=%.17f was larger than k3_max=%.17f (|k1-k2|=%.17f)\n",
+                k3, k3_max, k1+k2);
 
             /* Add the considered k3 point to the grid in ppt2->k3[index_k1][index_k2] */
             class_call (merge_arrays_double (
@@ -1914,9 +1952,8 @@ int perturb2_get_k_lists (
 
           else {
 
-            int first_index_k_out = ppt2->k_out_size - ppt2->k_index_out_size;
-
             /* Copy the index_k3 provided directly by the user */
+            int first_index_k_out = ppt2->k_out_size - ppt2->k_index_out_size;
             ppt2->index_k3_out[index_k_out] = ppt2->k3_index_out[index_k_out-first_index_k_out];
 
             /* If the user gave a value of index_k3 which is not included in the sampling,
@@ -1927,13 +1964,15 @@ int perturb2_get_k_lists (
             if (ppt2->index_k3_out[index_k_out] >= k3_size) {
 
               fprintf (ppt2->k_out_files[index_k_out],
-               "NOTE: The requested index_k3=%d is larger than or equal to the size of the\
- k3 grid for the requested index_k1=%d and index_k2=%d; we have set index_k3 to the highest\
- possible value: index_k3=k3_size-1=%d.\n",
-               ppt2->index_k3_out[index_k_out], index_k1, index_k2, k3_size-1);
+                "NOTE: The requested k3_index_out=%d is larger than the size of the k3 grid for the requested\
+ index_k1=%d and index_k2=%d; we have set index_k3 to the highest possible value, k3_size-1=%d.\n",
+                ppt2->index_k3_out[index_k_out], index_k1, index_k2, k3_size-1);
 
               ppt2->index_k3_out[index_k_out] = k3_size-1;
             }
+
+            /* Add the k3 value to the ppt2->k3_out array */
+            ppt2->k3_out[index_k_out] = ppt2->k3[index_k1][index_k2][ppt2->index_k3_out[index_k_out]];
           
           } // end of if(index or value)
                     
@@ -2017,23 +2056,80 @@ int perturb2_get_k_lists (
   /* Determine ppt->k_min and ppt->k_max. The following block is copied from perturbations.c */
   ppt->k_min = _HUGE_;
   ppt->k_max = 0.;
-    if (ppt->has_scalars == _TRUE_) {
+  if (ppt->has_scalars == _TRUE_) {
     ppt->k_min = MIN(ppt->k_min,ppt->k[index_md_scalars][0]);
     ppt->k_max = MAX(ppt->k_max,ppt->k[index_md_scalars][ppt->k_size[index_md_scalars]-1]);
   }
-  if (ppt->has_vectors == _TRUE_) {
-    ppt->k_min = MIN(ppt->k_min,ppt->k[ppt->index_md_vectors][0]);
-    ppt->k_max = MAX(ppt->k_max,ppt->k[ppt->index_md_vectors][ppt->k_size[ppt->index_md_vectors]-1]);
-  }
-  if (ppt->has_tensors == _TRUE_) {
-    ppt->k_min = MIN(ppt->k_min,ppt->k[ppt->index_md_tensors][0]);
-    ppt->k_max = MAX(ppt->k_max,ppt->k[ppt->index_md_tensors][ppt->k_size[ppt->index_md_tensors]-1]);
-  }
 
   /* Debug - Print first-order k-sampling */
-  // for (int index_k=0; index_k < ppt->k_size[ppt->index_md_scalars]; ++index_k) {
-  //   printf ("%5d %10g\n", index_k, ppt->k[ppt->index_md_scalars][index_k]);
+  // for (int index_k=0; index_k < ppt->k_size[index_md_scalars]; ++index_k) {
+  //   printf ("%5d %10g\n", index_k, ppt->k[index_md_scalars][index_k]);
   // }
+
+
+  /* Make CLASS output the first-order perturbations in the same k where SONG outputs
+  the second-order ones */
+  
+  if ((ppt2->k_out_size > 0) && (ppt2->output_class_perturbations == _TRUE_)) {
+    
+    /* Allocate and fill the array with the output values for k1, k2 and k3 */
+    double * k_out_class;
+    class_alloc (k_out_class, 2*ppt2->k_out_size*sizeof(double), ppt2->error_message);
+    for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
+      k_out_class[2*index_k_out] = ppt2->k1_out[index_k_out];
+      k_out_class[2*index_k_out + 1] = ppt2->k2_out[index_k_out];
+    }
+    
+    /* Sort k_out_class and remove duplicates from it */
+    class_call (merge_arrays_double (
+                  k_out_class,
+                  2*ppt2->k_out_size,
+                  NULL,
+                  0,
+                  &(k_out_class),
+                  &(ppt->k_output_values_num),
+                  compare_doubles,
+                  ppt2->error_message
+                  ),
+      ppt2->error_message,
+      ppt2->error_message);
+
+    class_test (ppt->k_output_values_num > _MAX_NUMBER_OF_K_FILES_,
+     ppt2->error_message,
+     "reached limit of k output files - increase _MAX_NUMBER_OF_K_FILES_ in perturbations.h");
+
+    /* Copy k_out_class into ppt->k_output_values */
+    for (int index_k_out=0; index_k_out < ppt->k_output_values_num; ++index_k_out)
+      ppt->k_output_values[index_k_out] = k_out_class[index_k_out];
+
+    /* Allocate and fill array with indices of output values */
+    class_alloc(ppt->index_k_output_values, sizeof(double)*ppt->k_output_values_num, ppt2->error_message);
+
+    for (int index_k_out=0; index_k_out < ppt->k_output_values_num; ++index_k_out) {
+      
+      int index_md_scalars = 0;
+      
+      /* Find index in ppt->k corresponding to the current output k */
+      int index_k = 0;
+      while (ppt->k[index_md_scalars][index_k] != ppt->k_output_values[index_k_out])
+        index_k++; 
+     
+      class_test (index_k >= ppt->k_size[index_md_scalars],
+        ppt2->error_message,
+        "index_k=%d out of bounds: something went wrong while adding k output values", index_k);
+
+      ppt->index_k_output_values[index_k_out] = index_k;
+
+    }
+
+    /* Debug - Print the first-order output values and indices */
+    for (int index_k_out=0; index_k_out < ppt->k_output_values_num; ++index_k_out)
+      printf ("%4d %12d %12g\n", index_k_out, ppt->index_k_output_values[index_k_out], ppt->k_output_values[index_k_out]);
+    
+    free (k_out_class);
+    
+  } // end of if k_out
+
 
   return _SUCCESS_;
 

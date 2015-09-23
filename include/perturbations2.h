@@ -973,6 +973,7 @@ struct perturbs2
   int l_max_debug;         /**< For any hierarchy, how many l values should we dump to file? */
   //@}
 
+
   /**
    * Parameters related to the creation of the perturbations output files
    */
@@ -1003,6 +1004,8 @@ struct perturbs2
                                                                  desired k values; filled in the input2.c module */
   FILE * k_out_files[_MAX_NUMBER_OF_K_FILES_]; /**< Files that will contain the perturbations at the desired k values; filled in
                                                the input2.c module */
+  short output_class_perturbations; /** If _TRUE_, output the first-order perturbations for all the values contained in ppt2->k1_out
+                                    and ppt2->k2_out */
   //@}
 
 

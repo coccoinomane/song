@@ -1006,7 +1006,7 @@ int input2_init (
 
       /* Build filenames */
       sprintf (ppt2->k_out_filenames[index_k_out],
-        "%s/perturbations_song_%03d.dat",
+        "%s/perturbations_song_k%03d.dat",
         pop->root,
         index_k_out);
 
@@ -1027,6 +1027,23 @@ int input2_init (
  please refer to Sec. B.2 of http://arxiv.org/abs/1405.2280.\n");
 
     }
+    
+    /* Tell CLASS to output perturbations, too, unless otherwise specified with
+    the flag output_class_perturbations */
+
+    ppt->store_perturbations = _TRUE_;
+    pop->write_perturbations = _TRUE_;
+
+    class_call(parser_read_string(pfc,"output_class_perturbations",&string1,&flag1,errmsg),
+  	     errmsg,
+  	     errmsg);	
+
+    if ((flag1 == _TRUE_) && ((strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL))) {
+      ppt2->output_class_perturbations = _FALSE_;
+      ppt->store_perturbations = _FALSE_;
+      pop->write_perturbations = _FALSE_;
+    }
+
   }
 
 
@@ -1787,6 +1804,7 @@ int input2_default_params (
 
   ppt2->k_out_size=0;
   ppt2->k_index_out_size=0;
+  ppt2->output_class_perturbations=_TRUE_;
 
   ppt2->index_k1_debug = 0;
   ppt2->index_k2_debug = 0;
