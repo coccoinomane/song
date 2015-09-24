@@ -1461,7 +1461,10 @@ struct perturb2_workspace
                       index corresponding to k1, k2 and k3 in ppt2->k1_out, ppt2->k2_out and
                       ppt2->k3_out arrays. */
   
-  int derivs_count;   /**< Counter to keep track of how many times the function perturb2_derivs
+  int derivs_calls;   /**< Counter to keep track of how many times the function perturb2_derivs()
+                      has been called for the considered set of (k1,k2,k3). */
+
+  int sources_calls;  /**< Counter to keep track of how many times the function perturb2_sources()
                       has been called for the considered set of (k1,k2,k3). */
 
   /**

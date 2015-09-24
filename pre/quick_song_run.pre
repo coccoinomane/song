@@ -147,7 +147,6 @@ custom_tau_mode_song_sources = log             # either lin, log or class
 
 ## Integration grid in time for the second-order transfer functions
 transfer2_tau_sampling = sources
-tau_linstep_song = 999
 
 
 

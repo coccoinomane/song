@@ -434,10 +434,10 @@ int input2_init (
         string1);
   }
   
-  /* Minimum number of grid points for any (k1,k2) pair, used when 'k3_sampling' is set to smart */
+  /* Minimum number of grid points for any (k1,k2) pair, used when k3_sampling is set to smart */
   class_read_int("k3_size_min", ppr2->k3_size_min);
   
-  /* Fixed number of grid points for any (k1,k2) pair, used when 'k3_sampling' is set to either lin or log */
+  /* Fixed number of grid points for any (k1,k2) pair, used when k3_sampling is set to either lin or log */
   class_read_int("k3_size", ppr2->k3_size);
 
 

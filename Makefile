@@ -10,7 +10,7 @@ CC			 = gcc
 AR       = ar rv
 
 # Optimization flags
-OPTFLAG    = -O
+OPTFLAG    = -O2
 
 # Compilation flags
 CFLAGS     += -g

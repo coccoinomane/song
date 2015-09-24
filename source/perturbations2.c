@@ -294,7 +294,9 @@ int perturb2_init (
     /* IMPORTANT: we are assuming that the quadratic sources are given in a form symmetric
     under exchange of k1 and k2.  Hence, we shall solve the system only for those k2 that
     are equal to or larger than k1, which means that the cycle on k2 will stop when
-    index_k2 = index_k1. */
+    index_k2 = index_k1. The perturbations for k1<k2 will be obtained in the subsequent
+    modules by applying a (-1)^m factor. For more details, see Sec. B.2 of
+    http://arxiv.org/abs/1405.2280. */
       
     for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
 
@@ -1685,8 +1687,6 @@ int perturb2_get_k_lists (
 
   class_alloc (ppt2->k3, k1_size*sizeof(double **), ppt2->error_message);
   class_alloc (ppt2->k3_size, k1_size*sizeof(int *), ppt2->error_message);
-  if (ppt2->k3_sampling == smart_k3_sampling)
-    class_alloc (ppt2->index_k3_min, k1_size*sizeof(int *), ppt2->error_message);
 
   for (int index_k1=0; index_k1 < ppt2->k_size; ++index_k1) {
     
@@ -1697,8 +1697,6 @@ int perturb2_get_k_lists (
     
     class_alloc (ppt2->k3[index_k1], k2_size*sizeof(double *), ppt2->error_message);
     class_alloc (ppt2->k3_size[index_k1], k2_size*sizeof(int), ppt2->error_message);
-    if (ppt2->k3_sampling == smart_k3_sampling)
-      class_alloc (ppt2->index_k3_min[index_k1], k2_size*sizeof(int), ppt2->error_message);
     
     for (int index_k2=0; index_k2 <= index_k1; ++index_k2) {
       
@@ -1729,6 +1727,10 @@ int perturb2_get_k_lists (
         ppt2->error_message,
         "found k3_min=%g>k3_max=%g for k1(%d)=%g and k2(%d)=%g",
         k3_min, k3_max, index_k1, k1, index_k2, k2);
+        
+      /* Shortcuts for ppt2->k3[index_k1][index_k2] and ppt2->k3_size[index_k1][index_k2] */
+      double * k3_grid;
+      int k3_size;
 
 
       // -------------------------------------------------------------------------------
@@ -1743,16 +1745,15 @@ int perturb2_get_k_lists (
 
         /* The size of the k3 array is the same for every (k1,k2) configuration, and is read
         from the precision structure */
-        ppt2->k3_size[index_k1][index_k2] = ppr2->k3_size;
-        class_alloc (ppt2->k3[index_k1][index_k2], ppr2->k3_size*sizeof(double),
-          ppt2->error_message);
+        k3_size = ppr2->k3_size;
+        class_alloc (k3_grid, ppr2->k3_size*sizeof(double), ppt2->error_message);
 
         /* Build the grids */
         if (ppt2->k3_sampling == log_k3_sampling) {
-          log_space (ppt2->k3[index_k1][index_k2], k3_min, k3_max, ppr2->k3_size);
+          log_space (k3_grid, k3_min, k3_max, ppr2->k3_size);
         }
         else if (ppt2->k3_sampling == lin_k3_sampling) {
-          lin_space (ppt2->k3[index_k1][index_k2], k3_min, k3_max, ppr2->k3_size);
+          lin_space (k3_grid, k3_min, k3_max, ppr2->k3_size);
         }
        
       } // end of lin/log sampling
@@ -1768,8 +1769,8 @@ int perturb2_get_k_lists (
 
         /* The size of the k3 array is the same for every (k1,k2) configuration, and is read
         from the precision structure */
-        ppt2->k3_size[index_k1][index_k2] = ppr2->k3_size;
-        class_alloc (ppt2->k3[index_k1][index_k2], ppr2->k3_size*sizeof(double), ppt2->error_message);
+        k3_size = ppr2->k3_size;
+        class_alloc (k3_grid, ppr2->k3_size*sizeof(double), ppt2->error_message);
 
         double cosk1k2_min = (k3_min*k3_min - k1*k1 - k2*k2)/(2.*k1*k2);
         double cosk1k2_max = (k3_max*k3_max - k1*k1 - k2*k2)/(2.*k1*k2);
@@ -1779,20 +1780,17 @@ int perturb2_get_k_lists (
 
         double theta12_min = acos(cosk1k2_min);
         double theta12_max = acos(cosk1k2_max);
-        double theta_step = (theta12_max - theta12_min)/(ppt2->k3_size[index_k1][index_k2]-1);
+        double theta_step = (theta12_max - theta12_min)/(k3_size-1);
       
         if (index_k1==index_k2) {
-          double angle_factor = 5.;
+          double angle_factor = 5;
           theta12_min += theta_step/angle_factor;
-          theta_step = (theta12_max - theta12_min)/(ppt2->k3_size[index_k1][index_k2]-1);
+          theta_step = (theta12_max - theta12_min)/(k3_size-1);
         }
 
-        for (int index_k3=0; index_k3 < ppt2->k3_size[index_k1][index_k2]; ++index_k3) {
-
+        for (int index_k3=0; index_k3 < k3_size; ++index_k3) {
           double cosk1k2 = cos (theta12_min + index_k3*theta_step);
-          
-          ppt2->k3[index_k1][index_k2][index_k3] = sqrt (k1*k1 + k2*k2 + 2*cosk1k2*k1*k2);
-          
+          k3_grid[index_k3] = sqrt (k1*k1 + k2*k2 + 2*cosk1k2*k1*k2);
         }
        
       } // end of theta13 sampling
@@ -1805,7 +1803,7 @@ int perturb2_get_k_lists (
       /* Use for k3 the same grid we used for k1 and k2, making sure that at least
       ppr2->k3_size_min points are included for each (k1,k2) configuration. */
   
-      else if (ppt2->k3_sampling == smart_k3_sampling) {     
+      else if (ppt2->k3_sampling == smart_k3_sampling) {
 
         /* Test that k3_min and k3_max are within bounds */
         class_test ((k3_min < ppt2->k[0]) || (k3_min > ppt2->k[ppt2->k_size-1]),
@@ -1819,85 +1817,83 @@ int perturb2_get_k_lists (
         /* Find the minimum allowed index of k3 inside ppt2->k. If k3_min is smaller than
         the smallest element in ppt2->k, take the latter. */
         int index_k3_min = 0;
-        while (ppt2->k[index_k3_min]<k3_min)
+        while (ppt2->k[index_k3_min] < k3_min)
           ++index_k3_min;
 
         /* Find the maximum allowed index of k. If k_max is larger than the largest element
         in ppt2->k, take the latter. */
         int index_k3_max = ppt2->k_size-1;
-        while (ppt2->k[index_k3_max]>k3_max)
+        while (ppt2->k[index_k3_max] > k3_max)
           --index_k3_max;
       
         /* Number of points in ppt2->k between k3_min and k3_max */
-        int n_triangular = index_k3_max - index_k3_min + 1;
+        k3_size = index_k3_max - index_k3_min + 1;
 
+        /* If k3_min and k3_max are too close, the number of points between them will be zero.
+        However, since both of them are within the bounds of ppt2->k, k3_size can be zero but
+        not negative */
+        class_test (k3_size < 0,
+          ppt2->error_message,
+          "something went wrong in bracketing k3_min and k3_max in ppt2->k");
+
+        /* Copy the bracketed points from ppt2->k to k3 */
+        class_alloc (k3_grid, k3_size*sizeof(double), ppt2->error_message);
+        for (int index_k3=0; index_k3 < k3_size; ++index_k3)
+          k3_grid[index_k3] = ppt2->k[index_k3_min+index_k3];
+
+        /* Add by hand the points corresponding to k3_min and k3_max, because they are
+        most probably not part of ppt2->k. The function merge_arrays_double() will
+        take care of potential duplicates. */
+
+        double k3_bounds[2] = {k3_min, k3_max};
+
+        class_call (merge_arrays_double (
+                      k3_grid,
+                      k3_size,
+                      &k3_bounds[0],
+                      2,
+                      &(k3_grid),
+                      &(k3_size),
+                      compare_doubles,
+                      ppt2->error_message
+                      ),
+          ppt2->error_message,
+          ppt2->error_message);
+  
         /* We choose the grid to have at least ppr2->k3_size_min values for every (k1,k2).
         If this is not possible using the standard ppt2->k grid, include as many linearly
         sampled points between k3_min and k3_max. */
 
-        if (n_triangular < ppr2->k3_size_min) {
+        if (k3_size < ppr2->k3_size_min) {
 
-          ppt2->k3_size[index_k1][index_k2] = ppr2->k3_size_min;
+          /* We want a total of k3_size_min points, therefore the number of points to add
+          should be k3_size_min-k3_size. We add two more points because k3_min and k3_max
+          are already included in k3_grid and therefore will not be considered. */
+          int n_extra_points = ppr2->k3_size_min - k3_size + 2;
 
-          class_alloc (ppt2->k3[index_k1][index_k2],
-            ppr2->k3_size_min*sizeof(double),
-            ppt2->error_message);
-          
           /* Fill the k3 array with linearly-spaced points between k3_min and k3_max */
-          lin_space (ppt2->k3[index_k1][index_k2],
-                     k3_min,
-                     k3_max,
-                     ppt2->k3_size[index_k1][index_k2]);
-           
-          /* Flag this (k1,k2) pair, so that we know that it has an "artificial" sampling */
-          ppt2->index_k3_min[index_k1][index_k2] = -1;
-          
-        }
+          double * extra_points;
+          class_alloc (extra_points, n_extra_points*sizeof(double), ppt2->error_message);
+          lin_space (extra_points, k3_min, k3_max, n_extra_points);
 
-        /* If we have enough points in ppt2->k within [k3_min,k3_max], then fill the k3 grid
-        for this (k1,k2) pair with them. */
-
-        else {
-          
-          /* Add by hand the points corresponding to k3_min and k3_max, because they are most
-          probably not part of ppt2->k */
-          ppt2->k3_size[index_k1][index_k2] = n_triangular + 2;
-          
-          /* Allocate the memory for the k3-grid array */
-          class_alloc (ppt2->k3[index_k1][index_k2],
-            ppt2->k3_size[index_k1][index_k2]*sizeof(double),
+          /* Include the linearly spaced points in the k3 grid */
+          class_call (merge_arrays_double (
+                        k3_grid,
+                        k3_size,
+                        extra_points,
+                        n_extra_points,
+                        &(k3_grid),
+                        &(k3_size),
+                        compare_doubles,
+                        ppt2->error_message
+                        ),
+            ppt2->error_message,
             ppt2->error_message);
-          
-          /* Fill the k3-grid making sure to include k3_min and k3_max */
-          ppt2->k3[index_k1][index_k2][0] = k3_min;
-          
-          for (int index_k3=0; index_k3 < n_triangular; ++index_k3)
-            ppt2->k3[index_k1][index_k2][index_k3+1] = ppt2->k[index_k3_min+index_k3];
-          
-          ppt2->k3[index_k1][index_k2][ppt2->k3_size[index_k1][index_k2]-1] = k3_max;
 
-          /* Shift the starting point of the array if we included k3_min twice */
-          if (ppt2->k3[index_k1][index_k2][0] == ppt2->k3[index_k1][index_k2][1]) {
-            for (int index_k3=0; index_k3 < (ppt2->k3_size[index_k1][index_k2]-1); ++index_k3)
-              ppt2->k3[index_k1][index_k2][index_k3] = ppt2->k3[index_k1][index_k2][index_k3+1];
-            ppt2->k3_size[index_k1][index_k2]--;
-          }
-
-          /* Decrease the size of the array if we included k3_max twice */
-          int k3_size = ppt2->k3_size[index_k1][index_k2];
-          if (ppt2->k3[index_k1][index_k2][k3_size-1] == ppt2->k3[index_k1][index_k2][k3_size-2])
-            ppt2->k3_size[index_k1][index_k2]--;
-
-          /* In order to not include the boundaries, comment the above and uncomment below */
-          // ppt2->k3_size[index_k1][index_k2] = n_triangular;
-          // class_alloc (ppt2->k3[index_k1][index_k2],
-          //   ppt2->k3_size[index_k1][index_k2]*sizeof(double),
-          //   ppt2->error_message);
-          // for (int index_k3=0; index_k3 < n_triangular; ++index_k3)
-          //   ppt2->k3[index_k1][index_k2][index_k3] = ppt2->k[index_k3_min+index_k3];
+          free (extra_points);
 
         }
-  
+
       } // end of smart sampling
       
 
@@ -1905,134 +1901,143 @@ int perturb2_get_k_lists (
       // -                             Add k3 output points                            -
       // -------------------------------------------------------------------------------
 
-      /* If SONG is running in k_out_mode, we ignore the k3 grid computed above
-      and start over */
-      if (ppt2->k_out_mode == _TRUE_)
-        ppt2->k3_size[index_k1][index_k2] = 0;
+      if (ppt2->k_out_size > 0) {
 
-      /* Add the output values to the k3 sampling. These values are contained in
-      ppt2->k3_out and satisfy the triangular condition. Note that we enter the block
-      only if index_k1 and index_k2 are both requested as part of an output triplet */
+        /* If SONG is running in k_out_mode, we ignore the k3 grid computed above
+        and start over */
+        if (ppt2->k_out_mode == _TRUE_)
+          k3_size = 0;
 
-      for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
+        /* Add the output values to the k3 sampling. These values are contained in
+        ppt2->k3_out and satisfy the triangular condition. Note that we enter the block
+        only if index_k1 and index_k2 are both requested as part of an output triplet */
+
+        for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
         
-        if ((index_k1==ppt2->index_k1_out[index_k_out]) && (index_k2==ppt2->index_k2_out[index_k_out])) {
+          if ((index_k1==ppt2->index_k1_out[index_k_out]) && (index_k2==ppt2->index_k2_out[index_k_out])) {
 
-          /* If this k3 output value was added by specifying an exact value, then we do need to
-          add this value to the k3 grid */
+            /* If this k3 output value was added by specifying an exact value, then we do need to
+            add this value to the k3 grid */
           
-          if (index_k_out < (ppt2->k_out_size - ppt2->k_index_out_size)) {
+            if (index_k_out < (ppt2->k_out_size - ppt2->k_index_out_size)) {
 
-            /* k3 value to be added to the grid */
-            double k3 = ppt2->k3_out[index_k_out];
+              /* k3 value to be added to the grid */
+              double k3 = ppt2->k3_out[index_k_out];
           
-            /* Alert the user if k3 is either larger than k3_max or smaller than k3_min, which
-            are the limits that SONG would would have imposed on k3 if no output were requested */
-            if (k3 < k3_min)
-              fprintf (ppt2->k_out_files[index_k_out],
-                "# NOTE: this k=%.17f was smaller than k3_min=%.17f (|k1-k2|=%.17f)\n",
-                k3, k3_min, fabs(k1-k2));
+              /* Alert the user if k3 is either larger than k3_max or smaller than k3_min, which
+              are the limits that SONG would would have imposed on k3 if no output were requested */
+              if (k3 < k3_min)
+                fprintf (ppt2->k_out_files[index_k_out],
+                  "# NOTE: this k=%.17f was smaller than k3_min=%.17f (|k1-k2|=%.17f)\n",
+                  k3, k3_min, fabs(k1-k2));
 
-            if (k3 > k3_max)
-              fprintf (ppt2->k_out_files[index_k_out],
-                "# NOTE: this k=%.17f was larger than k3_max=%.17f (|k1-k2|=%.17f)\n",
-                k3, k3_max, k1+k2);
+              if (k3 > k3_max)
+                fprintf (ppt2->k_out_files[index_k_out],
+                  "# NOTE: this k=%.17f was larger than k3_max=%.17f (|k1-k2|=%.17f)\n",
+                  k3, k3_max, k1+k2);
 
-            /* Add the considered k3 point to the grid in ppt2->k3[index_k1][index_k2] */
-            class_call (merge_arrays_double (
-                          ppt2->k3[index_k1][index_k2],
-                          ppt2->k3_size[index_k1][index_k2],
-                          &k3,
-                          1,
-                          &(ppt2->k3[index_k1][index_k2]),
-                          &(ppt2->k3_size[index_k1][index_k2]),
-                          compare_doubles,
-                          ppt2->error_message
-                          ),
-              ppt2->error_message,
-              ppt2->error_message);
+              /* Add the considered k3 point to the k3 grid */
+              class_call (merge_arrays_double (
+                            k3_grid,
+                            k3_size,
+                            &k3,
+                            1,
+                            &(k3_grid),
+                            &(k3_size),
+                            compare_doubles,
+                            ppt2->error_message
+                            ),
+                ppt2->error_message,
+                ppt2->error_message);
 
-            /* Find the index corresponding to k3 in the new k3 grid */
-            int index_k3 = ppt2->k3_size[index_k1][index_k2] - 1;
-            while ((index_k3 >= 0) && (ppt2->k3[index_k1][index_k2][index_k3] != k3))
-              index_k3--;
+              /* Find the index corresponding to k3 in the new k3 grid */
+              int index_k3 = k3_size - 1;
+              while ((index_k3 >= 0) && (k3_grid[index_k3] != k3))
+                index_k3--;
 
-            class_test (index_k3<0,
-              ppt2->error_message,
-              "k3_out=%g not found for index_k1=%d, index_k2=%d; bug in merge_arrays_double?",
-              index_k1,index_k2);
+              class_test (index_k3<0,
+                ppt2->error_message,
+                "k3_out=%g not found for index_k1=%d, index_k2=%d; bug in merge_arrays_double?",
+                index_k1,index_k2);
 
-            ppt2->index_k3_out[index_k_out] = index_k3;
+              ppt2->index_k3_out[index_k_out] = index_k3;
             
-          } // end of if 
+            } // end of if 
 
 
-          /* If this k3 output value was added by specifying an index rather than an exact
-          value, then the value is already in the k3 grid and we do not need to add it */
+            /* If this k3 output value was added by specifying an index rather than an exact
+            value, then the value is already in the k3 grid and we do not need to add it */
 
-          else {
+            else {
 
-            /* Copy the index_k3 provided directly by the user */
-            int first_index_k_out = ppt2->k_out_size - ppt2->k_index_out_size;
-            ppt2->index_k3_out[index_k_out] = ppt2->k3_index_out[index_k_out-first_index_k_out];
+              /* Copy the index_k3 provided directly by the user */
+              int first_index_k_out = ppt2->k_out_size - ppt2->k_index_out_size;
+              ppt2->index_k3_out[index_k_out] = ppt2->k3_index_out[index_k_out-first_index_k_out];
 
-            /* If the user gave a value of index_k3 which is not included in the sampling,
-            set index_k3 to the largest possible value */
-            
-            int k3_size = ppt2->k3_size[index_k1][index_k2];
-            
-            if (ppt2->index_k3_out[index_k_out] >= k3_size) {
+              /* If the user gave a value of index_k3 which is not included in the sampling,
+              set index_k3 to the largest possible value */
 
-              fprintf (ppt2->k_out_files[index_k_out],
-                "NOTE: The requested k3_index_out=%d is larger than the size of the k3 grid for the requested\
- index_k1=%d and index_k2=%d; we have set index_k3 to the highest possible value, k3_size-1=%d.\n",
-                ppt2->index_k3_out[index_k_out], index_k1, index_k2, k3_size-1);
+              if (ppt2->index_k3_out[index_k_out] >= k3_size) {
 
-              ppt2->index_k3_out[index_k_out] = k3_size-1;
-            }
+                fprintf (ppt2->k_out_files[index_k_out],
+                  "NOTE: The requested k3_index_out=%d is larger than the size of the k3 grid for the requested\
+   index_k1=%d and index_k2=%d; we have set index_k3 to the highest possible value, k3_size-1=%d.\n",
+                  ppt2->index_k3_out[index_k_out], index_k1, index_k2, k3_size-1);
 
-            /* Add the k3 value to the ppt2->k3_out array */
-            ppt2->k3_out[index_k_out] = ppt2->k3[index_k1][index_k2][ppt2->index_k3_out[index_k_out]];
-          
-          } // end of if(index or value)
-                    
+                ppt2->index_k3_out[index_k_out] = k3_size-1;
+              }
 
-          /* Debug - Print the k3 grid for all (k1,k2) configurations requested as output */
-          // fprintf (stderr, "k1[%d]=%g, k2[%d]=%g, k3_size=%d, k3_min=%g, k3_max=%g\n",
-          //   index_k1, k1, index_k2, k2, ppt2->k3_size[index_k1][index_k2], k3_min, k3_max);
-          //
-          // for (int index_k3=0; index_k3 < ppt2->k3_size[index_k1][index_k2]; ++index_k3) {
-          //   double k3 = ppt2->k3[index_k1][index_k2][index_k3];
-          //   fprintf(stderr, "%3d %12g ", index_k3, k3);
-          //   if (index_k3 == ppt2->index_k3_out[index_k_out])
-          //     fprintf (stderr, "\t(triplet #%d) ", index_k_out);
-          //   fprintf (stderr, "\n");
-          // }
-          // fprintf (stderr, "\n\n");
+              /* Add the k3 value to the ppt2->k3_out array */
+              ppt2->k3_out[index_k_out] = k3_grid[ppt2->index_k3_out[index_k_out]];
 
-        } // end of if (k1==k1_out && k2==k2_out)
+            } // end of if(index or value)
 
-      } // end of for k_out
-      
+            /* Debug - Print the k3 grid for all (k1,k2) configurations requested as output */
+            // fprintf (stderr, "k1[%d]=%g, k2[%d]=%g, k3_size=%d, k3_min=%g, k3_max=%g\n",
+            //   index_k1, k1, index_k2, k2, k3_size, k3_min, k3_max);
+            //
+            // for (int index_k3=0; index_k3 < k3_size; ++index_k3) {
+            //   double k3 = k3_grid[index_k3];
+            //   fprintf(stderr, "%3d %12g ", index_k3, k3);
+            //   if (index_k3 == ppt2->index_k3_out[index_k_out])
+            //     fprintf (stderr, "\t(triplet #%d) ", index_k_out);
+            //   fprintf (stderr, "\n");
+            // }
+            // fprintf (stderr, "\n\n");
+
+          } // end of if (k1==k1_out && k2==k2_out)
+
+        } // end of for k_out
+        
+      } // end of if k_out
+
+
+      // -------------------------------------------------------------------------------
+      // -                                 Update grid                                 -
+      // -------------------------------------------------------------------------------
+
+      /* Convert the shortcuts to the real stuff */
+      ppt2->k3[index_k1][index_k2] = k3_grid;
+      ppt2->k3_size[index_k1][index_k2] = k3_size;
 
       /* Update counter of k-configurations */
-      ppt2->count_k_configurations += ppt2->k3_size[index_k1][index_k2];
+      ppt2->count_k_configurations += k3_size;
 
       /* Set the minimum and maximum k-values ever used in SONG */
-      for (int index_k3=0; index_k3 < ppt2->k3_size[index_k1][index_k2]; ++index_k3) {
-        double k3 = ppt2->k3[index_k1][index_k2][index_k3];
+      for (int index_k3=0; index_k3 < k3_size; ++index_k3) {
+        double k3 = k3_grid[index_k3];
         ppt2->k_min = MIN (MIN (ppt2->k_min, k3), ppt2->k[0]);
         ppt2->k_max = MAX (MAX (ppt2->k_max, k3), ppt2->k[ppt2->k_size-1]);
       }
 
       /* Debug - Print out the k3 list for a special configuration */
-      // if ((index_k1==ppt2->index_k1_debug) && (index_k2==ppt2->index_k2_debug)) {
+      // if ((index_k1==9) && (index_k2==5)) {
       //
       //   fprintf (stderr, "k1[%d]=%.17f, k2[%d]=%.17f, k3_size=%d, k3_min=%.17f, k3_max=%.17f\n",
-      //     index_k1, k1, index_k2, k2, ppt2->k3_size[index_k1][index_k2], k3_min, k3_max);
+      //     index_k1, k1, index_k2, k2, k3_size, k3_min, k3_max);
       //
-      //   for (int index_k3=0; index_k3 < ppt2->k3_size[index_k1][index_k2]; ++index_k3)
-      //     fprintf(stderr, "%d %.17f\n", index_k3, ppt2->k3[index_k1][index_k2][index_k3]);
+      //   for (int index_k3=0; index_k3 < k3_size; ++index_k3)
+      //     fprintf(stderr, "%d %.17f\n", index_k3, k3_grid[index_k3]);
       //
       //   fprintf (stderr, "\n\n");
       // }
@@ -2077,7 +2082,7 @@ int perturb2_get_k_lists (
   
   /* Determine ppt->k_min and ppt->k_max. The following block is copied from perturbations.c */
   ppt->k_min = _HUGE_;
-  ppt->k_max = 0.;
+  ppt->k_max = 0;
   if (ppt->has_scalars == _TRUE_) {
     ppt->k_min = MIN(ppt->k_min,ppt->k[index_md_scalars][0]);
     ppt->k_max = MAX(ppt->k_max,ppt->k[index_md_scalars][ppt->k_size[index_md_scalars]-1]);
@@ -2151,6 +2156,16 @@ int perturb2_get_k_lists (
     free (k_out_class);
     
   } // end of if k_out
+
+  /* Debug - Print out the first-order k-list */
+  // printf ("# ~~~ first-order k-sampling (size=%d) ~~~\n", ppt->k_size[index_md_scalars]);
+  // for (int index_k=0; index_k < ppt->k_size[index_md_scalars]; ++index_k) {
+  //   printf ("%17d %17.7g", index_k, ppt->k[index_md_scalars][index_k]);
+  //   for (int index_k_out=0; index_k_out < ppt->k_output_values_num; ++index_k_out)
+  //     if (index_k==ppt->index_k_output_values[index_k_out])
+  //       printf ("\t(output #%d) ", index_k_out);
+  //   printf ("\n");
+  // }
 
 
   return _SUCCESS_;
@@ -2718,10 +2733,12 @@ int perturb2_timesampling_for_sources (
 
 
   /* Debug - print the time sampling for the line of sight sources */
+  // fprintf (stderr, "# ~~~ tau-sampling for second-order sources (size=%d) ~~~\n", ppt2->tau_size);
   // for (int index_tau=0; index_tau < ppt2->tau_size; ++index_tau)
-  //   printf("%12d %17.7g\n", index_tau, ppt2->tau_sampling[index_tau]);
+  //   fprintf(stderr, "%12d %19.9g\n", index_tau, ppt2->tau_sampling[index_tau]);
 
   /* Debug - print the time sampling for the quadratic sources */
+  // printf ("# ~~~ tau-sampling for quadratic sources (size=%d) ~~~\n", ppt->tau_size_quadsources);
   // for (int index_tau=0; index_tau < ppt->tau_size_quadsources; ++index_tau)
   //   fprintf(stderr, "%12d %17.7g\n", index_tau, ppt->tau_sampling_quadsources[index_tau]);
 
@@ -5649,7 +5666,11 @@ int perturb2_solve (
   
   /* Reset the counter that keeps track of the number of calls of the
   function perturb2_derivs() */
-  ppw2->derivs_count = 0;
+  ppw2->derivs_calls = 0;
+
+  /* Reset the counter that keeps track of the number of calls of the
+  function perturb2_sources() */
+  ppw2->sources_calls = 0;
 
   /* Overall structure containing all parameters, to be passed to the evolver
   which, in turn, will pass it to the perturb2_derivs() and perturb2_sources()
@@ -5905,6 +5926,12 @@ int perturb2_solve (
 
   } // end of for (index_interval)
 
+  
+  /* Test that the sources where computed the right amount of times */
+  class_test (ppw2->sources_calls != ppt2->tau_size,
+    ppt2->error_message,
+    "(%.25f[%d],%.25f[%d],%.25f[%d]): the sources function was called %d times instead of tau_size=%d times",
+    k1, index_k1, k2, index_k2, k, index_k3, ppw2->sources_calls, ppt2->tau_size);
 
 
   // ====================================================================================
@@ -6752,8 +6779,6 @@ int perturb2_free(
 
       free (ppt2->k3[index_k1]);
       free (ppt2->k3_size[index_k1]);
-      if (ppt2->k3_sampling == smart_k3_sampling)
-        free (ppt2->index_k3_min[index_k1]);
 
     }
 
@@ -6764,8 +6789,6 @@ int perturb2_free(
     free(ppt2->k);
     free(ppt2->k3);
     free(ppt2->k3_size);
-    if (ppt2->k3_sampling == smart_k3_sampling)
-      free(ppt2->index_k3_min);
     
     free(ppt2->tp2_labels);
 
@@ -6960,7 +6983,7 @@ int perturb2_derivs (
   double k = ppw2->k;
 
   /* Update counter of calls */
-  ppw2->derivs_count++;
+  ppw2->derivs_calls++;
   
   
   
@@ -7696,13 +7719,13 @@ int perturb2_derivs (
 
   /* Debug - Print the full content of y and dy, along with comprehensive debug information.
   This is a good way to debug the differential system step by step. */
-  // if (ppw2->derivs_count < 4) {
+  // if (ppw2->derivs_calls < 4) {
   //   if ((ppw2->index_k1==ppt2->index_k1_debug)
   //     && (ppw2->index_k2==ppt2->index_k2_debug)
   //      && (ppw2->index_k3==ppt2->index_k3_debug)) {
   //
   //     printf("> Leaving derivs for the %d time; k=(%g,%g,%g); tau = %.16f\n",
-  //       ppw2->derivs_count, ppw2->k1, ppw2->k2, ppw2->k, tau);
+  //       ppw2->derivs_calls, ppw2->k1, ppw2->k2, ppw2->k, tau);
   //
   //     /* Show content of y, dy and dy_quadsources */
   //     int index_pt;
@@ -11097,6 +11120,8 @@ int perturb2_sources (
   double * k1_m = ppw2->k1_m;
   double * k2_m = ppw2->k2_m;
 
+  /* Update counter of calls */
+  ppw2->sources_calls++;
 
 
   // ======================================================================================
@@ -11284,8 +11309,6 @@ int perturb2_sources (
 
   } // end of newtonian gauge
 
-     
-  
 
   // ====================================================================================
   // =                                Photon temperature                                =
