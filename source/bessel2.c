@@ -86,7 +86,7 @@ int bessel2_init(
   // ==============================================================================
 
   /* Do we need to compute the 2nd-order projection functions? */
-  if ((pbs->l_max==0) || ((ppt2->has_cls==_FALSE_) && (ppt2->has_bispectra==_FALSE_))
+  if ((pbs->l_max==0) || ((ppt2->has_cls==_FALSE_) && (ppt2->has_cmb_bispectra==_FALSE_))
     || ((ppr2->load_transfers_from_disk==_TRUE_) && (ppr->load_bispectra_from_disk==_TRUE_))) {
 
     if (pbs2->bessels2_verbose > 0)
@@ -852,17 +852,19 @@ int bessel2_get_l1_list(
   // =                                 Count l1 values                                  =
   // ====================================================================================
 
-  /* The line of sight integration at second-order requires to compute a linear combination of
-  spherical Bessel functions with 3j-symbols (see eq. 5.97 of http://arxiv.org/abs/1405.2280).
-  In particular, the Bessel function of order l1 is required several times.  However, l1 goes
-  from |l-L| to l+L, where the upper limit of L is given by pbs2->L_max. This means that we need
-  to compute the spherical Bessels in an extended range that includes the l that are within a
-  range of +/- pbs2->L_max from  each member of pbs2->l.
+  /* The line of sight integration at second-order requires to compute a linear
+  combination of spherical Bessel functions with 3j-symbols (see eq. 5.97 of
+  http://arxiv.org/abs/1405.2280). In particular, the Bessel function of order l1
+  is required several times.  However, l1 goes from |l-L| to l+L, where the upper
+  limit of L is given by pbs2->L_max. This means that we need to compute the spherical
+  Bessels in an extended range that includes the l that are within a range of
+  +/- pbs2->L_max from  each member of pbs2->l.
   
-  Similarly, to compute the contribution to the bispectrum integral from a certain azimuthal
-  number m, we will need to compute Bessel functions with order between |l-|m|| and l+|m|
-  (see eq. 6.36 of http://arxiv.org/abs/1405.2280). Hence, l1 needs to include all l that are
-  within a range of +/- MAX(pbs2->L_max, ppr2->m_max_second_order) from each member of pbs2->l. */
+  Similarly, to compute the contribution to the bispectrum integral from a certain
+  azimuthal number m, we will need to compute Bessel functions with order between
+  |l-|m|| and l+|m| (see eq. 6.36 of http://arxiv.org/abs/1405.2280). Hence, l1
+  needs to include all l that are within a range of
+  +/- MAX(pbs2->L_max, ppr2->m_max_second_order) from each member of pbs2->l. */
     
 
   /* The maximum number of elements of pbs2->l1 is given by the maximum l in pbs->l

@@ -130,7 +130,6 @@ custom_tau_mode_quadsources = log               # either lin, log or class (best
 ## Timesampling for the first-order line-of-sight sources
 start_sources_at_tau_c_over_tau_h = 0.01
 perturb_sampling_stepsize = 0.1
-match_final_time_los = no
 
 ## Time sampling of the second-order line-of-sight sources (overridden if using custom
 ## time sampling for LOS sources)

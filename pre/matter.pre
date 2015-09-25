@@ -1,0 +1,120 @@
+## Precision file for SONG containing the parameters influencing 
+## the matter bispectrum. Best results for output=delta_cdm_bk.
+
+
+# ==================================================================
+# =                      First-order k-sampling                    =
+# ==================================================================
+
+## Settings for about 10% precision of fnl_intrinsic
+k_min_tau0 = 0.05
+k_max_tau0_over_l_max = 2.8
+k_step_sub = 0.1
+k_logstep_super = 1.2
+k_step_super = 0.025
+k_step_transition = 0.2
+
+
+
+# ==================================================================
+# =                     Second-order k-sampling                    =
+# ==================================================================
+
+## Second-order type of sampling for k (lin, log, class, smart)
+sources2_k_sampling = smart
+
+## Settings for about 10% precision
+k_min_tau0_song = 0.1
+k_max_for_pk = 0.1
+k_per_decade_for_pk_song = 5
+k_per_decade_for_bao_song = 5
+k_bao_center = 3
+k_bao_width = 4
+
+
+# ===================================================================
+# =                     Second-order k3-sampling                    =
+# ===================================================================
+
+## Second-order sampling for k3 (lin, log, smart, angle)
+sources2_k3_sampling = smart
+k3_size_min = 5
+
+
+# ===================================================================
+# =                           Interpolation                         =
+# ===================================================================
+	
+## Interpolation parameters
+quadsources_time_interpolation = cubic
+sources_time_interpolation = linear
+sources_k3_interpolation = linear
+
+
+	
+# ================================================================================
+# =                              Time sampling                                   =
+# ================================================================================
+
+## When to start evolving the second-order system? Set to zero to choose automatically.
+tau_start_evolution_song = 0
+
+## If the above is zero, use the following parameters to determine when to start
+## integrating the system. Decrease them to start earlier.
+start_small_k_at_tau_c_over_tau_h_song = 0.001
+start_large_k_at_tau_h_over_tau_k_song = 0.04
+
+## Time sampling of the quadratic sources (overridden if using custom time sampling
+## for quadsources)
+perturb_sampling_stepsize_for_quadsources = 0.03
+
+## Timesampling for the first-order line-of-sight sources
+start_sources_at_tau_c_over_tau_h = 0.01
+perturb_sampling_stepsize = 0.1
+
+## Time sampling of the second-order line-of-sight sources
+perturb_sampling_stepsize_song = 0.2
+
+
+# ==========================================================================
+# =                    Second-order differential system                    =
+# ==========================================================================
+
+tol_perturb_integration_song = 1e-4
+tol_perturb_integration = 1e-5
+
+
+# ===============================================================
+# =                         Approximations                      =
+# ===============================================================
+
+## TCA at first order
+tight_coupling_approximation = 5
+tight_coupling_trigger_tau_c_over_tau_h = 0.01
+tight_coupling_trigger_tau_c_over_tau_k = 0.007
+
+## TCA at second order
+tight_coupling_approximation_song = 1
+tight_coupling_trigger_tau_c_over_tau_h_song = 0.01
+tight_coupling_trigger_tau_c_over_tau_k_song = 0.007
+
+
+## RSA at first order.
+radiation_streaming_approximation = 2 # set to 3 to disable RSA
+radiation_streaming_trigger_tau_over_tau_k = 45
+radiation_streaming_trigger_tau_c_over_tau = 5
+
+## RSA at second order.
+radiation_streaming_approximation_song = 2
+radiation_streaming_trigger_tau_over_tau_k_song = 45
+radiation_streaming_trigger_tau_c_over_tau_song = 5
+
+## UFA First order.
+ur_fluid_approximation = 2 # set to 3 to disable
+ur_fluid_trigger_tau_over_tau_k = 30
+
+## UFA Second order (NOT IMPLEMENTED YET)
+ur_fluid_approximation_song = 0
+ur_fluid_trigger_tau_over_tau_k_song = 30
+
+

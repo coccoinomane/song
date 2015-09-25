@@ -151,7 +151,7 @@ int main(int argc, char **argv) {
   }
 
   /* Print the source functions without the artificial rescaling factor sin(theta)^m */
-  pt2.rescale_quadsources = _FALSE_;
+  pt2.rescale_cmb_sources = _FALSE_;
 
   if (background_init(&pr,&ba) == _FAILURE_) {
     printf("\n\nError running background_init \n=>%s\n",ba.error_message);

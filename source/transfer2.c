@@ -98,8 +98,8 @@ int transfer2_init(
 
   if ((ppt2->has_perturbations2 == _FALSE_)
      || ((ppt2->has_cls == _FALSE_)
-     && (ppt2->has_bispectra == _FALSE_)
-     && (ptr2->has_transfers2_only == _FALSE_)) ) {
+     && (ppt2->has_cmb_bispectra == _FALSE_)
+     && (ptr2->stop_at_transfers2 == _FALSE_)) ) {
 
     ptr2->has_cls = _FALSE_;
     if (ptr2->transfer2_verbose > 0)
@@ -119,7 +119,7 @@ int transfer2_init(
   or two values of k1, it does not make sense to continue with less than 4 values, because
   the modules that follow rely on the spline interpolation on the k1 grid. */
 
-  if ((ppt2->k_size < 4) && (ptr2->has_transfers2_only == _FALSE_)) {
+  if ((ppt2->k_size < 4) && (ptr2->stop_at_transfers2 == _FALSE_)) {
     printf("# WARNING: cannot do cubic interpolation in k1 with less than 4 values. ");
     printf("Increase k_size, or do not trust results for 1st-order transfer functions.\n");
   }
@@ -603,11 +603,11 @@ int transfer2_init(
       "there is a mismatch between allocated (%ld) and used (%ld) space!", ptr2->count_allocated_transfers, ptr2->count_memorised_transfers);
   
   /* Do not evaluate the subsequent modules if ppt2->has_transfers2_only == _TRUE_ */
-  if (ptr2->has_transfers2_only == _TRUE_) {
+  if (ptr2->stop_at_transfers2 == _TRUE_) {
     ppt->has_cls = _FALSE_;
-    ppt->has_bispectra = _FALSE_;
+    ppt->has_cmb_bispectra = _FALSE_;
     ppt2->has_cls = _FALSE_;
-    ppt2->has_bispectra = _FALSE_;
+    ppt2->has_cmb_bispectra = _FALSE_;
   }
     
   return _SUCCESS_;

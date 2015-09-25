@@ -163,9 +163,9 @@ int perturb2_init (
 
     ppt->has_perturbations = _FALSE_;
     ppt->has_cls = _FALSE_;
-    ppt->has_bispectra = _FALSE_;
+    ppt->has_cmb_bispectra = _FALSE_;
     ppt2->has_cls = _FALSE_;
-    ppt2->has_bispectra = _FALSE_;
+    ppt2->has_cmb_bispectra = _FALSE_;
 
     if (ppt2->perturbations2_verbose > 0)
       printf(" -> Exiting after computation of first-order perturbations\n");
@@ -177,7 +177,7 @@ int perturb2_init (
   /* Print some info to screen */
   if (ppt2->perturbations2_verbose > 0) {
     printf(" -> computing %s2nd-order sources ",
-      ppt2->rescale_quadsources==_TRUE_ ? "RESCALED " : "");
+      ppt2->rescale_cmb_sources==_TRUE_ ? "RESCALED " : "");
 
     if (ppt->gauge == newtonian)
       printf("in Newtonian gauge ");
@@ -375,9 +375,9 @@ int perturb2_init (
   if (ppt2->stop_at_perturbations2 == _TRUE_) {
     ppt->has_perturbations = _FALSE_;
     ppt->has_cls = _FALSE_;
-    ppt->has_bispectra = _FALSE_;
+    ppt->has_cmb_bispectra = _FALSE_;
     ppt2->has_cls = _FALSE_;
-    ppt2->has_bispectra = _FALSE_;
+    ppt2->has_cmb_bispectra = _FALSE_;
   }
 
   return _SUCCESS_;
@@ -398,10 +398,10 @@ int perturb2_init (
  * - perturb2_timesampling_for_sources()
  * - perturb2_get_k_lists().
  */
+
 int perturb2_allocate_k1_level(
-     struct perturbs2 * ppt2, /*<< pointer to perturbs2 structure */
-     int index_k1             /*<< index in ppt2->k that we want to load the sources for  */
-     // int index_m
+     struct perturbs2 * ppt2,     /**< pointer to perturbs2 structure */
+     int index_k1                 /**< index in ppt2->k that we want to load the sources for  */
      )
 {
 
@@ -603,7 +603,9 @@ int perturb2_indices_of_perturbs(
   class_test (
     (ppt2->has_cmb_temperature == _FALSE_) &&
     (ppt2->has_cmb_polarization_e == _FALSE_) &&
-    (ppt2->has_cmb_polarization_b == _FALSE_),
+    (ppt2->has_cmb_polarization_b == _FALSE_) &&
+    (ppt2->has_bk_delta_cdm == _FALSE_) &&
+    (ppt2->has_pk_delta_cdm == _FALSE_),
     ppt2->error_message, "please specify at least an output");
 
   /* Synchronous gauge not supported yet */
@@ -622,7 +624,7 @@ int perturb2_indices_of_perturbs(
   class_test (
     ((ppt2->has_cmb_polarization_e==_TRUE_) || (ppt2->has_cmb_polarization_b==_TRUE_)) && (ppr2->l_max_los_p<2),
     ppt2->error_message,
-    "specify l_max_los_p>=2 for polarisation");
+    "E and B modes do not exist for l<2; specify l_max_los_p >= 2");
     
   /* Check that the m-list is within bounds */
   class_test (
@@ -689,6 +691,13 @@ int perturb2_indices_of_perturbs(
     "WARNING: the radiation streaming approximation for m=1 is not implemented yet.\
  The monopole and dipole for photons and neutrinos will be set to zero.");
 
+  class_test (
+    (ppr2->compute_m[0] == _FALSE_) && (
+    (ppt2->has_pk_delta_cdm == _TRUE_) ||
+    (ppt2->has_bk_delta_cdm == _TRUE_)) ,
+    ppt2->error_message,
+    "density power spectra and bispectra exist only for scalar modes");
+
   class_test ((ppt2->has_quadratic_sources==_FALSE_) && (ppt2->primordial_local_fnl_phi==0),
     ppt2->error_message,
     "If you run SONG without quadratic sources (quadratic_sources=no) and with vanishing\
@@ -700,6 +709,8 @@ int perturb2_indices_of_perturbs(
   class_test ((ppt->has_vectors == _TRUE_) || (ppt->has_tensors == _TRUE_),
     ppt2->error_message,
     "SONG does not support neither vector nor tensor modes at first order");
+
+
 
   // ======================================================================================
   // =                              What sources to compute?                              =
@@ -722,6 +733,7 @@ int perturb2_indices_of_perturbs(
   ppt2->has_source_T = _FALSE_;
   ppt2->has_source_E = _FALSE_;
   ppt2->has_source_B = _FALSE_;
+  ppt2->has_source_delta_cdm = _FALSE_;
 
   // --------------------------------------------------------------------------
   // -                       Photons temperature sources                      -
@@ -736,8 +748,8 @@ int perturb2_indices_of_perturbs(
     user through 'l_max_los_t' and the m-list. */
     ppt2->n_sources_T = size_l_indexm (ppr2->l_max_los_t, ppt2->m, ppt2->m_size);
 
-    ppt2->index_tp2_T = index_type;                  /* The first moment of the hierarchy is the monopole l=0, m=0 */
-    index_type += ppt2->n_sources_T;                 /* Make space for l>0 moments of the hierarchy */
+    ppt2->index_tp2_T = index_type;    /* The first moment of the hierarchy is the monopole l=0, m=0 */
+    index_type += ppt2->n_sources_T;   /* Make space for l>0 moments of the hierarchy */
 
     /* Increment the number of CMB fields to consider */
     strcpy (ppt2->pf_labels[index_pf], "t");
@@ -747,9 +759,9 @@ int perturb2_indices_of_perturbs(
   }
 
 
-  // -------------------------------------------------------------------------
-  // -                       Photon polarization sources                     -
-  // -------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // -                        Photon polarization sources                     -
+  // --------------------------------------------------------------------------
 
   /* Assign the type indices associated to linear polarisation. We decompose
   linear polarisation in E-polarisation and B-polarisation. Both kinds of
@@ -814,17 +826,30 @@ int perturb2_indices_of_perturbs(
   } // end of if polarisation
 
 
-  // -------------------------------------------------------------------------
-  // -                              Sum up sources                           -
-  // -------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // -                              Matter sources                            -
+  // --------------------------------------------------------------------------
+
+  if ((ppt2->has_bk_delta_cdm == _TRUE_) || (ppt2->has_pk_delta_cdm == _TRUE_)) {
+    
+    ppt2->index_tp2_delta_cdm = index_type++;
+    ppt2->has_lss = _TRUE_;
+    ppt2->has_source_delta_cdm = _TRUE_;
+    
+  }
+
+
+  // --------------------------------------------------------------------------
+  // -                              Sum up sources                            -
+  // --------------------------------------------------------------------------
 
   /* Set the size of the sources to be stored */
   ppt2->tp2_size = index_type;
   ppt2->pf_size = index_pf;
 
   class_test (ppt2->pf_size > _MAX_NUM_FIELDS_,
-   "exceeded maximum number of allowed fields, increase _MAX_NUM_FIELDS_ in common.h",
-   ppt2->error_message);
+    "exceeded maximum number of allowed fields, increase _MAX_NUM_FIELDS_ in common.h",
+    ppt2->error_message);
   
   if (ppt2->perturbations2_verbose > 1) {
     printf ("     * will compute tp2_size=%d source terms: ", ppt2->tp2_size);
@@ -835,6 +860,9 @@ int perturb2_indices_of_perturbs(
     }
     if (ppt2->has_source_B == _TRUE_) {
       printf ("B=%d (%d non-zero) ", ppt2->n_sources_B, ppt2->n_nonzero_sources_B);
+    }
+    if (ppt2->has_source_delta_cdm == _TRUE_) {
+      printf ("delta_cdm ");
     }
     printf ("\n");
   }  
@@ -863,7 +891,6 @@ int perturb2_indices_of_perturbs(
 
   
 
-
   // ==============================================================================
   // =                            Fill (l,m) arrays                               =
   // ==============================================================================
@@ -877,8 +904,6 @@ int perturb2_indices_of_perturbs(
                 ppt2),
     ppt2->error_message,
     ppt2->error_message);
-
-
 
 
 
@@ -898,7 +923,6 @@ int perturb2_indices_of_perturbs(
                 ppt2),
     ppt2->error_message,
     ppt2->error_message);
-
 
 
 
@@ -1136,199 +1160,207 @@ int perturb2_get_lm_lists (
   // ======================================================================================
 
   /* Here we compute the general coupling coefficients in harmonic space, and store them
-  into ppt2->coupling_coefficients. They will be crucial to compute the spherical decomposition
-  of the delta-squared term in the delta_tilde transformation. For more details on what these
-  coefficients are, please refer to the documentation in the header file. */
+  into ppt2->coupling_coefficients. They will be crucial to compute the spherical
+  decomposition of the delta-squared term in the delta_tilde transformation. For more
+  details on what these coefficients are, please refer to the documentation for
+  ppt2->coupling_coefficients in perturbations2.c. */
 
-  /* We compute the coupling coefficients only up to ppr2->l_max_los_quadratic, because
-  this is the highest multipole we are gonna consider for the delta_tilde transformation.
-  It is given by MAX(lmax_los_quadratic_t, lmax_los_quadratic_p). */
-  ppt2->l1_max = MAX (ppr2->l_max_los_quadratic, ppr2->l_max_los_quadratic_p);
-  ppt2->l2_max = MAX (ppr2->l_max_los_quadratic, ppr2->l_max_los_quadratic_p);
+  if ((ppt2->has_cmb == _TRUE_) && (ppt2->use_delta_tilde_in_los == _TRUE_)) {
 
-  /* Derived limits */
-  int m1_min = -ppt2->l1_max;
-  int m2_min = -ppt2->l2_max;
-  int m1_max = ppt2->l1_max;
-  int m2_max = ppt2->l2_max;
-  int l1_size = ppt2->l1_max+1;
-  int l2_size = ppt2->l2_max+1;
-  int m1_size = m1_max-m1_min+1;
-  int m2_size = m2_max-m2_min+1;
+    /* We compute the coupling coefficients only up to ppr2->l_max_los_quadratic, because
+    this is the highest multipole we are gonna consider for the delta_tilde transformation.
+    It is given by MAX(lmax_los_quadratic_t, lmax_los_quadratic_p). */
   
-  // --------------------------------------------------------------------------------
-  // -                        Allocate memory for the coefficients                  -
-  // --------------------------------------------------------------------------------
+    ppt2->l1_max = MAX (ppr2->l_max_los_quadratic, ppr2->l_max_los_quadratic_p);
+    ppt2->l2_max = MAX (ppr2->l_max_los_quadratic, ppr2->l_max_los_quadratic_p);
 
-  long int counter = 0;
+    /* Derived limits */
+    int m1_min = -ppt2->l1_max;
+    int m2_min = -ppt2->l2_max;
+    int m1_max = ppt2->l1_max;
+    int m2_max = ppt2->l2_max;
+    int l1_size = ppt2->l1_max+1;
+    int l2_size = ppt2->l2_max+1;
+    int m1_size = m1_max-m1_min+1;
+    int m2_size = m2_max-m2_min+1;
+  
+    // --------------------------------------------------------------------------------
+    // -                        Allocate memory for the coefficients                  -
+    // --------------------------------------------------------------------------------
 
-  class_alloc (ppt2->coupling_coefficients, ppt2->pf_size*sizeof(double****), ppt2->error_message);
-  
-  for (int index_pf=0; index_pf < ppt2->pf_size; ++index_pf) {
+    long int counter = 0;
 
-    class_alloc (ppt2->coupling_coefficients[index_pf], n_multipoles*sizeof(double***), ppt2->error_message);
+    class_alloc (ppt2->coupling_coefficients, ppt2->pf_size*sizeof(double****), ppt2->error_message);
   
-    for (int l=0; l <= ppt2->largest_l; ++l) {
-      for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+    for (int index_pf=0; index_pf < ppt2->pf_size; ++index_pf) {
+
+      class_alloc (ppt2->coupling_coefficients[index_pf], n_multipoles*sizeof(double***), ppt2->error_message);
   
-        int m = ppr2->m[index_m];
+      for (int l=0; l <= ppt2->largest_l; ++l) {
+        for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
   
-        class_alloc (ppt2->coupling_coefficients[index_pf][lm(l,m)],
-                     l1_size*sizeof(double**),
-                     ppt2->error_message);
-      
-        for (int l1=0; l1 <= ppt2->l1_max; ++l1) {
+          int m = ppr2->m[index_m];
   
-          class_alloc (ppt2->coupling_coefficients[index_pf][lm(l,m)][l1],
-                       m1_size*sizeof(double*),
+          class_alloc (ppt2->coupling_coefficients[index_pf][lm(l,m)],
+                       l1_size*sizeof(double**),
                        ppt2->error_message);
+      
+          for (int l1=0; l1 <= ppt2->l1_max; ++l1) {
   
-          for (int m1=m1_min; m1 <= m1_max; ++m1) {
-
-            class_calloc (ppt2->coupling_coefficients[index_pf][lm(l,m)][l1][m1-m1_min],
-                         l2_size,
-                         sizeof(double),
+            class_alloc (ppt2->coupling_coefficients[index_pf][lm(l,m)][l1],
+                         m1_size*sizeof(double*),
                          ppt2->error_message);
   
-            counter += l2_size;        
+            for (int m1=m1_min; m1 <= m1_max; ++m1) {
 
-          } // end of for m1
-        } // end of for l1
-      } // end of for m
-    } // end of for l
-  } // end of for T,E,B...
-    
-  if (ppt2->perturbations2_verbose > 1)
-    printf ("     * allocated %ld doubles for the coupling coefficients\n", counter);
+              class_calloc (ppt2->coupling_coefficients[index_pf][lm(l,m)][l1][m1-m1_min],
+                           l2_size,
+                           sizeof(double),
+                           ppt2->error_message);
   
-  /* Allocate memory for the 3J arrays. The function we are gonna use, computes computes the 3j
-  symbols for all the allowed values of l2, regardless of what is specified above for ppt2->l2_max.
-  Since MAX(l) is ppt2->largest_l and MAX(l1)=ppt2->l1_max, then the triangular condition imposes
-  MAX(l2)=ppr2->largest_l+ppt2->l1_max. */
-  int l_size_max = (ppt2->largest_l + ppt2->l1_max) - abs(ppt2->largest_l - ppt2->l1_max) + 1;
-  double *three_j_000, *three_j_mmm, **temp;
-  class_alloc (three_j_000, l_size_max*sizeof(double), ppt2->error_message);
-  class_alloc (three_j_mmm, l_size_max*sizeof(double), ppt2->error_message);
-  class_alloc (temp, l_size_max*sizeof(double*), ppt2->error_message);
-  for (int l2=0; l2 < l_size_max; ++l2)
-    class_alloc (temp[l2], l_size_max*sizeof(double), ppt2->error_message);
-  
-  
-  // ---------------------------------------------------------------------------------------
-  // -                              Compute the coefficients                               -
-  // ---------------------------------------------------------------------------------------
-  
-  for (int index_pf=0; index_pf < ppt2->pf_size; ++index_pf) {
-    
-    /* Determine the spin of the considered field, and the overall prefactor, using eqs. 3.6,
-    3.7 and 3.9 of arXiv:1401.3296. We will include the sign-factors i^L and i^(L-1) later. */
-    int F;
-    double sign, prefactor;
+              counter += l2_size;        
 
-    if ((ppt2->has_source_T == _TRUE_) && (index_pf == ppt2->index_pf_t)) {
-      F = 0;
-      prefactor = +0.5;
-    }
-    else if ((ppt2->has_source_E == _TRUE_) && (index_pf == ppt2->index_pf_e)) {
-      F = 2;
-      prefactor = +1;
-    }
-    else if ((ppt2->has_source_B == _TRUE_) && (index_pf == ppt2->index_pf_b)) {
-      F = 2;
-      prefactor = +1;
-    }
-    else 
-      class_stop (ppt2->error_message, "mumble mumble, what is index_pf=(%d,%s)?",
-        index_pf, ppt2->pf_labels[index_pf]);
+            } // end of for m1
+          } // end of for l1
+        } // end of for m
+      } // end of for l
+    } // end of for T,E,B...
+    
+    if (ppt2->perturbations2_verbose > 1)
+      printf ("     * allocated %ld doubles for the coupling coefficients\n", counter);
+  
+    /* Allocate memory for the 3J arrays. The function we are gonna use, computes computes the 3j
+    symbols for all the allowed values of l2, regardless of what is specified above for ppt2->l2_max.
+    Since MAX(l) is ppt2->largest_l and MAX(l1)=ppt2->l1_max, then the triangular condition imposes
+    MAX(l2)=ppr2->largest_l+ppt2->l1_max. */
+    int l_size_max = (ppt2->largest_l + ppt2->l1_max) - abs(ppt2->largest_l - ppt2->l1_max) + 1;
+    double *three_j_000, *three_j_mmm, **temp;
+    class_alloc (three_j_000, l_size_max*sizeof(double), ppt2->error_message);
+    class_alloc (three_j_mmm, l_size_max*sizeof(double), ppt2->error_message);
+    class_alloc (temp, l_size_max*sizeof(double*), ppt2->error_message);
+    for (int l2=0; l2 < l_size_max; ++l2)
+      class_alloc (temp[l2], l_size_max*sizeof(double), ppt2->error_message);
+  
+  
+    // ---------------------------------------------------------------------------------------
+    // -                              Compute the coefficients                               -
+    // ---------------------------------------------------------------------------------------
+  
+    for (int index_pf=0; index_pf < ppt2->pf_size; ++index_pf) {
+    
+      /* Determine the spin of the considered field, and the overall prefactor, using eqs. 3.6,
+      3.7 and 3.9 of arXiv:1401.3296. We will include the sign-factors i^L and i^(L-1) later. */
+      int F;
+      double sign, prefactor;
+
+      if ((ppt2->has_source_T == _TRUE_) && (index_pf == ppt2->index_pf_t)) {
+        F = 0;
+        prefactor = +0.5;
+      }
+      else if ((ppt2->has_source_E == _TRUE_) && (index_pf == ppt2->index_pf_e)) {
+        F = 2;
+        prefactor = +1;
+      }
+      else if ((ppt2->has_source_B == _TRUE_) && (index_pf == ppt2->index_pf_b)) {
+        F = 2;
+        prefactor = +1;
+      }
+      else 
+        class_stop (ppt2->error_message, "mumble mumble, what is index_pf=(%d,%s)?",
+          index_pf, ppt2->pf_labels[index_pf]);
       
-    for (int l2=0; l2 <= ppt2->l2_max; ++l2) {
-      for (int l3=0; l3 <= ppt2->largest_l; ++l3) {
+      for (int l2=0; l2 <= ppt2->l2_max; ++l2) {
+        for (int l3=0; l3 <= ppt2->largest_l; ++l3) {
 
-        /* The absolute value of F must be always smaller than l2 and l3. This means
-        that the polarisation coefficient vanishes for for l2<2 and l3<2. */
-        if ((l2<abs(F)) || (l3<abs(F)))
-          continue;
-
-        for (int m1=m1_min; m1 <= m1_max; ++m1) {
-
-          /* m1 must always be smaller than l1, whose upper limit is l2+l3 */
-          if (abs(m1)>l2+l3)
+          /* The absolute value of F must be always smaller than l2 and l3. This means
+          that the polarisation coefficient vanishes for for l2<2 and l3<2. */
+          if ((l2<abs(F)) || (l3<abs(F)))
             continue;
 
-          /* Compute the following coefficients for all values of l1 and m2: 
+          for (int m1=m1_min; m1 <= m1_max; ++m1) {
 
-          (-1)^m3 * (2*l3+1) * ( l1  l2  l3 ) * (  l1   l2      l3  )
-                               (  0   F  -F )   (  m1   m2  -m1-m2  ) */
-          int l1_min_3j, l1_max_3j;
-          int m2_min_3j, m2_max_3j;
-
-          class_call (coupling_general(
-                        l2, l3, m1, F,
-                        three_j_000, l_size_max,
-                        three_j_mmm, l_size_max,
-                        &l1_min_3j, &l1_max_3j, /* out, allowed l values */
-                        &m2_min_3j, &m2_max_3j, /* out, allowed m values */
-                        temp,
-                        ppt2->error_message),
-            ppt2->error_message,
-            ppt2->error_message);
-
-          /* Fill the coupling coefficient array, but only for the allowed values of l2 and m1 */
-          for (int l1=0; l1 <= ppt2->l1_max; ++l1) {
-
-            int L = l3-l1-l2;
-
-            /* For even-parity fields (T and E), we skip the configurations where l1+l2+l3 is odd;
-            for odd-parity (B) fields, we skip the configurations where l1+l2+l3 is even */
-            if ( ((abs(L)%2==0) && (ppt2->field_parity[index_pf]==_ODD_))
-              || ((abs(L)%2!=0) && (ppt2->field_parity[index_pf]==_EVEN_)) )
+            /* m1 must always be smaller than l1, whose upper limit is l2+l3 */
+            if (abs(m1)>l2+l3)
               continue;
-            
-            /* For even-parity fields, the sign-factor is i^L. For sign-parity ones, it is i^(L-1).
-            In both cases, the exponent is even (see above), so that the sign-factor is real-valued */
-            if (ppt2->field_parity[index_pf] == _EVEN_)
-              sign = ALTERNATING_SIGN (abs(L)/2);
-            else
-              sign = ALTERNATING_SIGN (abs(L-1)/2);
 
-            for (int index_m3=0; index_m3 <= ppr2->index_m_max[l3]; ++index_m3) {
+            /* Compute the following coefficients for all values of l1 and m2: 
 
-              /* What we need is
+            (-1)^m3 * (2*l3+1) * ( l1  l2  l3 ) * (  l1   l2      l3  )
+                                 (  0   F  -F )   (  m1   m2  -m1-m2  ) */
+            int l1_min_3j, l1_max_3j;
+            int m2_min_3j, m2_max_3j;
 
-              prefactor * (-1)^m3 * (2*l3+1) * ( l1  l2  l3 ) * (  l1   l2      l3  )
-                                               (  0   F  -F )   (  m1   m3-m1  -m3  ) ,
-        
-              for all values of l1 and m3. We obtain it from what we have computed above by
-              defining m2=m3-m1 => m3=m1+m2. */            
-              int m3 = ppr2->m[index_m3];
-              int m2 = m3-m1;
+            class_call (coupling_general(
+                          l2, l3, m1, F,
+                          three_j_000, l_size_max,
+                          three_j_mmm, l_size_max,
+                          &l1_min_3j, &l1_max_3j, /* out, allowed l values */
+                          &m2_min_3j, &m2_max_3j, /* out, allowed m values */
+                          temp,
+                          ppt2->error_message),
+              ppt2->error_message,
+              ppt2->error_message);
 
-              /* Skip those configurations outside the triangular region, and those with abs(M)>L */
-              if ((l1<l1_min_3j) || (l1>l1_max_3j) || (m2<m2_min_3j) || (m2>m2_max_3j))
+            /* Fill the coupling coefficient array, but only for the allowed values of l2 and m1 */
+            for (int l1=0; l1 <= ppt2->l1_max; ++l1) {
+
+              int L = l3-l1-l2;
+
+              /* For even-parity fields (T and E), we skip the configurations where l1+l2+l3 is odd;
+              for odd-parity (B) fields, we skip the configurations where l1+l2+l3 is even */
+              if ( ((abs(L)%2==0) && (ppt2->field_parity[index_pf]==_ODD_))
+                || ((abs(L)%2!=0) && (ppt2->field_parity[index_pf]==_EVEN_)) )
                 continue;
+            
+              /* For even-parity fields, the sign-factor is i^L. For sign-parity ones, it is i^(L-1).
+              In both cases, the exponent is even (see above), so that the sign-factor is real-valued */
+              if (ppt2->field_parity[index_pf] == _EVEN_)
+                sign = ALTERNATING_SIGN (abs(L)/2);
+              else
+                sign = ALTERNATING_SIGN (abs(L-1)/2);
 
-              ppt2->coupling_coefficients[index_pf][lm(l3,m3)][l1][m1-m1_min][l2]
-                = prefactor * sign * temp[l1-l1_min_3j][m2-m2_min_3j];
+              for (int index_m3=0; index_m3 <= ppr2->index_m_max[l3]; ++index_m3) {
+
+                /* What we need is
+
+                prefactor * (-1)^m3 * (2*l3+1) * ( l1  l2  l3 ) * (  l1   l2      l3  )
+                                                 (  0   F  -F )   (  m1   m3-m1  -m3  ) ,
+        
+                for all values of l1 and m3. We obtain it from what we have computed above by
+                defining m2=m3-m1 => m3=m1+m2. */            
+                int m3 = ppr2->m[index_m3];
+                int m2 = m3-m1;
+
+                /* Skip those configurations outside the triangular region, and those with abs(M)>L */
+                if ((l1<l1_min_3j) || (l1>l1_max_3j) || (m2<m2_min_3j) || (m2>m2_max_3j))
+                  continue;
+
+                ppt2->coupling_coefficients[index_pf][lm(l3,m3)][l1][m1-m1_min][l2]
+                  = prefactor * sign * temp[l1-l1_min_3j][m2-m2_min_3j];
             
-              /* Debug - print out the values stored in ppt2->coupling_coefficients. */
-              // printf ("C(l1=%d,l2=%d,l3=%d,m1=%d,m2=%d,m3=%d,F=%d)=%g\n",
-              //   l1, l2, l3, m1, m2, m3, F, ppt2->coupling_coefficients[index_bf][lm(l3,m3)][l1][m1-m1_min][l2]);
+                /* Debug - print out the values stored in ppt2->coupling_coefficients. */
+                // printf ("C(l1=%d,l2=%d,l3=%d,m1=%d,m2=%d,m3=%d,F=%d)=%g\n",
+                //   l1, l2, l3, m1, m2, m3, F, ppt2->coupling_coefficients[index_bf][lm(l3,m3)][l1][m1-m1_min][l2]);
             
-            } // end of for m1
-          } // end of for l2
-        } // end of for l1
-      } // end of for m
-    } // end of for l
-  } // end of for T,E,B...
+              } // end of for m1
+            } // end of for l2
+          } // end of for l1
+        } // end of for m
+      } // end of for l
+    } // end of for T,E,B...
   
-  /* Free memory */
-  free (three_j_000);
-  free (three_j_mmm);
-  for (int l2=0; l2 < l_size_max; ++l2)
-    free (temp[l2]);
-  free (temp);
+    /* Free memory */
+    free (three_j_000);
+    free (three_j_mmm);
+    for (int l2=0; l2 < l_size_max; ++l2)
+      free (temp[l2]);
+    free (temp);
+
+  } // if (has_cmb)
+  
   
   return _SUCCESS_;
+
 
 } // end of perturb2_get_lm_lists
 
@@ -1440,82 +1472,129 @@ int perturb2_get_k_lists (
   
   else if (ppt2->k_sampling == smart_sources_k_sampling) {
 
-    class_test(ppr2->k_step_transition == 0.,
+    class_test(ppr2->k_step_transition == 0,
       ppt2->error_message,
       "stop to avoid division by zero");
     
-    class_test(pth->rs_rec == 0.,
+    class_test(pth->rs_rec == 0,
       ppt2->error_message,
       "stop to avoid division by zero");
   
-    /* Comoving scale corresponding to sound horizon at recombination, usually of
-    order 2*pi/150 ~ 0.04 Mpc^-1 */
-    double k_rec = 2 * _PI_ / pth->rs_rec;
-
-    /* The smallest k-mode in the sampling is chosen to be inversely proportional to tau_0,
-    with the constant of proportionality given by the user via ppr2->k_min_tau0. This
-    parameter should be much smaller than one to sample the small l with high precision. */
-    double k_min = ppr2->k_min_tau0 / pba->conformal_age;
-
-    /* We set k_max to be proportional to l_max and inversely proportional to tau_0, with
-    the constant of proportionality given by the user via ppr2->k_max_tau0_over_l_max.
-    This parameter should be larger than one to sample the multipoles close to l_max
-    with high precision. How much larger than one, it depends on the value of l_max.
-    For l_max=2000, a value of 2 is enough. For l_max=4000, a value of 1.5 is enough,
-    while for l_max=1000 one requires a value larger than 2. TODO: incorporate these
-    variations in the definition of k_max. */
-    double k_max = ppr2->k_max_tau0_over_l_max * ppt->l_scalar_max / pba->conformal_age;
-
     /* Since we do not know the size of ppt2->k yet, we allocate it with the largest
     possible number of k-modes */
     class_alloc (ppt2->k, K_SIZE_MAX*sizeof(double), ppt2->error_message);
   
+    /* The smallest k-mode in the sampling is chosen to be inversely proportional to tau_0,
+    with the constant of proportionality given by the user via ppr2->k_min_tau0. For the
+    CMB, this parameter should be much smaller than 1 to sample the small l with high
+    precision. */
+    double k_min = ppr2->k_min_tau0 / pba->conformal_age;
+    
     /* Setup the first point in the k-sampling*/
     int index_k = 0;
-    ppt2->k[index_k] = k_min;
+    ppt2->k[index_k++] = k_min;
     double k = k_min;
-    index_k = 1;
+
+    /* The value of the maximum wavemode depends on what we are computing. For CMB
+    observables such as the angular power spectrum C_l and the bispectrum B_l1_l2_l3,
+    we require k_max to be big enough to sample the smallest needed angular scale, which 
+    is determined by the ppt->l_scalar_max parameter; for an average run with l_max=3000,
+    usually k_max ~ 0.4/Mpc is enough. For LSS observables such as the power spectrum P(k)
+    and the bispectrum B_k1_k2_k3, k_max is usually of order 10/Mpc or larger and is
+    determined directly by the user with the P_k_max_h parameters. */
+    double k_max_cmb = 0;
+    double k_max_lss = 0;
+
+    /* Comoving scale corresponding to the sound horizon at recombination, usually of
+    order 2*pi/150 ~ 0.04 Mpc^-1. CMB quantities vary in k with roughly this step. */
+    double k_rec = 2 * _PI_ / pth->rs_rec;
+
+
+    /* - CMB sampling */
+
+    if (ppt2->has_cmb == _TRUE_) {
+
+      /* We set k_max to be proportional to l_max and inversely proportional to tau0, with
+      the constant of proportionality given by the user via ppr2->k_max_tau0_over_l_max.
+      This parameter should be larger than one to sample the multipoles close to l_max
+      with high precision. How much larger than one, it depends on the value of l_max.
+      For l_max=2000, a value of 2 is enough. For l_max=4000, a value of 1.5 is enough,
+      while for l_max=1000 one requires a value larger than 2. TODO: incorporate these
+      variations in the definition of k_max. */
+      k_max_cmb = ppr2->k_max_tau0_over_l_max * ppt->l_scalar_max / pba->conformal_age;
+
+      /* Add points to the k-sampling until we reach k_max */
+      while (k < k_max_cmb) {
+
+        /* Linear step. The tanh function ensures that the transition between the two linear regimes
+        is smooth. The smoothness of the transition is governed by ppr2->k_scalar_step_transition; the
+        smaller it is, the more it looks like a step function of argument k-k_rec. */
+        double lin_step = ppr2->k_step_super  
+                          + 0.5 * (tanh((ppt2->k[index_k-1]-k_rec)/k_rec/ppr2->k_step_transition)+1)
+                                * (ppr2->k_step_sub-ppr2->k_step_super);
   
-    /* Add points to the k-sampling until we reach k_max */
-    while (k < k_max) {
+        /* Logarithmic step */
+        double log_step = ppt2->k[index_k-1] * (ppr2->k_logstep_super - 1.);
 
-      /* Linear step. The tanh function ensures that the transition between the two linear regimes
-      is smooth. The smoothness of the transition is governed by ppr2->k_scalar_step_transition; the
-      smaller it is, the more it looks like a step function of argument k-k_rec. */
-      double lin_step = ppr2->k_step_super  
-           + 0.5 * (tanh((ppt2->k[index_k-1]-k_rec)/k_rec/ppr2->k_step_transition)+1.)
-                 * (ppr2->k_step_sub-ppr2->k_step_super);
-  
-      /* Logarithmic step */
-      double log_step = ppt2->k[index_k-1] * (ppr2->k_logstep_super - 1.);
+        class_test(MIN(lin_step*k_rec, log_step) / k < ppr->smallest_allowed_variation,
+          ppt2->error_message,
+          "k step =%e < machine precision : leads either to numerical error or infinite loop",
+          MIN(lin_step*k_rec, log_step));
 
-      class_test(MIN(lin_step*k_rec, log_step) / k < ppr->smallest_allowed_variation,
-        ppt2->error_message,
-        "k step =%e < machine precision : leads either to numerical error or infinite loop",
-        MIN(lin_step*k_rec, log_step));
+        /* Use the smallest between the logarithmic and linear steps. If we are considering
+        small enough scales, just use the linear step. */
+        if ((log_step > (lin_step*k_rec)) || (ppt2->k[index_k-1] > k_rec)) {
+          k = ppt2->k[index_k-1] + lin_step * k_rec;
+        }
+        else {
+          k = ppt2->k[index_k-1] * ppr2->k_logstep_super;
+        }
 
-      /* Use the smallest between the logarithmic and linear steps. If we are considering
-      small enough scales, just use the linear step. */
-      if ((log_step > (lin_step*k_rec)) || (ppt2->k[index_k-1] > k_rec)) {
-        k = ppt2->k[index_k-1] + lin_step * k_rec;
+        ppt2->k[index_k++] = k; /* Update the k-sampling array with the new value */
+
+        class_test ((index_k+1) > K_SIZE_MAX,
+          ppt2->error_message,
+          "k size for CMB is too large; check k_step_sub, k_step_super and k_logstep_super");
       }
-      else {
-        k = ppt2->k[index_k-1] * ppr2->k_logstep_super;
-      }
+        
+    } // if CMB sampling
 
-      /* Update the k-sampling array with the new value */
-      ppt2->k[index_k] = k;
-      index_k++;
 
-      class_test ((index_k+1) > K_SIZE_MAX,
-        ppt2->error_message,
-        "ppt2->k size is too large; check the k_step_sub, k_step_super and k_logstep_super parameters");
-    }
+    /* - LSS sampling */
     
-    ppt2->k_size = index_k;
+    /* The LSS observables (P_k, B_k1_k2_k3...) usually require a less dense sampling in k
+    than the CMB ones (C_l, B_l1_l2_l3...), but usually have a larger k_max. Following CLASS
+    algorithm, we sample k using the denser CMB sampling up to k_max_cmb, and then use the
+    logarithmic LSS sampling up to k_max_lss. NOTE: This block is not entered if
+    k < k_max_cmb, which means that the LSS parameters such as k_per_decade_for_pk and
+    k_per_decade_for_bao are ignored for k < k_max_cmb. */
+    
+    if (ppt2->has_lss == _TRUE_) {
+      
+      k_max_lss = ppt2->k_max_for_pk;
+      
+      while (k < k_max_lss) {
 
-    /* Last sampling point = exactly k_max */
-    ppt2->k[ppt2->k_size-1] = k_max;
+        /* Use a logarithmic sampling with step ppr2->k_per_decade_for_pk. When close to the
+        BAO peak (k ~ 2*pi/150 ~ 0.04 Mpc^-1) make the sampling more dense according to the
+        ppr2->k_per_decade_for_bao parameter. */ 
+        k *= pow (10, 1/(ppr2->k_per_decade_for_pk
+                         + (ppr2->k_per_decade_for_bao-ppr2->k_per_decade_for_pk)
+                           * (1-tanh(pow((log(k)-log(ppr2->k_bao_center*k_rec))/log(ppr2->k_bao_width),4)))));
+
+        ppt2->k[index_k++] = k; /* Update the k-sampling array with the new value */
+        
+        class_test ((index_k+1) > K_SIZE_MAX,
+          ppt2->error_message,
+          "k size for LSS is too large; check k_per_decade_for_pk and k_per_decade_for_bao");
+
+      }
+
+    } // if LSS sampling
+
+
+    ppt2->k_size = index_k; /* Number of points in the k-sampling */
+    ppt2->k[ppt2->k_size-1] = MAX (k_max_cmb, k_max_lss); /* Last sampling point = exactly k_max */
 
     /* Free the excess memory we have allocated in ppt2->k */
     class_realloc(ppt2->k,
@@ -2378,13 +2457,13 @@ int perturb2_timesampling_for_sources (
     }
 
     /* If the CMB is not requested, just start sampling the perturbations at
-    recombination time */
+    recombination time (copied from CLASS) */
 
     else {
       
       tau_ini = pth->tau_rec;
 
-    } // end of if(has_cmb)
+    } // if(has_cmb)
 
 
     // -----------------------------------------------------------------------------
@@ -2393,7 +2472,7 @@ int perturb2_timesampling_for_sources (
 
     /* Since we do not know yet how many points to include in the time sampling,
     we first allocate ppt2->tau_sampling with a very large value */
-    class_alloc (ppt2->tau_sampling, TAU_SIZE_MAX * sizeof(double), ppt2->error_message);
+    class_alloc (ppt2->tau_sampling, TAU_SIZE_MAX*sizeof(double), ppt2->error_message);
 
     /* Set the value of the first point in the time sampling */
     int index_tau = 0;
@@ -2517,8 +2596,9 @@ int perturb2_timesampling_for_sources (
   // =                                  Recombination                                   =
   // ====================================================================================
 
-  /* Find the time when recombination ends, and store the corresponding time index
-  into ppt2->index_tau_end_of_recombination */
+  /* Find the time when recombination ends and the time where recombination peaks, and
+  store the corresponding time indices in ppt2->index_tau_end_of_recombination and
+  ppt2->index_tau_rec, respectively */
 
   class_call (perturb2_end_of_recombination (
                 ppr,
@@ -2535,16 +2615,20 @@ int perturb2_timesampling_for_sources (
   earlier, cut the time-sampling vector so that sources at later times are not
   computed. */
 
-  if ((ppt2->has_recombination_only == _TRUE_) && (ppt2->has_custom_timesampling == _FALSE_)) {
-    ppt2->tau_size = ppt2->index_tau_end_of_recombination;
+  if (ppt2->has_recombination_only == _TRUE_) {
+
+    if (ppt2->has_custom_timesampling == _FALSE_)
+      ppt2->tau_size = ppt2->index_tau_end_of_recombination;
+
+    if (ppt2->perturbations2_verbose > 1)
+      printf ("     * will only consider times up to the end of recombination (tau=%g)\n",
+        ppt2->tau_sampling[ppt2->index_tau_end_of_recombination-1]);
   }
 
-
-
   /* Debug - Print time sampling */
-  // printf ("# ~~~ tau-sampling for the source function ~~~\n");
+  // fprintf (stderr, "# ~~~ tau-sampling for the source function ~~~\n");
   // for (int index_tau=0; index_tau < ppt2->tau_size; ++index_tau) {
-  //   printf ("%12d %16g\n", index_tau, ppt2->tau_sampling[index_tau]);
+  //   fprintf (stderr, "%12d %16g\n", index_tau, ppt2->tau_sampling[index_tau]);
   // }
 
 
@@ -3101,11 +3185,6 @@ int perturb2_end_of_recombination (
     }
 
   } // end of for (index_tau)
-  
-  if (ppt2->perturbations2_verbose > 1)
-    printf ("     * recombination ends at tau=%g, index_tau=%d\n",
-      ppt2->tau_sampling[ppt2->index_tau_end_of_recombination-1],
-      ppt2->index_tau_end_of_recombination-1);
   
   free (pvecback);
   free (pvecthermo);
@@ -5050,7 +5129,7 @@ int perturb2_geometrical_corner (
     
     for (int m=0; m<=l; ++m) {
 
-      if (ppt2->rescale_quadsources == _FALSE_) { 
+      if (ppt2->rescale_cmb_sources == _FALSE_) { 
 
         /* The rotation coefficients are basically Wigner matrices, which in turn are spin
         weighted spherical harmonics. For scalar perturbations (spin=0) that lie on the x-z
@@ -5404,7 +5483,7 @@ int perturb2_geometrical_corner (
   double k2_P1_cartesian = -kx2/sqrt_2;
   
   /* Apply the rescaling (in order to compare with our rescaled k1[m] and k2[m]) */
-  if (ppt2->rescale_quadsources == _TRUE_) {
+  if (ppt2->rescale_cmb_sources == _TRUE_) {
     k1_P1_cartesian = k1_P1_cartesian / sink1k;
     k2_P1_cartesian = k2_P1_cartesian / sink2k * k1/k2;
   }
@@ -5468,7 +5547,7 @@ int perturb2_geometrical_corner (
   equivalent to an overall scaling of 1/sin(theta)^m. This is a very important test
   on the rescaling method in general and, in particualr, on the (k1/k2)^m factor
   appearing in the rescaling of rot_2. */
-  if (ppt2->rescale_quadsources == _TRUE_) {
+  if (ppt2->rescale_cmb_sources == _TRUE_) {
 
     /* Computed the non-rescaled k1[m] */
     double k1_M1 = kx1/sqrt_2;
@@ -5652,7 +5731,7 @@ int perturb2_solve (
         (index_k2 == ppt2->index_k2_out[index_k_out]) &&
         (index_k3 == ppt2->index_k3_out[index_k_out])) {
       ppw2->index_k_out = index_k_out;
-      ppw2->print_function = perturb2_save_early_transfers;
+      ppw2->print_function = perturb2_save_perturbations;
     }
   }
 
@@ -8712,6 +8791,7 @@ int perturb2_tca_variables (
     ppt2->error_message,
     ppt2->error_message);
 
+  /* Define baryon shortcuts */
   double * u_b = &(ppw2->u_b[0]);
   double * u_b_1 = &(ppw2->u_b_1[0]);
   double * u_b_2 = &(ppw2->u_b_2[0]);
@@ -8725,6 +8805,7 @@ int perturb2_tca_variables (
   double delta_b_1_prime = ppw2->delta_b_1_prime;
   double delta_b_2_prime = ppw2->delta_b_2_prime;
 
+  /* Define photon shortcuts */
   double * u_g_1 = &(ppw2->u_g_1[0]);
   double * u_g_2 = &(ppw2->u_g_2[0]);
   double v_dot_v_g = ppw2->v_dot_v_g;
@@ -11208,7 +11289,7 @@ int perturb2_sources (
     ppt2->error_message,
     ppt2->error_message);
   
-  /* Interpolate Einstein equations (pvecmetric) */
+  /* Interpolate Einstein equations (ppw2->pvecmetric) */
   class_call (perturb2_einstein (
                 ppr,
                 ppr2,
@@ -11218,7 +11299,7 @@ int perturb2_sources (
                 ppt2,
                 tau,
                 y,
-                ppw2),       /* We shall store the metric variables in ppw2->pvecmetric */
+                ppw2),
     ppt2->error_message,
     error_message);
   
@@ -11351,7 +11432,6 @@ int perturb2_sources (
   
   
   if (ppt2->has_source_T == _TRUE_) {
-  
 
     /* - Should we include the SW and ISW effects? */
 
@@ -11918,12 +11998,64 @@ int perturb2_sources (
   } // end of B-mode sources
   
 
+  // ====================================================================================
+  // =                              Large scale structure                               =
+  // ====================================================================================
 
-  // -------------------------------------------------------------------------------
-  // -                               Test sources                                  -
-  // -------------------------------------------------------------------------------  
+  /** Compute and store the perturbations related to the large scale structure of the
+  Universe. Examples are the lensing potential, used to compute the lensing C_l,
+  and the density contrast of cold dark matter, used to compute P(k) and the matter
+  bispectrum.
+  
+  The LSS perturbations can be usually evolved all the way to today without the issue
+  of numerical reflection that afflicts the CMB perturbations. For this reason, they
+  will not be processed through the transfer2.c module.
+  
+  Note that here we include a factor 1/2 to convert our perturbations, defined as
+  X ~ X^(1) + 1/2*X^(2), to the actual second-order perturbation, defined as
+  X ~ X^(1) + X^(2). */
 
-  /* Only for debug purposes */
+  if (ppt2->has_lss == _TRUE_) {
+
+    /* Update the workspace with the current value of the fluid variables */
+    class_call (perturb2_fluid_variables(
+                  ppr,
+                  ppr2,
+                  pba,
+                  pth,
+                  ppt,
+                  ppt2,
+                  tau,
+                  y,
+                  ppw2),
+      ppt2->error_message,
+      ppt2->error_message);
+
+
+    // -----------------------------------------------------------------------------
+    // -                                 Delta CDM                                 -
+    // -----------------------------------------------------------------------------
+    
+    if (ppt2->has_source_delta_cdm == _TRUE_) {
+
+      sources(ppt2->index_tp2_delta_cdm) = 0.5 * ppw2->delta_cdm;
+
+      sprintf(ppt2->tp2_labels[ppt2->index_tp2_delta_cdm], "delta_cdm");
+
+      #pragma omp atomic
+      ++ppt2->count_memorised_sources;
+    
+    }
+    
+  } // if LSS
+
+
+
+  // ====================================================================================
+  // =                                   Test sources                                   =
+  // ====================================================================================
+
+  /* To be used only for debug purposes */
 
   if (ppt2->use_test_source == _TRUE_) {
 
@@ -12096,7 +12228,7 @@ int what_if_ndf15_fails(int (*derivs)(double x,
  * Note that this function is called from within the evolver at each time step, so
  * expect the outputted files to be large.
  */
-int perturb2_save_early_transfers (
+int perturb2_save_perturbations (
           double tau,
           double * y,
           double * dy,

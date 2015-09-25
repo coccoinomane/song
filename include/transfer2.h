@@ -223,8 +223,8 @@ struct transfers2 {
   /* Logical array. If the index_k1 position is true, then ppt2->transfers[index_k1] is allocated */
   short * has_allocated_transfers;
 
-  short has_transfers2_only; /**< If _TRUE_, SONG will stop execution after having run the transfer2.c
-                             module. Useful to debug the second-order transfer functions today. */
+  short stop_at_transfers2; /**< If _TRUE_, SONG will stop execution after having run the transfer2.c
+                            module. Useful to debug the second-order transfer functions today. */
   
 
 };

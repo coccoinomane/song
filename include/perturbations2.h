@@ -171,13 +171,23 @@ struct perturbs2
    * read by other modules as well.
    */
   //@{
+
   short has_perturbations2;      /**< Do we need second-order perturbations at all? */
-  short has_cmb_temperature;     /**< Do we need to compute spectra or bispectra for the CMB temperature? */
-  short has_cmb_polarization_e;  /**< Do we need to compute spectra or bispectra for the CMB E-modes? */
-  short has_cmb_polarization_b;  /**< Do we need to compute spectra or bispectra for the CMB B-modes? */
-  short has_pk_matter;           /**< Do we need the second-order matter Fourier spectrum? */
+
+  short has_cmb_bispectra;       /**< Do we need to compute the second-order bispectrum of the CMB? */
+
   short has_cls;                 /**< Do we need to compute the second-order C_l? */
-  short has_bispectra;           /**< Do we need to compute the intrinsic bispectrum? */
+
+  short has_cmb_temperature;     /**< Do we need to compute spectra or bispectra for the CMB temperature? */
+
+  short has_cmb_polarization_e;  /**< Do we need to compute spectra or bispectra for the CMB E-modes? */
+
+  short has_cmb_polarization_b;  /**< Do we need to compute spectra or bispectra for the CMB B-modes? */
+
+  short has_bk_delta_cdm;        /**< Do we need to compute the bispectrum delta_cdm(k1,k2,k3,tau) of the density contrast of the cold dark matter component? */
+
+  short has_pk_delta_cdm;        /**< Do we need to compute the power spectrum of the density contrast of the cold dark matter component? */
+
   //@}
   
 
@@ -284,7 +294,7 @@ struct perturbs2
 
 
   /**
-   * Should we rescale the line-of-sight sources in view of bispectrum integration?
+   * Should we rescale the CMB source function in view of bispectrum integration?
    * 
    * In order to compute the bispectrum integral, it is useful to rescale the line of sight
    * sources by a sin(theta_1)^(-m) factor, where theta_1 is the angle between \vec{k1} and
@@ -307,7 +317,7 @@ struct perturbs2
    *
    * S(k2,k1,k3) = S(k1,k2,k3) *  (-1)^m.
    */
-  short rescale_quadsources;
+  short rescale_cmb_sources;
 
 
   // ------------------------------------------------------------------------------------
@@ -340,18 +350,24 @@ struct perturbs2
    * Flags for internal use in the perturbations2.c module.
    */
   //@{
-  short has_source_T;          /**< Do we need the source function for the CMB temperature? */
-  short has_source_E;          /**< Do we need the source function for the CMB E-polarization? */
-  short has_source_B;          /**< Do we need the source function for the CMB B-polarization? */
+
+  short has_source_T;          /**< Should we store in ppt2->sources the source function for the CMB temperature? */
+  short has_source_E;          /**< Should we store in ppt2->sources the source function for the CMB E-polarization? */
+  short has_source_B;          /**< Should we store in ppt2->sources the source function for the CMB B-polarization? */
+  short has_source_delta_cdm;  /**< Should we store in ppt2->sources the density contrast of cold dark matter? */
 
   short has_cmb;               /**< Do we need CMB-related sources at all? (e.g. photon temperature or polarisation) */
   short has_lss;               /**< Do we need sources related to the large scale structure? (e.g. lensing potential) ? */  
 
-  /* Collisional sources */
+
+  /* - Collisional sources */
+
   short has_pure_scattering_in_los;   /**< Include the purely second-order scattering terms in the line-of-sight sources? */
   short has_quad_scattering_in_los;   /**< Include the quadratic scattering terms in the line-of-sight sources? */
   
-  /* Metric sources */
+
+  /* - Metric sources */
+
   short has_pure_metric_in_los;     /**< Shall we include the purely second-order metric terms in the line-of-sight sources,
                                     as they appear in the Boltzmann equation (eq. 5.112 of http://arxiv.org/abs/1405.2280)?
                                     If this flag is turned on, no integration by parts will be performed, and the SW and ISW
@@ -388,11 +404,15 @@ struct perturbs2
                                     with the SW and ISW effects, to match the analytical approximation for the squeezed
                                     bispectrum for small l. */
 
-  /* Propagation sources */
+
+  /* - Propagation sources */
+
   short has_time_delay_in_los;      /**< Include the time-delay term for photons in the line-of-sight sources? */
+
   short has_redshift_in_los;        /**< Include the redshift term for photons in the line-of-sight sources? This is an obsolete
                                     flag, as we now use the delta_tilde transformation to deal with the redshift term; refer 
                                     to Sec. 5.5.3 of http://arxiv.org/abs/1405.2280 for more details on the transformation. */
+
   short has_lensing_in_los;         /**< Include the lensing term for photons in the line-of-sight sources? */
 
   short use_delta_tilde_in_los;     /**< Shall we implement the delta_tilde transformation to deal with the redshift term?
@@ -402,9 +422,10 @@ struct perturbs2
 
 	short use_test_source;   	/**< If true, use an hard-coded test source for debug purposes */
 
-  int index_tp2_T;           /**< Beginning of the photon intensity hierarchy in the ppt2->sources array */
-  int index_tp2_E;           /**< Beginning of the photon E-mode hierarchy in the ppt2->sources array */
-  int index_tp2_B;           /**< Beginning of the photon B-mode hierarchy in the ppt2->sources array */
+  int index_tp2_T;             /**< Beginning of the photon intensity hierarchy in the ppt2->sources array */
+  int index_tp2_E;             /**< Beginning of the photon E-mode hierarchy in the ppt2->sources array */
+  int index_tp2_B;             /**< Beginning of the photon B-mode hierarchy in the ppt2->sources array */
+  int index_tp2_delta_cdm;     /**< Index for the second-order density contrast of cold dark matter in the ppt2->sources array */
 
   int n_sources_T;           /**< Number of sources to be computed for photon temperature */
   int n_sources_E;           /**< Number of sources to be computed for photon E-polarization */
@@ -428,7 +449,7 @@ struct perturbs2
   // ------------------------------------------------------------------------------------
 
   /**
-   * Field and parity of the perturbations.
+   * Field and parity of the CMB perturbations.
    *
    * The temperature field has different spin (S=0) than the polarisation fields (S=2).
    * Similarly, the temperature and E fields have different parity (even) than the B
@@ -440,8 +461,8 @@ struct perturbs2
    *
    * Here we define indices to keep track of field type (T, E, B, Rayleigh...) and of its
    * parity (even or odd). 
-   *
    */
+  //@{  
   int index_pf_t; /**< Index denoting the temperature CMB field */
   int index_pf_e; /**< Index denoting the E-mode polarisation CMB field */
   int index_pf_b; /**< Index denoting the B-mode polarisation CMB field */
@@ -452,8 +473,9 @@ struct perturbs2
 
   char pf_labels[_MAX_NUM_FIELDS_][_MAX_LENGTH_LABEL_]; /**< Labels of the fields; for example, if temperature is requested,
                                                         ppt2->pf_labels[ppt2->index_pf_t] is "t" */
+  //@}
 
-
+  
   // ------------------------------------------------------------------------------------
   // -                                     Multipoles                                   -
   // ------------------------------------------------------------------------------------
@@ -627,8 +649,8 @@ struct perturbs2
    * 
    * where F=2 polarisation and F=0 otherwise, and the prefactor is shown below.
    * 
-   * The coupling coefficients will be crucial to compute the spherical decomposition of the
-   * delta-squared term in the delta_tilde transformation. They are indexed as:
+   * The coupling coefficients will be crucial to compute the spherical decomposition of
+   * the delta-squared term in the delta_tilde transformation. They are indexed as:
    *
    *   ppt2->coupling_coefficients[ppt2->index_pf_t]
    *                              [lm(l,m)]
@@ -769,6 +791,8 @@ struct perturbs2
   int ** index_k3_min;   /**< Given a (k1,k2) pair from ppt2->k, ppt2->index_k3_min[index_k1][index_k2] is the
                          index in ppt2->k at the left of the first element in ppt2->k3[index_k1][index_k2]. It 
                          is allocated only when the k3 sampling is set to smart. */
+    
+  double k_max_for_pk;  /**< Maximum value of k in 1/Mpc in P(k) */
   //@}
 
 
@@ -808,7 +832,8 @@ struct perturbs2
   double * tau_sampling; /**< Array with the time values where the line-of-sight sources will be computed */
   int tau_size; /**< Size of ppt2->tau_sampling */
 
-  int index_tau_end_of_recombination; /**< Index in ppt2->tau_sampling that marks the end of recombination */
+  int index_tau_end_of_recombination; /**< Index in ppt2->tau_sampling that marks the end of recombination.
+                                      Used only if has_recombination_only==_TRUE_. */
 
   int index_tau_rec; /**< Index in ppt2->tau_sampling where the visibility function peaks */
 
@@ -1936,7 +1961,7 @@ struct perturb2_parameters_and_workspace {
           ErrorMsg error_message
           );
 
-    int perturb2_save_early_transfers(double tau,
+    int perturb2_save_perturbations(double tau,
               double * y,
               double * dy,
               void * parameters_and_workspace,

@@ -236,6 +236,16 @@ int input2_init (
       ppt2->has_perturbations2 = _TRUE_;
     }
 
+    if (((strstr(string1,"delta_cdm_pk") != NULL) || (strstr(string1,"pk_delta_cdm") != NULL) || (strstr(string1,"mPk") != NULL))) {
+      ppt2->has_pk_delta_cdm = _TRUE_;
+      ppt2->has_perturbations2 = _TRUE_;
+    }
+
+    if (((strstr(string1,"delta_cdm_bk") != NULL) || (strstr(string1,"bk_delta_cdm") != NULL) || (strstr(string1,"mBisp") != NULL))) {
+      ppt2->has_bk_delta_cdm = _TRUE_;
+      ppt2->has_perturbations2 = _TRUE_;
+    }
+
     if ((strstr(string1,"stop_at_perturbations1") != NULL) || (strstr(string1,"P1") != NULL)) {
       ppt2->stop_at_perturbations1 = _TRUE_;
       ppt2->has_perturbations2 = _TRUE_;
@@ -247,7 +257,7 @@ int input2_init (
     }
 
     if ((strstr(string1,"stop_at_transfers2") != NULL) || (strstr(string1,"T2") != NULL)) {
-      ptr2->has_transfers2_only = _TRUE_;
+      ptr2->stop_at_transfers2 = _TRUE_;
       ppt2->has_perturbations2 = _TRUE_;
       ppt2->has_cls = _TRUE_;
     }
@@ -273,7 +283,7 @@ int input2_init (
     perturbations. */
     if (strstr(string1,"intrinsic") != NULL) {
       ppt2->has_perturbations2 = _TRUE_;
-      ppt2->has_bispectra = _TRUE_;
+      ppt2->has_cmb_bispectra = _TRUE_;
     }
     
   } // end of bispectrum_types parsing
@@ -353,7 +363,7 @@ int input2_init (
   // =                        Perturbations, k-sampling                        =
   // ===========================================================================
 
-  /* - k1 and k2 sampling of the sources */
+  /* What type of  sampling for k1 and k2? */
 
   class_call(parser_read_string(pfc,"sources2_k_sampling",&string1,&flag1,errmsg),
        errmsg,
@@ -392,10 +402,59 @@ int input2_init (
   class_read_double("k_step_super_song",ppr2->k_step_super);
   class_read_double("k_logstep_super_song",ppr2->k_logstep_super);
   class_read_double("k_step_transition_song",ppr2->k_step_transition);
+  
+  class_read_double("k_per_decade_for_pk_song",ppr2->k_per_decade_for_pk);
+  class_read_double("k_per_decade_for_bao_song",ppr2->k_per_decade_for_bao);
+  class_read_double("k_bao_center",ppr->k_bao_center);
+  class_read_double("k_bao_width",ppr->k_bao_width);
 
   class_test (ppr2->k_logstep_super <= 1,
     ppr2->error_message,
     "logarithmic step must be larger than 1");
+
+  if ((ppt2->has_pk_delta_cdm == _TRUE_) || (ppt2->has_bk_delta_cdm == _TRUE_)) {
+
+    class_call(parser_read_double(pfc,"P_k_max_h/Mpc_song",&param1,&flag1,errmsg),errmsg,errmsg);
+    class_call(parser_read_double(pfc,"P_k_max_1/Mpc_song",&param2,&flag2,errmsg),errmsg,errmsg);
+    class_test((flag1 == _TRUE_) && (flag2 == _TRUE_), errmsg,
+      "In input file, you cannot enter both P_k_max_h/Mpc and P_k_max_1/Mpc, choose one");
+
+    if (flag1 == _TRUE_)
+      ppt2->k_max_for_pk = param1*pba->h;
+    if (flag2 == _TRUE_)
+      ppt2->k_max_for_pk = param2;
+
+    // class_call(parser_read_list_of_doubles(
+    //              pfc,
+    //              "z_pk_song",
+    //              &(int1),
+    //              &(pointer1),
+    //              &flag1,
+    //              errmsg),
+    //   errmsg,
+    //   errmsg);
+    //
+    // if (flag1 == _TRUE_) {
+    //   class_test(int1 > _Z_PK_NUM_MAX_, errmsg, "please increase _Z_PK_NUM_MAX_ output.h to %d", int1);
+    //   pop->z_pk_num = int1;
+    //   for (i=0; i<int1; i++)
+    //     pop2->z_pk[i] = pointer1[i];
+    //   free(pointer1);
+    // }
+    //
+    // class_call(parser_read_double(pfc,"z_max_pk",&param1,&flag1,errmsg),errmsg,errmsg);
+    //
+    // if (flag1==_TRUE_) {
+    //   psp->z_max_pk = param1;
+    // }
+    // else {
+    //   psp->z_max_pk = 0.;
+    //   for (i=0; i<pop->z_pk_num; i++)
+    //     psp->z_max_pk = MAX(psp->z_max_pk,pop->z_pk[i]);
+    // }
+
+  } // if LSS
+
     
   /* Parameters for the custom lin/log sampling */
 
@@ -603,12 +662,11 @@ int input2_init (
    && ((ppt2->has_isw == _FALSE_) || (ppt2->only_early_isw == _TRUE_))
    && (ppt2->has_time_delay_in_los == _FALSE_)
    && (ppt2->has_redshift_in_los == _FALSE_)
-   && (ppt2->has_lensing_in_los == _FALSE_))
+   && (ppt2->has_lensing_in_los == _FALSE_)
+   && (ppt2->has_pk_delta_cdm == _FALSE_)
+   && (ppt2->has_bk_delta_cdm == _FALSE_)
+   && (pth->reio_parametrization == reio_none))
     ppt2->has_recombination_only = _TRUE_;
-  
-  /* If the user asked to include reionisation, then integrate the system all the way to today */
-  if (pth->reio_parametrization != reio_none)
-    ppt2->has_recombination_only = _FALSE_;
   
   /* Should we stop integrating the second-order system just after recombination, regardless of the
   other flags? */
@@ -1075,7 +1133,7 @@ int input2_init (
   class_read_int("bessels2_verbose",pbs2->bessels2_verbose);
 
   /* Make sure that we compute all the needed Bessel functions for the bispectrum */
-  if (ppt2->has_bispectra) 
+  if (ppt2->has_cmb_bispectra) 
     pbs2->extend_l1_using_m = _TRUE_;
 
   /* Minimum x treshold for the spherical Bessels with j_l1(x). These are the
@@ -1592,32 +1650,29 @@ int input2_init (
   }
   
   
-  // ==============================================================================
-  // =                               Quadratic sources                            =
-  // ==============================================================================
+  // ====================================================================================
+  // =                                 Quadratic sources                               =
+  // ====================================================================================
 
-  /* Do we want to rescale all multipoles with a factor 1/sin(theta_1)^m? The rescaling does not
-  affect the m>0 transfer functions. It is needed to compute the intrinsic bispectrum, so by default
-  it is active. See the header file perturbations2.h for details on the rescaling. */
-  ppt2->rescale_quadsources = _TRUE_;
+  /* Do we want to rescale all CMB multipoles with a factor 1/sin(theta_1)^m? The
+  rescaling does not affect the m>0 transfer functions. It is needed to compute the
+  intrinsic bispectrum, so by default it is active. See the header file perturbations2.h
+  for details on the rescaling. */
+  ppt2->rescale_cmb_sources = _TRUE_;
   
   /* Uncomment if you want the output functions to output non-rescaled functions */
-  if ((ppt2->stop_at_perturbations2 == _TRUE_) || (ptr2->has_transfers2_only == _TRUE_))
-    ppt2->rescale_quadsources = _FALSE_;
+  if ((ppt2->stop_at_perturbations2 == _TRUE_) || (ptr2->stop_at_transfers2 == _TRUE_))
+    ppt2->rescale_cmb_sources = _FALSE_;
 
-  /* Uncomment if you want the m=0 sources to be computed without the rescaling, when they are
-  the only requested sources. */
-  // if (ppr2->m_max_2nd_order == 0)
-  //   ppt2->rescale_quadsources = _TRUE_;
+  /* For m=0, the rescaling is equal to unity, so we do not apply it. This is an
+  optimisation that you can comment out in case you want to test the rescaling. */
+  if (ppr2->m_max_2nd_order == 0)
+    ppt2->rescale_cmb_sources = _FALSE_;
 
-  
-  // =============================================================================================
-  // =                               Stuff that needs to be at the end                           =
-  // =============================================================================================
 
-  // -------------------------------------------------------
-  // -                 Compute pbs2->xx_max                -
-  // -------------------------------------------------------
+  // ====================================================================================
+  // =                              Compute pbs2->xx_max                                =
+  // ====================================================================================
 
   /* Determine pbs2->xx_max, the upper limit of the x-domain of the projection functions
   J_Llm(x). These appear in the second-order line-of-sight integral with x = k*(tau0-tau),
@@ -1655,8 +1710,8 @@ int input2_init (
   pbs->x_max = MAX (pbs->x_max, pbs2->xx_max);
 
   /* Determine the maximum value of L for which we should compute the projection functions
-  J_Llm(x) in the second-order Bessel module. To explain the inclusion of
-  ppr2->m_max_2nd_order, refer to the first long comment in bessel2_get_l1_list. */
+  J_Llm(x) in the second-order Bessel module. To explain the inclusion of ppr2->m_max_2nd_order,
+  refer to the long comment in bessel2_get_l1_list(). */
   pbs2->L_max = MAX (ppr2->l_max_los, ppr2->m_max_2nd_order);
 
   return _SUCCESS_;
@@ -1717,7 +1772,8 @@ int input2_default_params (
   ppt2->has_cmb_temperature = _FALSE_;
   ppt2->has_cmb_polarization_e = _FALSE_; 
   ppt2->has_cmb_polarization_b = _FALSE_; 
-  ppt2->has_pk_matter = _FALSE_;
+  ppt2->has_pk_delta_cdm = _FALSE_;
+  ppt2->has_bk_delta_cdm = _FALSE_;
 
   ppt2->has_perturbations2 = _FALSE_;
   ppt2->has_polarization2  = _TRUE_;
@@ -1726,11 +1782,10 @@ int input2_default_params (
   ppt2->has_quadratic_collision = _TRUE_;
   ppt2->has_perfect_baryons = _TRUE_;
   ppt2->has_perfect_cdm = _TRUE_;
-  ptr2->has_transfers2_only = _FALSE_;
-  ppt2->rescale_quadsources = _TRUE_;
+  ppt2->rescale_cmb_sources = _TRUE_;
   ppt2->compute_quadsources_derivatives = _FALSE_;
 
-  ppt2->rescale_quadsources = _FALSE_;
+  ppt2->rescale_cmb_sources = _FALSE_;
 
   ppt2->has_pure_scattering_in_los = _FALSE_;
   ppt2->has_quad_scattering_in_los = _FALSE_;
@@ -1753,7 +1808,7 @@ int input2_default_params (
   ppt2->has_recombination_only = _FALSE_;
   
   ppt2->has_cls = _FALSE_;
-  ppt2->has_bispectra = _FALSE_;
+  ppt2->has_cmb_bispectra = _FALSE_;
   
   ppt2->stop_at_perturbations2 = _FALSE_;
   ppt2->stop_at_perturbations1 = _FALSE_;
@@ -1809,9 +1864,8 @@ int input2_default_params (
   /* - k sampling */
 
   ppt2->k_sampling = smart_sources_k_sampling;
-
   ppt2->k3_sampling = smart_k3_sampling;
-
+  ppt2->k_max_for_pk = 0.1;
 
   /* - Technical parameters */
 
@@ -1837,6 +1891,7 @@ int input2_default_params (
   // =============================================================
   // =                     bessel2 structure                     =
   // =============================================================
+
   pbs2->bessels2_verbose = 0;
   pbs2->extend_l1_using_m = _FALSE_;
 
@@ -1844,14 +1899,17 @@ int input2_default_params (
   // ============================================================
   // =                     transfer2 structure                  =
   // ============================================================
+
   ptr2->transfer2_verbose = 0;
   ptr2->k_sampling = class_transfer2_k3_sampling;
   ptr2->tau_sampling = sources_tau_sampling;
+  ptr2->stop_at_transfers2 = _FALSE_;
 
 
   // ============================================================
   // =                     bispectra structure                  =
   // ============================================================
+
   pbi->add_quadratic_correction = _TRUE_;
   
     
@@ -1926,13 +1984,17 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   // =                             k samplings                           =
   // =====================================================================
 
-  /* CLASS smart sampling */
-  ppr2->k_min_tau0 = 1.;
-  ppr2->k_max_tau0_over_l_max = 2.;
-  ppr2->k_step_sub = 0.05;
-  ppr2->k_step_super = 0.0025;
-  ppr2->k_logstep_super = 1.2;
+  /* Smart sampling parameters */
+  ppr2->k_min_tau0 = 0.1;
+  ppr2->k_max_tau0_over_l_max = 2;
+  ppr2->k_step_sub = 0.1;
+  ppr2->k_step_super = 0.025;
+  ppr2->k_logstep_super = 1.8;
   ppr2->k_step_transition = 0.2;
+  ppr2->k_per_decade_for_pk = 10;
+  ppr2->k_per_decade_for_bao = 70;
+  ppr2->k_bao_center = 3;
+  ppr2->k_bao_width = 4;
 
   /* Transfer function k-sampling (used only if ptr2->k_sampling == class_transfer2_k3_sampling) */
   ppr2->q_linstep_song = 0.45;

@@ -108,7 +108,8 @@ struct precision2
   CMB source function at late times. It appears as a multiplicative factor for the 
   Hubble rate in perturbations2_timesampling_for_sources(). The idea is to make
   the integration grid in the transfer module more dense in order to capture the
-  oscillations of the projection functions at late times. */
+  oscillations of the projection functions at late times. This parameter is ignored
+  if the CMB is not asked. */
   double perturb_sampling_late_time_boost;
   
   /** Frequency of the time sampling for the line of sight integration. This parameter
@@ -122,14 +123,41 @@ struct precision2
   // =                                   k1-k2 sampling                                 =
   // ====================================================================================
 
-  /* Parameters for the k-sampling at second order, using the same algorithm as CLASS */
-
+  /**
+   * Parameters for the k-sampling of the CMB observables at second-order, such as
+   * the angular power spectrum C_l and the CMB bispectrum B_l1_l2_l3.
+   */
+  //@{
   double k_min_tau0; /**< number defining k_min for the computation of scalar Cl's and P(k)'s (dimensionless): (k_min tau_0), usually chosen much smaller than one */
+
   double k_max_tau0_over_l_max; /**< number defining k_max for the computation of scalar Cl's (dimensionless): (k_max tau_0)/l_max, usually chosen around two */
+
   double k_step_sub; /**< linear step in k space, in units of one period of acoustic oscillation at decoupling, for scales inside sound horizon at decoupling */
+
   double k_step_super; /**< linear step in k space, in units of one period of acoustic oscillation at decoupling, for scales above sound horizon at decoupling */  
+
   double k_logstep_super; /**< logarithmic step in k space, pure number, used to determine the very small k-values */  
+
   double k_step_transition; /**< dimensionless number regulating the transition from 'sub' steps to 'super' steps. Decrease for more precision. */
+  //@}
+
+  /**
+   * Parameters for the k-sampling of the LSS (large scale structure) observables
+   * at second-order, such as the power spectrum P(k) and the matter bispectrum
+   * B_k1_k2_k3.
+   *
+   * All these parameters are overridden by the CMB ones for all k values smaller
+   * than k_max_cmb = l_scalar_max * k_max_tau0_over_l_max / tau0.
+   */
+  //@{
+  double k_per_decade_for_pk; /**< if values needed between kmax inferred from k_oscillations and k_kmax_for_pk, this gives the number of k per decade outside the BAO region*/
+
+  double k_per_decade_for_bao; /**< if values needed between kmax inferred from k_oscillations and k_kmax_for_pk, this gives the number of k per decade inside the BAO region (for finer sampling)*/
+
+  double k_bao_center; /**< in ln(k) space, the central value of the BAO region where sampling is finer is defined as k_rec times this number (recommended: 3, i.e. finest sampling near 3rd BAO peak) */
+
+  double k_bao_width; /**< in ln(k) space, width of the BAO region where sampling is finer: this number gives roughly the number of BAO oscillations well resolved on both sides of the central value (recommended: 4, i.e. finest sampling from before first up to 3+4=7th peak) */
+  //@}
 
   /* Parameters for the k-sampling at second order, using a linear or logarithmic sampling */
 

@@ -164,7 +164,7 @@ int main(int argc, char **argv) {
 
   /* Bispectrum */
   // printf("* Bispectrum parameters\n");
-  // printf("\tpt2.has_bispectra = %d\n", pt2.has_bispectra);
+  // printf("\tpt2.has_cmb_bispectra = %d\n", pt2.has_cmb_bispectra);
   // printf("\tbi.has_bispectra = %d\n", bi.has_bispectra);
   // printf("\tbi.has_local_model = %d\n", bi.has_local_model);
   // printf("\tbi.has_equilateral_model = %d\n", bi.has_equilateral_model);

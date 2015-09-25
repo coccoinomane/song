@@ -142,7 +142,7 @@ int main (int argc, char **argv) {
   The transfer functions produced in this way cannot be used to obtain bispectra,
   because the bispectrum module relies on the presence of the rescaling (see eq. 6.26).
   Note that transfer functions loaded from disk are not affected by this option. */
-  pt2.rescale_quadsources = _FALSE_;
+  pt2.rescale_cmb_sources = _FALSE_;
 
   if (background_init(&pr,&ba) == _FAILURE_) {
     printf("\n\nError running background_init \n=>%s\n",ba.error_message);
