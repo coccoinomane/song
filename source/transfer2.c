@@ -331,10 +331,19 @@ int transfer2_init(
 
     /* Load sources from disk if they were previously stored.  This can be true either because we
     are loading them from a precomputed run, or because we stored them in this same run. */
-    if ((ppr2->load_sources_from_disk == _TRUE_) || (ppr2->store_sources_to_disk == _TRUE_))
+    if ((ppr2->load_sources_from_disk == _TRUE_) || (ppr2->store_sources_to_disk == _TRUE_)) {
+
+      /* Allocate memory to hold the line-of-sight sources */
+      class_call (perturb2_allocate_k1_level(ppt2, index_k1),
+        ppt2->error_message,
+        ptr2->error_message);
+
+
       class_call(perturb2_load_sources_from_disk(ppt2, index_k1),
           ppt2->error_message,
           ptr2->error_message);
+          
+    }
 
     /* We only need to consider those k2's that are equal to or larger than k1,
     as the quadratic sources were symmetrised in the perturbation2.c module */

@@ -11,6 +11,7 @@
 #define __COMMON2__
 
 #define _SONG_VERSION_ "v1.0-beta2"
+#define _SONG_URL_ "https://github.com/coccoinomane/song"
 
 /** Maximum number of azimuthal numbers that can be computed. We set it so that the
 factorial of m never overflows, assuming a limit of 10^30. The factorial of m is

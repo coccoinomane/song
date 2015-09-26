@@ -133,9 +133,9 @@ int perturb2_init (
 
 
 
-  // =====================================================================================
-  // =                             Solve first-order system                              =
-  // =====================================================================================
+  // ====================================================================================
+  // =                            Solve first-order system                              =
+  // ====================================================================================
 
   /* Run the first-order perturbations module in order to:
   
@@ -203,9 +203,9 @@ int perturb2_init (
   }
 
 
-  // ========================================================================================
-  // =                                 Allocate workspace                                   =
-  // ========================================================================================
+  // ====================================================================================
+  // =                               Allocate workspace                                 =
+  // ====================================================================================
 
   /* Number of available omp threads (remains always one if no openmp) */
   int number_of_threads = 1;
@@ -267,16 +267,17 @@ int perturb2_init (
   
   if (abort == _TRUE_) return _FAILURE_;
   
+  
 
-  // ===========================================================================================
-  // =                           Solve 2nd-order differential system                           =
-  // ===========================================================================================
+  // ====================================================================================
+  // =                             Solve differential system                            =
+  // ====================================================================================
 
   /* Beginning of parallel region */
   abort = _FALSE_;    
 
   /* Loops over k1, k2, k3 follow */
-  #pragma omp parallel for shared (pppw2,ppr,pba,pth,ppt,ppt2,abort) private (thread) schedule (dynamic)
+  #pragma omp parallel for private (thread) schedule (dynamic)
   for (int index_k1 = ppt2->k_size-1; index_k1 >= 0; --index_k1) {
 
     #ifdef _OPENMP
@@ -302,40 +303,40 @@ int perturb2_init (
 
       for (int index_k3 = 0; index_k3 < ppt2->k3_size[index_k1][index_k2]; ++index_k3) {
 
-          class_call_parallel (perturb2_solve (
-                                 ppr,
-                                 ppr2,
-                                 pba,
-                                 pth,
-                                 ppt,
-                                 ppt2,
-                                 index_k1,
-                                 index_k2,
-                                 index_k3,
-                                 pppw2[thread]),
-            ppt2->error_message,
-            ppt2->error_message);
+        class_call_parallel (perturb2_solve (
+                               ppr,
+                               ppr2,
+                               pba,
+                               pth,
+                               ppt,
+                               ppt2,
+                               index_k1,
+                               index_k2,
+                               index_k3,
+                               pppw2[thread]),
+          ppt2->error_message,
+          ppt2->error_message);
 
-      }
+      }  // for index_k3
 
-    }
+    } // for index_k2
 
-    /* Save sources to disk for the considered k1, and free the memory associated with them.
-    The next time we'll need them, we shall load them from disk. */
 
-    if (ppr2->store_sources_to_disk == _TRUE_) {
+    /* Output to file the source function for the considered value of index_k1 and
+    free the associated memory, if requested */
 
-      class_call_parallel (perturb2_store_sources_to_disk(ppt2, index_k1),
-        ppt2->error_message,
-        ppt2->error_message);
-        
-      class_call_parallel (perturb2_free_k1_level(ppt2, index_k1),
-        ppt2->error_message, ppt2->error_message);
-    }
-    
+    class_call_parallel (perturb2_output (
+                           ppr2,
+                           pba,
+                           ppt,
+                           ppt2,
+                           index_k1),
+       ppt2->error_message,
+       ppt2->error_message);
+
     #pragma omp flush(abort)
     
-  }  // end of for (index_k1) and parallel region
+  }  // for parallel (index_k1)
   
   if (abort == _TRUE_) return _FAILURE_;
 
@@ -383,6 +384,7 @@ int perturb2_init (
   return _SUCCESS_;
        
 } // end of perturb2_init
+
 
 
 
@@ -462,60 +464,85 @@ int perturb2_allocate_k1_level(
  *
  * This function is used in the transfer2.c module.
  */
+
 int perturb2_load_sources_from_disk(
         struct perturbs2 * ppt2,
         int index_k1
         )
 {
- 
-  /* Allocate memory to keep the line-of-sight sources */
-  class_call (perturb2_allocate_k1_level(ppt2, index_k1),
-    ppt2->error_message,
-    ppt2->error_message);
-  
-  /* Open file for reading */
-  class_open (ppt2->sources_files[index_k1],
-    ppt2->sources_paths[index_k1], "rb",
-    ppt2->error_message);
-
-  /* Print some debug */
+   
   if (ppt2->perturbations2_verbose > 2)
     printf("     * reading line-of-sight source for index_k1=%d from '%s' ... \n",
       index_k1, ppt2->sources_paths[index_k1]);
-  
-  for (int index_type = 0; index_type < ppt2->tp2_size; ++index_type) {
+
+  /* Open file for reading */
+  class_open (ppt2->sources_files[index_k1],
+    ppt2->sources_paths[index_k1],
+    "rb", ppt2->error_message);
+
+  for (int index_tp2 = 0; index_tp2 < ppt2->tp2_size; ++index_tp2) {
   
     for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
 
-      int k3_size = ppt2->k3_size[index_k1][index_k2];
+      class_call (perturb2_load_sources_k3_tau(
+                    ppt2,
+                    index_tp2,
+                    index_k1,
+                    index_k2,
+                    ppt2->sources_paths[index_k1],
+                    ppt2->sources_files[index_k1]),
+        ppt2->error_message,
+        ppt2->error_message);
 
-        int n_to_read = ppt2->tau_size*k3_size;
+      /* Update the counter for the values stored in ppt2->sources */
+      #pragma omp atomic
+      ppt2->count_memorised_sources += ppt2->tau_size*ppt2->k3_size[index_k1][index_k2];
 
-        int n_read = fread(
-              ppt2->sources[index_type][index_k1][index_k2],
-              sizeof(double),
-              n_to_read,
-              ppt2->sources_files[index_k1]);
-
-        /* Read a chunk with all the time values for this set of (type,k1,k2,k3) */
-        class_test( n_read != n_to_read,
-          ppt2->error_message,
-          "Could not read in '%s' file, read %d entries but expected %d",
-          ppt2->sources_paths[index_k1], n_read, n_to_read);
-
-        /* Update the counter for the values stored in ppt2->sources */
-        #pragma omp atomic
-        ppt2->count_memorised_sources += n_to_read;
-
-    } // end of for (index_k2)
+    }
     
-  } // end of for (index_type)
+  }
   
   /* Close file */
   fclose(ppt2->sources_files[index_k1]);
   
-  // if (ppt2->perturbations2_verbose > 2)
-  //   printf ("Done.\n");
+  return _SUCCESS_; 
+  
+}
+
+
+
+/**
+ * Load from disk a portion of the source function and store it ppt2->sources.
+ *
+ * This function will load the k3 and tau levels of the source function from disk
+ * into ppt2->sources, for fixed indices of type (index_tp2), k1 (index_k1) and
+ * k2 (index_k2).
+ */
+
+int perturb2_load_sources_k3_tau(
+        struct perturbs2 * ppt2,
+        int index_tp2,
+        int index_k1,
+        int index_k2,
+        char * filepath,
+        FILE * input_stream
+        )
+{
+   
+  int k3_size = ppt2->k3_size[index_k1][index_k2];
+
+  int n_to_read = ppt2->tau_size*k3_size;
+
+  int n_read = fread(
+                 ppt2->sources[index_tp2][index_k1][index_k2],
+                 sizeof(double),
+                 n_to_read,
+                 input_stream);
+ 
+  class_test(n_read != n_to_read,
+    ppt2->error_message,
+    "Error reading from %s; read %d entries but expected %d",
+    filepath, n_read, n_to_read);
 
   return _SUCCESS_; 
   
@@ -870,7 +897,7 @@ int perturb2_indices_of_perturbs(
   /* Allocate memory for the labels of the source types */
   class_alloc (ppt2->tp2_labels, ppt2->tp2_size*sizeof(char *), ppt2->error_message);
   for (index_type=0; index_type<ppt2->tp2_size; ++index_type)
-    class_alloc (ppt2->tp2_labels[index_type], 64*sizeof(char), ppt2->error_message);
+    class_alloc (ppt2->tp2_labels[index_type], _MAX_LENGTH_LABEL_*sizeof(char), ppt2->error_message);
 
   /* Allocate the first level of the ppt2->sources array */
   class_alloc (ppt2->sources, ppt2->tp2_size * sizeof(double ***), ppt2->error_message);
@@ -2060,7 +2087,7 @@ int perturb2_get_k_lists (
 
                 fprintf (ppt2->k_out_files[index_k_out],
                   "NOTE: The requested k3_index_out=%d is larger than the size of the k3 grid for the requested\
-   index_k1=%d and index_k2=%d; we have set index_k3 to the highest possible value, k3_size-1=%d.\n",
+ index_k1=%d and index_k2=%d; we have set index_k3 to the highest possible value, k3_size-1=%d.\n",
                   ppt2->index_k3_out[index_k_out], index_k1, index_k2, k3_size-1);
 
                 ppt2->index_k3_out[index_k_out] = k3_size-1;
@@ -4631,7 +4658,7 @@ int perturb2_find_approximation_switches (
     class_test(index_switch_tot != interval_number,
        ppt2->error_message,
        "most probably two approximation switching time were found to be\
-equal, which cannot be handled\n");
+ equal, which cannot be handled\n");
     
 
     /* Store each approximation in chronological order */
@@ -4733,6 +4760,16 @@ equal, which cannot be handled\n");
                  ppw2),     
       ppt2->error_message,
       ppt2->error_message);
+
+
+    /* Make sure that the time where an approximation switches is never equal
+    to a time in ppt2->tau_sampling. If that happened, the differential evolver
+    would produce output twice for the same time. Which would be nothing terrible,
+    but would set off some internal checks in SONG (thanks to Thomas Tram). */
+    for (int index_interval=1; index_interval < (interval_number-1); index_interval++)
+      for (int index_tau=0; index_tau < ppt2->tau_size; ++index_tau)
+        if (interval_limit[index_interval] == ppt2->tau_sampling[index_tau])
+          ppt2->tau_sampling[index_tau] -= ppr->smallest_allowed_variation;
 
   } // end of if(interval_number!=1)
 
@@ -5623,6 +5660,11 @@ int perturb2_wavemode_info (
     ppw2->k1, ppw2->k2, ppw2->k, ppw2->cosk1k2, ppw2->theta_1);
   sprintf(info, "%s%s %s\n", info, comment, line);
 
+  sprintf(line, "index_k1 = %d/%d, index_k2 = %d/%d, index_k3 = %d/%d",
+    ppw2->index_k1, ppt2->k_size-1, ppw2->index_k2, ppt2->k_size-1,
+    ppw2->index_k3, ppt2->k3_size[ppw2->index_k1][ppw2->index_k2]-1);
+  sprintf(info, "%s%s %s\n", info, comment, line);
+
   if (ppt->gauge == newtonian) sprintf(line, "gauge = newtonian");
   if (ppt->gauge == synchronous) sprintf(line, "gauge = synchronous");
   sprintf(info, "%s%s %s\n", info, comment, line);
@@ -6013,6 +6055,7 @@ int perturb2_solve (
     k1, index_k1, k2, index_k2, k, index_k3, ppw2->sources_calls, ppt2->tau_size);
 
 
+
   // ====================================================================================
   // =                                   Free memory                                    =
   // ====================================================================================
@@ -6070,6 +6113,7 @@ int perturb2_solve (
  * is filled assuming that the dipole follows the monopole, the shear follows the dipole,
  * l3 follows the shear, and all the other l_max-3 moments follow l3 in a sequential way.
  */
+
 int perturb2_vector_init (
       struct precision * ppr,
       struct precision2 * ppr2,
@@ -11708,6 +11752,7 @@ int perturb2_sources (
         if (l<2) {
           #pragma omp atomic
           ++ppt2->count_memorised_sources;
+          sprintf(ppt2->tp2_labels[ppt2->index_tp2_E + lm(l,m)], "E_%d_%d", l, m);
           continue;
         }
 
@@ -11867,6 +11912,7 @@ int perturb2_sources (
         if ((l<2) || (m==0)) {
           #pragma omp atomic
           ++ppt2->count_memorised_sources;
+          sprintf(ppt2->tp2_labels[ppt2->index_tp2_B + lm(l,m)], "B_%d_%d", l, m);
           continue;
         }
 
@@ -13817,54 +13863,383 @@ int perturb2_quadratic_sources_at_tau_spline (
 
 
 /**
- * Save the second-order line of sight sources to disk for a given k1 value.
- * 
- * The sources will be saved to the file in ppt2->sources_paths[index_k1].
+ * Output to file the source function for the considered value of index_k1
+ * in binary format.
+ *
+ * This function is called inside a loop on index_k1, right after SONG computes
+ * the source function for that index_k1. Its purpose is to copy the source 
+ * function from the array ppt2->sources to binary files for later use.
+ *
+ * perturb2_output() produces two kinds of outputs:
+ *
+ * -# The source function S_lm(k1,k2,k3,tau) tabulated as a function of 
+ *    (l,m,k3,tau) for fixed k1 and k2. The values of k1 and k2 are read
+ *    from the parameters k1_out and k2_out; one binary file is produced
+ *    for each (k1,k2) pair provided in such way.  Each file usually weights
+ *    less than 1 MB. The files include accessory data (eg. tau and k3
+ *    samplings) to allow access outside of SONG, and a ASCII header file
+ *    explaining how to access this information. The purpose of this output
+ *    is to inspect and plot the source function in a quick way. The produced
+ *    files are progressively named sources_song_kXXX_2D.dat.
+ *
+ * -# The full source function for a fixed k1. This output is much more
+ *    sizeable than the previous one because it includes also the k2 dimension.
+ *    Its purpose is to free memory at the cost of using disk space. A binary
+ *    file is produced for each k1 value in ppt2->k. After the binary files are
+ *    produced, the source function is freed. If the source function is needed
+ *    again, one has to load it using the function perturb2_load_sources_from_disk().
+ *    This is indeed what we do in the transfer2.c module and in print_sources2.c.
+ *    The output files contain only the data in ppt2->sources; to inspect and plot
+ *    this data, use print_sources2.c. The files are created only if
+ *    ppr2->store_sources_to_disk==_TRUE_; they are progressively named sources_XXX.dat
+ *    and are placed in the run directory.
  */
+
+int perturb2_output(
+        struct precision2 * ppr2,
+        struct background * pba,
+        struct perturbs * ppt,
+        struct perturbs2 * ppt2,
+        int index_k1
+        )
+{
+  
+  // ====================================================================================
+  // =                            Output sources in (k3,tau)                            =
+  // ====================================================================================
+
+  /* Save the source function to disk only for specific pairs of (k1,k2). 
+  Each binary file will contain all source types (T,E,B,delta_cdm,...)
+  tabulated a function of tau and k3 */
+  
+  for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
+
+    if (index_k1 == ppt2->index_k1_out[index_k_out]) {
+    
+      int index_k2 = ppt2->index_k2_out[index_k_out];
+
+      int k3_size = ppt2->k3_size[index_k1][index_k2];
+      int k3_tau_block_size = k3_size * ppt2->tau_size;
+
+      /* Open file for writing */
+      class_open (ppt2->k_out_files_sources[index_k_out],
+        ppt2->k_out_paths_sources[index_k_out],
+        "wb", ppt2->error_message);
+
+      /* Define file shortcut */
+      FILE * out = ppt2->k_out_files_sources[index_k_out];
+
+
+      // -------------------------------------------------------------------------
+      // -                           Print information                           -
+      // -------------------------------------------------------------------------
+
+      /* Get the time of opening */
+      time_t now;
+      struct tm *d;
+      time(&now);
+      d = localtime(&now);
+      char date[64];
+      strftime(date, 64, "%d/%m/%Y, %H:%M:%S", d);
+
+      /* Write information header in a human readable way */
+      int header_size = _MAX_INFO_SIZE_ + _MAX_INFO_SIZE_ + 4096;
+      char header[header_size];      
+      sprintf (header, "# Table of the source function S_lm(k1,k2,k3,tau) tabulated as a function of (l,m,k3,tau) for fixed k1 and k2.\n");
+      sprintf (header, "%s# This binary file was generated by SONG (%s) on %s.\n", header, _SONG_URL_, date);
+      sprintf (header, "%s#\n", header);
+      sprintf (header, "%s%s", header, pba->info);
+      if (ppt->gauge == newtonian) sprintf(header, "%s# gauge = newtonian\n", header);
+      if (ppt->gauge == synchronous) sprintf(header, "%s# gauge = synchronous\n", header);
+      sprintf (header, "%s#\n# Information on the wavemode:\n", header);
+      sprintf (header, "%s# k1 = %g, k2 = %g\n", header, ppt2->k[index_k1], ppt2->k[index_k2]);
+      sprintf (header, "%s# index_k1 = %d/%d, index_k2 = %d/%d\n", header, index_k1, ppt2->k_size-1, index_k2, ppt2->k_size-1);
+
+
+      // -------------------------------------------------------------------------
+      // -                               Count blocks                            -
+      // -------------------------------------------------------------------------
+
+      /* Initialise blocks count */
+
+      int n_max_blocks = 256;
+      int block_size[n_max_blocks];
+      int block_type_size[n_max_blocks];
+      char block_desc[n_max_blocks][512];
+      char block_location[n_max_blocks][256];
+      char block_type[n_max_blocks][16];
+      void * block_start[n_max_blocks];
+      int index_block = 0;
+
+      /* Build the content of each memory block */
+      
+      sprintf (block_desc[index_block], "the header you are reading");
+      sprintf (block_type[index_block], "char");
+      sprintf (block_location[index_block], "");
+      block_start[index_block] = &header[0];
+      block_size[index_block] = header_size;
+      block_type_size[index_block] = sizeof(char);
+      index_block++;
+    
+      sprintf (block_desc[index_block], "size of tau array (=%d)", ppt2->tau_size);
+      sprintf (block_type[index_block], "int");
+      sprintf (block_location[index_block], "ppt2->tau_size");
+      block_start[index_block] = &ppt2->tau_size;
+      block_size[index_block] = 1;
+      block_type_size[index_block] = sizeof(int);
+      index_block++;
+
+      sprintf (block_location[index_block], "ppt2->tau_sampling");
+      sprintf (block_type[index_block], "double");
+      sprintf (block_desc[index_block], "tau array");
+      block_start[index_block] = ppt2->tau_sampling;
+      block_size[index_block] = ppt2->tau_size;
+      block_type_size[index_block] = sizeof(double);
+      index_block++;
+
+      sprintf (block_desc[index_block], "size of k3 array (=%d)", ppt2->k3_size[index_k1][index_k2]);
+      sprintf (block_type[index_block], "int");
+      sprintf (block_location[index_block], "ppt2->k3_size[index_k1=%d][index_k2=%d]", index_k1, index_k2);
+      block_start[index_block] = &ppt2->k3_size[index_k1][index_k2];
+      block_size[index_block] = 1;
+      block_type_size[index_block] = sizeof(int);
+      index_block++;
+    
+      sprintf (block_desc[index_block], "k3 array");
+      sprintf (block_type[index_block], "double");
+      sprintf (block_location[index_block], "ppt2->k3[index_k1=%d][index_k2=%d]", index_k1, index_k2);
+      block_start[index_block] = ppt2->k3[index_k1][index_k2];
+      block_size[index_block] = ppt2->k3_size[index_k1][index_k2];
+      block_type_size[index_block] = sizeof(double);
+      index_block++;
+    
+      sprintf (block_desc[index_block], "number of source types, including l,m (=%d)", ppt2->tp2_size);
+      sprintf (block_type[index_block], "int");
+      sprintf (block_location[index_block], "ppt2->tp2_size");
+      block_start[index_block] = &ppt2->tp2_size;
+      block_size[index_block] = 1;
+      block_type_size[index_block] = sizeof(int);
+      index_block++;
+
+      int label_size = _MAX_LENGTH_LABEL_;
+      sprintf (block_desc[index_block], "length of a source type name (=%d)", _MAX_LENGTH_LABEL_);
+      sprintf (block_type[index_block], "int");
+      sprintf (block_location[index_block], "_MAX_LENGTH_LABEL_");
+      block_start[index_block] = &label_size;
+      block_size[index_block] = 1;
+      block_type_size[index_block] = sizeof(int);
+      index_block++;
+
+      sprintf (block_desc[index_block], "array of source type names (each has %d char)", _MAX_LENGTH_LABEL_);
+      sprintf (block_type[index_block], "char");
+      sprintf (block_location[index_block], "ppt2->tp2_labels");
+      block_start[index_block] = ppt2->tp2_labels;
+      block_size[index_block] = ppt2->tp2_size*_MAX_LENGTH_LABEL_;
+      block_type_size[index_block] = sizeof(char);
+      index_block++;
+    
+      sprintf (block_desc[index_block], "size of a (k3,tau) block (=%d)", k3_tau_block_size);
+      sprintf (block_type[index_block], "int");
+      sprintf (block_location[index_block], "ppt2->k3_size[index_k1=%d][index_k2=%d] * ppt2->tau_size", index_k1, index_k2);
+      block_start[index_block] = &k3_tau_block_size;
+      block_size[index_block] = 1;
+      block_type_size[index_block] = sizeof(int);
+      index_block++;
+    
+      /* Actual data starts here */
+
+      ppt2->k_out_data_byte[index_k_out] = index_block;
+    
+      for (int index_tp2=0; index_tp2 < ppt2->tp2_size; ++index_tp2) {
+        sprintf (block_desc[index_block], "source function %s for all values of k3 and tau", ppt2->tp2_labels[index_tp2]);
+        sprintf (block_type[index_block], "double");
+        sprintf (block_location[index_block], "ppt2->sources[index_tp2=%d][index_k1=%d][index_k2=%d]", index_tp2, index_k1, index_k2);
+        block_start[index_block] = &ppt2->sources[index_tp2][index_k1][index_k2];
+        block_size[index_block] = k3_tau_block_size;
+        block_type_size[index_block] = sizeof(double);
+        index_block++;
+      }
+
+      /* Number of blocks to write on the output file */
+      int n_blocks = index_block;
+      class_test (n_blocks>n_max_blocks, ppt2->error_message, "increase n_max_blocks");
+
+
+      // -------------------------------------------------------------------------
+      // -                            Build binary map                           -
+      // -------------------------------------------------------------------------
+
+      /* The binary map informs the user of the location of the various data blocks
+      inside the binary file. Without this knowledge, it is impossible to access
+      the data */
+
+      /* Title */
+      sprintf (header, "%s#\n", header);
+      sprintf (header, "%s# %s\n", header, "Binary map:");
+
+      /* Map keys */
+      sprintf (header, "%s# %14s %14s %14s %14s %14s    %-64s %-64s\n",
+        header, "BLOCK", "TYPE", "NUM", "BYTES", "BYTES+", "DESCRIPTION", "LOCATION IN SONG");
+
+      /* Map values */
+      long int byte_count = 0;
+      for (int i=0; i < n_blocks; ++i) {
+        sprintf (header, "%s# %14d %14s %14d %14d %14d    %-64s %-64s\n",
+          header, i, block_type[i], block_size[i], block_size[i]*block_type_size[i], byte_count, block_desc[i], block_location[i]);
+        byte_count += block_size[i]*block_type_size[i];
+      }
+
+
+      // -------------------------------------------------------------------------
+      // -                              Write to file                            -
+      // -------------------------------------------------------------------------
+
+      /* Write file */
+      for (int i=0; i < n_blocks; ++i)
+        fwrite(block_start[i], block_type_size[i], block_size[i], out);
+    
+      /* Close file */
+      fclose (ppt2->k_out_files_sources[index_k_out]);
+
+
+    } // if output k1 and k2
+  } // for index_k_out
+
+
+
+  // ====================================================================================
+  // =                           Output all of the sources                              =
+  // ====================================================================================
+
+  /* Save the source function to disk for all computed values of k2, k3 and
+  type, and free the associated memory. The idea is to use as little memory
+  as possible. The next time we'll need the source function, we shall load
+  it from disk. */
+
+  if (ppr2->store_sources_to_disk == _TRUE_) {
+
+    if (ppt2->perturbations2_verbose > 1)
+      printf("     \\ writing sources for index_k1=%d ...\n", index_k1);
+
+    /* Open file for writing */
+    class_open (ppt2->sources_files[index_k1],
+      ppt2->sources_paths[index_k1],
+      "wb", ppt2->error_message);
+
+    /* For each type and k2, write the (k3, tau) level to file */
+    for (int index_tp2 = 0; index_tp2 < ppt2->tp2_size; ++index_tp2) {
+      for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
+
+        class_call (perturb2_store_sources_k3_tau(
+                      ppt2,
+                      index_tp2,
+                      index_k1,
+                      index_k2,
+                      ppt2->sources_paths[index_k1],
+                      ppt2->sources_files[index_k1]),
+          ppt2->error_message,
+          ppt2->error_message);
+        
+      }
+    }
+
+    /* Close file */
+    fclose(ppt2->sources_files[index_k1]);
+
+    /* Free the memory for this k1 value */
+    class_call (perturb2_free_k1_level(ppt2, index_k1),
+      ppt2->error_message, ppt2->error_message);
+      
+  }
+  
+  
+  return _SUCCESS_;
+  
+}
+  
+
+/**
+ * Save the source function to disk for a given k1 index.
+ * 
+ * The source function is stored to disk in as many files as the number
+ * of k1 values (index_k1). This function will append to each of these files
+ * the source function relative to the considered index_k1.
+ *
+ * The path of the files is stored in ppt2->sources_paths[index_k1], while
+ * their file reference is in ppt2->sources_files[index_k1].
+ *
+ */
+
 int perturb2_store_sources_to_disk(
         struct perturbs2 * ppt2,
         int index_k1
         )
 {
 
-  /* Open file for writing */
-  class_open (ppt2->sources_files[index_k1], ppt2->sources_paths[index_k1], "wb", ppt2->error_message);
-
-  /* Running indexes */
-  int index_type, index_k2, index_k3;
-
-  /* Print some debug */
   if (ppt2->perturbations2_verbose > 1)
     printf("     \\ writing sources for index_k1=%d ...\n", index_k1);
-  
-  for (index_type = 0; index_type < ppt2->tp2_size; ++index_type) {
-  
-    for (index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
 
-      int k3_size = ppt2->k3_size[index_k1][index_k2];
+  /* Open file for writing */
+  class_open (ppt2->sources_files[index_k1],
+    ppt2->sources_paths[index_k1],
+    "wb", ppt2->error_message);
 
-        /* Write a chunk with all the time values for this set of (type,k1,k2,k3) */
-        if (k3_size > 0)
-          fwrite(
-                ppt2->sources[index_type][index_k1][index_k2],
-                sizeof(double),
-                ppt2->tau_size*k3_size,
-                ppt2->sources_files[index_k1]
-                );
+  /* For each type and k2, write the (k3, tau) level to file */
+  for (int index_tp2 = 0; index_tp2 < ppt2->tp2_size; ++index_tp2) {
 
-    } // end of for (index_k2)
-    
-  } // end of for (index_type)
-  
+    for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
+
+      class_call (perturb2_store_sources_k3_tau(
+                    ppt2,
+                    index_tp2,
+                    index_k1,
+                    index_k2,
+                    ppt2->sources_paths[index_k1],
+                    ppt2->sources_files[index_k1]),
+        ppt2->error_message,
+        ppt2->error_message);
+        
+    }
+  }
+
   /* Close file */
   fclose(ppt2->sources_files[index_k1]);
 
-  // if (ppt2->perturbations2_verbose > 1)
-  //   printf(" Done.\n");
-
   /* Write information on the status file */
-  // class_open (ppt2->sources_status_file, ppt2->sources_status_path, "a+b", ppt2->error_message);
-    
+  // class_open (ppt2->sources_status_file, ppt2->sources_status_path, "a+", ppt2->error_message);
+
+  return _SUCCESS_;
+
+}
+
+
+/**
+ * Save to disk a portion of the source function in ppt2->sources.
+ *
+ * This function will save the k3 and tau levels of ppt2->sources for fixed
+ * indices of type (index_tp2), k1 (index_k1) and k2 (index_k2).
+ */
+
+int perturb2_store_sources_k3_tau(
+        struct perturbs2 * ppt2,
+        int index_tp2,
+        int index_k1,
+        int index_k2,
+        char * filepath,
+        FILE * output_stream
+        )
+{
+
+  int k3_size = ppt2->k3_size[index_k1][index_k2];
+
+  if (k3_size > 0)
+    fwrite(
+      ppt2->sources[index_tp2][index_k1][index_k2],
+      sizeof(double),
+      ppt2->tau_size*k3_size,
+      output_stream
+      );
+
   return _SUCCESS_; 
   
 }

@@ -1025,10 +1025,19 @@ struct perturbs2
   int index_k3_out[_MAX_NUMBER_OF_K_FILES_]; /**< index_k3_out[index_k3_output] is the index in ppt2->k[index_k1][index_k2]
                                              corresponding to k3=k3_out[index_k3_output]. If k3 does not satisfy the triangular
                                              condition, its location in the array will contain -1. Filled in perturbations2.c */
-  char k_out_filenames[_MAX_NUMBER_OF_K_FILES_][_FILENAMESIZE_]; /**< Path of the files that will contain the perturbations at the
-                                                                 desired k values; filled in the input2.c module */
-  FILE * k_out_files[_MAX_NUMBER_OF_K_FILES_]; /**< Files that will contain the perturbations at the desired k values; filled in
-                                               the input2.c module */
+  char k_out_paths[_MAX_NUMBER_OF_K_FILES_][_FILENAMESIZE_]; /**< Path of the ASCII files that will contain the perturbations as a function
+                                                             tau at the desired (k1,k2,k3) values; filled in the input2.c module */
+  FILE * k_out_files[_MAX_NUMBER_OF_K_FILES_]; /**< ASCII file that will contain the perturbations as a function
+                                               tau at the desired (k1,k2,k3) values; filled in the input2.c module */
+  char k_out_paths_sources[_MAX_NUMBER_OF_K_FILES_][_FILENAMESIZE_]; /**< Path of the binary files that will contain the source function as a function
+                                                                     of (k3,tau) at the desired (k1,k2) values; filled in the input2.c module */
+  FILE * k_out_files_sources[_MAX_NUMBER_OF_K_FILES_]; /**< Binary files that will contain the sources as a function
+                                                       of (k3,tau) at the desired (k1,k2) values; filled in the input2.c module */
+  int k_out_data_byte[_MAX_NUMBER_OF_K_FILES_]; /**< k_out_data_byte[index_k_tau] is the location in the binary file 
+                                                k_out_files_sources[index_k_tau] of the first data block with the elements
+                                                of ppt2->sources. In practice, this tells the functions that want to
+                                                access the output files where the actual data starts, ignoring the 
+                                                preceding accessory data (eg. tau grid, k3 grid) */
   short output_class_perturbations; /** If _TRUE_, output the first-order perturbations for all the values contained in ppt2->k1_out
                                     and ppt2->k2_out */
 
@@ -1482,7 +1491,7 @@ struct perturb2_workspace
   
   int index_k_out;    /**< If negative, the current (k1,k2,k3) wavemode will not be output
                       to file. If positive, the wavemode will be output to the file whose 
-                      path is ppt2->k_out_filenames[index_k_out]; index_k_out is also the
+                      path is ppt2->k_out_paths[index_k_out]; index_k_out is also the
                       index corresponding to k1, k2 and k3 in ppt2->k1_out, ppt2->k2_out and
                       ppt2->k3_out arrays. */
   
@@ -1508,7 +1517,7 @@ struct perturb2_workspace
   long int n_steps;   /**< Number of steps taken by the differential system so far for the active
                       (k1,k2,k3) mode. Computed only if has_debug_files==_TRUE_. */
 
-  char info [4096];   /**< String with information on the wavemode that is being integrated */
+  char info [_MAX_INFO_SIZE_];   /**< String with information on the wavemode that is being integrated */
 
 };
 
@@ -2078,14 +2087,40 @@ struct perturb2_parameters_and_workspace {
             struct perturb2_workspace * ppw2
             );
 
+    int perturb2_output(
+            struct precision2 * ppr2,
+            struct background * pba,
+            struct perturbs * ppt,
+            struct perturbs2 * ppt2,
+            int index_k1
+            );
+
     int perturb2_store_sources_to_disk(
             struct perturbs2 * ppt2,
             int index_k1
             );
 
+    int perturb2_store_sources_k3_tau(
+            struct perturbs2 * ppt2,
+            int index_tp2,
+            int index_k1,
+            int index_k2,
+            char * filepath,
+            FILE * output_stream
+            );
+
     int perturb2_load_sources_from_disk(
             struct perturbs2 * ppt2,
             int index_k1
+            );
+
+    int perturb2_load_sources_k3_tau(
+            struct perturbs2 * ppt2,
+            int index_tp2,
+            int index_k1,
+            int index_k2,
+            char * filepath,
+            FILE * input_stream
             );
 
     int perturb2_allocate_k1_level(

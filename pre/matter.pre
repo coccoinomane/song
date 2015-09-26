@@ -37,8 +37,8 @@ k_bao_width = 4
 # ===================================================================
 
 ## Second-order sampling for k3 (lin, log, smart, angle)
-sources2_k3_sampling = smart
-k3_size_min = 5
+sources2_k3_sampling = lin
+k3_size = 50
 
 
 # ===================================================================

@@ -978,9 +978,9 @@ int input2_init (
     double k2 = ppt2->k2_out[index_k_out];
     double k3 = ppt2->k3_out[index_k_out];
 
-    class_test (((k1+k2)<k3) || (fabs(k1-k2)>k3),
-      errmsg,
-      "the k_out triplet #%d does not satisfy the triangular condition", index_k_out+1);
+    class_test (((k1+k2)<k3) || (fabs(k1-k2)>k3), errmsg,
+      "the k_out triplet #%d (%g,%g,%g) does not satisfy the triangular condition",
+        index_k_out, k1, k2, k3);
   }
 
 
@@ -1081,15 +1081,21 @@ int input2_init (
 
     for (int index_k_out=0; index_k_out < k_out_size; ++index_k_out) {
 
-      /* Build filenames */
-      sprintf (ppt2->k_out_filenames[index_k_out],
-        "%s/perturbations_song_k%03d.dat",
+      /* Build ASCII filenames */
+      sprintf (ppt2->k_out_paths[index_k_out],
+        "%s/perturbations_song_k%03d.txt",
+        pop->root,
+        index_k_out);
+
+      /* Build binary filenames */
+      sprintf (ppt2->k_out_paths_sources[index_k_out],
+        "%s/sources_song_k%03d.dat",
         pop->root,
         index_k_out);
 
       /* Open files */
       class_open(ppt2->k_out_files[index_k_out],
-        ppt2->k_out_filenames[index_k_out],
+        ppt2->k_out_paths[index_k_out],
         "w",
         errmsg);
 
