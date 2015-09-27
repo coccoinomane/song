@@ -18,6 +18,10 @@ factorial of m never overflows, assuming a limit of 10^30. The factorial of m is
 needed in bispectra2.c */
 #define _MAX_NUM_AZIMUTHAL_ 14
 
+/** Maximum number of output files that can be produced with the tau_out
+options */
+#define _MAX_NUMBER_OF_TAU_FILES_ 100
+
 
 /**
  * All precision parameters for the second-order part of SONG. 

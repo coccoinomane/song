@@ -252,6 +252,20 @@ int main(int argc, char **argv) {
   printf("\tpt2.index_k2_debug = %d\n", pt2.index_k2_debug);
   printf("\tpt2.index_k3_debug = %d\n", pt2.index_k3_debug);
   printf("\tpt2.l_max_debug = %d\n", pt2.l_max_debug);
+  printf("\tpt2.tau_out_size = %d\n", pt2.tau_out_size);
+  if (pt2.tau_out_size > 0) {
+    printf ("\t\t");
+    for (int index_tau_out=0; index_tau_out < pt2.tau_out_size; ++index_tau_out)
+      printf("%12g ", pt2.tau_out[index_tau_out]);
+    printf ("\n");
+  }
+  printf("\tpt2.z_out_size = %d\n", pt2.z_out_size);
+  if (pt2.z_out_size > 0) {
+    printf ("\t\t");
+    for (int index_z_out=0; index_z_out < pt2.z_out_size; ++index_z_out)
+      printf("%12g ", pt2.z_out[index_z_out]);
+    printf ("\n");
+  }
   printf("\tpt2.k_out_size = %d\n", pt2.k_out_size);
   for (int index_k_out=0; index_k_out < pt2.k_out_size; ++index_k_out)
     printf("\t\t%12g %12g %12g\n", pt2.k1_out[index_k_out], pt2.k2_out[index_k_out], pt2.k3_out[index_k_out]);

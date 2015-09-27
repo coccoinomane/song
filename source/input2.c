@@ -895,6 +895,108 @@ int input2_init (
   } // end of if has_debug_files
 
 
+  /* Read values of tau for which to write output files */
+
+  class_call(parser_read_list_of_doubles(
+               pfc,
+              "tau_out",
+              &(int1),
+              &(pointer1),
+              &flag1,
+              errmsg),
+    errmsg,
+    errmsg);
+
+  if (flag1 == _TRUE_) {
+    
+    class_test(int1 > _MAX_NUMBER_OF_TAU_FILES_, errmsg,
+      "increase _MAX_NUMBER_OF_TAU_FILES_ in include/perturbations2.h to at least %d",
+      int1);
+    
+    ppt2->tau_out_size = int1;
+
+    for (i=0; i<int1; i++)
+      ppt2->tau_out[i] = pointer1[i];
+    
+    free (pointer1);
+
+  }
+
+  /* Read values of redshift for which to write output files */
+
+  class_call(parser_read_list_of_doubles(
+               pfc,
+              "z_out",
+              &(int1),
+              &(pointer1),
+              &flag1,
+              errmsg),
+    errmsg,
+    errmsg);
+
+  if (flag1 == _TRUE_) {
+    
+    class_test((int1+ppt2->tau_out_size) > _MAX_NUMBER_OF_TAU_FILES_, errmsg,
+      "increase _MAX_NUMBER_OF_TAU_FILES_ in include/perturbations2.h to at least %d",
+      int1);
+    
+    ppt2->z_out_size = int1;
+
+    for (i=0; i<int1; i++)
+      ppt2->z_out[i] = pointer1[i];
+    
+    free (pointer1);
+
+  }
+  
+  /* Create and open output files for the desired tau values */
+
+  int tau_out_size = ppt2->tau_out_size + ppt2->z_out_size;
+
+  for (int index_tau_out=0; index_tau_out < ppt2->tau_out_size; ++index_tau_out) {
+
+    /* Build ASCII filenames */
+    sprintf (ppt2->tau_out_paths[index_tau_out],
+      "%s/perturbations_song_tau%03d.txt",
+      pop->root,
+      index_tau_out);
+
+    /* Build binary filenames */
+    sprintf (ppt2->tau_out_paths_sources[index_tau_out],
+      "%s/sources_song_tau%03d.dat",
+      pop->root,
+      index_tau_out);
+
+    /* Open ASCII files */
+    class_open(ppt2->tau_out_files[index_tau_out],
+      ppt2->tau_out_paths[index_tau_out],
+      "w",
+      errmsg);
+  }
+
+  /* For redshift values we use different file names but same data structures */
+
+  for (int index_z_out=0; index_z_out < ppt2->z_out_size; ++index_z_out) {
+
+    /* Build ASCII filenames */
+    sprintf (ppt2->tau_out_paths[ppt2->tau_out_size+index_z_out],
+      "%s/perturbations_song_z%03d.txt",
+      pop->root,
+      index_z_out);
+
+    /* Build binary filenames */
+    sprintf (ppt2->tau_out_paths_sources[ppt2->tau_out_size+index_z_out],
+      "%s/sources_song_z%03d.dat",
+      pop->root,
+      index_z_out);
+
+    /* Open ASCII files */
+    class_open(ppt2->tau_out_files[ppt2->tau_out_size+index_z_out],
+      ppt2->tau_out_paths[ppt2->tau_out_size+index_z_out],
+      "w",
+      errmsg);
+  }
+
 
   /* Read values of (k1,k2,k3) for which to write output files */
 
@@ -1093,7 +1195,7 @@ int input2_init (
         pop->root,
         index_k_out);
 
-      /* Open files */
+      /* Open ASCII files */
       class_open(ppt2->k_out_files[index_k_out],
         ppt2->k_out_paths[index_k_out],
         "w",
@@ -1887,6 +1989,9 @@ int input2_default_params (
   ppt2->k_index_out_size = 0;
   ppt2->output_class_perturbations = _TRUE_;
   ppt2->k_out_mode = _FALSE_;
+     
+  ppt2->tau_out_size = 0;
+  ppt2->z_out_size = 0;
      
   ppt2->index_k1_debug = 0;
   ppt2->index_k2_debug = 0;

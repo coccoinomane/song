@@ -833,7 +833,9 @@ struct perturbs2
   int tau_size; /**< Size of ppt2->tau_sampling */
 
   int index_tau_end_of_recombination; /**< Index in ppt2->tau_sampling that marks the end of recombination.
-                                      Used only if has_recombination_only==_TRUE_. */
+                                      Defined only if has_recombination_only==_TRUE_. */
+
+  double z_end_of_recombination; /**< Redshift that marks the end of recombination. Defined only if has_recombination_only==_TRUE_. */
 
   int index_tau_rec; /**< Index in ppt2->tau_sampling where the visibility function peaks */
 
@@ -1000,9 +1002,31 @@ struct perturbs2
 
 
   /**
-   * Parameters related to the creation of the perturbations output files
+   * Parameters related to the creation of output files
    */
   //@{
+
+  /* - tau output files */
+
+  int tau_out_size; /**< Number of tau values where to output the perturbations (default=0) */
+  int z_out_size;   /**< Number of z values where to output the perturbations (default=0) */
+  double tau_out[_MAX_NUMBER_OF_TAU_FILES_]; /**< List of tau values where perturbation output is requested,
+                                             with size tau_out_size; filled in input2.c. V */
+  double z_out[_MAX_NUMBER_OF_TAU_FILES_]; /**< List of z values where perturbation output is requested,
+                                           with size z_out_size; filled in input2.c */
+  int index_tau_out[_MAX_NUMBER_OF_TAU_FILES_]; /**< index_tau_out[index_tau_output] is the index in ppt2->tau_sampling corresponding to
+                                                tau=tau_out[index_tau_output]; filled in perturbations2.c */
+  char tau_out_paths[_MAX_NUMBER_OF_TAU_FILES_][_FILENAMESIZE_]; /**< Path of the ASCII files that will contain the perturbations as a function
+                                                                 of k3 at the desired (k1,k2,tau) values; filled in the input2.c module */
+  FILE * tau_out_files[_MAX_NUMBER_OF_TAU_FILES_]; /**< ASCII file that will contain the perturbations as a function
+                                                   of k3 at the desired (k1,k2,tau) values; filled in the input2.c module */
+  char tau_out_paths_sources[_MAX_NUMBER_OF_TAU_FILES_][_FILENAMESIZE_]; /**< Path of the binary files that will contain the source function as a function
+                                                                         of (k1,k2,k3) at the desired tau values; filled in the input2.c module */
+  FILE * tau_out_files_sources[_MAX_NUMBER_OF_TAU_FILES_]; /**< Binary files that will contain the sources as a function
+                                                           of (k1,k2,k3) at the desired tau values; filled in the input2.c module */
+
+  /* - k output files */
+
   int k_out_size; /**< Number of (k1,k2,k3) triplets where to output the perturbations (default=0) */
   int k_index_out_size;  /**< Number of (index_k1,index_k2,index_k3) triplets where to output the
                          perturbations (default=0) */
@@ -1012,12 +1036,12 @@ struct perturbs2
                                           with size k_out_size; filled in input2.c */
   double k3_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of k3 values where perturbation output is requested,
                                           with size k_out_size; filled in input2.c */
-  double k1_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of indices in ppt2->k where perturbation output is requested,
-                                                with size k_index_out_size; filled in input2 */
-  double k2_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of indices in ppt2->k where perturbation output is requested,
-                                                with size k_index_out_size; filled in input2.c */
-  double k3_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of indices in ppt2->k3[index_k1][index_k2] where perturbation
-                                                output is requested, with size k_index_out_size; filled in input2.c */
+  int k1_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of indices in ppt2->k where perturbation output is requested,
+                                             with size k_index_out_size; filled in input2 */
+  int k2_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of indices in ppt2->k where perturbation output is requested,
+                                             with size k_index_out_size; filled in input2.c */
+  int k3_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of indices in ppt2->k3[index_k1][index_k2] where perturbation
+                                             output is requested, with size k_index_out_size; filled in input2.c */
   int index_k1_out[_MAX_NUMBER_OF_K_FILES_]; /**< index_k1_out[index_k1_output] is the index in ppt2->k corresponding to
                                              k1=k1_out[index_k1_output]; filled in perturbations2.c */
   int index_k2_out[_MAX_NUMBER_OF_K_FILES_]; /**< index_k2_out[index_k2_output] is the index in ppt2->k corresponding to
@@ -1028,7 +1052,7 @@ struct perturbs2
   char k_out_paths[_MAX_NUMBER_OF_K_FILES_][_FILENAMESIZE_]; /**< Path of the ASCII files that will contain the perturbations as a function
                                                              tau at the desired (k1,k2,k3) values; filled in the input2.c module */
   FILE * k_out_files[_MAX_NUMBER_OF_K_FILES_]; /**< ASCII file that will contain the perturbations as a function
-                                               tau at the desired (k1,k2,k3) values; filled in the input2.c module */
+                                               of tau at the desired (k1,k2,k3) values; filled in the input2.c module */
   char k_out_paths_sources[_MAX_NUMBER_OF_K_FILES_][_FILENAMESIZE_]; /**< Path of the binary files that will contain the source function as a function
                                                                      of (k3,tau) at the desired (k1,k2) values; filled in the input2.c module */
   FILE * k_out_files_sources[_MAX_NUMBER_OF_K_FILES_]; /**< Binary files that will contain the sources as a function

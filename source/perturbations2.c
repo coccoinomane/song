@@ -2034,12 +2034,12 @@ int perturb2_get_k_lists (
               are the limits that SONG would would have imposed on k3 if no output were requested */
               if (k3 < k3_min)
                 fprintf (ppt2->k_out_files[index_k_out],
-                  "# NOTE: this k=%.17f was smaller than k3_min=%.17f (|k1-k2|=%.17f)\n",
+                  "# NOTE: the output value chosen for this file, k3=%.17f, was smaller than k3_min=%.17f (|k1-k2|=%.17f)\n",
                   k3, k3_min, fabs(k1-k2));
 
               if (k3 > k3_max)
                 fprintf (ppt2->k_out_files[index_k_out],
-                  "# NOTE: this k=%.17f was larger than k3_max=%.17f (|k1-k2|=%.17f)\n",
+                  "# NOTE: the output value chosen for this file, k3=%.17f, was larger than k3_max=%.17f (|k1-k2|=%.17f)\n",
                   k3, k3_max, k1+k2);
 
               /* Add the considered k3 point to the k3 grid */
@@ -2615,8 +2615,110 @@ int perturb2_timesampling_for_sources (
                   ppt2->tau_size*sizeof(double),
                   ppt2->error_message);
 
-  } // end of if (has_custom_timesampling == _FALSE_)
+  } // if has_custom_timesampling
 
+
+
+  // ====================================================================================
+  // =                                Add output points                                 =
+  // ====================================================================================
+
+  /* The user might have asked to output the perturbations at specific tau times
+  using the tau_out parameter. Here we add these tau-values to the list of computed
+  tau in SONG, that is, to ppt2->tau_sampling. */
+
+  /* First, convert the requested redshifts in z_out to conformal times, and add
+  them to ppt2->tau_out */
+
+  for (int index_z=0; index_z < ppt2->z_out_size; ++index_z) {
+
+    if (ppt2->z_out[index_z] < 0) {
+      fprintf (ppt2->tau_out_files[ppt2->tau_out_size+index_z],
+        "# NOTE: z_out was negative for this file, so we set it to z=0\n");
+      ppt2->z_out[index_z] = 0;
+    }
+
+    class_call (background_tau_of_z (
+                  pba,
+                  ppt2->z_out[index_z],
+                  &ppt2->tau_out[ppt2->tau_out_size+index_z]),
+      ppt2->error_message, ppt2->error_message);   
+  }
+
+  ppt2->tau_out_size += ppt2->z_out_size;
+
+
+  /* Merge ppt2->tau_out with ppt2->tau_sampling */
+
+  if (ppt2->tau_out_size > 0) {
+
+    /* Check that the requested times can be computed by SONG */
+    for (int index_tau_out=0; index_tau_out < ppt2->tau_out_size; ++index_tau_out) {
+      
+      class_test (ppt2->tau_out[index_tau_out] < pth->tau_ini,
+        ppt2->error_message,
+        "choose tau_out to be larger than %g (you choose %g)",
+          pth->tau_ini, ppt2->tau_out[index_tau_out]);
+        
+      if (ppt2->tau_out[index_tau_out] > pba->conformal_age) {
+        fprintf (ppt2->tau_out_files[index_tau_out],
+          "# NOTE: tau_out was too large for this file, so we set it to tau0=%g\n",
+            pba->conformal_age);
+        ppt2->tau_out[index_tau_out] = pba->conformal_age;
+      }
+    }
+
+    /* Merge ppt2->tau_sampling with the tau output points, sort the resulting array
+    and remove the duplicates in it */
+    class_call (merge_arrays_double (
+                  ppt2->tau_sampling,
+                  ppt2->tau_size,
+                  ppt2->tau_out,
+                  ppt2->tau_out_size,
+                  &(ppt2->tau_sampling),
+                  &(ppt2->tau_size),
+                  compare_doubles,
+                  ppt2->error_message
+                  ),
+      ppt2->error_message,
+      ppt2->error_message);
+
+    /* Assign to each output tau the corresponding index in ppt2->tau_sampling */
+    for (int index_tau_out=0; index_tau_out < ppt2->tau_out_size; ++index_tau_out) {
+
+      int index_tau = 0;
+      while (ppt2->tau_sampling[index_tau] != ppt2->tau_out[index_tau_out])
+        index_tau++; 
+     
+      class_test (index_tau >= ppt2->tau_size,
+        ppt2->error_message,
+        "index_tau out of bounds: something went wrong while adding tau output values");
+     
+      ppt2->index_tau_out[index_tau_out] = index_tau;
+           
+      /* Debug - Print the tau->tau_out correspondence */
+      // printf ("tau_out=%g[%d] -> tau=%g[%d]\n",
+      //   ppt2->tau_out[index_tau_out], index_tau_out,
+      //   ppt2->tau_sampling[index_tau], index_tau);
+    }
+
+  } // end of if tau_out
+
+
+  /* Debug - Print time sampling */
+  // fprintf (stderr, "# ~~~ tau-sampling for the source function ~~~\n");
+  // for (int index_tau=0; index_tau < ppt2->tau_size; ++index_tau) {
+  //   fprintf (stderr, "%12d %16g", index_tau, ppt2->tau_sampling[index_tau]);
+  //   for (int index_tau_out=0; index_tau_out < ppt2->tau_out_size; ++index_tau_out) {
+  //     if (index_tau == ppt2->index_tau_out[index_tau_out])
+  //       if (index_tau_out < (ppt2->tau_out_size-ppt2->z_out_size))
+  //         fprintf (stderr, "\toutput #%d", index_tau_out);
+  //       else
+  //         fprintf (stderr, "\toutput #%d (z=%g)",
+  //           index_tau_out, ppt2->z_out[index_tau_out-(ppt2->tau_out_size-ppt2->z_out_size)]);
+  //   }
+  //   fprintf (stderr, "\n");
+  // }
 
 
   // ====================================================================================
@@ -2647,16 +2749,22 @@ int perturb2_timesampling_for_sources (
     if (ppt2->has_custom_timesampling == _FALSE_)
       ppt2->tau_size = ppt2->index_tau_end_of_recombination;
 
-    if (ppt2->perturbations2_verbose > 1)
-      printf ("     * will only consider times up to the end of recombination (tau=%g)\n",
-        ppt2->tau_sampling[ppt2->index_tau_end_of_recombination-1]);
-  }
+    /* Print some info */
+    
+    double tau_end = ppt2->tau_sampling[ppt2->index_tau_end_of_recombination-1];
 
-  /* Debug - Print time sampling */
-  // fprintf (stderr, "# ~~~ tau-sampling for the source function ~~~\n");
-  // for (int index_tau=0; index_tau < ppt2->tau_size; ++index_tau) {
-  //   fprintf (stderr, "%12d %16g\n", index_tau, ppt2->tau_sampling[index_tau]);
-  // }
+    if (ppt2->perturbations2_verbose > 1)
+      printf ("     * will stop integrating at the end of recombination (tau=%g)\n", tau_end);
+
+    /* Warn the user if the tau output has been removed */
+
+    for (int index_tau_out=0; index_tau_out < ppt2->tau_out_size; ++index_tau_out)
+      if (ppt2->tau_out[index_tau_out] > tau_end)
+        fprintf (ppt2->tau_out_files[index_tau_out],
+          "# NOTE: this file is empty because the requested tau_out or z_out was larger than\
+ the largest time sampled in SONG (tau=%g, z=%g)\n", tau_end, ppt2->z_end_of_recombination);
+
+  }
 
 
   // ====================================================================================
@@ -3125,6 +3233,7 @@ int perturb2_start_time_evolution (
  * and store the corresponding index in ppt2->tau_sampling in the field
  * ppt2->index_tau_end_of_recombination.
  */
+
 int perturb2_end_of_recombination (
              struct precision * ppr,
              struct precision2 * ppr2,
@@ -3206,8 +3315,8 @@ int perturb2_end_of_recombination (
     /* If we reached the time where the visibility function is smaller than g_end, then
     recombination is over */
     if (pvecthermo[pth->index_th_g] <= g_end) {
-
       ppt2->index_tau_end_of_recombination = index_tau + 1;
+      ppt2->z_end_of_recombination = z;
       break;
     }
 
@@ -13963,87 +14072,99 @@ int perturb2_output(
       /* Initialise blocks count */
 
       int n_max_blocks = 256;
+      long int block_start_byte[n_max_blocks];
       int block_size[n_max_blocks];
       int block_type_size[n_max_blocks];
       char block_desc[n_max_blocks][512];
-      char block_location[n_max_blocks][256];
+      char block_position[n_max_blocks][512];
+      char block_internal_name[n_max_blocks][256];
       char block_type[n_max_blocks][16];
-      void * block_start[n_max_blocks];
+      void * block_internal_pointer[n_max_blocks];
+      long int byte_count = 0;
       int index_block = 0;
 
       /* Build the content of each memory block */
       
       sprintf (block_desc[index_block], "the header you are reading");
       sprintf (block_type[index_block], "char");
-      sprintf (block_location[index_block], "");
-      block_start[index_block] = &header[0];
+      sprintf (block_internal_name[index_block], "");
+      block_internal_pointer[index_block] = &header[0];
       block_size[index_block] = header_size;
       block_type_size[index_block] = sizeof(char);
+      block_start_byte[index_block] = byte_count;
       index_block++;
     
       sprintf (block_desc[index_block], "size of tau array (=%d)", ppt2->tau_size);
       sprintf (block_type[index_block], "int");
-      sprintf (block_location[index_block], "ppt2->tau_size");
-      block_start[index_block] = &ppt2->tau_size;
+      sprintf (block_internal_name[index_block], "ppt2->tau_size");
+      block_internal_pointer[index_block] = &ppt2->tau_size;      
       block_size[index_block] = 1;
       block_type_size[index_block] = sizeof(int);
+      block_start_byte[index_block] = block_start_byte[index_block-1] + block_size[index_block-1]*block_type_size[index_block-1];
       index_block++;
 
-      sprintf (block_location[index_block], "ppt2->tau_sampling");
+      sprintf (block_internal_name[index_block], "ppt2->tau_sampling");
       sprintf (block_type[index_block], "double");
       sprintf (block_desc[index_block], "tau array");
-      block_start[index_block] = ppt2->tau_sampling;
+      block_internal_pointer[index_block] = ppt2->tau_sampling;
       block_size[index_block] = ppt2->tau_size;
       block_type_size[index_block] = sizeof(double);
+      block_start_byte[index_block] = block_start_byte[index_block-1] + block_size[index_block-1]*block_type_size[index_block-1];
       index_block++;
 
       sprintf (block_desc[index_block], "size of k3 array (=%d)", ppt2->k3_size[index_k1][index_k2]);
       sprintf (block_type[index_block], "int");
-      sprintf (block_location[index_block], "ppt2->k3_size[index_k1=%d][index_k2=%d]", index_k1, index_k2);
-      block_start[index_block] = &ppt2->k3_size[index_k1][index_k2];
+      sprintf (block_internal_name[index_block], "ppt2->k3_size[index_k1=%d][index_k2=%d]", index_k1, index_k2);
+      block_internal_pointer[index_block] = &ppt2->k3_size[index_k1][index_k2];
       block_size[index_block] = 1;
       block_type_size[index_block] = sizeof(int);
+      block_start_byte[index_block] = block_start_byte[index_block-1] + block_size[index_block-1]*block_type_size[index_block-1];
       index_block++;
     
       sprintf (block_desc[index_block], "k3 array");
       sprintf (block_type[index_block], "double");
-      sprintf (block_location[index_block], "ppt2->k3[index_k1=%d][index_k2=%d]", index_k1, index_k2);
-      block_start[index_block] = ppt2->k3[index_k1][index_k2];
+      sprintf (block_internal_name[index_block], "ppt2->k3[index_k1=%d][index_k2=%d]", index_k1, index_k2);
+      block_internal_pointer[index_block] = ppt2->k3[index_k1][index_k2];
       block_size[index_block] = ppt2->k3_size[index_k1][index_k2];
       block_type_size[index_block] = sizeof(double);
+      block_start_byte[index_block] = block_start_byte[index_block-1] + block_size[index_block-1]*block_type_size[index_block-1];
       index_block++;
     
       sprintf (block_desc[index_block], "number of source types, including l,m (=%d)", ppt2->tp2_size);
       sprintf (block_type[index_block], "int");
-      sprintf (block_location[index_block], "ppt2->tp2_size");
-      block_start[index_block] = &ppt2->tp2_size;
+      sprintf (block_internal_name[index_block], "ppt2->tp2_size");
+      block_internal_pointer[index_block] = &ppt2->tp2_size;
       block_size[index_block] = 1;
       block_type_size[index_block] = sizeof(int);
+      block_start_byte[index_block] = block_start_byte[index_block-1] + block_size[index_block-1]*block_type_size[index_block-1];
       index_block++;
 
       int label_size = _MAX_LENGTH_LABEL_;
       sprintf (block_desc[index_block], "length of a source type name (=%d)", _MAX_LENGTH_LABEL_);
       sprintf (block_type[index_block], "int");
-      sprintf (block_location[index_block], "_MAX_LENGTH_LABEL_");
-      block_start[index_block] = &label_size;
+      sprintf (block_internal_name[index_block], "_MAX_LENGTH_LABEL_");
+      block_internal_pointer[index_block] = &label_size;
       block_size[index_block] = 1;
       block_type_size[index_block] = sizeof(int);
+      block_start_byte[index_block] = block_start_byte[index_block-1] + block_size[index_block-1]*block_type_size[index_block-1];
       index_block++;
 
       sprintf (block_desc[index_block], "array of source type names (each has %d char)", _MAX_LENGTH_LABEL_);
       sprintf (block_type[index_block], "char");
-      sprintf (block_location[index_block], "ppt2->tp2_labels");
-      block_start[index_block] = ppt2->tp2_labels;
+      sprintf (block_internal_name[index_block], "ppt2->tp2_labels");
+      block_internal_pointer[index_block] = ppt2->tp2_labels;
       block_size[index_block] = ppt2->tp2_size*_MAX_LENGTH_LABEL_;
       block_type_size[index_block] = sizeof(char);
+      block_start_byte[index_block] = block_start_byte[index_block-1] + block_size[index_block-1]*block_type_size[index_block-1];
       index_block++;
     
       sprintf (block_desc[index_block], "size of a (k3,tau) block (=%d)", k3_tau_block_size);
       sprintf (block_type[index_block], "int");
-      sprintf (block_location[index_block], "ppt2->k3_size[index_k1=%d][index_k2=%d] * ppt2->tau_size", index_k1, index_k2);
-      block_start[index_block] = &k3_tau_block_size;
+      sprintf (block_internal_name[index_block], "ppt2->k3_size[index_k1=%d][index_k2=%d] * ppt2->tau_size", index_k1, index_k2);
+      block_internal_pointer[index_block] = &k3_tau_block_size;
       block_size[index_block] = 1;
       block_type_size[index_block] = sizeof(int);
+      block_start_byte[index_block] = block_start_byte[index_block-1] + block_size[index_block-1]*block_type_size[index_block-1];
       index_block++;
     
       /* Actual data starts here */
@@ -14053,10 +14174,11 @@ int perturb2_output(
       for (int index_tp2=0; index_tp2 < ppt2->tp2_size; ++index_tp2) {
         sprintf (block_desc[index_block], "source function %s for all values of k3 and tau", ppt2->tp2_labels[index_tp2]);
         sprintf (block_type[index_block], "double");
-        sprintf (block_location[index_block], "ppt2->sources[index_tp2=%d][index_k1=%d][index_k2=%d]", index_tp2, index_k1, index_k2);
-        block_start[index_block] = &ppt2->sources[index_tp2][index_k1][index_k2];
+        sprintf (block_internal_name[index_block], "ppt2->sources[index_tp2=%d][index_k1=%d][index_k2=%d]", index_tp2, index_k1, index_k2);
+        block_internal_pointer[index_block] = &ppt2->sources[index_tp2][index_k1][index_k2];
         block_size[index_block] = k3_tau_block_size;
         block_type_size[index_block] = sizeof(double);
+        block_start_byte[index_block] = block_start_byte[index_block-1] + block_size[index_block-1]*block_type_size[index_block-1];
         index_block++;
       }
 
@@ -14078,16 +14200,14 @@ int perturb2_output(
       sprintf (header, "%s# %s\n", header, "Binary map:");
 
       /* Map keys */
-      sprintf (header, "%s# %14s %14s %14s %14s %14s    %-64s %-64s\n",
-        header, "BLOCK", "TYPE", "NUM", "BYTES", "BYTES+", "DESCRIPTION", "LOCATION IN SONG");
+      sprintf (header, "%s# %17s %17s %17s %17s %17s    %-64s %-64s\n",
+        header, "BLOCK", "TYPE", "SIZE", "SIZE (BYTES)", "POS (BYTES)", "DESCRIPTION", "NAME IN SONG");
 
       /* Map values */
-      long int byte_count = 0;
-      for (int i=0; i < n_blocks; ++i) {
-        sprintf (header, "%s# %14d %14s %14d %14d %14d    %-64s %-64s\n",
-          header, i, block_type[i], block_size[i], block_size[i]*block_type_size[i], byte_count, block_desc[i], block_location[i]);
-        byte_count += block_size[i]*block_type_size[i];
-      }
+      for (int i=0; i < n_blocks; ++i)
+        sprintf (header, "%s# %17d %17s %17d %17d %17d    %-64s %-64s\n",
+          header, i, block_type[i], block_size[i], block_size[i]*block_type_size[i],
+          block_start_byte[i], block_desc[i], block_internal_name[i]);
 
 
       // -------------------------------------------------------------------------
@@ -14096,7 +14216,7 @@ int perturb2_output(
 
       /* Write file */
       for (int i=0; i < n_blocks; ++i)
-        fwrite(block_start[i], block_type_size[i], block_size[i], out);
+        fwrite(block_internal_pointer[i], block_type_size[i], block_size[i], out);
     
       /* Close file */
       fclose (ppt2->k_out_files_sources[index_k_out]);
