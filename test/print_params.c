@@ -273,6 +273,8 @@ int main(int argc, char **argv) {
   for (int index_k_out=0; index_k_out < pt2.k_index_out_size; ++index_k_out)
     printf("\t\t%12d %12d %12d\n", pt2.k1_index_out[index_k_out], pt2.k2_index_out[index_k_out], pt2.k3_index_out[index_k_out]);
   printf("\tpt2.k_out_mode = %d\n", pt2.k_out_mode);
+  printf ("\tpt2.output_class_perturbations = %d\n", pt2.output_class_perturbations);
+  printf ("\tpt2.output_quadratic_sources = %d\n", pt2.output_quadratic_sources);
 
   /* Storage parameters */
   // printf("* Parameters related to the storage of intermediate results\n");

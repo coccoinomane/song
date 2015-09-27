@@ -1175,6 +1175,16 @@ int input2_init (
   }
 
 
+  /* Should we output the quadratic sources as well? */
+
+  class_call(parser_read_string(pfc,"output_quadratic_sources",&string1,&flag1,errmsg),
+	     errmsg,
+	     errmsg);	
+
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+    ppt2->output_quadratic_sources = _TRUE_;
+
+
   /* Create and open output files for the desired k-values */
 
   int k_out_size = ppt2->k_out_size + ppt2->k_index_out_size;
@@ -1189,28 +1199,51 @@ int input2_init (
         pop->root,
         index_k_out);
 
-      /* Build binary filenames */
-      sprintf (ppt2->k_out_paths_sources[index_k_out],
-        "%s/sources_song_k%03d.dat",
-        pop->root,
-        index_k_out);
-
       /* Open ASCII files */
       class_open(ppt2->k_out_files[index_k_out],
         ppt2->k_out_paths[index_k_out],
         "w",
         errmsg);
 
+      /* Build binary filenames, but do not open the files yet */
+      sprintf (ppt2->k_out_paths_sources[index_k_out],
+        "%s/sources_song_k%03d.dat",
+        pop->root,
+        index_k_out);
+        
+      if (ppt2->output_quadratic_sources == _TRUE_) {
+    
+        /* Build ASCII filenames */
+        sprintf (ppt2->k_out_paths_quad[index_k_out],
+          "%s/quadsources_song_k%03d.txt",
+          pop->root,
+          index_k_out);
+
+        /* Open ASCII files */
+        class_open(ppt2->k_out_files_quad[index_k_out],
+          ppt2->k_out_paths_quad[index_k_out],
+          "w",
+          errmsg);
+      }
+
       /* Issue a warning if the user asked for configurations with k1<k2 */
       if (((index_k_out < ppt2->k_out_size) && (ppt2->k1_out[index_k_out] < ppt2->k2_out[index_k_out])) ||
-          ((index_k_out >= ppt2->k_out_size) && (ppt2->k1_index_out[index_k_out-ppt2->k_out_size] < ppt2->k2_index_out[index_k_out-ppt2->k_out_size])))
-        fprintf (ppt2->k_out_files[index_k_out],
+          ((index_k_out >= ppt2->k_out_size) && (ppt2->k1_index_out[index_k_out-ppt2->k_out_size] < ppt2->k2_index_out[index_k_out-ppt2->k_out_size]))) {
+            
+        char buffer[1024];
+
+        sprintf (buffer,
           "NOTE: This file is empty because you specified a triplet where k1<k2, while SONG only\
  computes configurations where k1>=k2. To obtain the transfer functions for k1<k2, switch\
  k1 and k2 for this triplet in the parameter file and multiply the resulting output file\
  by a factor (-1)^m. For scalar quantities, this factor is 1. For a more detailed explanation,\
  please refer to Sec. B.2 of http://arxiv.org/abs/1405.2280.\n");
 
+        fprintf (ppt2->k_out_files[index_k_out], buffer);
+        if (ppt2->output_quadratic_sources == _TRUE_)
+          fprintf (ppt2->k_out_files_quad[index_k_out], buffer);
+          
+      }
     }
     
     /* Tell CLASS to output perturbations, too, unless otherwise specified with
@@ -1988,6 +2021,7 @@ int input2_default_params (
   ppt2->k_out_size = 0;
   ppt2->k_index_out_size = 0;
   ppt2->output_class_perturbations = _TRUE_;
+  ppt2->output_quadratic_sources = _FALSE_;
   ppt2->k_out_mode = _FALSE_;
      
   ppt2->tau_out_size = 0;

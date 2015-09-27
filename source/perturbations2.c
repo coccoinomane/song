@@ -6179,7 +6179,11 @@ int perturb2_solve (
   free (interval_limit); 
   free(interval_number_of);
 
-  fclose (ppt2->k_out_files[ppw2->index_k_out]);
+  if (ppw2->index_k_out != -1) {
+    fclose (ppt2->k_out_files[ppw2->index_k_out]);
+    if (ppt2->output_quadratic_sources == _TRUE_)
+      fclose (ppt2->k_out_files_quad[ppw2->index_k_out]);
+  }
 
   return _SUCCESS_;
           
@@ -12383,6 +12387,7 @@ int what_if_ndf15_fails(int (*derivs)(double x,
  * Note that this function is called from within the evolver at each time step, so
  * expect the outputted files to be large.
  */
+
 int perturb2_save_perturbations (
           double tau,
           double * y,
@@ -12427,9 +12432,9 @@ int perturb2_save_perturbations (
   // printf ("ppw2->n_steps = %d\n", ppw2->n_steps);
 
 
-  // ======================================================================================
-  // =                          Interpolate needed quantities                             =
-  // ======================================================================================
+  // ====================================================================================
+  // =                         Interpolate needed quantities                            =
+  // ====================================================================================
 
   /* Call functions that will fill pvec__ arrays with useful quantities.  Do not alter
   the order in which these functions are called, since they all rely on the quantities
@@ -12544,7 +12549,8 @@ int perturb2_save_perturbations (
     ppt2->error_message,
     ppt2->error_message);
 
-  /* Compute useful quantities in the tight coupling limit */
+  /* Compute useful quantities in the tight coupling limit, no matter
+  whether the TCA is turned on or off */
   class_call (perturb2_tca_variables(
                 ppr,
                 ppr2,
@@ -12576,7 +12582,8 @@ int perturb2_save_perturbations (
     ppt2->error_message,
     error_message);
 
-  /* Compute useful quantities in the radiation streaming limit */
+  /* Compute useful quantities in the radiation streaming limit, no matter
+  whether the RSA is turned on or off */
   class_call (perturb2_rsa_variables(
                 ppr,
                 ppr2,
@@ -12604,20 +12611,6 @@ int perturb2_save_perturbations (
     ppt2->error_message,
     error_message);
 
-
-  /* Uncomment to call perturb2_derivs() and fill dy */
-  // double * dy;
-  // class_alloc (dy, ppw2->pv->pt2_size*sizeof(double), ppt2->error_message);
-  //
-  // class_call (perturb2_derivs (
-  //               tau,
-  //               y,
-  //               dy,
-  //               parameters_and_workspace,
-  //               error_message
-  //               ),
-  //   ppt2->error_message,
-  //   ppt2->error_message);
 
   /* Debug - print the quadratic collisional sources */
   // double xe = pvecthermo[pth->index_th_xe];
@@ -12847,29 +12840,29 @@ int perturb2_save_perturbations (
 
   /* - Experimental: include lambda */
 
-  /* Extend the matter domination limits by including the effect of a cosmological
-  constant. We do so by using the formulas in Mollerach, Harari & Matarrese (2004).
-  This is not working yet, not sure whether I am making some mistake in copying the
-  formulas. */
-  double z = 1/a - 1;
-  double Omega_l0 = 1 - Omega_m0;
-  double Ez = sqrt(Omega_m0*pow(1+z,3) + Omega_l0);
-  Omega_m = Omega_m0*pow(1+z,3)/(Ez*Ez);
-  double Omega_l = Omega_l0/(Ez*Ez);
-  /* Mollerach, Harari & Matarrese (2004) use the formula for the growth factor in eq. 29 of Carroll,
-  Press & Turner (1992), which we define below, but we do not use. Here, instead, we set g=1 because,
-  contrary to that reference, we use the numerical result for the first-order psi, which already
-  includes exactly the suppression of growth from the presence of dark energy. */
-  // double g = Omega_m / (pow(Omega_m,4/7.) - Omega_l + (1+Omega_m/2)*(1+Omega_l/70.));
-  // double g_today = Omega_m0 / (pow(Omega_m0,4/7.) - Omega_l0 + (1+Omega_m0/2)*(1+Omega_l0/70.));
-  // g /= g_today;
-  double g = 1;
-  double H0 = pba->H0;
-  double f = pow(Omega_m,4/7.);
-  double Fz = 2*g*g*Ez*f/(Omega_m0*H0*(1+z)*(1+z));
-  if (ppr2->compute_m[1] == _TRUE_) {
-    omega_m1_analytical *= Fz*Hc/2;
-  }
+  // /* Extend the matter domination limits by including the effect of a cosmological
+  // constant. We do so by using the formulas in Mollerach, Harari & Matarrese (2004).
+  // This is not working yet, not sure whether I am making some mistake in copying the
+  // formulas. */
+  // double z = 1/a - 1;
+  // double Omega_l0 = 1 - Omega_m0;
+  // double Ez = sqrt(Omega_m0*pow(1+z,3) + Omega_l0);
+  // Omega_m = Omega_m0*pow(1+z,3)/(Ez*Ez);
+  // double Omega_l = Omega_l0/(Ez*Ez);
+  // /* Mollerach, Harari & Matarrese (2004) use the formula for the growth factor in eq. 29 of Carroll,
+  // Press & Turner (1992), which we define below, but we do not use. Here, instead, we set g=1 because,
+  // contrary to that reference, we use the numerical result for the first-order psi, which already
+  // includes exactly the suppression of growth from the presence of dark energy. */
+  // // double g = Omega_m / (pow(Omega_m,4/7.) - Omega_l + (1+Omega_m/2)*(1+Omega_l/70.));
+  // // double g_today = Omega_m0 / (pow(Omega_m0,4/7.) - Omega_l0 + (1+Omega_m0/2)*(1+Omega_l0/70.));
+  // // g /= g_today;
+  // double g = 1;
+  // double H0 = pba->H0;
+  // double f = pow(Omega_m,4/7.);
+  // double Fz = 2*g*g*Ez*f/(Omega_m0*H0*(1+z)*(1+z));
+  // if (ppr2->compute_m[1] == _TRUE_) {
+  //   omega_m1_analytical *= Fz*Hc/2;
+  // }
 
   /* Debug of the analytical limits for m=1 and m=2 */
   // if ((ppr2->compute_m[1] == _TRUE_) && (ppr2->compute_m[2] == _TRUE_)) {
@@ -12919,8 +12912,8 @@ int perturb2_save_perturbations (
   FILE * file_tr = ppt2->k_out_files[ppw2->index_k_out];
   int index_print_tr = 1;
 
-  /* Shortcut to the file where we shall print all the quadratic sources */
-  FILE * file_qs = ppt2->quadsources_file;
+  /* Shortcut to the file where we shall print the quadratic sources */
+  FILE * file_qs = ppt2->k_out_files_quad[ppw2->index_k_out];
   int index_print_qs = 1;
   
   /* Choose how label & values should be formatted */
@@ -12935,9 +12928,9 @@ int perturb2_save_perturbations (
   }
 
 
-  // ------------------------------------------------------------------------------------
-  // -                                 Time variables                                   -
-  // ------------------------------------------------------------------------------------
+  // -------------------------------------------------------------------------------
+  // -                               Time variables                                -
+  // -------------------------------------------------------------------------------
 
   // conformal time
   if (ppw2->n_steps==1) {
@@ -12968,9 +12961,9 @@ int perturb2_save_perturbations (
   }
 
 
-  // ------------------------------------------------------------------------------------
-  // -                                Newtonian gauge                                   -
-  // ------------------------------------------------------------------------------------
+  // -------------------------------------------------------------------------------
+  // -                             Newtonian gauge                                 -
+  // -------------------------------------------------------------------------------
 
   if (ppt->gauge == newtonian) {
 
@@ -13075,9 +13068,9 @@ int perturb2_save_perturbations (
   } // end of if(newtonian)
 
 
-  // ------------------------------------------------------------------------------------
-  // -                            Matter domination limits                              -
-  // ------------------------------------------------------------------------------------
+  // -------------------------------------------------------------------------------
+  // -                          Matter domination limits                           -
+  // -------------------------------------------------------------------------------
 
   if (pba->has_cdm == _TRUE_ ) {
     if (ppr2->compute_m[0] == _TRUE_) {
@@ -13134,9 +13127,9 @@ int perturb2_save_perturbations (
     }
   }
 
-  // ------------------------------------------------------------------------------------
-  // -                             Early universe limits                                -
-  // ------------------------------------------------------------------------------------
+  // -------------------------------------------------------------------------------
+  // -                           Early universe limits                             -
+  // -------------------------------------------------------------------------------
 
   /* Adiabatic velocity */
   if (ppr2->compute_m[0] == _TRUE_) {
@@ -13231,9 +13224,9 @@ int perturb2_save_perturbations (
   }
 
 
-  // ------------------------------------------------------------------------------------
-  // -                                  Fluid limit                                     -
-  // ------------------------------------------------------------------------------------
+  // -------------------------------------------------------------------------------
+  // -                               Fluid limit                                   -
+  // -------------------------------------------------------------------------------
 
   /* - Baryon fluid limit */
 
@@ -13354,9 +13347,9 @@ int perturb2_save_perturbations (
   }
 
 
-  // ------------------------------------------------------------------------------------
-  // -                                   Multipoles                                     -
-  // ------------------------------------------------------------------------------------
+  // -------------------------------------------------------------------------------
+  // -                                 Multipoles                                  -
+  // -------------------------------------------------------------------------------
 
   /* - Baryon multipoles */
 
@@ -13542,9 +13535,9 @@ int perturb2_save_perturbations (
   // }  // end of if(has_ur)
 
 
-  // ------------------------------------------------------------------------------------
-  // -                             Background & misc                                    -
-  // ------------------------------------------------------------------------------------
+  // -------------------------------------------------------------------------------
+  // -                             Background & misc                               -
+  // -------------------------------------------------------------------------------
 
   sprintf(buffer, "kappa_dot");
   if (ppw2->n_steps==1) {
@@ -13607,9 +13600,9 @@ int perturb2_save_perturbations (
   }
 
 
-  // ------------------------------------------------------------------------------------
-  // -                              Source functions                                    -
-  // ------------------------------------------------------------------------------------
+  // -------------------------------------------------------------------------------
+  // -                             Source functions                                -
+  // -------------------------------------------------------------------------------
 
   /* Printing of sources is disabled since CLASS v2. The reason is
   that prior to v2 this function was called when the differential
@@ -14012,7 +14005,7 @@ int perturb2_output(
         int index_k1
         )
 {
-  
+
   // ====================================================================================
   // =                            Output sources in (k3,tau)                            =
   // ====================================================================================
@@ -14025,23 +14018,33 @@ int perturb2_output(
 
     if (index_k1 == ppt2->index_k1_out[index_k_out]) {
     
+      /* We shall create a binary file for each k1 and k2 value in k1_out and k2_out */
       int index_k2 = ppt2->index_k2_out[index_k_out];
 
+      /* Shortcuts */
       int k3_size = ppt2->k3_size[index_k1][index_k2];
       int k3_tau_block_size = k3_size * ppt2->tau_size;
 
-      /* Open file for writing */
-      class_open (ppt2->k_out_files_sources[index_k_out],
-        ppt2->k_out_paths_sources[index_k_out],
-        "wb", ppt2->error_message);
+      /* Define a new binary file structure */
+      struct binary_file * file;
+      class_alloc (file, sizeof(struct binary_file), ppt2->error_message);
 
-      /* Define file shortcut */
-      FILE * out = ppt2->k_out_files_sources[index_k_out];
+      /* Maximum size of the header file */
+      int header_size = _MAX_INFO_SIZE_ + 4096;
+      
+      /* Open the binary file */
+      class_call (binary_init (
+                    file,
+                    &(ppt2->k_out_files_sources[index_k_out]),
+                    ppt2->k_out_paths_sources[index_k_out],
+                    header_size),
+        file->error_message,
+        ppt2->error_message);
 
 
-      // -------------------------------------------------------------------------
-      // -                           Print information                           -
-      // -------------------------------------------------------------------------
+      // ---------------------------------------------------------------------------
+      // -                            Print information                            -
+      // ---------------------------------------------------------------------------
 
       /* Get the time of opening */
       time_t now;
@@ -14051,175 +14054,186 @@ int perturb2_output(
       char date[64];
       strftime(date, 64, "%d/%m/%Y, %H:%M:%S", d);
 
-      /* Write information header in a human readable way */
-      int header_size = _MAX_INFO_SIZE_ + _MAX_INFO_SIZE_ + 4096;
-      char header[header_size];      
-      sprintf (header, "# Table of the source function S_lm(k1,k2,k3,tau) tabulated as a function of (l,m,k3,tau) for fixed k1 and k2.\n");
-      sprintf (header, "%s# This binary file was generated by SONG (%s) on %s.\n", header, _SONG_URL_, date);
-      sprintf (header, "%s#\n", header);
-      sprintf (header, "%s%s", header, pba->info);
-      if (ppt->gauge == newtonian) sprintf(header, "%s# gauge = newtonian\n", header);
-      if (ppt->gauge == synchronous) sprintf(header, "%s# gauge = synchronous\n", header);
-      sprintf (header, "%s#\n# Information on the wavemode:\n", header);
-      sprintf (header, "%s# k1 = %g, k2 = %g\n", header, ppt2->k[index_k1], ppt2->k[index_k2]);
-      sprintf (header, "%s# index_k1 = %d/%d, index_k2 = %d/%d\n", header, index_k1, ppt2->k_size-1, index_k2, ppt2->k_size-1);
+      /* Add information to the file header */
+      binary_sprintf (file, "Table of the source function S_lm(k1,k2,k3,tau) tabulated as a function of (l,m,k3,tau) for fixed k1 and k2.");
+      binary_sprintf (file, "This binary file was generated by SONG (%s) on %s.", _SONG_URL_, date);
+      binary_sprintf (file, "");
+      sprintf (file->header, "%s%s", file->header, pba->info);
+      file->header_size += strlen (pba->info) + 1;
+      binary_sprintf (file, "");
+      binary_sprintf (file, "Information on the perturbations:");
+      binary_sprintf (file, "k1 = %g, k2 = %g", ppt2->k[index_k1], ppt2->k[index_k2]);
+      binary_sprintf (file, "index_k1 = %d/%d, index_k2 = %d/%d", index_k1, ppt2->k_size-1, index_k2, ppt2->k_size-1);
+      if (ppt->gauge == newtonian) binary_sprintf(file, "gauge = newtonian");
+      if (ppt->gauge == synchronous) binary_sprintf(file, "gauge = synchronous");
 
 
-      // -------------------------------------------------------------------------
-      // -                               Count blocks                            -
-      // -------------------------------------------------------------------------
+      // ---------------------------------------------------------------------------
+      // -                                Build blocks                             -
+      // ---------------------------------------------------------------------------
 
-      /* Initialise blocks count */
-
-      int n_max_blocks = 256;
-      long int block_start_byte[n_max_blocks];
-      int block_size[n_max_blocks];
-      int block_type_size[n_max_blocks];
-      char block_desc[n_max_blocks][512];
-      char block_position[n_max_blocks][512];
-      char block_internal_name[n_max_blocks][256];
-      char block_type[n_max_blocks][16];
-      void * block_internal_pointer[n_max_blocks];
-      long int byte_count = 0;
-      int index_block = 0;
+      char desc[1024];
+      char name[1024];
 
       /* Build the content of each memory block */
-      
-      sprintf (block_desc[index_block], "the header you are reading");
-      sprintf (block_type[index_block], "char");
-      sprintf (block_internal_name[index_block], "");
-      block_internal_pointer[index_block] = &header[0];
-      block_size[index_block] = header_size;
-      block_type_size[index_block] = sizeof(char);
-      block_start_byte[index_block] = byte_count;
-      index_block++;
-    
-      sprintf (block_desc[index_block], "size of tau array (=%d)", ppt2->tau_size);
-      sprintf (block_type[index_block], "int");
-      sprintf (block_internal_name[index_block], "ppt2->tau_size");
-      block_internal_pointer[index_block] = &ppt2->tau_size;      
-      block_size[index_block] = 1;
-      block_type_size[index_block] = sizeof(int);
-      block_start_byte[index_block] = block_start_byte[index_block-1] + block_size[index_block-1]*block_type_size[index_block-1];
-      index_block++;
 
-      sprintf (block_internal_name[index_block], "ppt2->tau_sampling");
-      sprintf (block_type[index_block], "double");
-      sprintf (block_desc[index_block], "tau array");
-      block_internal_pointer[index_block] = ppt2->tau_sampling;
-      block_size[index_block] = ppt2->tau_size;
-      block_type_size[index_block] = sizeof(double);
-      block_start_byte[index_block] = block_start_byte[index_block-1] + block_size[index_block-1]*block_type_size[index_block-1];
-      index_block++;
+      sprintf (desc, "size of tau array (=%d)", ppt2->tau_size);
+      sprintf (name, "ppt2->tau_size", ppt2->tau_size);
+      class_call (binary_append (
+                    file,
+                    &ppt2->tau_size,
+                    1,
+                    sizeof (int),
+                    desc,
+                    "int",
+                    name),
+        file->error_message,
+        ppt2->error_message);
+                          
+      sprintf (desc, "tau_array", ppt2->tau_size);
+      sprintf (name, "ppt2->tau_sampling", ppt2->tau_size);
+      class_call (binary_append (
+                    file,
+                    ppt2->tau_sampling,
+                    ppt2->tau_size,
+                    sizeof (double),
+                    desc,
+                    "double",
+                    name),
+        file->error_message,
+        ppt2->error_message);
 
-      sprintf (block_desc[index_block], "size of k3 array (=%d)", ppt2->k3_size[index_k1][index_k2]);
-      sprintf (block_type[index_block], "int");
-      sprintf (block_internal_name[index_block], "ppt2->k3_size[index_k1=%d][index_k2=%d]", index_k1, index_k2);
-      block_internal_pointer[index_block] = &ppt2->k3_size[index_k1][index_k2];
-      block_size[index_block] = 1;
-      block_type_size[index_block] = sizeof(int);
-      block_start_byte[index_block] = block_start_byte[index_block-1] + block_size[index_block-1]*block_type_size[index_block-1];
-      index_block++;
-    
-      sprintf (block_desc[index_block], "k3 array");
-      sprintf (block_type[index_block], "double");
-      sprintf (block_internal_name[index_block], "ppt2->k3[index_k1=%d][index_k2=%d]", index_k1, index_k2);
-      block_internal_pointer[index_block] = ppt2->k3[index_k1][index_k2];
-      block_size[index_block] = ppt2->k3_size[index_k1][index_k2];
-      block_type_size[index_block] = sizeof(double);
-      block_start_byte[index_block] = block_start_byte[index_block-1] + block_size[index_block-1]*block_type_size[index_block-1];
-      index_block++;
-    
-      sprintf (block_desc[index_block], "number of source types, including l,m (=%d)", ppt2->tp2_size);
-      sprintf (block_type[index_block], "int");
-      sprintf (block_internal_name[index_block], "ppt2->tp2_size");
-      block_internal_pointer[index_block] = &ppt2->tp2_size;
-      block_size[index_block] = 1;
-      block_type_size[index_block] = sizeof(int);
-      block_start_byte[index_block] = block_start_byte[index_block-1] + block_size[index_block-1]*block_type_size[index_block-1];
-      index_block++;
+      sprintf (desc, "size of k3 array (=%d)", k3_size);
+      sprintf (name, "ppt2->k3_size[index_k1=%d][index_k2=%d]", index_k1, index_k2);
+      class_call (binary_append (
+                    file,
+                    &k3_size,
+                    1,
+                    sizeof (int),
+                    desc,
+                    "int",
+                    name),
+        file->error_message,
+        ppt2->error_message);
+
+      sprintf (desc, "k3_array");
+      sprintf (name, "ppt2->k3[index_k1=%d][index_k2=%d]", index_k1, index_k2);
+      class_call (binary_append (
+                    file,
+                    ppt2->k3[index_k1][index_k2],
+                    k3_size,
+                    sizeof (double),
+                    desc,
+                    "double",
+                    name),
+        file->error_message,
+        ppt2->error_message);
+
+      sprintf (desc, "number of source types, including l,m (=%d)", ppt2->tp2_size);
+      sprintf (name, "ppt2->tp2_size");
+      class_call (binary_append (
+                    file,
+                    &ppt2->tp2_size,
+                    1,
+                    sizeof (int),
+                    desc,
+                    "int",
+                    name),
+        file->error_message,
+        ppt2->error_message);
 
       int label_size = _MAX_LENGTH_LABEL_;
-      sprintf (block_desc[index_block], "length of a source type name (=%d)", _MAX_LENGTH_LABEL_);
-      sprintf (block_type[index_block], "int");
-      sprintf (block_internal_name[index_block], "_MAX_LENGTH_LABEL_");
-      block_internal_pointer[index_block] = &label_size;
-      block_size[index_block] = 1;
-      block_type_size[index_block] = sizeof(int);
-      block_start_byte[index_block] = block_start_byte[index_block-1] + block_size[index_block-1]*block_type_size[index_block-1];
-      index_block++;
+      sprintf (desc, "length of a source type name (=%d)", _MAX_LENGTH_LABEL_);
+      sprintf (name, "_MAX_LENGTH_LABEL_");
+      class_call (binary_append (
+                    file,
+                    &label_size,
+                    1,
+                    sizeof (int),
+                    desc,
+                    "int",
+                    name),
+        file->error_message,
+        ppt2->error_message);
 
-      sprintf (block_desc[index_block], "array of source type names (each has %d char)", _MAX_LENGTH_LABEL_);
-      sprintf (block_type[index_block], "char");
-      sprintf (block_internal_name[index_block], "ppt2->tp2_labels");
-      block_internal_pointer[index_block] = ppt2->tp2_labels;
-      block_size[index_block] = ppt2->tp2_size*_MAX_LENGTH_LABEL_;
-      block_type_size[index_block] = sizeof(char);
-      block_start_byte[index_block] = block_start_byte[index_block-1] + block_size[index_block-1]*block_type_size[index_block-1];
-      index_block++;
-    
-      sprintf (block_desc[index_block], "size of a (k3,tau) block (=%d)", k3_tau_block_size);
-      sprintf (block_type[index_block], "int");
-      sprintf (block_internal_name[index_block], "ppt2->k3_size[index_k1=%d][index_k2=%d] * ppt2->tau_size", index_k1, index_k2);
-      block_internal_pointer[index_block] = &k3_tau_block_size;
-      block_size[index_block] = 1;
-      block_type_size[index_block] = sizeof(int);
-      block_start_byte[index_block] = block_start_byte[index_block-1] + block_size[index_block-1]*block_type_size[index_block-1];
-      index_block++;
-    
+      sprintf (desc, "array of source type names (each has %d char)", _MAX_LENGTH_LABEL_);
+      sprintf (name, "ppt2->tp2_labels");
+      class_call (binary_append (
+                    file,
+                    ppt2->tp2_labels,
+                    ppt2->tp2_size*_MAX_LENGTH_LABEL_,
+                    sizeof (char),
+                    desc,
+                    "char",
+                    name),
+        file->error_message,
+        ppt2->error_message);
+
+      sprintf (name, "ppt2->tau_size * ppt2->k3_size[index_k1=%d][index_k2=%d]", index_k1, index_k2);
+      sprintf (desc, "size of a (k3,tau) block (=%d)", k3_tau_block_size);
+      class_call (binary_append (
+                    file,
+                    &k3_tau_block_size,
+                    1,
+                    sizeof (int),
+                    desc,
+                    "int",
+                    name),
+        file->error_message,
+        ppt2->error_message);
+
       /* Actual data starts here */
 
-      ppt2->k_out_data_byte[index_k_out] = index_block;
-    
+      ppt2->k_out_data_byte[index_k_out] = file->size_bytes;
+
       for (int index_tp2=0; index_tp2 < ppt2->tp2_size; ++index_tp2) {
-        sprintf (block_desc[index_block], "source function %s for all values of k3 and tau", ppt2->tp2_labels[index_tp2]);
-        sprintf (block_type[index_block], "double");
-        sprintf (block_internal_name[index_block], "ppt2->sources[index_tp2=%d][index_k1=%d][index_k2=%d]", index_tp2, index_k1, index_k2);
-        block_internal_pointer[index_block] = &ppt2->sources[index_tp2][index_k1][index_k2];
-        block_size[index_block] = k3_tau_block_size;
-        block_type_size[index_block] = sizeof(double);
-        block_start_byte[index_block] = block_start_byte[index_block-1] + block_size[index_block-1]*block_type_size[index_block-1];
-        index_block++;
+
+        sprintf (name, "ppt2->sources[index_tp2=%d][index_k1=%d][index_k2=%d]", index_tp2, index_k1, index_k2);
+        sprintf (desc, "source function %s for all values of k3 and tau", ppt2->tp2_labels[index_tp2]);
+        class_call (binary_append (
+                      file,
+                      ppt2->sources[index_tp2][index_k1][index_k2],
+                      k3_tau_block_size,
+                      sizeof (double),
+                      desc,
+                      "double",
+                      name),
+          file->error_message,
+          ppt2->error_message);
+        
+        /* Debug - Print the sources as they are references in the binary file */
+        // if (index_tp2 == 0) {
+        //   for (int index_tau=0; index_tau < ppt2->tau_size; ++index_tau) {
+        //     for (int index_k3=0; index_k3 < k3_size; ++index_k3) {
+        //       printf ("%12g %12g %12g\n",
+        //         ppt2->tau_sampling[index_tau],
+        //         ppt2->k3[index_k1][index_k2][index_k3],
+        //         ((double *)file->blocks_array[file->n_blocks-1]->internal_pointer)[index_tau*k3_size + index_k3]);
+        //     }
+        //   }
+        // }
       }
 
-      /* Number of blocks to write on the output file */
-      int n_blocks = index_block;
-      class_test (n_blocks>n_max_blocks, ppt2->error_message, "increase n_max_blocks");
 
+      // ---------------------------------------------------------------------------
+      // -                              Write to file                              -
+      // ---------------------------------------------------------------------------
 
-      // -------------------------------------------------------------------------
-      // -                            Build binary map                           -
-      // -------------------------------------------------------------------------
-
-      /* The binary map informs the user of the location of the various data blocks
-      inside the binary file. Without this knowledge, it is impossible to access
-      the data */
-
-      /* Title */
-      sprintf (header, "%s#\n", header);
-      sprintf (header, "%s# %s\n", header, "Binary map:");
-
-      /* Map keys */
-      sprintf (header, "%s# %17s %17s %17s %17s %17s    %-64s %-64s\n",
-        header, "BLOCK", "TYPE", "SIZE", "SIZE (BYTES)", "POS (BYTES)", "DESCRIPTION", "NAME IN SONG");
-
-      /* Map values */
-      for (int i=0; i < n_blocks; ++i)
-        sprintf (header, "%s# %17d %17s %17d %17d %17d    %-64s %-64s\n",
-          header, i, block_type[i], block_size[i], block_size[i]*block_type_size[i],
-          block_start_byte[i], block_desc[i], block_internal_name[i]);
-
-
-      // -------------------------------------------------------------------------
-      // -                              Write to file                            -
-      // -------------------------------------------------------------------------
-
-      /* Write file */
-      for (int i=0; i < n_blocks; ++i)
-        fwrite(block_internal_pointer[i], block_type_size[i], block_size[i], out);
+      class_call (binary_write (
+                    file),
+        file->error_message,
+        ppt2->error_message);
+      
     
-      /* Close file */
-      fclose (ppt2->k_out_files_sources[index_k_out]);
+
+      // ---------------------------------------------------------------------------
+      // -                               Close file                                -
+      // ---------------------------------------------------------------------------
+
+      class_call (binary_free (
+                    file),
+        file->error_message,
+        ppt2->error_message);
 
 
     } // if output k1 and k2
@@ -14250,15 +14264,14 @@ int perturb2_output(
     for (int index_tp2 = 0; index_tp2 < ppt2->tp2_size; ++index_tp2) {
       for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
 
-        class_call (perturb2_store_sources_k3_tau(
-                      ppt2,
-                      index_tp2,
-                      index_k1,
-                      index_k2,
-                      ppt2->sources_paths[index_k1],
-                      ppt2->sources_files[index_k1]),
-          ppt2->error_message,
-          ppt2->error_message);
+        int k3_size = ppt2->k3_size[index_k1][index_k2];
+
+        if (k3_size > 0)
+
+          fwrite(ppt2->sources[index_tp2][index_k1][index_k2],
+                 sizeof(double),
+                 ppt2->tau_size*k3_size,
+                 ppt2->sources_files[index_k1]);
         
       }
     }
@@ -14270,8 +14283,7 @@ int perturb2_output(
     class_call (perturb2_free_k1_level(ppt2, index_k1),
       ppt2->error_message, ppt2->error_message);
       
-  }
-  
+  }  
   
   return _SUCCESS_;
   

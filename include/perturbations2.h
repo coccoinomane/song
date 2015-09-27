@@ -1,4 +1,4 @@
-/** @file perturbations2.h Documented header file for the perturbations2 module */
+/** @file perturbations2.h Documented header file for the perturbations2.c module */
 
 #ifndef __PERTURBATIONS2__
 #define __PERTURBATIONS2__
@@ -1050,7 +1050,7 @@ struct perturbs2
                                              corresponding to k3=k3_out[index_k3_output]. If k3 does not satisfy the triangular
                                              condition, its location in the array will contain -1. Filled in perturbations2.c */
   char k_out_paths[_MAX_NUMBER_OF_K_FILES_][_FILENAMESIZE_]; /**< Path of the ASCII files that will contain the perturbations as a function
-                                                             tau at the desired (k1,k2,k3) values; filled in the input2.c module */
+                                                             of tau at the desired (k1,k2,k3) values; filled in the input2.c module */
   FILE * k_out_files[_MAX_NUMBER_OF_K_FILES_]; /**< ASCII file that will contain the perturbations as a function
                                                of tau at the desired (k1,k2,k3) values; filled in the input2.c module */
   char k_out_paths_sources[_MAX_NUMBER_OF_K_FILES_][_FILENAMESIZE_]; /**< Path of the binary files that will contain the source function as a function
@@ -1064,6 +1064,13 @@ struct perturbs2
                                                 preceding accessory data (eg. tau grid, k3 grid) */
   short output_class_perturbations; /** If _TRUE_, output the first-order perturbations for all the values contained in ppt2->k1_out
                                     and ppt2->k2_out */
+  short output_quadratic_sources;   /** If _TRUE_, output the quadratic sources of the second-order differential system for all
+                                    the values contained in ppt2->k1_out and ppt2->k2_out */
+
+  char k_out_paths_quad[_MAX_NUMBER_OF_K_FILES_][_FILENAMESIZE_]; /**< Path of the ASCII files that will contain the quadratic sources as a function
+                                                                  of tau at the desired (k1,k2,k3) values; filled in the input2.c module */
+  FILE * k_out_files_quad[_MAX_NUMBER_OF_K_FILES_]; /**< ASCII file that will contain the quadratic sources as a function
+                                                    of tau at the desired (k1,k2,k3) values; filled in the input2.c module */
 
   /**
    * Should SONG compute only a specific set of wavemodes?
