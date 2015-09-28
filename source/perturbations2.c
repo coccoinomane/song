@@ -325,14 +325,21 @@ int perturb2_init (
     /* Output to file the source function for the considered value of index_k1 and
     free the associated memory, if requested */
 
-    class_call_parallel (perturb2_output (
-                           ppr2,
-                           pba,
-                           ppt,
-                           ppt2,
-                           index_k1),
-       ppt2->error_message,
-       ppt2->error_message);
+    if (ppr2->store_sources_to_disk == _TRUE_) {
+
+      class_call_parallel (perturb2_store_sources_to_disk (
+                             ppt2,
+                             index_k1),
+         ppt2->error_message,
+         ppt2->error_message);
+
+      class_call_parallel (perturb2_free_k1_level(
+                    ppt2,
+                    index_k1),
+        ppt2->error_message, 
+        ppt2->error_message);
+
+    }
 
     #pragma omp flush(abort)
     
@@ -342,9 +349,27 @@ int perturb2_init (
 
     
 
-  // ==================================================================================
-  // =                                 Clean & exit                                   =
-  // ==================================================================================
+  // ====================================================================================
+  // =                              Produce output files                                =
+  // ====================================================================================
+
+  if ((ppt2->k_out_size > 0) || (ppt2->tau_out_size > 0)) {
+
+    class_call_parallel (perturb2_output (
+                           ppr,
+                           ppr2,
+                           pba,
+                           ppt,
+                           ppt2),
+       ppt2->error_message,
+       ppt2->error_message);
+
+  }
+
+
+  // ====================================================================================
+  // =                                  Clean & exit                                    =
+  // ====================================================================================
 
   /* Free the workspaces */
   #pragma omp parallel shared(pppw2,pba,ppt2,abort) private(thread)
@@ -874,9 +899,19 @@ int perturb2_indices_of_perturbs(
   ppt2->tp2_size = index_type;
   ppt2->pf_size = index_pf;
 
+  class_test (ppt2->tp2_size > _MAX_NUM_SOURCES_,
+    ppt2->error_message,
+    "exceeded maximum number of allowed source types (%d), increase _MAX_NUM_SOURCES_ in perturbations2.h",
+    _MAX_NUM_SOURCES_);
+
   class_test (ppt2->pf_size > _MAX_NUM_FIELDS_,
     "exceeded maximum number of allowed fields, increase _MAX_NUM_FIELDS_ in common.h",
     ppt2->error_message);
+
+  /* Initialise the labels of the transfer types */
+  for (int index_tp=0; index_tp<ppt2->tp2_size; ++index_tp)
+    for (int i=0; i < _MAX_LENGTH_LABEL_; ++i)
+      ppt2->tp2_labels[index_tp][i] = '\0';
   
   if (ppt2->perturbations2_verbose > 1) {
     printf ("     * will compute tp2_size=%d source terms: ", ppt2->tp2_size);
@@ -894,11 +929,6 @@ int perturb2_indices_of_perturbs(
     printf ("\n");
   }  
   
-  /* Allocate memory for the labels of the source types */
-  class_alloc (ppt2->tp2_labels, ppt2->tp2_size*sizeof(char *), ppt2->error_message);
-  for (index_type=0; index_type<ppt2->tp2_size; ++index_type)
-    class_alloc (ppt2->tp2_labels[index_type], _MAX_LENGTH_LABEL_*sizeof(char), ppt2->error_message);
-
   /* Allocate the first level of the ppt2->sources array */
   class_alloc (ppt2->sources, ppt2->tp2_size * sizeof(double ***), ppt2->error_message);
 
@@ -1878,8 +1908,8 @@ int perturb2_get_k_lists (
         k3_size = ppr2->k3_size;
         class_alloc (k3_grid, ppr2->k3_size*sizeof(double), ppt2->error_message);
 
-        double cosk1k2_min = (k3_min*k3_min - k1*k1 - k2*k2)/(2.*k1*k2);
-        double cosk1k2_max = (k3_max*k3_max - k1*k1 - k2*k2)/(2.*k1*k2);
+        double cosk1k2_min = (k3_min*k3_min - k1*k1 - k2*k2)/(2*k1*k2);
+        double cosk1k2_max = (k3_max*k3_max - k1*k1 - k2*k2)/(2*k1*k2);
 
         class_test (fabs(cosk1k2_min)>1, ppt2->error_message, "stop to prevent nans");
         class_test (fabs(cosk1k2_max)>1, ppt2->error_message, "stop to prevent nans");
@@ -2616,6 +2646,41 @@ int perturb2_timesampling_for_sources (
                   ppt2->error_message);
 
   } // if has_custom_timesampling
+  
+
+
+  // ====================================================================================
+  // =                                  Recombination                                   =
+  // ====================================================================================
+
+  /* Find the time when recombination ends and the time where recombination peaks, and
+  store the corresponding time indices in ppt2->index_tau_end_of_recombination and
+  ppt2->index_tau_rec, respectively */
+
+  class_call (perturb2_end_of_recombination (
+                ppr,
+                ppr2,
+                pba,
+                pth,
+                ppt,
+                ppt2),
+    ppt2->error_message,
+    ppt2->error_message);
+  
+
+  /* If all of the requested line-of-sight sources are located at recombination or
+  earlier, cut the time-sampling vector so that sources at later times are not
+  computed. */
+
+  if ((ppt2->has_recombination_only == _TRUE_) && (ppt2->has_custom_timesampling == _FALSE_)) {
+
+    ppt2->tau_size = ppt2->index_tau_end_of_recombination;
+
+    if (ppt2->perturbations2_verbose > 1)
+      printf ("     * will stop integrating the system at the end of recombination (tau=%g)\n",
+        ppt2->tau_sampling[ppt2->tau_size-1]);
+
+  }
 
 
 
@@ -2629,7 +2694,6 @@ int perturb2_timesampling_for_sources (
 
   /* First, convert the requested redshifts in z_out to conformal times, and add
   them to ppt2->tau_out */
-
   for (int index_z=0; index_z < ppt2->z_out_size; ++index_z) {
 
     if (ppt2->z_out[index_z] < 0) {
@@ -2659,12 +2723,24 @@ int perturb2_timesampling_for_sources (
         ppt2->error_message,
         "choose tau_out to be larger than %g (you choose %g)",
           pth->tau_ini, ppt2->tau_out[index_tau_out]);
+
+      /* If the requested time is too large, set it to the largest available time.
+      Comment this block to add the requested time anyway. */
+      if (ppt2->tau_out[index_tau_out] > ppt2->tau_sampling[ppt2->tau_size-1]) {
+
+        char buffer[1024];
+
+        sprintf (buffer,"# NOTE: the requested time for this file was too large, or redshift\
+ was too low; we set tau_out to the largest available value in our time sampling (%g).\n",
+          ppt2->tau_sampling[ppt2->tau_size-1]);
+        fprintf (ppt2->tau_out_files[index_tau_out], buffer);
         
-      if (ppt2->tau_out[index_tau_out] > pba->conformal_age) {
-        fprintf (ppt2->tau_out_files[index_tau_out],
-          "# NOTE: tau_out was too large for this file, so we set it to tau0=%g\n",
-            pba->conformal_age);
-        ppt2->tau_out[index_tau_out] = pba->conformal_age;
+        /* We do not write the warning to the binary file lest we mess up the byte ordering */
+        fprintf (stderr, "# NOTE: requested time for %s is too large; we set tau_out to the\
+ largest available value in our time sampling (%g).\n",
+          ppt2->tau_out_paths_sources[index_tau_out], ppt2->tau_sampling[ppt2->tau_size-1]);
+        
+        ppt2->tau_out[index_tau_out] = ppt2->tau_sampling[ppt2->tau_size-1];
       }
     }
 
@@ -2719,53 +2795,8 @@ int perturb2_timesampling_for_sources (
   //   }
   //   fprintf (stderr, "\n");
   // }
-
-
-  // ====================================================================================
-  // =                                  Recombination                                   =
-  // ====================================================================================
-
-  /* Find the time when recombination ends and the time where recombination peaks, and
-  store the corresponding time indices in ppt2->index_tau_end_of_recombination and
-  ppt2->index_tau_rec, respectively */
-
-  class_call (perturb2_end_of_recombination (
-                ppr,
-                ppr2,
-                pba,
-                pth,
-                ppt,
-                ppt2),
-    ppt2->error_message,
-    ppt2->error_message);
   
-
-  /* If all of the requested line-of-sight sources are located at recombination or
-  earlier, cut the time-sampling vector so that sources at later times are not
-  computed. */
-
-  if (ppt2->has_recombination_only == _TRUE_) {
-
-    if (ppt2->has_custom_timesampling == _FALSE_)
-      ppt2->tau_size = ppt2->index_tau_end_of_recombination;
-
-    /* Print some info */
-    
-    double tau_end = ppt2->tau_sampling[ppt2->index_tau_end_of_recombination-1];
-
-    if (ppt2->perturbations2_verbose > 1)
-      printf ("     * will stop integrating at the end of recombination (tau=%g)\n", tau_end);
-
-    /* Warn the user if the tau output has been removed */
-
-    for (int index_tau_out=0; index_tau_out < ppt2->tau_out_size; ++index_tau_out)
-      if (ppt2->tau_out[index_tau_out] > tau_end)
-        fprintf (ppt2->tau_out_files[index_tau_out],
-          "# NOTE: this file is empty because the requested tau_out or z_out was larger than\
- the largest time sampled in SONG (tau=%g, z=%g)\n", tau_end, ppt2->z_end_of_recombination);
-
-  }
-
+  
 
   // ====================================================================================
   // =                             Allocate sources array                               =
@@ -5180,7 +5211,7 @@ int perturb2_geometrical_corner (
   /* Compute the angles between the various wavevectors. Here and in the following, we
   assume that \vec{k} is aligned with the polar axis and that \vec{k1} and \vec{k2} lie
   in the x-z plane. */
-  double cosk1k2 = ppw2->cosk1k2 = (k_sq - k1*k1 - k2*k2)/(2.*k1*k2);
+  double cosk1k2 = ppw2->cosk1k2 = (k_sq - k1*k1 - k2*k2)/(2*k1*k2);
   double cosk1k = ppw2->cosk1k = (k1 + k2*cosk1k2)/k;
   double cosk2k = ppw2->cosk2k = (k2 + k1*cosk1k2)/k;
   double sink1k = sqrt (1-cosk1k*cosk1k);
@@ -5757,26 +5788,52 @@ int perturb2_wavemode_info (
         )
 {
 
-  /*  We shall write on ppw2->info line by line, commenting each line with the below
-  comment style. */
-  char comment[2] = "#";
+  /*  We shall write line by line, prepending each line with a comment character */
   char line[1024];
-  char * info = ppw2->info;
-  
+  char comment[4] = _COMMENT_;
+
+
+  // ====================================================================================
+  // =                            Write information string                              =
+  // ====================================================================================
+
+  /* Initialise the information string */
+  char * info = ppw2->info;  
   sprintf(info, "");
 
-  sprintf(line, "k1 = %g, k2 = %g, k = %g, cosk1k2 = %g, theta_1 = %g",
+  /* Write information on the wavemode currently being evolved */
+  sprintf(line, "Information on the perturbations:");
+  sprintf(info, "%s%s%s\n", info, comment, line);
+
+  sprintf(line, "k1 = %g, k2 = %g, k = %g, cosk1k2 = %g, theta_1 = %g", 
     ppw2->k1, ppw2->k2, ppw2->k, ppw2->cosk1k2, ppw2->theta_1);
-  sprintf(info, "%s%s %s\n", info, comment, line);
+  sprintf(info, "%s%s%s\n", info, comment, line);
 
   sprintf(line, "index_k1 = %d/%d, index_k2 = %d/%d, index_k3 = %d/%d",
     ppw2->index_k1, ppt2->k_size-1, ppw2->index_k2, ppt2->k_size-1,
     ppw2->index_k3, ppt2->k3_size[ppw2->index_k1][ppw2->index_k2]-1);
-  sprintf(info, "%s%s %s\n", info, comment, line);
+  sprintf(info, "%s%s%s\n", info, comment, line);
 
   if (ppt->gauge == newtonian) sprintf(line, "gauge = newtonian");
   if (ppt->gauge == synchronous) sprintf(line, "gauge = synchronous");
-  sprintf(info, "%s%s %s\n", info, comment, line);
+  sprintf(info, "%s%s%s\n", info, comment, line);
+  
+
+  // ====================================================================================
+  // =                               Write header string                                =
+  // ====================================================================================
+
+  /* Initialise the file header */
+  char * header = ppw2->file_header;
+  sprintf(header, "");
+
+  /* Write information to appear on top of output files */
+  sprintf (line, "This binary file was generated by SONG %s (%s) on %s.", _SONG_VERSION_, _SONG_URL_, ppr->date);
+  sprintf (header, "%s%s%s\n", header, comment, line);
+  sprintf (header, "%s%s\n", header, comment);
+  sprintf (header, "%s%s", header, pba->info);
+  sprintf (header, "%s%s\n", header, comment);
+  sprintf (header, "%s%s", header, ppw2->info);
 
   return _SUCCESS_;
 
@@ -7004,7 +7061,6 @@ int perturb2_free(
     for (int index_type = 0; index_type < ppt2->tp2_size; index_type++) {
         
       free(ppt2->sources[index_type]);
-      free(ppt2->tp2_labels[index_type]);
 
     } // End of for index_type
 
@@ -7026,8 +7082,6 @@ int perturb2_free(
     free(ppt2->k3);
     free(ppt2->k3_size);
     
-    free(ppt2->tp2_labels);
-
     /* Free memory for the general coupling coefficients */  
     int m1_min = -ppt2->l1_max;
     int m2_min = -ppt2->l2_max;
@@ -7103,14 +7157,6 @@ int perturb2_free(
       free (ppt2->sources_files);
       free (ppt2->sources_paths);
     
-    }
-
-    /* Close the debug files */
-    if(ppt2->has_debug_files) {
-      fclose(ppt2->transfers_file);
-      fclose(ppt2->quadsources_file);
-      fclose(ppt2->quadliouville_file);
-      fclose(ppt2->quadcollision_file);
     }
 
   } // end of if(has_perturbations2)
@@ -12176,7 +12222,7 @@ int perturb2_sources (
 
   if (ppt2->has_lss == _TRUE_) {
 
-    /* Update the workspace with the current value of the fluid variables */
+    /* Compute densities, velocities and shear for all species */
     class_call (perturb2_fluid_variables(
                   ppr,
                   ppr2,
@@ -12549,20 +12595,22 @@ int perturb2_save_perturbations (
     ppt2->error_message,
     ppt2->error_message);
 
-  /* Compute useful quantities in the tight coupling limit, no matter
-  whether the TCA is turned on or off */
-  class_call (perturb2_tca_variables(
-                ppr,
-                ppr2,
-                pba,
-                pth,
-                ppt,
-                ppt2,
-                tau,
-                y,
-                ppw2),
-    ppt2->error_message,
-    error_message);
+  /* Compute useful quantities in the tight coupling limit. If the TCA
+  is currently active, these quantities have already been computed in
+  perturb2_workspace_at_tau(). */
+  if (ppw2->approx[ppw2->index_ap2_tca] == (int)tca_off)
+    class_call (perturb2_tca_variables(
+                  ppr,
+                  ppr2,
+                  pba,
+                  pth,
+                  ppt,
+                  ppt2,
+                  tau,
+                  y,
+                  ppw2),
+      ppt2->error_message,
+      error_message);
 
   /* Define shorthands */
   double * pvec_sources1 = ppw2->pvec_sources1;
@@ -12582,22 +12630,27 @@ int perturb2_save_perturbations (
     ppt2->error_message,
     error_message);
 
-  /* Compute useful quantities in the radiation streaming limit, no matter
-  whether the RSA is turned on or off */
-  class_call (perturb2_rsa_variables(
-                ppr,
-                ppr2,
-                pba,
-                pth,
-                ppt,
-                ppt2,
-                tau,
-                y,
-                ppw2),
-    ppt2->error_message,
-    error_message);
+  /* Compute useful quantities in the radiation streaming limit. If the RSA
+  is currently active, these quantities have already been computed in
+  perturb2_workspace_at_tau(). */
+  if (ppw2->approx[ppw2->index_ap2_rsa] == (int)rsa_off)
+    class_call (perturb2_rsa_variables(
+                  ppr,
+                  ppr2,
+                  pba,
+                  pth,
+                  ppt,
+                  ppt2,
+                  tau,
+                  y,
+                  ppw2),
+      ppt2->error_message,
+      error_message);
 
-  /* Compute densities, velocities and shear for all species */
+  /* Compute densities, velocities and shear for all species. If either the RSA
+  or TCA are active, this function has already been called. However, we call it
+  here nonetheless because back then not all variables where available and some
+  fluid quantities could not be updated. */
   class_call (perturb2_fluid_variables(
                 ppr,
                 ppr2,
@@ -12612,7 +12665,7 @@ int perturb2_save_perturbations (
     error_message);
 
 
-  /* Debug - print the quadratic collisional sources */
+  /* Debug - Print the quadratic collisional sources for the first k_out triplet */
   // double xe = pvecthermo[pth->index_th_xe];
   // double xe_dot = pvecthermo[pth->index_th_dxe];
   // double delta_xe_1_approx = - ppw2->delta_b_1*(xe_dot/xe)/(3*Hc);
@@ -12755,23 +12808,6 @@ int perturb2_save_perturbations (
 
     if (ppr2->compute_m[0] == _TRUE_) {
 
-      // /* alpha' = (h''+ 6 eta'')/2k^2 */
-      // alpha_prime = pvecmetric[ppw2->index_mt2_alpha_prime];
-      //
-      // /* h'' */
-      // h_prime_prime = pvecmetric[ppw2->index_mt2_h_prime_prime];
-      //
-      // /* eta'' = 1./6. * (2 k^2 alpha' - h'') */
-      // // TODO:  Include the quadratic terms for eta_prime_prime
-      // eta_prime_prime = 1./6. * (2.*k_sq*alpha_prime - h_prime_prime);
-      //
-      // // TODO:  Include the quadratic terms of the continuity equation
-      // h = -2. * delta_cdm;
-      //
-      // /* Synchronous to Netwonian gauge transformation for the potentials */
-      // // TODO:  Include the quadratic terms of the gauge transformation
-      // psi = (a * H * (pvecmetric[ppw2->index_mt2_h_prime] + 6. * pvecmetric[ppw2->index_mt2_eta_prime])/2./k_sq + alpha_prime);
-      // phi = y[ppw2->pv->index_pt2_eta]-a*H/2./k_sq*(pvecmetric[ppw2->index_mt2_h_prime] + 6. * pvecmetric[ppw2->index_mt2_eta_prime]);
     }
   } // end of synchronous gauge
 
@@ -12908,442 +12944,407 @@ int perturb2_save_perturbations (
   // =                                  Print to file                                   =
   // ====================================================================================
 
-  /* Shortcut to the file where we shall print the transfer functions */
-  FILE * file_tr = ppt2->k_out_files[ppw2->index_k_out];
-  int index_print_tr = 1;
-
-  /* Shortcut to the file where we shall print the quadratic sources */
-  FILE * file_qs = ppt2->k_out_files_quad[ppw2->index_k_out];
-  int index_print_qs = 1;
+  /* Create column arrays */
+  char label[_MAX_NUM_COLUMNS_][_MAX_LENGTH_LABEL_];
+  void * pointer_tr[_MAX_NUM_COLUMNS_];
+  void * pointer_qs[_MAX_NUM_COLUMNS_];
+  short condition[_MAX_NUM_COLUMNS_];
   
-  /* Choose how label & values should be formatted */
-  char format_label[64] = "%18s(%02d) ";
-  char format_value[64] = "%+22.11e ";
-  char buffer[64];
-
-  /* Print some info to file */
-  if ((ppw2->n_steps==1) && (ppt2->perturbations2_verbose > 0)) {
-    fprintf(file_tr, "%s%s", pba->info, ppw2->info);
-    fprintf(file_qs, "%s%s", pba->info, ppw2->info);
+  /* Initialise column arrays */
+  for (int i=0; i < _MAX_NUM_COLUMNS_; ++i) {
+    pointer_tr[i] = NULL;
+    pointer_qs[i] = NULL;
+    condition[i] = _TRUE_;
   }
+
+  /* Shortcut for file verbosity */
+  int v = ppt2->file_verbose;
+  
+  /* Initialise column counter  */
+  int i = -1;
 
 
   // -------------------------------------------------------------------------------
   // -                               Time variables                                -
   // -------------------------------------------------------------------------------
 
-  // conformal time
-  if (ppw2->n_steps==1) {
-    fprintf(file_tr, format_label, "tau", index_print_tr++);
-    fprintf(file_qs, format_label, "tau", index_print_qs++);
-  }
-  else {
-    fprintf(file_tr, format_value, tau);
-    fprintf(file_qs, format_value, tau);
-  }
-  // scale factor
-  if (ppw2->n_steps==1) {
-    fprintf(file_tr, format_label, "a", index_print_tr++);
-    fprintf(file_qs, format_label, "a", index_print_qs++);
-  }
-  else {
-    fprintf(file_tr, format_value, a);
-    fprintf(file_qs, format_value, a);
-  }
-  // y = log10(a/a_eq)
-  if (ppw2->n_steps==1) {
-    fprintf(file_tr, format_label, "y", index_print_tr++);
-    fprintf(file_qs, format_label, "y", index_print_qs++);
-  }
-  else {
-    fprintf(file_tr, format_value, Y);
-    fprintf(file_qs, format_value, Y);
-  }
+  /* Conformal time tau */
+  strcpy (label[++i], "tau");
+  pointer_tr[i] = &tau;
+  pointer_qs[i] = &tau;
+
+  /* Scale factor a */
+  strcpy (label[++i], "a");
+  pointer_tr[i] = &a;
+  pointer_qs[i] = &a;
+
+  /* Scale factor normalised to a_equality */
+  strcpy (label[++i], "y");
+  pointer_tr[i] = &Y;
+  pointer_qs[i] = &Y;
 
 
   // -------------------------------------------------------------------------------
   // -                             Newtonian gauge                                 -
   // -------------------------------------------------------------------------------
 
-  if (ppt->gauge == newtonian) {
+  /* Newtonian time potential psi */
+  strcpy (label[++i], "psi");
+  pointer_tr[i] = &psi;
+  pointer_qs[i] = &pvec_quadsources[ppw2->index_qs2_psi];
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]==_TRUE_) && (v>0);
 
-    /* Scalar potentials */
-    if (ppr2->compute_m[0] == _TRUE_) {
-      // psi
-      if (ppw2->n_steps==1) {
-       fprintf(file_tr, format_label, "psi", index_print_tr++);
-       fprintf(file_qs, format_label, "psi", index_print_qs++);
-      }
-      else {
-       fprintf(file_tr, format_value, psi);
-       fprintf(file_qs, format_value, pvec_quadsources[ppw2->index_qs2_psi]);
-      }
-      // psi_prime
-      if (ppw2->n_steps==1) {
-       fprintf(file_tr, format_label, "psi'", index_print_tr++);
-       fprintf(file_qs, format_label, "psi'", index_print_qs++);
-      }
-      else {
-       fprintf(file_tr, format_value, psi_prime);
-       fprintf(file_qs, format_value, pvec_quadsources[ppw2->index_qs2_psi_prime]);
-      }
-      // phi
-      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "phi", index_print_tr++);
-      else fprintf(file_tr, format_value, phi);
-      // phi_prime
-      if (ppw2->n_steps==1) {
-       fprintf(file_tr, format_label, "phi'", index_print_tr++);
-      }
-      else {
-       fprintf(file_tr, format_value, pvecmetric[ppw2->index_mt2_phi_prime]);
-      }
-      // phi_prime_prime
-      if (ppw2->n_steps==1) {
-       fprintf(file_tr, format_label, "phi''", index_print_tr++);
-       fprintf(file_qs, format_label, "phi''", index_print_qs++);
-      }
-      else {
-       fprintf(file_tr, format_value, pvecmetric[ppw2->index_mt2_phi_prime_prime]);
-       fprintf(file_qs, format_value, pvec_quadsources[ppw2->index_qs2_phi_prime_prime]);
-      }
-      // phi_prime_poisson
-      if (ppw2->n_steps==1) {
-       fprintf(file_tr, format_label, "phi'P", index_print_tr++);
-       fprintf(file_qs, format_label, "phi'P", index_print_qs++);
-      }
-      else {
-       fprintf(file_tr, format_value, pvecmetric[ppw2->index_mt2_phi_prime_poisson]);
-       fprintf(file_qs, format_value, pvec_quadsources[ppw2->index_qs2_phi_prime_poisson]);
-      }
-      // phi_prime_longitudinal
-      if (ppw2->n_steps==1) {
-       fprintf(file_tr, format_label, "phi'L", index_print_tr++);
-       fprintf(file_qs, format_label, "phi'L", index_print_qs++);
-      }
-      else {
-       fprintf(file_tr, format_value, pvecmetric[ppw2->index_mt2_phi_prime_longitudinal]);
-       fprintf(file_qs, format_value, pvec_quadsources[ppw2->index_qs2_phi_prime_longitudinal]);
-      }
-      // psi_analytical
-      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "psi_an", index_print_tr++);
-      else fprintf(file_tr, format_value, psi_analytical);
-    }
-    /* Vector potentials */
-    if (ppr2->compute_m[1] == _TRUE_) {
-      // omega_m1
-      if (ppw2->n_steps==1) {
-       fprintf(file_tr, format_label, "omega_m1", index_print_tr++);
-       fprintf(file_qs, format_label, "omega_m1'", index_print_qs++);
-      }
-      else {
-       fprintf(file_tr, format_value, y[ppw2->pv->index_pt2_omega_m1]);
-       fprintf(file_qs, format_value, pvec_quadsources[ppw2->index_qs2_omega_m1_prime]);
-      }
-      // omega_m1_constraint
-      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "omega_m1_c", index_print_tr++);
-      else fprintf(file_tr, format_value, omega_m1_constraint);
-      // omega_m1_analytical
-      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "omega_m1_an", index_print_tr++);
-      else fprintf(file_tr, format_value, omega_m1_analytical);
-    }
-    /* Tensor potentials */
-    if (ppr2->compute_m[2] == _TRUE_) {
-      // gamma_m2
-      if (ppw2->n_steps==1) {
-       fprintf(file_tr, format_label, "gamma_m2", index_print_tr++);
-       fprintf(file_qs, format_label, "gamma_m2''", index_print_qs++);
-      }
-      else {
-       fprintf(file_tr, format_value, y[ppw2->pv->index_pt2_gamma_m2]);
-       fprintf(file_qs, format_value, pvec_quadsources[ppw2->index_qs2_gamma_m2_prime_prime]);
-      }
-      // gamma_m2_analytical
-      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "gamma_m2_an", index_print_tr++);
-      else fprintf(file_tr, format_value, gamma_m2_analytical);
-      // gamma_m2_prime
-      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "gamma_m2'", index_print_tr++);
-      else fprintf(file_tr, format_value, y[ppw2->pv->index_pt2_gamma_m2_prime]);
-    }
+  /* Newtonian time potential psi_prime */
+  strcpy (label[++i], "psi'");
+  pointer_tr[i] = &psi_prime;
+  pointer_qs[i] = &pvec_quadsources[ppw2->index_qs2_psi_prime];
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]==_TRUE_) && (v>1);
 
-  } // end of if(newtonian)
+  /* Newtonian curvature potential phi */
+  strcpy (label[++i], "phi");
+  pointer_tr[i] = &phi;
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]==_TRUE_) && (v>0);
+
+  /* Newtonian curvature potential phi_prime */
+  strcpy (label[++i], "phi'");
+  pointer_tr[i] = &pvecmetric[ppw2->index_mt2_phi_prime];
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]==_TRUE_) && (v>1);
+
+  /* Newtonian curvature potential phi_prime_prime */
+  strcpy (label[++i], "phi''");
+  pointer_tr[i] = &pvecmetric[ppw2->index_mt2_phi_prime_prime];
+  pointer_qs[i] = &pvec_quadsources[ppw2->index_qs2_phi_prime_prime];
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]==_TRUE_) && (v>1);
+
+  /* Newtonian curvature potential phi_prime (using Poisson equation) */
+  strcpy (label[++i], "phi'P");
+  pointer_tr[i] = &pvecmetric[ppw2->index_mt2_phi_prime_poisson];
+  pointer_qs[i] = &pvec_quadsources[ppw2->index_qs2_phi_prime_poisson];
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]==_TRUE_) && (v>2);
+
+  /* Newtonian curvature potential phi_prime (using the longitudinal equation) */
+  strcpy (label[++i], "phi'L");
+  pointer_tr[i] = &pvecmetric[ppw2->index_mt2_phi_prime_longitudinal];
+  pointer_qs[i] = &pvec_quadsources[ppw2->index_qs2_phi_prime_longitudinal];
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]==_TRUE_) && (v>2);
+
+  /* Newtonian vector potential omega_[1] (evolved) */
+  strcpy (label[++i], "omega_m1");
+  pointer_tr[i] = &y[ppw2->pv->index_pt2_omega_m1];
+  pointer_qs[i] = &pvec_quadsources[ppw2->index_qs2_omega_m1_prime];
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[1]==_TRUE_) && (v>0);
+
+  /* Newtonian vector potential omega_[1] (constraint) */
+  strcpy (label[++i], "omega_m1_c");
+  pointer_tr[i] = &omega_m1_constraint;
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[1]==_TRUE_) && (v>1);
+
+  /* Newtonian tensor potential gamma_[2] */
+  strcpy (label[++i], "gamma_m2");
+  pointer_tr[i] = &y[ppw2->pv->index_pt2_gamma_m2];
+  pointer_qs[i] = &pvec_quadsources[ppw2->index_qs2_gamma_m2_prime_prime];
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[2]==_TRUE_) && (v>0);
+
+  /* Newtonian tensor potential gamma_prime_[2] */
+  strcpy (label[++i], "gamma_m2'");
+  pointer_tr[i] = &y[ppw2->pv->index_pt2_gamma_m2_prime];
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[2]==_TRUE_) && (v>1);
 
 
   // -------------------------------------------------------------------------------
   // -                          Matter domination limits                           -
   // -------------------------------------------------------------------------------
 
-  if (pba->has_cdm == _TRUE_ ) {
-    if (ppr2->compute_m[0] == _TRUE_) {
-      // delta_cdm_analytical
-      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "deltacdm_an", index_print_tr++);
-      else fprintf(file_tr, format_value, delta_cdm_analytical);
-      // u_0_cdm_analytical
-      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "v_0_cdm_an", index_print_tr++);
-      else fprintf(file_tr, format_value, u_0_cdm_analytical);
-    }
-  }
+  /* Newtonian scalar potential on subhorizon scales */
+  strcpy (label[++i], "psi_an");
+  pointer_tr[i] = &psi_analytical;
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]==_TRUE_) && (v>3);
+
+  /* Newtonian vector potential on subhorizon scales */
+  strcpy (label[++i], "omega_m1_an");
+  pointer_tr[i] = &omega_m1_analytical;
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[1]==_TRUE_) && (v>3);
+
+  /* Newtonian tensor potential on subhorizon scales */
+  strcpy (label[++i], "gamma_m2_an");
+  pointer_tr[i] = &gamma_m2_analytical;
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[2]==_TRUE_) && (v>3);
+
+  /* CDM density contrast on subhorizon scales */
+  strcpy (label[++i], "deltacdm_an");
+  pointer_tr[i] = &delta_cdm_analytical;
+  condition[i] = (pba->has_cdm==_TRUE_) && (ppr2->compute_m[0]==_TRUE_) && (v>3);
+
+  /* CDM velocity on subhorizon scales */
+  strcpy (label[++i], "u_0_cdm_an");
+  pointer_tr[i] = &u_0_cdm_analytical;
+  condition[i] = (pba->has_cdm==_TRUE_) && (ppr2->compute_m[0]==_TRUE_) && (v>3);
+
   /* Photon density contrast (RSA) */
-  if (ppr2->compute_m[0] == _TRUE_) {
-    if (ppw2->n_steps==1) fprintf(file_tr, format_label, "delta_g_rsa", index_print_tr++);
-    else fprintf(file_tr, format_value, ppw2->delta_g_rsa);
-  }
+  strcpy (label[++i], "delta_g_rsa");
+  pointer_tr[i] = &ppw2->delta_g_rsa;
+  condition[i] = (ppr2->compute_m[0]==_TRUE_) && (v>3);
+
   /* Photon velocity (RSA) */
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     int m = ppr2->m[index_m];
-    sprintf(buffer, "u_g_m%d_rsa", m);
-    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-    else fprintf(file_tr, format_value, ppw2->u_g_rsa[m]);
+    sprintf (label[++i], "u_g_m%d_rsa", m);
+    pointer_tr[i] = &ppw2->u_g_rsa[m];
+    condition[i] = (v>3);
   }
-  /* Photon diple (RSA) */
+
+  /* Photon dipole (RSA) */
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     int m = ppr2->m[index_m];
-    sprintf(buffer, "I_1_%d_rsa", m);
-    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-    else fprintf(file_tr, format_value, ppw2->I_1m_rsa[m]);
+    sprintf (label[++i], "I_1_%d_rsa", m);
+    pointer_tr[i] = &ppw2->I_1m_rsa[m];
+    condition[i] = (v>3);
   }
+
   /* Neutrino density contrast (RSA) */
-  if (pba->has_ur == _TRUE_) {
-    if (ppr2->compute_m[0] == _TRUE_) {
-      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "delta_ur_rsa", index_print_tr++);
-      else fprintf(file_tr, format_value, ppw2->delta_ur_rsa);
-    }
-  }
+  strcpy (label[++i], "delta_ur_rsa");
+  pointer_tr[i] = &ppw2->delta_ur_rsa;
+  condition[i] = (pba->has_ur==_TRUE_) && (ppr2->compute_m[0]==_TRUE_) && (v>3);
+
   /* Neutrino velocity (RSA) */
-  if (pba->has_ur == _TRUE_) {
-    for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
-      int m = ppr2->m[index_m];
-      sprintf(buffer, "u_ur_m%d_rsa", m);
-      if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-      else fprintf(file_tr, format_value, ppw2->u_ur_rsa[m]);
-    }
+  for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+    int m = ppr2->m[index_m];
+    sprintf (label[++i], "u_ur_m%d_rsa", m);
+    pointer_tr[i] = &ppw2->u_ur_rsa[m];
+    condition[i] = (pba->has_ur==_TRUE_) && (v>3);
   }
+
   /* Neutrino dipole (RSA) */
-  if (pba->has_ur == _TRUE_) {
-    for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
-      int m = ppr2->m[index_m];
-      sprintf(buffer, "N_1_%d_rsa", m);
-      if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-      else fprintf(file_tr, format_value, ppw2->N_1m_rsa[m]);
-    }
+  for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+    int m = ppr2->m[index_m];
+    sprintf (label[++i], "N_1_%d_rsa", m);
+    pointer_tr[i] = &ppw2->N_1m_rsa[m];
+    condition[i] = (pba->has_ur==_TRUE_) && (v>3);
   }
+
 
   // -------------------------------------------------------------------------------
   // -                           Early universe limits                             -
   // -------------------------------------------------------------------------------
 
-  /* Adiabatic velocity */
-  if (ppr2->compute_m[0] == _TRUE_) {
-    if (ppw2->n_steps==1) fprintf(file_tr, format_label, "u_0_adiab", index_print_tr++);
-    else fprintf(file_tr, format_value, u_0_adiabatic);
-  }
+  /* Common initial adiabatic velocity */
+  sprintf (label[++i], "u_0_adiab");
+  pointer_tr[i] = &u_0_adiabatic;
+  condition[i] = (ppr2->compute_m[0]==_TRUE_) && (v>1);
+
   /* Velocity slip (TCA1) */
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     int m = ppr2->m[index_m];
-    sprintf(buffer, "U_slip_tca1_m%d", m);
-    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-    else fprintf(file_tr, format_value, ppw2->U_slip_tca1[m]);
+    sprintf (label[++i], "U_slip_tca1_m%d", m);
+    pointer_tr[i] = &ppw2->U_slip_tca1[m];
+    condition[i] = (v>3);
   }
-  /* Photon velocity (TCA1) */
+
+  /* Photon velocity  (TCA1) */
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     int m = ppr2->m[index_m];
-    sprintf(buffer, "u_g_tca1_m%d", m);
-    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-    else fprintf(file_tr, format_value, ppw2->u_g_tca1[m]);
+    sprintf (label[++i], "u_g_tca1_m%d", m);
+    pointer_tr[i] = &ppw2->u_g_tca1[m];
+    condition[i] = (v>3);
   }
+
   /* Photon dipole (TCA1) */
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     int m = ppr2->m[index_m];
-    sprintf(buffer, "I_1_%d_tca1", m);
-    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-    else fprintf(file_tr, format_value, ppw2->I_1m_tca1[m]);
+    sprintf (label[++i], "I_1_%d_tca1", m);
+    pointer_tr[i] = &ppw2->I_1m_tca1[m];
+    condition[i] = (v>3);
   }
+  
   /* Dipole collision term (TCA1) */
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     int m = ppr2->m[index_m];
-    sprintf(buffer, "C_1_%d_tca1", m);
-    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-    else fprintf(file_tr, format_value, ppw2->C_1m_tca1[m]);
+    sprintf (label[++i], "C_1_%d_tca1", m);
+    pointer_tr[i] = &ppw2->C_1m_tca1[m];
+    condition[i] = (v>3);
   }
+
   /* Dipole collision term (numeric) */
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     int m = ppr2->m[index_m];
-    sprintf(buffer, "C_1_%d", m);
-    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-    else fprintf(file_tr, format_value, ppw2->C_1m[m]);
+    sprintf (label[++i], "C_1_%d", m);
+    pointer_tr[i] = &ppw2->C_1m[m];
+    condition[i] = (v>3);
   }
+
   /* Photon quadrupole (TCA0) */
   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
     int m = ppr2->m[index_m];
-    sprintf(buffer, "I_2_%d_tca0", m);
-    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-    else fprintf(file_tr, format_value, ppw2->I_2m_tca0[m]);
+    sprintf (label[++i], "I_2_%d_tca0", m);
+    pointer_tr[i] = &ppw2->I_2m_tca0[m];
+    condition[i] = (v>3);
   }
+
   /* Photon quadrupole (TCA1) */
   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
     int m = ppr2->m[index_m];
-    sprintf(buffer, "I_2_%d_tca1", m);
-    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-    else fprintf(file_tr, format_value, ppw2->I_2m_tca1[m]);
+    sprintf (label[++i], "I_2_%d_tca1", m);
+    pointer_tr[i] = &ppw2->I_2m_tca1[m];
+    condition[i] = (v>3);
   }
+
   /* Photon shear (TCA1) */
   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
     int m = ppr2->m[index_m];
-    sprintf(buffer, "shear_g_m%d_tca1", m);
-    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-    else fprintf(file_tr, format_value, ppw2->shear_g_tca1[m]);
+    sprintf (label[++i], "shear_g_m%d_tca1", m);
+    pointer_tr[i] = &ppw2->shear_g_tca1[m];
+    condition[i] = (v>3);
   }
+
   /* E-modes quadrupole (TCA1) */
-  if (ppt2->has_polarization2 == _TRUE_) {
-    for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
-      int m = ppr2->m[index_m];
-      sprintf(buffer, "E_2_%d_tca1", m);
-      if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-      else fprintf(file_tr, format_value, ppw2->E_2m_tca1[m]);
-    }
+  for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+    int m = ppr2->m[index_m];
+    sprintf (label[++i], "E_2_%d_tca1", m);
+    pointer_tr[i] = &ppw2->E_2m_tca1[m];
+    condition[i] = (ppt2->has_polarization2==_TRUE_) && (v>3);
   }
+
   /* B-modes quadrupole (TCA1) */
-  if (ppt2->has_polarization2 == _TRUE_) {
-    for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
-      int m = ppr2->m[index_m];
-      sprintf(buffer, "B_2_%d_tca1", m);
-      if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-      else fprintf(file_tr, format_value, ppw2->B_2m_tca1[m]);
-    }
+  for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+    int m = ppr2->m[index_m];
+    sprintf (label[++i], "B_2_%d_tca1", m);
+    pointer_tr[i] = &ppw2->B_2m_tca1[m];
+    condition[i] = (ppt2->has_polarization2==_TRUE_) && (m>0) && (v>3);
   }
+
   /* Pi factor (TCA1) */
-  if (ppt2->has_polarization2 == _TRUE_) {
-    for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
-      int m = ppr2->m[index_m];
-      sprintf(buffer, "pi_m%d", m);
-      if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-      else fprintf(file_tr, format_value, 0.1 * (ppw2->I_2m[m] - sqrt_6*ppw2->E_2m[m]));
-      sprintf(buffer, "pi_m%d_tca1", m);
-      if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-      else fprintf(file_tr, format_value, ppw2->Pi_tca1[m]);
-    }
+  for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+    int m = ppr2->m[index_m];
+    sprintf (label[++i], "pi_m%d_tca1", m);
+    pointer_tr[i] = &ppw2->Pi_tca1[m];
+    condition[i] = (ppt2->has_polarization2==_TRUE_) && (v>3);
+  }
+
+  /* Pi factor (numeric) */
+  double Pi[3];
+  for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+    int m = ppr2->m[index_m];
+    Pi[m] =  0.1 * (ppw2->I_2m[m] - sqrt_6*ppw2->E_2m[m]);
+    sprintf (label[++i], "pi_m%d", m);
+    pointer_tr[i] = &Pi[m];
+    condition[i] = (ppt2->has_polarization2==_TRUE_) && (v>3);
   }
 
 
   // -------------------------------------------------------------------------------
-  // -                               Fluid limit                                   -
+  // -                              Fluid variables                                -
   // -------------------------------------------------------------------------------
 
-  /* - Baryon fluid limit */
+  /* - Baryon fluid variables */
 
-  if (ppr2->compute_m[0] == _TRUE_) {
-    // delta_g_adiab
-    if (ppw2->n_steps==1) fprintf(file_tr, format_label, "delta_g_ad", index_print_tr++);
-    else fprintf(file_tr, format_value, ppw2->delta_g_adiab);
-    // delta_b
-    if (ppw2->n_steps==1)  fprintf(file_tr, format_label, "delta_b", index_print_tr++);
-    else fprintf(file_tr, format_value, ppw2->delta_b);
-    // pressure_b
-    if (ppw2->n_steps==1)  fprintf(file_tr, format_label, "pressure_b", index_print_tr++);
-    else fprintf(file_tr, format_value, ppw2->pressure_b);
-  }
-  // velocity_b[m]
-  for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
-    int m = ppt2->m[index_m];
-    sprintf(buffer, "u_b_m%d", m);
-    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-    else fprintf(file_tr, format_value, ppw2->u_b[m]);
-  }
-  // velocity_b_prime[m]
+  sprintf (label[++i], "delta_g_ad");
+  pointer_tr[i] = &ppw2->delta_g_adiab;
+  condition[i] = (ppr2->compute_m[0]==_TRUE_) && (v>3);
+
+  sprintf (label[++i], "delta_b");
+  pointer_tr[i] = &ppw2->delta_b;
+  condition[i] = (ppr2->compute_m[0]==_TRUE_) && (v>0);
+
+  sprintf (label[++i], "pressure_b");
+  pointer_tr[i] = &ppw2->pressure_b;
+  condition[i] = (ppr2->compute_m[0]==_TRUE_) && (v>4);
+
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     int m = ppr2->m[index_m];
-    sprintf(buffer, "u_b_m%d_prime", m);
-    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-    else fprintf(file_tr, format_value, db(1,1,m)/3
-      - ppw2->delta_b_1_prime*ppw2->u_b_2[m] - ppw2->delta_b_2_prime*ppw2->u_b_1[m]
-      - ppw2->delta_b_1*ppw2->u_b_2_prime[m] - ppw2->delta_b_2*ppw2->u_b_1_prime[m]);
+    sprintf (label[++i], "u_b_m%d", m);
+    pointer_tr[i] = &ppw2->u_b[m];
+    condition[i] = (v>0);
   }
-  // shear_b[m]
+
+  double u_b_prime[2];
+  for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+    int m = ppr2->m[index_m];
+    u_b_prime[m] = db(1,1,m)/3
+        - ppw2->delta_b_1_prime*ppw2->u_b_2[m] - ppw2->delta_b_2_prime*ppw2->u_b_1[m]
+        - ppw2->delta_b_1*ppw2->u_b_2_prime[m] - ppw2->delta_b_2*ppw2->u_b_1_prime[m];
+    sprintf (label[++i], "u_b_m%d_prime", m);
+    pointer_tr[i] = &u_b_prime[m];
+    condition[i] = (v>2);
+  }
+
   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
     int m = ppr2->m[index_m];
-    sprintf(buffer, "shear_b_m%d", m);
-    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-    else fprintf(file_tr, format_value, ppw2->shear_b[m]);
+    sprintf (label[++i], "shear_b_m%d", m);
+    pointer_tr[i] = &ppw2->shear_b[m];
+    condition[i] = (v>4);
   }
 
-  /* - CDM fluid limit */
+  /* - CDM fluid variables */
 
-  if (pba->has_cdm == _TRUE_ ) {
-    if (ppr2->compute_m[0] == _TRUE_) {
-      // delta_cdm
-      if (ppw2->n_steps==1)  fprintf(file_tr, format_label, "delta_cdm", index_print_tr++);
-      else fprintf(file_tr, format_value, ppw2->delta_cdm);
-      // pressure_cdm
-      if (ppw2->n_steps==1)  fprintf(file_tr, format_label, "pressure_cdm", index_print_tr++);
-      else fprintf(file_tr, format_value, ppw2->pressure_cdm);
-    }
-    // velocity_cdm[m]
-    if (ppt->gauge != synchronous) {
-      for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
-        int m = ppt2->m[index_m];
-        sprintf(buffer, "u_cdm_m%d", m);
-        if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-        else fprintf(file_tr, format_value, ppw2->u_cdm[m]);
-      }
-    }
-    // shear_cdm[m]
-    for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
-      int m = ppr2->m[index_m];
-      sprintf(buffer, "shear_cdm_m%d", m);
-      if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-      else fprintf(file_tr, format_value, ppw2->shear_cdm[m]);
-    }
-  }
+  sprintf (label[++i], "delta_cdm");
+  pointer_tr[i] = &ppw2->delta_cdm;
+  condition[i] = (pba->has_cdm==_TRUE_) && (ppr2->compute_m[0]==_TRUE_) && (v>0);
 
-  /* - Photon fluid limit */
+  sprintf (label[++i], "pressure_cdm");
+  pointer_tr[i] = &ppw2->pressure_cdm;
+  condition[i] = (pba->has_cdm==_TRUE_) && (ppr2->compute_m[0]==_TRUE_) && (v>4);
 
-  if (ppr2->compute_m[0] == _TRUE_) {
-    // delta_g
-    if (ppw2->n_steps==1)  fprintf(file_tr, format_label, "delta_g", index_print_tr++);
-    else fprintf(file_tr, format_value, ppw2->delta_g);
-    // pressure_g
-    if (ppw2->n_steps==1) fprintf(file_tr, format_label, "pressure_g", index_print_tr++);
-    else fprintf(file_tr, format_value, ppw2->pressure_g);
-  }
-  // velocity_g[m]
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     int m = ppr2->m[index_m];
-    sprintf(buffer, "u_g_m%d", m);
-    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-    else fprintf(file_tr, format_value, ppw2->u_g[m]);
+    sprintf (label[++i], "u_cdm_m%d", m);
+    pointer_tr[i] = &ppw2->u_cdm[m];
+    condition[i] = (pba->has_cdm==_TRUE_) && (ppt->gauge != synchronous) && (v>0);
   }
-  // shear_g[m]
+
   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
     int m = ppr2->m[index_m];
-    sprintf(buffer, "shear_g_m%d", m);
-    if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-    else fprintf(file_tr, format_value, ppw2->shear_g[m]);
+    sprintf (label[++i], "shear_cdm_m%d", m);
+    pointer_tr[i] = &ppw2->shear_cdm[m];
+    condition[i] = (pba->has_cdm==_TRUE_) && (v>4);
   }
 
-  /* - Neutrino fluid limit */
+  /* - Photon fluid variables */
 
-  if (pba->has_ur == _TRUE_) {
-    if (ppr2->compute_m[0] == _TRUE_) {
-      // delta_ur
-      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "delta_ur", index_print_tr++);
-      else fprintf(file_tr, format_value, ppw2->delta_ur);
-      // pressure_ur
-      if (ppw2->n_steps==1) fprintf(file_tr, format_label, "pressure_ur", index_print_tr++);
-      else fprintf(file_tr, format_value, ppw2->pressure_ur);
-    }
-    // velocity_ur[m]
-    for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
-      int m = ppr2->m[index_m];
-      sprintf(buffer, "u_ur_m%d", m);
-      if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-      else fprintf(file_tr, format_value, ppw2->u_ur[m]);
-    }
-    // shear_ur[m]
-    for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
-      int m = ppr2->m[index_m];
-      sprintf(buffer, "shear_ur_m%d", m);
-      if (ppw2->n_steps==1) fprintf(file_tr, format_label, buffer, index_print_tr++);
-      else fprintf(file_tr, format_value, ppw2->shear_ur[m]);
-    }
+  sprintf (label[++i], "delta_g");
+  pointer_tr[i] = &ppw2->delta_g;
+  condition[i] = (ppr2->compute_m[0]==_TRUE_) && (v>0);
+
+  sprintf (label[++i], "pressure_g");
+  pointer_tr[i] = &ppw2->pressure_g;
+  condition[i] = (ppr2->compute_m[0]==_TRUE_) && (v>4);
+
+  for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+    int m = ppr2->m[index_m];
+    sprintf (label[++i], "u_g_m%d", m);
+    pointer_tr[i] = &ppw2->u_g[m];
+    condition[i] = (v>0);
+  }
+
+  for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+    int m = ppr2->m[index_m];
+    sprintf (label[++i], "shear_g_m%d", m);
+    pointer_tr[i] = &ppw2->shear_g[m];
+    condition[i] = (v>0);
+  }
+
+
+  /* - Neutrino fluid variables */
+
+  sprintf (label[++i], "delta_ur");
+  pointer_tr[i] = &ppw2->delta_ur;
+  condition[i] = (pba->has_ur==_TRUE_) && (ppr2->compute_m[0]==_TRUE_) && (v>0);
+
+  sprintf (label[++i], "pressure_ur");
+  pointer_tr[i] = &ppw2->pressure_ur;
+  condition[i] = (pba->has_ur==_TRUE_) && (ppr2->compute_m[0]==_TRUE_) && (v>4);
+
+  for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
+    int m = ppr2->m[index_m];
+    sprintf (label[++i], "u_ur_m%d", m);
+    pointer_tr[i] = &ppw2->u_ur[m];
+    condition[i] = (pba->has_ur==_TRUE_) && (v>0);
+  }
+
+  for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
+    int m = ppr2->m[index_m];
+    sprintf (label[++i], "shear_ur_m%d", m);
+    pointer_tr[i] = &ppw2->shear_ur[m];
+    condition[i] = (pba->has_ur==_TRUE_) && (v>0);
   }
 
 
@@ -13362,68 +13363,47 @@ int perturb2_save_perturbations (
 
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
         int m = ppr2->m[index_m];
-        sprintf(buffer, "b_%d_%d_%d", n, l, m);
-        if (ppw2->n_steps==1) {
-          fprintf(file_tr, format_label, buffer, index_print_tr++);
-          fprintf(file_qs, format_label, buffer, index_print_qs++);
-        }
-        else {
-          fprintf(file_tr, format_value, b(n,l,m));
-          fprintf(file_qs, format_value, db_qs2(n,l,m));
-        }
+        sprintf (label[++i], "b_%d_%d_%d", n, l, m);
+        pointer_tr[i] = &y[ppw2->pv->index_pt2_monopole_b + nlm(n,l,m)];
+        pointer_qs[i] = &ppw2->pvec_quadsources[ppw2->index_qs2_monopole_b + nlm(n,l,m)];
+        condition[i] = (v > ((l+2)/2));
       }
     }
   }
 
   /* - CDM multipoles */
+  
+  for (int n=0; n <= ppw2->pv->n_max_cdm; ++n) {
+    for (int l=0; l <= ppw2->pv->l_max_cdm; ++l) {
+      if ((l!=n) && (l!=0)) continue;
+      if ((l==0) && (n%2!=0)) continue;
+      if (ppt2->has_perfect_cdm == _TRUE_)
+        if ((n>1)||(l>1)) continue;
+      if ((ppt->gauge==synchronous) && (l==1))
+        continue;
 
-  if (pba->has_cdm == _TRUE_) {
-    for (int n=0; n <= ppw2->pv->n_max_cdm; ++n) {
-      for (int l=0; l <= ppw2->pv->l_max_cdm; ++l) {
-        if ((l!=n) && (l!=0)) continue;
-        if ((l==0) && (n%2!=0)) continue;
-        if (ppt2->has_perfect_cdm == _TRUE_)
-          if ((n>1)||(l>1)) continue;
-
-        for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
-          int m = ppr2->m[index_m];
-          sprintf(buffer, "cdm_%d_%d_%d", n, l, m);
-          if (ppw2->n_steps==1) {
-            fprintf(file_tr, format_label, buffer, index_print_tr++);
-            fprintf(file_qs, format_label, buffer, index_print_qs++);
-          }
-          else {
-            fprintf(file_tr, format_value, cdm(n,l,m));
-            fprintf(file_qs, format_value, dcdm_qs2(n,l,m));
-          }
-        }
+      for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+        int m = ppr2->m[index_m];
+        sprintf (label[++i], "cdm_%d_%d_%d", n, l, m);
+        pointer_tr[i] = &y[ppw2->pv->index_pt2_monopole_cdm + nlm(n,l,m)];
+        pointer_qs[i] = &ppw2->pvec_quadsources[ppw2->index_qs2_monopole_cdm + nlm(n,l,m)];
+        condition[i] = (pba->has_cdm==_TRUE_) && (v > ((l+2)/2));
       }
     }
   }
 
   /* - Photon temperature multipoles */
 
-  int l_max_g = MIN(ppw2->l_max_g, ppt2->l_max_debug);
-
-  for (int l=0; l<=l_max_g; ++l) {
+  for (int l=0; l<=ppw2->l_max_g; ++l) {
     for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
       int m = ppr2->m[index_m];
-      sprintf(buffer, "I_%d_%d", l, m);
-      if (ppw2->n_steps==1) {
-        fprintf(file_tr, format_label, buffer, index_print_tr++);
-        fprintf(file_qs, format_label, buffer, index_print_qs++);
-      }
-      else {
-        if (l==0)
-          fprintf(file_tr, format_value, ppw2->I_00);
-        else if (l==1)
-          fprintf(file_tr, format_value, ppw2->I_1m[m]);
-        else if (l==2)
-          fprintf(file_tr, format_value, ppw2->I_2m[m]);
-        else
-          fprintf(file_tr, format_value, I(l,m));
-        fprintf(file_qs, format_value, dI_qs2(l,m));
-      }
+      sprintf (label[++i], "I_%d_%d", l, m);
+      if (l == 0) pointer_tr[i] = &ppw2->I_00;
+      else if (l==1) pointer_tr[i] = &ppw2->I_1m[m];
+      else if (l==2) pointer_tr[i] = &ppw2->I_2m[m];
+      else pointer_tr[i] = &y[ppw2->pv->index_pt2_monopole_g + lm(l,m)];
+      pointer_qs[i] = &ppw2->pvec_quadsources[ppw2->index_qs2_monopole_g + lm(l,m)];
+      condition[i] = (v > ((l+2)/2));
     }
   }
 
@@ -13431,85 +13411,51 @@ int perturb2_save_perturbations (
 
   if (ppt2->has_polarization2 == _TRUE_) {
 
-    int l_max_pol_g = MIN(ppw2->l_max_pol_g, ppt2->l_max_debug);
-
-    if (ppt2->tight_coupling_approximation != tca2_none)
-      l_max_g = MIN (l_max_g,1);
-
-    /* E-mode polarization */
-    for (int l=2; l<=l_max_pol_g; ++l) {
+    /* E-modes */
+    for (int l=2; l<=ppw2->l_max_pol_g; ++l) {
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
         int m = ppr2->m[index_m];
-        sprintf(buffer, "E_%d_%d", l, m);
-        if (ppw2->n_steps==1) {
-          fprintf(file_tr, format_label, buffer, index_print_tr++);
-          fprintf(file_qs, format_label, buffer, index_print_qs++);
-        }
-        else {
-          if (l==2)
-            fprintf(file_tr, format_value, ppw2->E_2m[m]);
-          else
-            fprintf(file_tr, format_value, E(l,m));
-          fprintf(file_qs, format_value, dE_qs2(l,m));
-        }
+        sprintf (label[++i], "E_%d_%d", l, m);
+        if (l==2) pointer_tr[i] = &ppw2->E_2m[m];
+        else pointer_tr[i] = &y[ppw2->pv->index_pt2_monopole_E + lm(l,m)];
+        pointer_qs[i] = &ppw2->pvec_quadsources[ppw2->index_qs2_monopole_E + lm(l,m)];
+        condition[i] = (ppt2->has_polarization2==_TRUE_) && (v > (l/2));
       }
     }
 
-    /* B-mode polarization */
-    for (int l=2; l<=l_max_pol_g; ++l) {
+    /* B-modes */
+    for (int l=2; l<=ppw2->l_max_pol_g; ++l) {
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
         int m = ppr2->m[index_m];
-        sprintf(buffer, "B_%d_%d", l, m);
-        if (ppw2->n_steps==1) {
-         fprintf(file_tr, format_label, buffer, index_print_tr++);
-         fprintf(file_qs, format_label, buffer, index_print_qs++);
-        }
-        else {
-          if (l==2)
-            fprintf(file_tr, format_value, ppw2->B_2m[m]);
-          else
-            fprintf(file_tr, format_value, B(l,m));
-         fprintf(file_qs, format_value, dB_qs2(l,m));
-        }
+        sprintf (label[++i], "B_%d_%d", l, m);
+        if (l==2) pointer_tr[i] = &ppw2->B_2m[m];
+        else pointer_tr[i] = &y[ppw2->pv->index_pt2_monopole_B + lm(l,m)];
+        pointer_qs[i] = &ppw2->pvec_quadsources[ppw2->index_qs2_monopole_B + lm(l,m)];
+        condition[i] = (ppt2->has_polarization2==_TRUE_) && (m>0) && (v > (l/2));
       }
     }
-
-  } // end of if(has_polarization2)
+  }
 
   /* - Neutrino multipoles */
 
-  if (pba->has_ur == _TRUE_) {
-
-    int l_max_ur = MIN(ppw2->l_max_ur, ppt2->l_max_debug);
-
-    for (int l=0; l<=l_max_ur; ++l) {
-      for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
-        int m = ppr2->m[index_m];
-        sprintf(buffer, "N_%d_%d", l, m);
-        if (ppw2->n_steps==1) {
-          fprintf(file_tr, format_label, buffer, index_print_tr++);
-          fprintf(file_qs, format_label, buffer, index_print_qs++);
-        }
-        else {
-          if (l==0)
-            fprintf(file_tr, format_value, ppw2->N_00);
-          else if (l==1)
-            fprintf(file_tr, format_value, ppw2->N_1m[m]);
-          else
-            fprintf(file_tr, format_value, N(l,m));
-          fprintf(file_qs, format_value, dN_qs2(l,m));
-        }
-      }
+  for (int l=0; l<=ppw2->l_max_ur; ++l) {
+    for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+      int m = ppr2->m[index_m];
+      sprintf (label[++i], "N_%d_%d", l, m);
+      if (l == 0) pointer_tr[i] = &ppw2->N_00;
+      else if (l==1) pointer_tr[i] = &ppw2->N_1m[m];
+      else pointer_tr[i] = &y[ppw2->pv->index_pt2_monopole_ur + lm(l,m)];
+      pointer_qs[i] = &ppw2->pvec_quadsources[ppw2->index_qs2_monopole_ur + lm(l,m)];
+      condition[i] = (pba->has_ur==_TRUE_) && (v > ((l+2)/2));
     }
-  }  // end of if(has_ur)
+  }
 
-  /* - Time derivatives of the neutrino multipoles (careful with RSA or NRA )*/
+
+  /* - Time derivatives of the neutrino multipoles (careful with RSA or NRA) */
 
   // if (pba->has_ur == _TRUE_) {
   //
-  //   int l_max_ur = MIN(ppw2->l_max_ur, ppt2->l_max_debug);
-  //
-  //   for (int l=0; l<=l_max_ur; ++l) {
+  //   for (int l=0; l<=ppw2->l_max_ur; ++l) {
   //     for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
   //       int m = ppr2->m[index_m];
   //       sprintf(buffer, "dN_%d_%d", l, m);
@@ -13536,72 +13482,7 @@ int perturb2_save_perturbations (
 
 
   // -------------------------------------------------------------------------------
-  // -                             Background & misc                               -
-  // -------------------------------------------------------------------------------
-
-  sprintf(buffer, "kappa_dot");
-  if (ppw2->n_steps==1) {
-   fprintf(file_tr, format_label, buffer, index_print_tr++);
-   fprintf(file_qs, format_label, buffer, index_print_qs++);
-  }
-  else {
-   fprintf(file_tr, format_value, kappa_dot);
-   fprintf(file_qs, format_value, kappa_dot);
-  }
-
-  sprintf(buffer, "exp_m_kappa");
-  if (ppw2->n_steps==1) {
-   fprintf(file_tr, format_label, buffer, index_print_tr++);
-   fprintf(file_qs, format_label, buffer, index_print_qs++);
-  }
-  else {
-   fprintf(file_tr, format_value, pvecthermo[pth->index_th_exp_m_kappa]);
-   fprintf(file_qs, format_value, pvecthermo[pth->index_th_exp_m_kappa]);
-  }
-
-  sprintf(buffer, "g");
-  if (ppw2->n_steps==1) {
-   fprintf(file_tr, format_label, buffer, index_print_tr++);
-   fprintf(file_qs, format_label, buffer, index_print_qs++);
-  }
-  else {
-   fprintf(file_tr, format_value, pvecthermo[pth->index_th_g]);
-   fprintf(file_qs, format_value, pvecthermo[pth->index_th_g]);
-  }
-
-  sprintf(buffer, "xe");
-  if (ppw2->n_steps==1) {
-   fprintf(file_tr, format_label, buffer, index_print_tr++);
-   fprintf(file_qs, format_label, buffer, index_print_qs++);
-  }
-  else {
-   fprintf(file_tr, format_value, pvecthermo[pth->index_th_xe]);
-   fprintf(file_qs, format_value, pvecthermo[pth->index_th_xe]);
-  }
-
-  sprintf(buffer, "H");
-  if (ppw2->n_steps==1) {
-   fprintf(file_tr, format_label, buffer, index_print_tr++);
-   fprintf(file_qs, format_label, buffer, index_print_qs++);
-  }
-  else {
-   fprintf(file_tr, format_value, pvecback[pba->index_bg_H]);
-   fprintf(file_qs, format_value, pvecback[pba->index_bg_H]);
-  }
-
-  sprintf(buffer, "Hc");
-  if (ppw2->n_steps==1) {
-   fprintf(file_tr, format_label, buffer, index_print_tr++);
-   fprintf(file_qs, format_label, buffer, index_print_qs++);
-  }
-  else {
-   fprintf(file_tr, format_value, a*pvecback[pba->index_bg_H]);
-   fprintf(file_qs, format_value, a*pvecback[pba->index_bg_H]);
-  }
-
-
-  // -------------------------------------------------------------------------------
-  // -                             Source functions                                -
+  // -                              Source function                                -
   // -------------------------------------------------------------------------------
 
   /* Printing of sources is disabled since CLASS v2. The reason is
@@ -13659,10 +13540,119 @@ int perturb2_save_perturbations (
   //     }
   //   }
   // }
-
-  fprintf(file_tr, "\n");
-  fprintf(file_qs, "\n");
   
+  
+  // -------------------------------------------------------------------------------
+  // -                             Background & misc                               -
+  // -------------------------------------------------------------------------------
+
+  sprintf (label[++i], "kappa_dot");
+  pointer_tr[i] = &kappa_dot;
+  pointer_qs[i] = &kappa_dot;
+  condition[i] = (v>2);
+
+  sprintf (label[++i], "exp_m_kappa");
+  pointer_tr[i] = &pvecthermo[pth->index_th_exp_m_kappa];
+  pointer_qs[i] = &pvecthermo[pth->index_th_exp_m_kappa];
+  condition[i] = (v>2);
+  
+  sprintf (label[++i], "g");
+  pointer_tr[i] = &pvecthermo[pth->index_th_g];
+  pointer_qs[i] = &pvecthermo[pth->index_th_g];
+  condition[i] = (v>2);
+  
+  sprintf (label[++i], "xe");
+  pointer_tr[i] = &pvecthermo[pth->index_th_xe];
+  pointer_qs[i] = &pvecthermo[pth->index_th_xe];
+  condition[i] = (v>2);
+  
+  sprintf (label[++i], "H");
+  pointer_tr[i] = &pvecback[pba->index_bg_H];
+  pointer_qs[i] = &pvecback[pba->index_bg_H];
+  condition[i] = (v>2);
+  
+  sprintf (label[++i], "Hc");
+  pointer_tr[i] = &Hc;
+  pointer_qs[i] = &Hc;
+  condition[i] = (v>2);
+
+  
+  // -------------------------------------------------------------------------------
+  // -                             Write perturbations                             -
+  // -------------------------------------------------------------------------------
+
+  /* Maximum number of columns that will be written */
+  int n_max_columns = i;  
+  class_test (n_max_columns > _MAX_NUM_COLUMNS_,
+    ppt2->error_message,
+    "too many columns; raise _MAX_NUM_COLUMNS_ to at least %d",
+    _MAX_NUM_COLUMNS_);
+
+  /* Shortcut to the file with the perturbations for this k triplet */
+  FILE * file_tr = ppt2->k_out_files[ppw2->index_k_out];
+
+  /* Choose how label & values should be formatted */
+  char format_label[64] = "%18s(%02d) ";
+  char format_value[64] = "%+22.11e ";
+
+  /* Write an information header */
+  if (ppw2->n_steps==1) {
+    char line[1024];
+    sprintf (line, "Second-order perturbations tabulated as a function of conformal time tau for fixed (k1,k2,k3).");
+    fprintf (file_tr, "%s%s\n", _COMMENT_, line);
+    fprintf (file_tr, "%s", ppw2->file_header);
+  }
+
+  /* Write row with labels */
+  int n_columns_tr = 1;
+  if (ppw2->n_steps == 1) {
+    for (int i=0; i < n_max_columns; ++i)
+      if ((condition[i]) && (pointer_tr[i]!=NULL))
+        fprintf (file_tr, format_label, label[i], n_columns_tr++);
+    fprintf (file_tr, "\n");
+  }
+
+  /* Write row with data to file */
+  for (int i=0; i < n_max_columns; ++i)
+    if ((condition[i]) && (pointer_tr[i]!=NULL))
+      fprintf (file_tr, format_value, *((double *)pointer_tr[i]));
+  fprintf (file_tr, "\n");
+
+
+  // -------------------------------------------------------------------------------
+  // -                          Write quadratic sources                            -
+  // -------------------------------------------------------------------------------
+
+  if (ppt2->output_quadratic_sources == _TRUE_) {
+
+    /* Shortcut to the file with the quadratic sources for this k triplet */
+    FILE * file_qs = ppt2->k_out_files_quad[ppw2->index_k_out];
+
+    /* Write an information header */
+    if (ppw2->n_steps==1) {
+      char line[1024];
+      sprintf (line, "Quadratic soruces for the second-order system, tabulated as a function of conformal time tau for fixed (k1,k2,k3).");
+      fprintf (file_qs, "%s%s\n", _COMMENT_, line);
+      fprintf (file_qs, "%s", ppw2->file_header);
+    }
+
+    /* Write row with labels */
+    int n_columns_qs = 1;
+    if (ppw2->n_steps == 1) {
+      for (int i=0; i < n_max_columns; ++i)
+        if ((condition[i]) && (pointer_qs[i]!=NULL))
+          fprintf (file_qs, format_label, label[i], n_columns_qs++);
+      fprintf (file_qs, "\n");
+    }
+
+    /* Write row with data to file */
+    for (int i=0; i < n_max_columns; ++i)
+      if ((condition[i]) && (pointer_qs[i]!=NULL))
+        fprintf (file_qs, format_value, *((double *)pointer_qs[i]));
+    fprintf (file_qs, "\n");
+
+  }
+
   return _SUCCESS_;
 
 }
@@ -13972,318 +13962,718 @@ int perturb2_quadratic_sources_at_tau_spline (
  * the source function for that index_k1. Its purpose is to copy the source 
  * function from the array ppt2->sources to binary files for later use.
  *
- * perturb2_output() produces two kinds of outputs:
+ * perturb2_output() produces three kinds of files:
  *
- * -# The source function S_lm(k1,k2,k3,tau) tabulated as a function of 
- *    (l,m,k3,tau) for fixed k1 and k2. The values of k1 and k2 are read
- *    from the parameters k1_out and k2_out; one binary file is produced
- *    for each (k1,k2) pair provided in such way.  Each file usually weights
- *    less than 1 MB. The files include accessory data (eg. tau and k3
- *    samplings) to allow access outside of SONG, and a ASCII header file
- *    explaining how to access this information. The purpose of this output
- *    is to inspect and plot the source function in a quick way. The produced
- *    files are progressively named sources_song_kXXX_2D.dat.
+ * -# The SOURCE files, each containing the source function S_lm(k1,k2,k3,tau)
+ *    for all types (T,E,B,delta_cdm...), multipoles (l,m), times (tau) and k3
+ *    wavemodes (k3). One file is produced for each (k1,k2) pair from the lists
+ *    k1_out and k2_out. Each file usually weights less than 1 MB; it includes
+ *    accessory data (eg. tau and k3 samplings) and a ASCII header file explaining
+ *    how to access this information. The purpose of the source files is to inspect
+ *    and plot the source function in a quick way, without needing to use SONG. The
+ *    source files are progressively named sources_song_kXXX.dat.
  *
- * -# The full source function for a fixed k1. This output is much more
- *    sizeable than the previous one because it includes also the k2 dimension.
- *    Its purpose is to free memory at the cost of using disk space. A binary
- *    file is produced for each k1 value in ppt2->k. After the binary files are
- *    produced, the source function is freed. If the source function is needed
- *    again, one has to load it using the function perturb2_load_sources_from_disk().
- *    This is indeed what we do in the transfer2.c module and in print_sources2.c.
- *    The output files contain only the data in ppt2->sources; to inspect and plot
- *    this data, use print_sources2.c. The files are created only if
- *    ppr2->store_sources_to_disk==_TRUE_; they are progressively named sources_XXX.dat
- *    and are placed in the run directory.
+ * -# The TRANSFER files, each containing the source function S_lm(k1,k2,k3,tau)
+ *    for a fixed conformal time tau (specified via tau_out) or redshift z (specified
+ *    via z_out). Each file includes accessory data (eg. k1, k2 and k3 samplings) and
+ *    a ASCII header file explaining how to access this information. The purpose of
+ *    the transfer files is to inspect and plot the source function in a quick way,
+ *    without needing to use SONG. The source files are progressively named
+ *    sources_song_tauXXX.dat and sources_song_zXXX.dat
+ *
+ * -# The STORAGE files, each containing the source function S_lm(k1,k2,k3,tau)
+ *    for a fixed k1. With respect to the source files, the storage files also
+ *    include the k2 dimension, but they lack accessory data. Their purpose is
+ *    to save memory space at the expense of disk space, and to run SONG very
+ *    quickly by precomputing the source function. The source function in k1
+ *    is freed as soon as the binary files is produced. When the source function
+ *    will be needed again, like in the transfer2.c module, it will be loaded
+ *    back into ppt2->sources from disk using perturb2_load_sources_from_disk().
+ *    To inspect and plot the data in the storage files, you need to use
+ *    print_sources2.c. The files are created only if ppr2->store_sources_to_disk
+ *    is true, are placed in the run directory, and are progressively named
+ *    sources_XXX.dat
  */
 
 int perturb2_output(
+        struct precision * ppr,
         struct precision2 * ppr2,
         struct background * pba,
         struct perturbs * ppt,
-        struct perturbs2 * ppt2,
-        int index_k1
+        struct perturbs2 * ppt2
         )
 {
+  
+  if (ppt2->perturbations2_verbose > 0)
+    printf (" -> computing output files for the sources\n");
+
+  /* Binary files produced by this function will have a human-readable ASCII
+  header. It will include information on the cosmological parameters and on the
+  perturbations, plus a binary map useful to understand how to access the data
+  in the binary file. */
+  int header_size = 
+    _MAX_INFO_SIZE_ + /* For background information */
+    _MAX_INFO_SIZE_ + /* For perturbations information */
+    _MAX_INFO_SIZE_ + /* For other information */
+    _MAX_INFO_SIZE_ + _MAX_LINE_LENGTH_*ppt2->tp2_size; /* For binary map */
+  
 
   // ====================================================================================
   // =                            Output sources in (k3,tau)                            =
   // ====================================================================================
 
-  /* Save the source function to disk only for specific pairs of (k1,k2). 
-  Each binary file will contain all source types (T,E,B,delta_cdm,...)
+  /* Save the source function to disk only for specific pairs of (k1,k2). Each binary
+  file will contain all source types (T,E,B,delta_cdm,...) and multipoles (l,m)
   tabulated a function of tau and k3 */
-  
+
   for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
+  
+    /* We shall create a binary file for each k1 and k2 value in k1_out and k2_out */
+    int index_k1 = ppt2->index_k1_out[index_k_out];
+    int index_k2 = ppt2->index_k2_out[index_k_out];
+    double k1 = ppt2->k[index_k1];
+    double k2 = ppt2->k[index_k2];
 
-    if (index_k1 == ppt2->index_k1_out[index_k_out]) {
-    
-      /* We shall create a binary file for each k1 and k2 value in k1_out and k2_out */
-      int index_k2 = ppt2->index_k2_out[index_k_out];
-
-      /* Shortcuts */
-      int k3_size = ppt2->k3_size[index_k1][index_k2];
-      int k3_tau_block_size = k3_size * ppt2->tau_size;
-
-      /* Define a new binary file structure */
-      struct binary_file * file;
-      class_alloc (file, sizeof(struct binary_file), ppt2->error_message);
-
-      /* Maximum size of the header file */
-      int header_size = _MAX_INFO_SIZE_ + 4096;
-      
-      /* Open the binary file */
-      class_call (binary_init (
-                    file,
-                    &(ppt2->k_out_files_sources[index_k_out]),
-                    ppt2->k_out_paths_sources[index_k_out],
-                    header_size),
-        file->error_message,
+    /* Load the source function from disk if needed */
+    if (ppr2->store_sources_to_disk == _TRUE_) {
+      class_call (perturb2_allocate_k1_level(ppt2, index_k1),
+        ppt2->error_message,
         ppt2->error_message);
-
-
-      // ---------------------------------------------------------------------------
-      // -                            Print information                            -
-      // ---------------------------------------------------------------------------
-
-      /* Get the time of opening */
-      time_t now;
-      struct tm *d;
-      time(&now);
-      d = localtime(&now);
-      char date[64];
-      strftime(date, 64, "%d/%m/%Y, %H:%M:%S", d);
-
-      /* Add information to the file header */
-      binary_sprintf (file, "Table of the source function S_lm(k1,k2,k3,tau) tabulated as a function of (l,m,k3,tau) for fixed k1 and k2.");
-      binary_sprintf (file, "This binary file was generated by SONG (%s) on %s.", _SONG_URL_, date);
-      binary_sprintf (file, "");
-      sprintf (file->header, "%s%s", file->header, pba->info);
-      file->header_size += strlen (pba->info) + 1;
-      binary_sprintf (file, "");
-      binary_sprintf (file, "Information on the perturbations:");
-      binary_sprintf (file, "k1 = %g, k2 = %g", ppt2->k[index_k1], ppt2->k[index_k2]);
-      binary_sprintf (file, "index_k1 = %d/%d, index_k2 = %d/%d", index_k1, ppt2->k_size-1, index_k2, ppt2->k_size-1);
-      if (ppt->gauge == newtonian) binary_sprintf(file, "gauge = newtonian");
-      if (ppt->gauge == synchronous) binary_sprintf(file, "gauge = synchronous");
-
-
-      // ---------------------------------------------------------------------------
-      // -                                Build blocks                             -
-      // ---------------------------------------------------------------------------
-
-      char desc[1024];
-      char name[1024];
-
-      /* Build the content of each memory block */
-
-      sprintf (desc, "size of tau array (=%d)", ppt2->tau_size);
-      sprintf (name, "ppt2->tau_size", ppt2->tau_size);
-      class_call (binary_append (
-                    file,
-                    &ppt2->tau_size,
-                    1,
-                    sizeof (int),
-                    desc,
-                    "int",
-                    name),
-        file->error_message,
+      class_call(perturb2_load_sources_from_disk(ppt2, index_k1),
+        ppt2->error_message,
         ppt2->error_message);
-                          
-      sprintf (desc, "tau_array", ppt2->tau_size);
-      sprintf (name, "ppt2->tau_sampling", ppt2->tau_size);
-      class_call (binary_append (
-                    file,
-                    ppt2->tau_sampling,
-                    ppt2->tau_size,
-                    sizeof (double),
-                    desc,
-                    "double",
-                    name),
-        file->error_message,
+    }
+
+    /* Define a new binary file structure */
+    struct binary_file * file;
+    class_alloc (file, sizeof(struct binary_file), ppt2->error_message);
+  
+    /* Open the binary file */
+    class_call (binary_init (
+                  file,
+                  &(ppt2->k_out_files_sources[index_k_out]),
+                  ppt2->k_out_paths_sources[index_k_out],
+                  "a",
+                  header_size),
+      file->error_message,
+      ppt2->error_message);
+
+
+    // ---------------------------------------------------------------------------
+    // -                              Accessory data                             -
+    // ---------------------------------------------------------------------------
+
+    /* Shortcuts */
+    int k3_size = ppt2->k3_size[index_k1][index_k2];
+    int k3_tau_block_size = k3_size * ppt2->tau_size;
+
+    /* Extract background quantities */
+    double a[ppt2->tau_size];
+    double H[ppt2->tau_size];
+    double pvecback[pba->bg_size];
+    int dump;
+
+    for (int index_tau=0; index_tau < ppt2->tau_size; ++index_tau) {
+
+      class_call (background_at_tau(pba,
+                   ppt2->tau_sampling[index_tau],
+                   pba->long_info,
+                   pba->inter_normal,
+                   &dump,
+                   pvecback),
+        pba->error_message,
         ppt2->error_message);
-
-      sprintf (desc, "size of k3 array (=%d)", k3_size);
-      sprintf (name, "ppt2->k3_size[index_k1=%d][index_k2=%d]", index_k1, index_k2);
-      class_call (binary_append (
-                    file,
-                    &k3_size,
-                    1,
-                    sizeof (int),
-                    desc,
-                    "int",
-                    name),
-        file->error_message,
-        ppt2->error_message);
-
-      sprintf (desc, "k3_array");
-      sprintf (name, "ppt2->k3[index_k1=%d][index_k2=%d]", index_k1, index_k2);
-      class_call (binary_append (
-                    file,
-                    ppt2->k3[index_k1][index_k2],
-                    k3_size,
-                    sizeof (double),
-                    desc,
-                    "double",
-                    name),
-        file->error_message,
-        ppt2->error_message);
-
-      sprintf (desc, "number of source types, including l,m (=%d)", ppt2->tp2_size);
-      sprintf (name, "ppt2->tp2_size");
-      class_call (binary_append (
-                    file,
-                    &ppt2->tp2_size,
-                    1,
-                    sizeof (int),
-                    desc,
-                    "int",
-                    name),
-        file->error_message,
-        ppt2->error_message);
-
-      int label_size = _MAX_LENGTH_LABEL_;
-      sprintf (desc, "length of a source type name (=%d)", _MAX_LENGTH_LABEL_);
-      sprintf (name, "_MAX_LENGTH_LABEL_");
-      class_call (binary_append (
-                    file,
-                    &label_size,
-                    1,
-                    sizeof (int),
-                    desc,
-                    "int",
-                    name),
-        file->error_message,
-        ppt2->error_message);
-
-      sprintf (desc, "array of source type names (each has %d char)", _MAX_LENGTH_LABEL_);
-      sprintf (name, "ppt2->tp2_labels");
-      class_call (binary_append (
-                    file,
-                    ppt2->tp2_labels,
-                    ppt2->tp2_size*_MAX_LENGTH_LABEL_,
-                    sizeof (char),
-                    desc,
-                    "char",
-                    name),
-        file->error_message,
-        ppt2->error_message);
-
-      sprintf (name, "ppt2->tau_size * ppt2->k3_size[index_k1=%d][index_k2=%d]", index_k1, index_k2);
-      sprintf (desc, "size of a (k3,tau) block (=%d)", k3_tau_block_size);
-      class_call (binary_append (
-                    file,
-                    &k3_tau_block_size,
-                    1,
-                    sizeof (int),
-                    desc,
-                    "int",
-                    name),
-        file->error_message,
-        ppt2->error_message);
-
-      /* Actual data starts here */
-
-      ppt2->k_out_data_byte[index_k_out] = file->size_bytes;
-
-      for (int index_tp2=0; index_tp2 < ppt2->tp2_size; ++index_tp2) {
-
-        sprintf (name, "ppt2->sources[index_tp2=%d][index_k1=%d][index_k2=%d]", index_tp2, index_k1, index_k2);
-        sprintf (desc, "source function %s for all values of k3 and tau", ppt2->tp2_labels[index_tp2]);
-        class_call (binary_append (
-                      file,
-                      ppt2->sources[index_tp2][index_k1][index_k2],
-                      k3_tau_block_size,
-                      sizeof (double),
-                      desc,
-                      "double",
-                      name),
-          file->error_message,
-          ppt2->error_message);
         
-        /* Debug - Print the sources as they are references in the binary file */
-        // if (index_tp2 == 0) {
-        //   for (int index_tau=0; index_tau < ppt2->tau_size; ++index_tau) {
-        //     for (int index_k3=0; index_k3 < k3_size; ++index_k3) {
-        //       printf ("%12g %12g %12g\n",
-        //         ppt2->tau_sampling[index_tau],
-        //         ppt2->k3[index_k1][index_k2][index_k3],
-        //         ((double *)file->blocks_array[file->n_blocks-1]->internal_pointer)[index_tau*k3_size + index_k3]);
-        //     }
-        //   }
-        // }
-      }
-
-
-      // ---------------------------------------------------------------------------
-      // -                              Write to file                              -
-      // ---------------------------------------------------------------------------
-
-      class_call (binary_write (
-                    file),
-        file->error_message,
-        ppt2->error_message);
-      
+      a[index_tau] = pvecback[pba->index_bg_a];
+      H[index_tau] = pvecback[pba->index_bg_H];
+    }
     
+    /* Get the cosine of the angle between k1 and k2 */
+    double mu[k3_size];
+    for (int index_k3=0; index_k3 < k3_size; ++index_k3) {
+      double k3 = ppt2->k3[index_k1][index_k2][index_k3];
+      mu[index_k3] = (k3*k3 - k1*k1 - k2*k2)/(2*k1*k2);
+    }
+    
+    /* Extract first order perturbations in k1 an k2 */
+    double pvec_sources1[ppt2->tau_size][ppt->qs_size_short];
+    double pvec_sources2[ppt2->tau_size][ppt->qs_size_short];
+    
+    for (int index_tau=0; index_tau < ppt2->tau_size; ++index_tau) {
 
-      // ---------------------------------------------------------------------------
-      // -                               Close file                                -
-      // ---------------------------------------------------------------------------
-
-      class_call (binary_free (
-                    file),
-        file->error_message,
+      class_call (perturb_song_sources_at_tau (
+                    ppr,
+                    ppt,
+                    ppt->index_md_scalars,
+                    ppt2->index_ic_first_order,
+                    index_k1,
+                    ppt2->tau_sampling[index_tau],
+                    ppt->qs_size_short, /* just delta and vpot */
+                    ppt->inter_normal,
+                    &dump,
+                    pvec_sources1[index_tau]),
+        ppt->error_message,
         ppt2->error_message);
 
+      class_call (perturb_song_sources_at_tau (
+                    ppr,
+                    ppt,
+                    ppt->index_md_scalars,
+                    ppt2->index_ic_first_order,
+                    index_k2,
+                    ppt2->tau_sampling[index_tau],
+                    ppt->qs_size_short, /* just delta and vpot */
+                    ppt->inter_normal,
+                    &dump,
+                    pvec_sources2[index_tau]),
+        ppt->error_message,
+        ppt2->error_message);
 
-    } // if output k1 and k2
+    }
+
+
+    // ---------------------------------------------------------------------------
+    // -                            Print information                            -
+    // ---------------------------------------------------------------------------
+
+    /* Add information to the file header */
+    binary_sprintf (file, "Table of the source function S_lm(k1,k2,k3,tau) tabulated as a function of (l,m,k3,tau) for fixed k1 and k2.");
+    binary_sprintf (file, "This binary file was generated by SONG (%s) on %s.", _SONG_URL_, ppr->date);
+    binary_sprintf (file, "");
+    sprintf (file->header, "%s%s", file->header, pba->info);
+    file->header_size += strlen (pba->info) + 1;
+    binary_sprintf (file, "");
+    binary_sprintf (file, "Information on the perturbations:");
+    binary_sprintf (file, "k1 = %g, k2 = %g", ppt2->k[index_k1], ppt2->k[index_k2]);
+    binary_sprintf (file, "index_k1 = %d/%d, index_k2 = %d/%d", index_k1, ppt2->k_size-1, index_k2, ppt2->k_size-1);
+    if (ppt->gauge == newtonian) binary_sprintf(file, "gauge = newtonian");
+    if (ppt->gauge == synchronous) binary_sprintf(file, "gauge = synchronous");
+
+
+    // ---------------------------------------------------------------------------
+    // -                                Build blocks                             -
+    // ---------------------------------------------------------------------------
+
+    char desc[1024];
+    char name[1024];
+
+    /* Build the content of each memory block */
+
+    sprintf (desc, "wavemode k1 (=%g)", k1);
+    sprintf (name, "ppt2->k[index_k1=%d]", index_k1);
+    class_call (binary_append_double (file, &k1, 1, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    sprintf (desc, "wavemode k2 (=%g)", k2);
+    sprintf (name, "ppt2->k[index_k2=%d]", index_k2);
+    class_call (binary_append_double (file, &k2, sizeof (double), desc, name),
+      file->error_message,
+      ppt2->error_message);
+                      
+    sprintf (desc, "size of tau, scale factor and H arrays (=%d)", ppt2->tau_size);
+    sprintf (name, "ppt2->tau_size");
+    class_call (binary_append_int (file, &ppt2->tau_size, 1, desc, name),
+      file->error_message,
+      ppt2->error_message);
+                      
+    sprintf (desc, "tau array of conformal times");
+    sprintf (name, "ppt2->tau_sampling");
+    class_call (binary_append_double (file, ppt2->tau_sampling, ppt2->tau_size, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    sprintf (desc, "scale factor array");
+    sprintf (name, "a");
+    class_call (binary_append_double (file, a, ppt2->tau_size, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    sprintf (desc, "Hubble factor array");
+    sprintf (name, "H");
+    class_call (binary_append_double (file, H, ppt2->tau_size, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    /* k sampling */
+
+    sprintf (desc, "size of k3 and mu arrays (=%d)", k3_size);
+    sprintf (name, "ppt2->k3_size[index_k1=%d][index_k2=%d]", index_k1, index_k2);
+    class_call (binary_append_int (file, &k3_size, 1, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    sprintf (desc, "k3 array");
+    sprintf (name, "ppt2->k3[index_k1=%d][index_k2=%d]", index_k1, index_k2);
+    class_call (binary_append_double (file, ppt2->k3[index_k1][index_k2], k3_size, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    sprintf (desc, "array of the cosine of the angle between k1 and k2");
+    sprintf (name, "mu");
+    class_call (binary_append_double (file, mu, k3_size, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    /* First-order perturbations */
+
+    sprintf (desc, "number of first-order perturbations (=%d)", ppt->qs_size_short);
+    sprintf (name, "ppt->qs_size_short");
+    class_call (binary_append_int (file, &ppt->qs_size_short, 1, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    int label_size = _MAX_LENGTH_LABEL_;
+    sprintf (desc, "length of a first-order perturbation name (=%d)", _MAX_LENGTH_LABEL_);
+    sprintf (name, "_MAX_LENGTH_LABEL_");
+    class_call (binary_append_int (file, &label_size, 1, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    sprintf (desc, "array of names of first-order perturbations (each has %d char)", _MAX_LENGTH_LABEL_);
+    sprintf (name, "ppt2->tp2_labels");
+    class_call (binary_append_string (file, &ppt->qs_labels, ppt->qs_size_short*_MAX_LENGTH_LABEL_, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    sprintf (desc, "array of first-order perturbations in k1=%g; pvcec_sources1[index_tau][index_qs] with index_tau < ppt2->tau_size and index_qs < ppt->qs_size_short", k1);
+    sprintf (name, "pvec_sources1");
+    class_call (binary_append_double (file, pvec_sources1, ppt2->tau_size*ppt->qs_size_short, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    sprintf (desc, "array of first-order perturbations in k2=%g; pvcec_sources2[index_tau][index_qs] with index_tau < ppt2->tau_size and index_qs < ppt->qs_size_short", k2);
+    sprintf (name, "pvec_sources2");
+    class_call (binary_append_double (file, pvec_sources2, ppt2->tau_size*ppt->qs_size_short, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    /* Second-order sources */
+
+    sprintf (desc, "number of source types, including l,m (=%d)", ppt2->tp2_size);
+    sprintf (name, "ppt2->tp2_size");
+    class_call (binary_append_int (file, &ppt2->tp2_size, 1, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    sprintf (desc, "length of a source type name (=%d)", _MAX_LENGTH_LABEL_);
+    sprintf (name, "_MAX_LENGTH_LABEL_");
+    class_call (binary_append_int (file, &label_size, 1, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    sprintf (desc, "array of names of source types (each has %d char)", _MAX_LENGTH_LABEL_);
+    sprintf (name, "ppt2->tp2_labels");
+    class_call (binary_append_string (file, ppt2->tp2_labels, ppt2->tp2_size*_MAX_LENGTH_LABEL_, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    sprintf (name, "ppt2->tau_size * ppt2->k3_size[index_k1=%d][index_k2=%d]", index_k1, index_k2);
+    sprintf (desc, "size of a (k3,tau) block (=%d)", k3_tau_block_size);
+    class_call (binary_append_int (file, &k3_tau_block_size, 1, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    ppt2->k_out_data_byte[index_k_out] = file->size_bytes;
+
+    for (int index_tp2=0; index_tp2 < ppt2->tp2_size; ++index_tp2) {
+
+      sprintf (name, "ppt2->sources[index_tp2=%d][index_k1=%d][index_k2=%d]", index_tp2, index_k1, index_k2);
+      sprintf (desc, "source function %s for all values of k3 and tau", ppt2->tp2_labels[index_tp2]);
+      class_call (binary_append_double (file, ppt2->sources[index_tp2][index_k1][index_k2], k3_tau_block_size, desc, name),
+        file->error_message,
+        ppt2->error_message);
+    
+      /* Debug - Print the sources as they are referenced in the binary file */
+      // if (index_tp2 == 0) {
+      //   for (int index_tau=0; index_tau < ppt2->tau_size; ++index_tau) {
+      //     for (int index_k3=0; index_k3 < k3_size; ++index_k3) {
+      //       printf ("%12g %12g %12g\n",
+      //         ppt2->tau_sampling[index_tau],
+      //         ppt2->k3[index_k1][index_k2][index_k3],
+      //         ((double *)file->blocks_array[file->n_blocks-1]->internal_pointer)[index_tau*k3_size + index_k3]);
+      //     }
+      //   }
+      // }
+    }
+
+
+    // ---------------------------------------------------------------------------
+    // -                              Write to file                              -
+    // ---------------------------------------------------------------------------
+
+    class_call (binary_write (
+                  file),
+      file->error_message,
+      ppt2->error_message);
+  
+
+    /* We are done with the source function */  
+    if (ppr2->store_sources_to_disk == _TRUE_)
+      class_call (perturb2_free_k1_level(
+                    ppt2,
+                    index_k1),
+        ppt2->error_message,
+        ppt2->error_message);
+
+  
+    // ---------------------------------------------------------------------------
+    // -                               Close file                                -
+    // ---------------------------------------------------------------------------
+
+    class_call (binary_free (
+                  file),
+      file->error_message,
+      ppt2->error_message);
+
+
   } // for index_k_out
 
 
 
   // ====================================================================================
-  // =                           Output all of the sources                              =
+  // =                          Output sources in (k1,k2,k3)                            =
   // ====================================================================================
 
-  /* Save the source function to disk for all computed values of k2, k3 and
-  type, and free the associated memory. The idea is to use as little memory
-  as possible. The next time we'll need the source function, we shall load
-  it from disk. */
+  /* Save the source function to disk for the conformal times specified in tau_out and
+  for the redshifts specified in z_out. Each binary file will contain all source types
+  (T,E,B,delta_cdm,...) and multipoles (l,m) tabulated a function of (k1,k2,k3) */
 
-  if (ppr2->store_sources_to_disk == _TRUE_) {
+  for (int index_tau_out=0; index_tau_out < ppt2->tau_out_size; ++index_tau_out) {
 
-    if (ppt2->perturbations2_verbose > 1)
-      printf("     \\ writing sources for index_k1=%d ...\n", index_k1);
+    /* Define a new binary file structure */
+    struct binary_file * file;
+    class_alloc (file, sizeof(struct binary_file), ppt2->error_message);
 
-    /* Open file for writing */
-    class_open (ppt2->sources_files[index_k1],
-      ppt2->sources_paths[index_k1],
-      "wb", ppt2->error_message);
+    /* Open the output file for this output time value */
+    class_call (binary_init (
+                  file,
+                  &(ppt2->tau_out_files_sources[index_tau_out]),
+                  ppt2->tau_out_paths_sources[index_tau_out],
+                  "a",
+                  header_size),
+      file->error_message,
+      ppt2->error_message);
 
-    /* For each type and k2, write the (k3, tau) level to file */
-    for (int index_tp2 = 0; index_tp2 < ppt2->tp2_size; ++index_tp2) {
-      for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
 
-        int k3_size = ppt2->k3_size[index_k1][index_k2];
+    // ---------------------------------------------------------------------------
+    // -                              Accessory data                             -
+    // ---------------------------------------------------------------------------
 
-        if (k3_size > 0)
+    /* Time and index for the considered output */
+    double tau = ppt2->tau_out[index_tau_out];
+    int index_tau = ppt2->index_tau_out[index_tau_out];
 
-          fwrite(ppt2->sources[index_tp2][index_k1][index_k2],
-                 sizeof(double),
-                 ppt2->tau_size*k3_size,
-                 ppt2->sources_files[index_k1]);
-        
-      }
+    /* Find corresponding redshift */
+    double * pvecback;
+    class_alloc (pvecback, pba->bg_size*sizeof(double), ppt2->error_message);
+    int dump;
+
+    class_call (background_at_tau(pba,
+                 tau,
+                 pba->long_info,
+                 pba->inter_normal,
+                 &dump,
+                 pvecback),
+      pba->error_message,
+      ppt2->error_message);
+
+    double a = pvecback[pba->index_bg_a];
+    double H = pvecback[pba->index_bg_H];
+    double Hc = a*H;
+    double z = 1/a-1;
+
+    /* Extract first order perturbations at tau */
+    double pvec_sources[ppt2->k_size][ppt->qs_size_short];
+    
+    for (int index_k=0; index_k < ppt2->k_size; ++index_k) {
+
+      class_call (perturb_song_sources_at_tau (
+                    ppr,
+                    ppt,
+                    ppt->index_md_scalars,
+                    ppt2->index_ic_first_order,
+                    index_k,
+                    ppt2->tau_sampling[index_tau],
+                    ppt->qs_size_short, /* just delta and vpot */
+                    ppt->inter_normal,
+                    &dump,
+                    pvec_sources[index_k]),
+        ppt->error_message,
+        ppt2->error_message);
+
     }
+    
 
-    /* Close file */
-    fclose(ppt2->sources_files[index_k1]);
+    // ---------------------------------------------------------------------------
+    // -                            Print information                            -
+    // ---------------------------------------------------------------------------
 
-    /* Free the memory for this k1 value */
-    class_call (perturb2_free_k1_level(ppt2, index_k1),
-      ppt2->error_message, ppt2->error_message);
-      
-  }  
+    /* Add information to the file header */
+    binary_sprintf (file, "Table of the source function S_lm(k1,k2,k3,tau) tabulated as a function of (l,m,k1,k2,k3) for fixed tau=%g (z=%g).",
+      tau, z);
+    binary_sprintf (file, "This binary file was generated by SONG (%s) on %s.", _SONG_URL_, ppr->date);
+    binary_sprintf (file, "");
+    sprintf (file->header, "%s%s", file->header, pba->info);
+    file->header_size += strlen (pba->info) + 1;
+    if (ppt->gauge == newtonian) binary_sprintf(file, "gauge = newtonian");
+    if (ppt->gauge == synchronous) binary_sprintf(file, "gauge = synchronous");
+    binary_sprintf (file, "");
+    binary_sprintf (file, "Information on the output time:");
+    binary_sprintf (file, "tau = %g, z = %g, a = %g, y =%g", tau, z, a, log10(a/pba->a_eq));
+
+
+    // --------------------------------------------------------------------------
+    // -                                Build blocks                             -
+    // ---------------------------------------------------------------------------
+
+    char desc[1024];
+    char name[1024];
+
+    /* Build the content of each memory block */
+
+    sprintf (desc, "redshift (=%g)", z);
+    sprintf (name, "z");
+    class_call (binary_append_double (file, &z, 1, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    sprintf (desc, "conformal time (=%g)", tau);
+    sprintf (name, "tau");
+    class_call (binary_append_double (file, &tau, 1, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    sprintf (desc, "index of tau inside ppt2->tau_sampling (=%d)", index_tau);
+    sprintf (name, "index_tau");
+    class_call (binary_append_int (file, &index_tau, 1, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    sprintf (desc, "scale factor (=%g)", a);
+    sprintf (name, "a");
+    class_call (binary_append_double (file, &a, 1, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    sprintf (desc, "Hubble factor (=%g)", H);
+    sprintf (name, "H");
+    class_call (binary_append_double (file, &H, 1, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    /* k sampling */
+
+    sprintf (desc, "size of k array (=%d)", ppt2->k_size);
+    sprintf (name, "ppt2->k_size");
+    class_call (binary_append_int (file, &ppt2->k_size, 1, desc,name),
+      file->error_message,
+      ppt2->error_message);
+
+    sprintf (desc, "k array");
+    sprintf (name, "ppt2->k");
+    class_call (binary_append_double (file, ppt2->k, ppt2->k_size, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    sprintf (desc, "size of k3 grid: k3_size[index_k1][index_k2] with index_k1 < ppt2->k_size, index_k2 <= index_k1");
+    sprintf (name, "ppt2->k3_size");
+    int index_k3_size_block = file->n_blocks;
+    
+    for (int index_k1=0; index_k1 < ppt2->k_size; ++index_k1)
+      for (int index_k2=0; index_k2 <= index_k1; ++index_k2)
+        class_call (binary_add_block (
+                      file,
+                      &ppt2->k3_size[index_k1][index_k2],
+                      1,
+                      sizeof (int),
+                      desc,
+                      "int",
+                      name,
+                      index_k3_size_block),
+          file->error_message,
+          ppt2->error_message);
+
+    sprintf (desc, "k3 array: k3[index_k1][index_k2] with index_k1 < ppt2->k_size, index_k2 <= index_k1");
+    sprintf (name, "ppt2->k3");
+    int index_k3_block = file->n_blocks;
+    
+    for (int index_k1=0; index_k1 < ppt2->k_size; ++index_k1)
+      for (int index_k2=0; index_k2 <= index_k1; ++index_k2)
+        class_call (binary_add_block (
+                      file,
+                      ppt2->k3[index_k1][index_k2],
+                      ppt2->k3_size[index_k1][index_k2],
+                      sizeof (double),
+                      desc,
+                      "double",
+                      name,
+                      index_k3_block),
+          file->error_message,
+          ppt2->error_message);
+
+    /* First-order perturbations */
+
+    sprintf (desc, "number of first-order perturbations (=%d)", ppt->qs_size_short);
+    sprintf (name, "ppt->qs_size_short");
+    class_call (binary_append_int (file, &ppt->qs_size_short, 1, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    int label_size = _MAX_LENGTH_LABEL_;
+    sprintf (desc, "length of a first-order perturbation name (=%d)", _MAX_LENGTH_LABEL_);
+    sprintf (name, "_MAX_LENGTH_LABEL_");
+    class_call (binary_append_int (file, &label_size, 1, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    sprintf (desc, "array of names of first-order perturbations (each has %d char)", _MAX_LENGTH_LABEL_);
+    sprintf (name, "ppt2->tp2_labels");
+    class_call (binary_append_string (file, &ppt->qs_labels, ppt->qs_size_short*_MAX_LENGTH_LABEL_, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    sprintf (desc, "array of first-order perturbations in tau=%g; pvcec_sources1[index_k][index_qs] with index_k < ppt2->k_size and index_qs < ppt->qs_size_short", tau);
+    sprintf (name, "pvec_sources");
+    class_call (binary_append_double (file, pvec_sources, ppt2->k_size*ppt->qs_size_short, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    /* Second-order sources */
+
+    sprintf (desc, "number of source types, including l,m (=%d)", ppt2->tp2_size);
+    sprintf (name, "ppt2->tp2_size");
+    class_call (binary_append_int (file, &ppt2->tp2_size, 1, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    sprintf (desc, "length of a source type name (=%d)", _MAX_LENGTH_LABEL_);
+    sprintf (name, "_MAX_LENGTH_LABEL_");
+    class_call (binary_append_int (file, &label_size, 1, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    sprintf (desc, "array of names of source types (each has %d char)", _MAX_LENGTH_LABEL_);
+    sprintf (name, "ppt2->tp2_labels");
+    class_call (binary_append_string (file, ppt2->tp2_labels, ppt2->tp2_size*_MAX_LENGTH_LABEL_, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
+    for (int index_tp2=0; index_tp2 < ppt2->tp2_size; ++index_tp2) {
+
+      sprintf (desc, "source function %s for all values of (k1,k2,k3)", ppt2->tp2_labels[index_tp2]);
+      sprintf (name, "ppt2->sources[index_tp2=%d]", index_tp2);
+      int index_sources = file->n_blocks;
+    
+      for (int index_k1=0; index_k1 < ppt2->k_size; ++index_k1) {
+        
+        /* Load the source function from disk if needed */
+        if (ppr2->store_sources_to_disk == _TRUE_) {
+          class_call (perturb2_allocate_k1_level(ppt2, index_k1),
+            ppt2->error_message,
+            ppt2->error_message);
+          class_call(perturb2_load_sources_from_disk(ppt2, index_k1),
+            ppt2->error_message,
+            ppt2->error_message);
+        }
+        
+        for (int index_k2=0; index_k2 <= index_k1; ++index_k2) {
+
+          int k3_size = ppt2->k3_size[index_k1][index_k2];
+          
+          class_call (binary_add_block (
+                        file,
+                        &ppt2->sources[index_tp2][index_k1][index_k2][index_tau*k3_size],
+                        k3_size,
+                        sizeof (double),
+                        desc,
+                        "double",
+                        name,
+                        index_sources),
+            file->error_message,
+            ppt2->error_message);
+            
+        } // for k2
+        
+        /* We are done with the source function */
+        if (ppr2->store_sources_to_disk == _TRUE_)
+          class_call (perturb2_free_k1_level(
+                        ppt2,
+                        index_k1),
+            ppt2->error_message,
+            ppt2->error_message);
+        
+      } // for k1
+    } // for tp2
+
+
+    // ---------------------------------------------------------------------------
+    // -                              Write to file                              -
+    // ---------------------------------------------------------------------------
+
+    class_call (binary_write (
+                  file),
+      file->error_message,
+      ppt2->error_message);
+
+
+    // ---------------------------------------------------------------------------
+    // -                               Close file                                -
+    // ---------------------------------------------------------------------------
+
+    class_call (binary_free (
+                  file),
+      file->error_message,
+      ppt2->error_message);
+
+
+  } // for index_tau_out
+
+
+
+  // // ====================================================================================
+  // // =                           Output all of the sources                              =
+  // // ====================================================================================
+  //
+  // /* Save the source function to disk for all computed values of k2, k3 and
+  // type, and free the associated memory. The idea is to use as little memory
+  // as possible. The next time we'll need the source function, we shall load
+  // it from disk. */
+  //
+  // if (ppr2->store_sources_to_disk == _TRUE_) {
+  //
+  //   if (ppt2->perturbations2_verbose > 1)
+  //     printf("     \\ writing sources for index_k1=%d ...\n", index_k1);
+  //
+  //   /* Open file for writing */
+  //   class_open (ppt2->sources_files[index_k1],
+  //     ppt2->sources_paths[index_k1],
+  //     "wb", ppt2->error_message);
+  //
+  //   /* For each type and k2, write the (k3, tau) level to file */
+  //   for (int index_tp2 = 0; index_tp2 < ppt2->tp2_size; ++index_tp2) {
+  //     for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
+  //
+  //       int k3_size = ppt2->k3_size[index_k1][index_k2];
+  //
+  //       if (k3_size > 0)
+  //
+  //         fwrite(ppt2->sources[index_tp2][index_k1][index_k2],
+  //                sizeof(double),
+  //                ppt2->tau_size*k3_size,
+  //                ppt2->sources_files[index_k1]);
+  //
+  //     }
+  //   }
+  //
+  //   /* Close file */
+  //   fclose(ppt2->sources_files[index_k1]);
+  //
+  //   /* Free the memory for this k1 value */
+  //   class_call (perturb2_free_k1_level(ppt2, index_k1),
+  //     ppt2->error_message, ppt2->error_message);
+  //
+  // }
   
   return _SUCCESS_;
   

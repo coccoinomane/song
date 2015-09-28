@@ -22,6 +22,8 @@ needed in bispectra2.c */
 options */
 #define _MAX_NUMBER_OF_TAU_FILES_ 100
 
+/** Maximum number of columns in output ASCII files */
+#define _MAX_NUM_COLUMNS_ 1024
 
 /**
  * All precision parameters for the second-order part of SONG. 

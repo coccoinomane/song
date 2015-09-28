@@ -135,22 +135,38 @@ enum quadratic_source_computation {
 
 
 
-// ====================================================================================
-// =                             Precision parameters                                 =
-// ====================================================================================
+// ======================================================================================
+// =                                     Definitions                                    =
+// ======================================================================================
 
-/** The differential system at second-order has to be solved for a set of three wavemodes
-(k1,k2,k3) whereby k3 has to be in the range |k1-k2|<=k3<=k1+k1. When k3 is too close
-to the boundaries, numerical instabilities might arise such as nan's or larger-than-one
-sines and cosines. In order to avoid that, we define here the safety distance between
-k3 and the bounds. This safety distance is going to correspond to the largest scale
-probed by SONG. The largest angular scale probed by SONG is l_min=2, which corresponds
-to k~l_min/tau_0^-1~1e-4. Therefore, setting _MIN_K3_DISTANCE_ to anything smaller
-than 1e-6 is quite safe. */
+/**
+ * Maximum number of source function types computed in this module.
+ *
+ * Feel free to increase it, it is just a memory parameter.
+ */
+#define _MAX_NUM_SOURCES_ 1024
+
+/**
+ * Exclude edges of the triangular condition on (k1,k2,k3).
+ *
+ * The differential system at second-order has to be solved for a set of three wavemodes
+ * (k1,k2,k3) whereby k3 has to be in the range |k1-k2|<=k3<=k1+k1. When k3 is too close
+ * to the boundaries, numerical instabilities might arise such as nan's or larger-than-one
+ * sines and cosines. In order to avoid that, we define here the safety distance between
+ * k3 and the bounds. This safety distance is going to correspond to the largest scale
+ * probed by SONG. The largest angular scale probed by SONG is l_min=2, which corresponds
+ * to k~l_min/tau_0^-1~1e-4. Therefore, setting _MIN_K3_DISTANCE_ to anything smaller
+ * than 1e-6 is quite safe.
+ */
 #define _MIN_K3_DISTANCE_ 1e-10
 
-/** The differential system dies when k3 is much smaller than k1+k2. These configurations
-are irrelevant, so we set a minimum ratio between k1+k2 and k3 */
+/**
+ * Exclude squeezed configurations (TODO: remove)
+ *
+ * The differential system dies when k3 is much smaller than k1+k2. These
+ * configurations are irrelevant, so we set a minimum ratio between k1+k2
+ * and k3.
+ */
 #define _MIN_K3_RATIO_ 100
 
 
@@ -439,8 +455,8 @@ struct perturbs2
 
   int tp2_size;              /**< Number of source types that we need to compute */
 
-  char ** tp2_labels;        /**< Labels of the various source types. For example, ppt2->tp2_labels[index_tp2_phi]
-                             is equal to the string "phi". Useful for printing out results. */
+  char tp2_labels[_MAX_NUM_SOURCES_][_MAX_LENGTH_LABEL_];  /**< Labels of the various source types. For example, ppt2->tp2_labels[index_tp2_phi]
+                                                           is equal to the string "phi". Useful for printing out results. */
 
 
   
@@ -979,32 +995,11 @@ struct perturbs2
                                          sources? Useful for debugging the RSA approximation. */
 
   /**
-   * Parameters related to the creation of debug files
-   */
-  //@{
-  short has_debug_files;        /**< Shall we dump to file the evolved transfer functions and quadratic sources? */
-
-  char transfers_filename[_FILENAMESIZE_];       /**< Path of the file that will contain the early transfer functions for the different species */
-  char quadsources_filename[_FILENAMESIZE_];     /**< Path of the file that will contain the full quadratic sources for the different species */
-  char quadliouville_filename[_FILENAMESIZE_];   /**< Path of the file that will contain the Liouville part of the quadratic sources for the different species */
-  char quadcollision_filename[_FILENAMESIZE_];   /**< Path of the file that will contain the collisional part of the quadratic sources for the different species */
-
-  FILE * transfers_file;         /**< File that will contain the early transfer functions for the different species */
-  FILE * quadsources_file;       /**< File that will contain the full quadratic sources for the different species */
-  FILE * quadliouville_file;     /**< File that will contain the Liouville part of the quadratic sources for the different species */
-  FILE * quadcollision_file;     /**< File that will contain the collisional part of the quadratic sources for the different species */
-
-  int index_k1_debug;      /**< Which k1=ppt2->k[index_k1_debug] value should we dump to file? */
-  int index_k2_debug;      /**< Which k2=ppt2->k[index_k2_debug] value should we dump to file? */
-  int index_k3_debug;      /**< Which k3=ppt2->k[index_k3_debug] value should we dump to file? */
-  int l_max_debug;         /**< For any hierarchy, how many l values should we dump to file? */
-  //@}
-
-
-  /**
    * Parameters related to the creation of output files
    */
   //@{
+
+  int file_verbose; /**< How much information should we include in the perturbations output files? */
 
   /* - tau output files */
 
@@ -1535,20 +1530,21 @@ struct perturb2_workspace
   /**
    * Function used to output intermediate values from the differential system.
    *
-   * This function will be given as an argument to 'generic_evolver' and is  used only for
-   * debug purposes. By default it is set to NULL, which means that it is never called.  It
-   * is called only if ppt2->has_debug_files==_TRUE_ and if the evolved wavemode corresponds
-   * to the one requested through ppt2->index_k1_debug, ppt2->index_k2_debug and 
-   * ppt2->index_k3_debug. This function will be called for each time step in the
-   * differential system.
+   * This function will be given as an argument to generic_evolver and is  used only for
+   * debug and output purposes. By default it is set to NULL, which means that it is never
+   * called.  It is called only if the evolved (k1,k2,k3) triplet corresponds to one of
+   * the triplets requested via the parameters k1_out, k2_out and k3_out.
    */
   int (*print_function)(double x, double y[], double dy[],
     void *parameters_and_workspace, ErrorMsg error_message);
 
   long int n_steps;   /**< Number of steps taken by the differential system so far for the active
-                      (k1,k2,k3) mode. Computed only if has_debug_files==_TRUE_. */
+                      (k1,k2,k3) mode. Computed only for those triplets belonging to k1_out,
+                      k2_out and k3_out. */
 
   char info [_MAX_INFO_SIZE_];   /**< String with information on the wavemode that is being integrated */
+  
+  char file_header[3*_MAX_INFO_SIZE_]; /**< Header to be added on top of the output files */  
 
 };
 
@@ -2119,11 +2115,11 @@ struct perturb2_parameters_and_workspace {
             );
 
     int perturb2_output(
+            struct precision * ppr,
             struct precision2 * ppr2,
             struct background * pba,
             struct perturbs * ppt,
-            struct perturbs2 * ppt2,
-            int index_k1
+            struct perturbs2 * ppt2
             );
 
     int perturb2_store_sources_to_disk(

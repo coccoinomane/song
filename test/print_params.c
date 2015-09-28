@@ -243,15 +243,7 @@ int main(int argc, char **argv) {
 
   /* Perturbations output and debug parameters */
   printf("* Debug parameters\n");
-  printf("\tpt2.has_debug_files = %d\n", pt2.has_debug_files);
-  printf("\tpt2.transfers_filename = %s\n", pt2.transfers_filename);
-  printf("\tpt2.quadsources_filename = %s\n", pt2.quadsources_filename);
-  printf("\tpt2.quadliouville_filename = %s\n", pt2.quadliouville_filename);
-  printf("\tpt2.quadcollision_filename = %s\n", pt2.quadcollision_filename);
-  printf("\tpt2.index_k1_debug = %d\n", pt2.index_k1_debug);
-  printf("\tpt2.index_k2_debug = %d\n", pt2.index_k2_debug);
-  printf("\tpt2.index_k3_debug = %d\n", pt2.index_k3_debug);
-  printf("\tpt2.l_max_debug = %d\n", pt2.l_max_debug);
+  printf("\tpt2.file_verbose = %d\n", pt2.file_verbose);
   printf("\tpt2.tau_out_size = %d\n", pt2.tau_out_size);
   if (pt2.tau_out_size > 0) {
     printf ("\t\t");

@@ -807,13 +807,8 @@ int transfer2_free(
     free (ptr2->k_min_k1k2);
     free (ptr2->k_max_k1k2);
       
-    /* Free labels */
-    for (int index_tt = 0; index_tt < ptr2->tt2_size; index_tt++)
-      free(ptr2->tt2_labels[index_tt]);
-
     free (ptr2->l);
     free (ptr2->m);
-    free (ptr2->tt2_labels);
 
     free (ptr2->corresponding_index_l);
     free (ptr2->corresponding_index_m);
@@ -945,11 +940,15 @@ int transfer2_indices_of_transfers(
   /* Total number of transfer functions to compute */
   ptr2->tt2_size = index_tt;
 
-  /* Allocate memory for the labels of the transfer types */
-  class_alloc(ptr2->tt2_labels, ptr2->tt2_size*sizeof(char *), ptr2->error_message);
-  for (int index_tt=0; index_tt<ptr2->tt2_size; ++index_tt)
-    class_alloc(ptr2->tt2_labels[index_tt], 64*sizeof(char), ptr2->error_message);
+  class_test (ptr2->tt2_size > _MAX_NUM_TRANSFERS_,
+    ptr2->error_message,
+    "exceeded maximum number of allowed transfer types (%d), increase _MAX_NUM_TRANSFERS_ in transfers2.h",
+    _MAX_NUM_TRANSFERS_);
 
+  /* Initialise the labels of the transfer types */
+  for (int index_tt=0; index_tt<ptr2->tt2_size; ++index_tt)
+    for (int i=0; i < _MAX_LENGTH_LABEL_; ++i)
+      ptr2->tt2_labels[index_tt][i] = '\0';
 
   if (ptr2->transfer2_verbose > 1) {
     printf (" -> will compute tt2_size=%d transfer functions: ", ptr2->tt2_size);

@@ -858,42 +858,7 @@ int input2_init (
 
   class_read_int("perturbations2_verbose",ppt2->perturbations2_verbose);
 
-  /* Write perturbations to file according to the given list of (index_k1, index_k2,
-  index_k3) indices */
-
-  class_call(parser_read_string(pfc,"dump_debug_files",&(string1),&(flag1),errmsg),errmsg,errmsg);
-  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-    ppt2->has_debug_files = _TRUE_;
-
-  if (ppt2->has_debug_files == _TRUE_) {
-
-    class_call(parser_read_string(pfc,"transfers_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);  
-    if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_))
-      sprintf(ppt2->transfers_filename, "%s/%s", pop->root, string1);
-    class_open(ppt2->transfers_file,ppt2->transfers_filename,"w",errmsg);
-
-    class_call(parser_read_string(pfc,"quadsources_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);      
-    if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_))
-      sprintf(ppt2->quadsources_filename, "%s/%s", pop->root, string1);
-    class_open(ppt2->quadsources_file,ppt2->quadsources_filename,"w",errmsg);
-
-    class_call(parser_read_string(pfc,"quadliouville_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);  
-    if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_))
-      sprintf(ppt2->quadliouville_filename, "%s/%s", pop->root, string1);
-    class_open(ppt2->quadliouville_file,ppt2->quadliouville_filename,"w",errmsg);
-
-    class_call(parser_read_string(pfc,"quadcollision_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);      
-    if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_))
-      sprintf(ppt2->quadcollision_filename, "%s/%s", pop->root, string1);
-    class_open(ppt2->quadcollision_file,ppt2->quadcollision_filename,"w",errmsg);
-
-    class_read_int("index_k1_debug", ppt2->index_k1_debug);
-    class_read_int("index_k2_debug", ppt2->index_k2_debug);
-    class_read_int("index_k3_debug", ppt2->index_k3_debug);
-    class_read_int("l_max_debug", ppt2->l_max_debug);
-  
-  } // end of if has_debug_files
-
+  class_read_int("file_verbose", ppt2->file_verbose);
 
   /* Read values of tau for which to write output files */
 
@@ -2012,26 +1977,17 @@ int input2_default_params (
 
   ppt2->perturbations2_verbose = 0;
   
-  ppt2->has_debug_files = _FALSE_;
-  strcpy(ppt2->transfers_filename,"output/transfers2.txt");
-  strcpy(ppt2->quadsources_filename,"output/quadsources.txt");
-  strcpy(ppt2->quadliouville_filename,"output/quadliouville.txt");
-  strcpy(ppt2->quadcollision_filename,"output/quadcollision.txt");
+  ppt2->file_verbose = 1;
+
+  ppt2->tau_out_size = 0;
+  ppt2->z_out_size = 0;
 
   ppt2->k_out_size = 0;
   ppt2->k_index_out_size = 0;
   ppt2->output_class_perturbations = _TRUE_;
   ppt2->output_quadratic_sources = _FALSE_;
   ppt2->k_out_mode = _FALSE_;
-     
-  ppt2->tau_out_size = 0;
-  ppt2->z_out_size = 0;
-     
-  ppt2->index_k1_debug = 0;
-  ppt2->index_k2_debug = 0;
-  ppt2->index_k3_debug = 0;
-  ppt2->l_max_debug = 5;
-  
+          
 
   // =============================================================
   // =                     bessel2 structure                     =
