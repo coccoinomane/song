@@ -134,30 +134,45 @@ enum quadratic_source_computation {
 };
 
 
+// ======================================================================================
+// =                                     Definitions                                    =
+// ======================================================================================
 
-// ====================================================================================
-// =                             Precision parameters                                 =
-// ====================================================================================
+/**
+ * Maximum number of source function types computed in this module.
+ *
+ * Feel free to increase it, it is just a memory parameter.
+ */
+#define _MAX_NUM_SOURCES_ 1024
 
-/** The differential system at second-order has to be solved for a set of three wavemodes
-(k1,k2,k3) whereby k3 has to be in the range |k1-k2|<=k3<=k1+k1. When k3 is too close
-to the boundaries, numerical instabilities might arise such as nan's or larger-than-one
-sines and cosines. In order to avoid that, we define here the safety distance between
-k3 and the bounds. This safety distance is going to correspond to the largest scale
-probed by SONG. The largest angular scale probed by SONG is l_min=2, which corresponds
-to k~l_min/tau_0^-1~1e-4. Therefore, setting _MIN_K3_DISTANCE_ to anything smaller
-than 1e-6 is quite safe. */
+/**
+ * Exclude edges of the triangular condition on (k1,k2,k3).
+ *
+ * The differential system at second-order has to be solved for a set of three wavemodes
+ * (k1,k2,k3) whereby k3 has to be in the range |k1-k2|<=k3<=k1+k1. When k3 is too close
+ * to the boundaries, numerical instabilities might arise such as nan's or larger-than-one
+ * sines and cosines. In order to avoid that, we define here the safety distance between
+ * k3 and the bounds. This safety distance is going to correspond to the largest scale
+ * probed by SONG. The largest angular scale probed by SONG is l_min=2, which corresponds
+ * to k~l_min/tau_0^-1~1e-4. Therefore, setting _MIN_K3_DISTANCE_ to anything smaller
+ * than 1e-6 is quite safe.
+ */
 #define _MIN_K3_DISTANCE_ 1e-10
 
-/** The differential system dies when k3 is much smaller than k1+k2. These configurations
-are irrelevant, so we set a minimum ratio between k1+k2 and k3 */
+/**
+ * Exclude squeezed configurations (TODO: remove)
+ *
+ * The differential system dies when k3 is much smaller than k1+k2. These
+ * configurations are irrelevant, so we set a minimum ratio between k1+k2
+ * and k3.
+ */
 #define _MIN_K3_RATIO_ 100
 
 
 
-// ====================================================================================
-// =                               perturbs2 structure                                =
-// ====================================================================================
+// ======================================================================================
+// =                              Perturbations structure                               =
+// ======================================================================================
 
 struct perturbs2
 {
@@ -439,8 +454,8 @@ struct perturbs2
 
   int tp2_size;              /**< Number of source types that we need to compute */
 
-  char ** tp2_labels;        /**< Labels of the various source types. For example, ppt2->tp2_labels[index_tp2_phi]
-                             is equal to the string "phi". Useful for printing out results. */
+  char tp2_labels[_MAX_NUM_SOURCES_][_MAX_LENGTH_LABEL_];  /**< Labels of the various source types. For example, ppt2->tp2_labels[index_tp2_phi]
+                                                           is equal to the string "phi". Useful for printing out results. */
 
 
   

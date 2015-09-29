@@ -32,6 +32,13 @@ enum transfer2_tau_sampling {
 };
 
 
+/**
+ * Maximum number of transfer function types computed in this module.
+ *
+ * Feel free to increase it, it is just a memory parameter.
+ */
+#define _MAX_NUM_TRANSFERS_ 4096
+
 /** 
  * Macro used to index the first level ptr2->transfer.
  */
@@ -99,7 +106,7 @@ struct transfers2 {
 
   /* Array of strings that contain the labels of the various transfer types
   For example,  tt2_labels[index_tt2_T] is equal to "T_00" */
-  char ** tt2_labels;
+  char tt2_labels[_MAX_NUM_TRANSFERS_][_MAX_LENGTH_LABEL_];
 
   /* True if the module has been executed. Useful to free memory only if needed. */
   short has_cls;
