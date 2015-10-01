@@ -2737,7 +2737,7 @@ int perturb2_timesampling_for_sources (
         
         /* We do not write the warning to the binary file lest we mess up the byte ordering */
         fprintf (stderr, "# NOTE: requested time for %s is too large; we set tau_out to the\
- largest available value in our time sampling (%g).\n",
+ largest available value in our time sampling (%g)\n",
           ppt2->tau_out_paths_sources[index_tau_out], ppt2->tau_sampling[ppt2->tau_size-1]);
         
         ppt2->tau_out[index_tau_out] = ppt2->tau_sampling[ppt2->tau_size-1];
@@ -12688,7 +12688,7 @@ int perturb2_save_perturbations (
 
   if (ppt->gauge == newtonian) {
 
-    /* - First-order quantities */
+    /* - First-order */
 
     psi_1 = pvec_sources1[ppt->index_qs_psi];
     psi_2 = pvec_sources2[ppt->index_qs_psi];
@@ -12697,12 +12697,15 @@ int perturb2_save_perturbations (
     phi_prime_1 = pvec_sources1[ppt->index_qs_phi_prime];
     phi_prime_2 = pvec_sources2[ppt->index_qs_phi_prime];
 
-    /* - Second-order scalar quantities */
 
-    /* Scalar potentials phi and psi */
+    /* -  Scalar potentials phi and psi */
+
     if (ppr2->compute_m[0] == _TRUE_) {
+
       psi = pvecmetric[ppw2->index_mt2_psi];
+
       phi = y[ppw2->pv->index_pt2_phi];
+
       class_call(perturb2_compute_psi_prime (
                    ppr,
                    ppr2,
@@ -12722,15 +12725,14 @@ int perturb2_save_perturbations (
 
     /* - Vector potential */
 
-    /* Compute the value of omega_m1 (the vector potential) using the constraint equation.
-    This is eq. 3.98 of http://arxiv.org/abs/1405.2280, obtained from the the G^i_0 part
-    of Einstein equation.  */
     if (ppr2->compute_m[1] == _TRUE_) {
 
+      /* Evolved vector potential omega */
       omega_m1 = y[ppw2->pv->index_pt2_omega_m1];
 
-      /* - Matter part */
-
+      /* Compute the value of omega using the constraint equation in eq. 3.98 of
+      http://arxiv.org/abs/1405.2280, obtained from the the G^i_0 part of Einstein
+      equation. */
       double rho_g, rho_b, rho_cdm, rho_ur, rho_dipole_m1, rho_dipole_1, rho_dipole_2;
 
       rho_g = ppw2->pvecback[pba->index_bg_rho_g];
@@ -12758,7 +12760,7 @@ int perturb2_save_perturbations (
       }
 
 
-      /* - Quadratic metric part */
+      /* Quadratic metric part */
 
       double vector_quad = 2 *  /* coming from the perturbative expansion */
         (
@@ -12775,14 +12777,14 @@ int perturb2_save_perturbations (
         );
 
 
-      /* Since Hc = a*H, we have that Hc' = a*H' + a'*H */
-      double Hc_prime = a*ppw2->pvecback[pba->index_bg_H_prime]
-        + (a*Hc)*ppw2->pvecback[pba->index_bg_H];
+      /* Compute time derivative of Hc. Since Hc = a*H, we have that Hc' = a*H' + a'*H */
+      double Hc_prime = a*ppw2->pvecback[pba->index_bg_H_prime] + (a*Hc)*ppw2->pvecback[pba->index_bg_H];
+      
+      /* Finally, omega */
+      omega_m1_constraint = 2/(4*Hc*Hc - 4*Hc_prime + k_sq) * (-a_sq*rho_dipole_m1 - vector_quad);
+      
 
-      omega_m1_constraint = 2/(4*Hc*Hc - 4*Hc_prime + k_sq)
-        * (-a_sq*rho_dipole_m1 - vector_quad);
-
-    } // end of vector potential
+    } // vector potential
 
 
     /* - Tensor potential */
@@ -14053,8 +14055,9 @@ int perturb2_output(
                   file,
                   &(ppt2->k_out_files_sources[index_k_out]),
                   ppt2->k_out_paths_sources[index_k_out],
-                  "a",
-                  header_size),
+                  "w",
+                  header_size,
+                  ppr2->output_single_precision),
       file->error_message,
       ppt2->error_message);
 
@@ -14167,7 +14170,7 @@ int perturb2_output(
 
     sprintf (desc, "wavemode k2 (=%g)", k2);
     sprintf (name, "ppt2->k[index_k2=%d]", index_k2);
-    class_call (binary_append_double (file, &k2, sizeof (double), desc, name),
+    class_call (binary_append_double (file, &k2, 1, desc, name),
       file->error_message,
       ppt2->error_message);
                       
@@ -14236,13 +14239,13 @@ int perturb2_output(
       file->error_message,
       ppt2->error_message);
 
-    sprintf (desc, "array of first-order perturbations in k1=%g; pvcec_sources1[index_tau][index_qs] with index_tau < ppt2->tau_size and index_qs < ppt->qs_size_short", k1);
+    sprintf (desc, "array of first-order perturbations in k1=%g; pvec_sources1[index_tau][index_qs] with index_tau < ppt2->tau_size and index_qs < ppt->qs_size_short", k1);
     sprintf (name, "pvec_sources1");
     class_call (binary_append_double (file, pvec_sources1, ppt2->tau_size*ppt->qs_size_short, desc, name),
       file->error_message,
       ppt2->error_message);
 
-    sprintf (desc, "array of first-order perturbations in k2=%g; pvcec_sources2[index_tau][index_qs] with index_tau < ppt2->tau_size and index_qs < ppt->qs_size_short", k2);
+    sprintf (desc, "array of first-order perturbations in k2=%g; pvec_sources2[index_tau][index_qs] with index_tau < ppt2->tau_size and index_qs < ppt->qs_size_short", k2);
     sprintf (name, "pvec_sources2");
     class_call (binary_append_double (file, pvec_sources2, ppt2->tau_size*ppt->qs_size_short, desc, name),
       file->error_message,
@@ -14308,18 +14311,16 @@ int perturb2_output(
       ppt2->error_message);
   
 
-    /* We are done with the source function */  
+    // ---------------------------------------------------------------------------
+    // -                                Clean up                                 -
+    // ---------------------------------------------------------------------------
+
     if (ppr2->store_sources_to_disk == _TRUE_)
       class_call (perturb2_free_k1_level(
                     ppt2,
                     index_k1),
         ppt2->error_message,
         ppt2->error_message);
-
-  
-    // ---------------------------------------------------------------------------
-    // -                               Close file                                -
-    // ---------------------------------------------------------------------------
 
     class_call (binary_free (
                   file),
@@ -14350,8 +14351,9 @@ int perturb2_output(
                   file,
                   &(ppt2->tau_out_files_sources[index_tau_out]),
                   ppt2->tau_out_paths_sources[index_tau_out],
-                  "a",
-                  header_size),
+                  "w",
+                  header_size,
+                  ppr2->output_single_precision),
       file->error_message,
       ppt2->error_message);
 
@@ -14533,7 +14535,7 @@ int perturb2_output(
       file->error_message,
       ppt2->error_message);
 
-    sprintf (desc, "array of first-order perturbations in tau=%g; pvcec_sources1[index_k][index_qs] with index_k < ppt2->k_size and index_qs < ppt->qs_size_short", tau);
+    sprintf (desc, "array of first-order perturbations in tau=%g; pvec_sources[index_k][index_qs] with index_k < ppt2->k_size and index_qs < ppt->qs_size_short", tau);
     sprintf (name, "pvec_sources");
     class_call (binary_append_double (file, pvec_sources, ppt2->k_size*ppt->qs_size_short, desc, name),
       file->error_message,

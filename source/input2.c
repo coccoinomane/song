@@ -1375,7 +1375,7 @@ int input2_init (
 
 
   // =============================================================================================
-  // =                                   Fisher matrices                                         =
+  // =                                     Fisher matrices                                       =
   // =============================================================================================
 
 
@@ -1383,8 +1383,17 @@ int input2_init (
   
 
   // =============================================================================================
-  // =                                Disk storage of sources                                    =
+  // =                                      File output                                          =
   // =============================================================================================
+
+  class_call(parser_read_string(pfc,"output_single_precision",&(string1),&(flag1),errmsg),errmsg,errmsg);
+  if ((flag1 == _TRUE_) && (strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL))
+    ppr2->output_single_precision = _FALSE_;
+
+
+  // ----------------------------------------------------------------------------------------
+  // -                               Disk storage of sources                                -
+  // ----------------------------------------------------------------------------------------
 
   /* Store to disk the second-order line of sight sources? */
   class_call(parser_read_string(pfc,"store_sources",&(string1),&(flag1),errmsg),
@@ -1442,9 +1451,9 @@ int input2_init (
     "cannot load and save sources at the same time!");
     
 
-  // =============================================================================================
-  // =                               Disk storage of transfers                                   =
-  // =============================================================================================
+  // ----------------------------------------------------------------------------------------
+  // -                               Disk storage of transfers                              -
+  // ----------------------------------------------------------------------------------------
 
   /* Store to disk the second-order transfer functions? */
   class_call(parser_read_string(pfc,"store_transfers",&(string1),&(flag1),errmsg),
@@ -2136,6 +2145,7 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   // ===============================================================================
 
   ppr2->old_run = _FALSE_;
+  ppr2->output_single_precision = _TRUE_;
   ppr2->store_sources_to_disk = _FALSE_;
   ppr2->load_sources_from_disk = _FALSE_;
   ppr2->store_transfers_to_disk = _FALSE_;

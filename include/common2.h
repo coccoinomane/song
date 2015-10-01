@@ -217,6 +217,7 @@ struct precision2
   short store_sources_to_disk;    /**< Should we store the source functions to disk? */
   short load_sources_from_disk;   /**< Should we load the source functions from disk? */
   short old_run; /**< set to _TRUE_ if the run was stored with a version of SONG smaller than 1.0 */
+  short output_single_precision;  /**< Should SONG output single precision binary files rather than double precision? */
 
 };  /* end of struct precision2 declaration */
 

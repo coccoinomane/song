@@ -1057,9 +1057,9 @@ struct perturbs2
                                                 of ppt2->sources. In practice, this tells the functions that want to
                                                 access the output files where the actual data starts, ignoring the 
                                                 preceding accessory data (eg. tau grid, k3 grid) */
-  short output_class_perturbations; /** If _TRUE_, output the first-order perturbations for all the values contained in ppt2->k1_out
+  short output_class_perturbations; /**< If _TRUE_, output the first-order perturbations for all the values contained in ppt2->k1_out
                                     and ppt2->k2_out */
-  short output_quadratic_sources;   /** If _TRUE_, output the quadratic sources of the second-order differential system for all
+  short output_quadratic_sources;   /**< If _TRUE_, output the quadratic sources of the second-order differential system for all
                                     the values contained in ppt2->k1_out and ppt2->k2_out */
 
   char k_out_paths_quad[_MAX_NUMBER_OF_K_FILES_][_FILENAMESIZE_]; /**< Path of the ASCII files that will contain the quadratic sources as a function
