@@ -210,7 +210,7 @@ int main(int argc, char **argv) {
   /* Precision parameters - multipoles */
   // printf("* Precision parameters - multipoles\n");
   // printf("\tpr2.m_size = %d, ", pr2.m_size);
-  // printf("\tpr2.m_max_2nd_order = %d, ", pr2.m_max_2nd_order);
+  // printf("\tpr2.m_max_song = %d, ", pr2.m_max_song);
   // printf("\tpr2.m = ");
   // for (int index_m=0; index_m < pr2.m_size; ++index_m)
   //   printf("%d%s ", pr2.m[index_m], index_m!=(pr2.m_size-1)?",":"\n");

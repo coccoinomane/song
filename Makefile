@@ -80,7 +80,7 @@ LENSING = lensing.o
 OUTPUT = output.o
 
 # Source files exclusive of SONG
-SONG_TOOLS = $(TOOLS) utility.o song_tools.o slatec_3j_C.o mesh_interpolation.o
+SONG_TOOLS = $(TOOLS) utility.o song_tools.o slatec_3j_C.o mesh_interpolation.o binary.o
 INPUT2 = input2.o
 PERTURBATIONS2 = perturbations2.o
 BESSEL = bessel.o

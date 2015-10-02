@@ -164,7 +164,7 @@ int bessel2_init(
     /* B->E projection function (equal to minus E->B). See eq. 5.103 of
     http://arxiv.org/abs/1405.2280. Since they vanish for scalar modes, we
     compute them only when we have at least a non-scalar mode */
-    if (ppr2->m_max_2nd_order>0) {
+    if (ppr2->m_max_song>0) {
       pbs2->has_J_EB = _TRUE_;
       pbs2->index_J_EB = index_J++;
     }
@@ -868,9 +868,9 @@ int bessel2_get_l1_list(
     
 
   /* The maximum number of elements of pbs2->l1 is given by the maximum l in pbs->l
-  plus MAX(pbs2->L_max, ppr2->m_max_2nd_order). We use a logical array to keep track
+  plus MAX(pbs2->L_max, ppr2->m_max_song). We use a logical array to keep track
   of which l1 are to be kept. */
-  int L_max = pbs2->L_max + ppr2->m_max_2nd_order; // +1;
+  int L_max = pbs2->L_max + ppr2->m_max_song; // +1;
   int l1_max = pbs->l[pbs->l_size - 1] + L_max;
   short * l1_logical;
   class_calloc (l1_logical, l1_max+1, sizeof(int), pbs2->error_message);

@@ -6,6 +6,7 @@
 #include "common.h"
 #include "song_tools.h"
 #include "slatec_3j_C.h"
+#include "binary.h"
 
 #ifndef __COMMON2__
 #define __COMMON2__
@@ -24,6 +25,7 @@ options */
 
 /** Maximum number of columns in output ASCII files */
 #define _MAX_NUM_COLUMNS_ 1024
+
 
 /**
  * All precision parameters for the second-order part of SONG. 
@@ -64,9 +66,9 @@ struct precision2
   m=3+ ->  no name because the metric does not have these modes */
   int m[_MAX_NUM_AZIMUTHAL_];
   int m_size; /**< Number of azimuthal modes to evolve */
-  int m_max_2nd_order;  /**< Maximum m contained in ppr2->m */
+  int m_max_song;  /**< Maximum m contained in ppr2->m */
 
-  /** Logical array of size ppr2->m_max_2nd_order; if compute_m[M]==_TRUE_, then SONG will solve
+  /** Logical array of size ppr2->m_max_song; if compute_m[M]==_TRUE_, then SONG will solve
   the Boltzmann equation for that azimuthal mode M. In other words, if M is contained in ppr2->m,
   then ppr2->compute[m] == _TRUE_. */
   int compute_m[_MAX_NUM_AZIMUTHAL_];  

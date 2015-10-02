@@ -263,9 +263,7 @@ int perturb2_init (
       ppt2->error_message,
       ppt2->error_message);
     
-  } // end of parallel region
-  
-  if (abort == _TRUE_) return _FAILURE_;
+  } if (abort == _TRUE_) return _FAILURE_; // end of parallel region
   
   
 
@@ -317,13 +315,18 @@ int perturb2_init (
           ppt2->error_message,
           ppt2->error_message);
 
-      }  // for index_k3
+      }  // for k3
 
-    } // for index_k2
+    } // for k2
 
 
-    /* Output to file the source function for the considered value of index_k1 and
-    free the associated memory, if requested */
+    /* Dump to file the source function for the considered value of index_k1 and
+    free the associated memory, if requested. The next time we'll need the source
+    function, we shall load it from disk. Note that this kind of output is meant
+    to free memory at the expense of disk space, contrary to the binary files
+    produced by perturb2_save_perturbations() and the text files produced by
+    produced by perturb2_output(), whose purpose is to plot and inspect the
+    perturbations and the source function, respectively. */
 
     if (ppr2->store_sources_to_disk == _TRUE_) {
 
@@ -343,16 +346,34 @@ int perturb2_init (
 
     #pragma omp flush(abort)
     
-  }  // for parallel (index_k1)
-  
-  if (abort == _TRUE_) return _FAILURE_;
+  } if (abort == _TRUE_) return _FAILURE_; // for k1
 
+
+  /* Check that the number of filled values corresponds to the number of allocated space */
+  if (ppr2->load_sources_from_disk == _FALSE_)
+    class_test (ppt2->count_allocated_sources != ppt2->count_memorised_sources,
+      ppt2->error_message,
+      "there is a mismatch between allocated (%ld) and used (%ld) space!",
+      ppt2->count_allocated_sources, ppt2->count_memorised_sources);
+
+  if (ppt2->perturbations2_verbose > 1)
+    printf(" -> filled ppt2->sources with %ld values\n", ppt2->count_memorised_sources);
     
+
 
   // ====================================================================================
   // =                              Produce output files                                =
   // ====================================================================================
 
+
+  /* Create output files containing the source function. Two types of binary files
+  will be created: the SOURCE files, with the source function tabulated as a function 
+  of (k3,tau), for fixed values of k1 and k2; and the TRANSFER files, with the source
+  function tabulated as a function of (k1,k2,k3), for fixed values of time tau.
+  Note that the output files that will be produced by this function are multi-dimensional
+  binary tables of the source function, while those produced by perturb2_save_perturbations()
+  were one-dimensional ASCII tables of the second-order perturbations. */
+  
   if ((ppt2->k_out_size > 0) || (ppt2->tau_out_size > 0)) {
 
     class_call_parallel (perturb2_output (
@@ -365,6 +386,7 @@ int perturb2_init (
        ppt2->error_message);
 
   }
+
 
 
   // ====================================================================================
@@ -386,16 +408,10 @@ int perturb2_init (
 
   free(pppw2);
 
-
-  if (ppt2->perturbations2_verbose > 1)
-    printf(" -> filled ppt2->sources with %ld values\n", ppt2->count_memorised_sources);
-    
-  /* Check that the number of filled values corresponds to the number of allocated space */
-  if (ppr2->load_sources_from_disk == _FALSE_)
-    class_test (ppt2->count_allocated_sources != ppt2->count_memorised_sources,
-      ppt2->error_message,
-      "there is a mismatch between allocated (%ld) and used (%ld) space!",
-      ppt2->count_allocated_sources, ppt2->count_memorised_sources);
+  /* Close output ASCII files (tau_out files) */
+    for (int index_tau_out=0; index_tau_out < ppt2->tau_out_size; ++index_tau_out)
+      for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out)
+        fclose (ppt2->tau_out_files[index_k_out][index_tau_out]);
 
   /* Do not evaluate the subsequent modules if ppt2->stop_at_perturbations2 == _TRUE_ */
   if (ppt2->stop_at_perturbations2 == _TRUE_) {
@@ -680,10 +696,10 @@ int perturb2_indices_of_perturbs(
     
   /* Check that the m-list is within bounds */
   class_test (
-    (ppr2->m_max_2nd_order > ppr2->l_max_los) ||
-    (ppr2->m_max_2nd_order > ppr2->l_max_g) ||
-    (ppr2->m_max_2nd_order > ppr2->l_max_pol_g) ||
-    (ppr2->m_max_2nd_order > ppr2->l_max_ur),
+    (ppr2->m_max_song > ppr2->l_max_los) ||
+    (ppr2->m_max_song > ppr2->l_max_g) ||
+    (ppr2->m_max_song > ppr2->l_max_pol_g) ||
+    (ppr2->m_max_song > ppr2->l_max_ur),
     ppt2->error_message,
     "all entries in modes_song should be between 0 and l_max.");
 
@@ -853,7 +869,7 @@ int perturb2_indices_of_perturbs(
     to compute the E-mode transfer functions in the transfer2.c module, we will need
     the B-mode polarisation sources as well. The exception is when only scalar modes
     are requested, in which case there is no B-mode polarisation. */
-    if (ppr2->m_max_2nd_order!=0) { /* if at least a m!=0 mode is requested */
+    if (ppr2->m_max_song!=0) { /* if at least a m!=0 mode is requested */
 
       ppt2->has_source_B = _TRUE_;
 
@@ -1680,11 +1696,18 @@ int perturb2_get_k_lists (
 
     /* Build a 1D array with the output values for k1 and k2 */
     double * k_out;
-    class_alloc (k_out, 2*ppt2->k_out_size*sizeof(double), ppt2->error_message);
+    class_alloc (k_out, (2*ppt2->k_out_size+1)*sizeof(double), ppt2->error_message);
     for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
       k_out[2*index_k_out] = ppt2->k1_out[index_k_out];
       k_out[2*index_k_out + 1] = ppt2->k2_out[index_k_out];
     }
+    
+    /* Also add the largest between the k3 output values, in order to avoid SONG
+    complaining about k3 being larger than k1 and k2 */
+    double k3_out_max = 0;
+    for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out)
+      k3_out_max = MAX (MAX (k3_out_max, ppt2->k3_out[index_k_out]), ppt2->k1_out[index_k_out]);
+    k_out[2*ppt2->k_out_size] = k3_out_max;
     
     /* Merge ppt2->k with the k1 and k2 output points, sort the resulting array and
     remove the duplicates in it */
@@ -1692,7 +1715,7 @@ int perturb2_get_k_lists (
                   ppt2->k,
                   ppt2->k_size,
                   k_out,
-                  2*ppt2->k_out_size,
+                  2*ppt2->k_out_size+1,
                   &(ppt2->k),
                   &(ppt2->k_size),
                   compare_doubles,
@@ -2039,16 +2062,24 @@ int perturb2_get_k_lists (
 
       if (ppt2->k_out_size > 0) {
 
-        /* If SONG is running in k_out_mode, we ignore the k3 grid computed above
-        and start over */
-        if (ppt2->k_out_mode == _TRUE_)
+        /* If SONG is running in k_out_mode, we ignore the k3 grid computed above and
+        start over. If an output time or redshift is requested, we do keep the k3 grid,
+        lest the output files have only one entry. */
+
+        if ((ppt2->k_out_mode == _TRUE_) && ((ppt2->tau_out_size+ppt2->z_out_size) <= 0))
           k3_size = 0;
 
         /* Add the output values to the k3 sampling. These values are contained in
-        ppt2->k3_out and satisfy the triangular condition. Note that we enter the block
-        only if index_k1 and index_k2 are both requested as part of an output triplet */
+        ppt2->k3_out and satisfy the triangular condition.  */
 
         for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
+        
+          /* Add the k3 output points to the k3 grid, but only for those k1 and k2 that are
+          inside k1_out and k2_out. Given a (k1,k2) pair, we will be adding the k3_out values
+          one at a time. If two triplets have the same (k1,k2) pair, this will mess up the
+          assignation of the index_k3_out indices, because each addition will shift the grid
+          and with it the indices assigned previously. We prevent this from happening by
+          enforcing in input2.c that the k3 values are given in ascending order. */
         
           if ((index_k1==ppt2->index_k1_out[index_k_out]) && (index_k2==ppt2->index_k2_out[index_k_out])) {
 
@@ -2097,7 +2128,7 @@ int perturb2_get_k_lists (
                 index_k1,index_k2);
 
               ppt2->index_k3_out[index_k_out] = index_k3;
-            
+
             } // end of if 
 
 
@@ -2186,6 +2217,15 @@ int perturb2_get_k_lists (
     ppt2->error_message,
     "found vanishing value in either k_min (%g) or k_max (%g)",
     ppt2->k_min, ppt2->k_max);
+
+  /* Debug - Print the k-output indices */
+  // for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
+  //   printf ("index_k_out=%3d:  (%3d,%3d,%3d)\n",
+  //     index_k_out,
+  //     ppt2->index_k1_out[index_k_out],
+  //     ppt2->index_k2_out[index_k_out],
+  //     ppt2->index_k3_out[index_k_out]);
+  // }
 
 
 
@@ -2692,21 +2732,27 @@ int perturb2_timesampling_for_sources (
   using the tau_out parameter. Here we add these tau-values to the list of computed
   tau in SONG, that is, to ppt2->tau_sampling. */
 
-  /* First, convert the requested redshifts in z_out to conformal times, and add
-  them to ppt2->tau_out */
+  /* Convert the requested redshifts in z_out to conformal times, and add them to ppt2->tau_out */
+
   for (int index_z=0; index_z < ppt2->z_out_size; ++index_z) {
 
     if (ppt2->z_out[index_z] < 0) {
-      fprintf (ppt2->tau_out_files[ppt2->tau_out_size+index_z],
-        "# NOTE: z_out was negative for this file, so we set it to z=0\n");
+
+      for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out)
+        fprintf (ppt2->tau_out_files[index_k_out][ppt2->tau_out_size+index_z],
+          "# NOTE: z_out was negative for this file, so we set it to z=0\n");
+
       ppt2->z_out[index_z] = 0;
+
     }
 
     class_call (background_tau_of_z (
                   pba,
                   ppt2->z_out[index_z],
                   &ppt2->tau_out[ppt2->tau_out_size+index_z]),
-      ppt2->error_message, ppt2->error_message);   
+      ppt2->error_message,
+      ppt2->error_message);   
+
   }
 
   ppt2->tau_out_size += ppt2->z_out_size;
@@ -2718,29 +2764,28 @@ int perturb2_timesampling_for_sources (
 
     /* Check that the requested times can be computed by SONG */
     for (int index_tau_out=0; index_tau_out < ppt2->tau_out_size; ++index_tau_out) {
-      
+
       class_test (ppt2->tau_out[index_tau_out] < pth->tau_ini,
         ppt2->error_message,
         "choose tau_out to be larger than %g (you choose %g)",
           pth->tau_ini, ppt2->tau_out[index_tau_out]);
 
-      /* If the requested time is too large, set it to the largest available time.
-      Comment this block to add the requested time anyway. */
+
+      /* If the requested time is too large, set it to the largest available time. Comment the if 
+      block to add the requested time anyway. */
+
+      ppt2->tau_out_was_reduced[index_tau_out] = _FALSE_;
+
+      sprintf (ppt2->tau_out_reduction_message,
+        "NOTE: the requested time for this file was too large, or redshift was too low; we set tau_out to the largest available value in our time sampling (%g).",
+        ppt2->tau_sampling[ppt2->tau_size-1]);
+
       if (ppt2->tau_out[index_tau_out] > ppt2->tau_sampling[ppt2->tau_size-1]) {
 
-        char buffer[1024];
+        ppt2->tau_out_was_reduced[index_tau_out] = _TRUE_;
 
-        sprintf (buffer,"# NOTE: the requested time for this file was too large, or redshift\
- was too low; we set tau_out to the largest available value in our time sampling (%g).\n",
-          ppt2->tau_sampling[ppt2->tau_size-1]);
-        fprintf (ppt2->tau_out_files[index_tau_out], buffer);
-        
-        /* We do not write the warning to the binary file lest we mess up the byte ordering */
-        fprintf (stderr, "# NOTE: requested time for %s is too large; we set tau_out to the\
- largest available value in our time sampling (%g)\n",
-          ppt2->tau_out_paths_sources[index_tau_out], ppt2->tau_sampling[ppt2->tau_size-1]);
-        
         ppt2->tau_out[index_tau_out] = ppt2->tau_sampling[ppt2->tau_size-1];
+
       }
     }
 
@@ -4901,54 +4946,20 @@ int perturb2_find_approximation_switches (
       ppt2->error_message,
       ppt2->error_message);
 
-
     /* Make sure that the time where an approximation switches is never equal
     to a time in ppt2->tau_sampling. If that happened, the differential evolver
     would produce output twice for the same time. Which would be nothing terrible,
-    but would set off some internal checks in SONG (thanks to Thomas Tram). */
-    for (int index_interval=1; index_interval < (interval_number-1); index_interval++)
-      for (int index_tau=0; index_tau < ppt2->tau_size; ++index_tau)
+    but would set off some internal checks in SONG (thanks to Thomas Tram). */      
+    for (int index_interval=1; index_interval < interval_number; index_interval++)
+      for (int index_tau=0; index_tau < (ppt2->tau_size-1); ++index_tau)
         if (interval_limit[index_interval] == ppt2->tau_sampling[index_tau])
-          ppt2->tau_sampling[index_tau] -= ppr->smallest_allowed_variation;
+          ppt2->tau_sampling[index_tau] *= (1+ppr->smallest_allowed_variation);
 
-  } // end of if(interval_number!=1)
+  } // if(interval_number!=1)
 
   return _SUCCESS_;
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -5832,8 +5843,6 @@ int perturb2_wavemode_info (
   sprintf (header, "%s%s%s\n", header, comment, line);
   sprintf (header, "%s%s\n", header, comment);
   sprintf (header, "%s%s", header, pba->info);
-  sprintf (header, "%s%s\n", header, comment);
-  sprintf (header, "%s%s", header, ppw2->info);
 
   return _SUCCESS_;
 
@@ -5929,19 +5938,48 @@ int perturb2_solve (
                 ppw2),
     ppt2->error_message,
     ppt2->error_message);
-        
-  /* Should we fill an output file for this particular (k1,k2,k3)? */
+
+  /* Determine whether we should produce output files for the wavemode currently evolved
+  using the print function. There are two cases in which this can happen: if all three
+  evolved wavemodes are in the list of wavemodes requested by the user, or if two of them
+  are in the list and the user also requested a tau output value. */
+
   ppw2->index_k_out = -1;
   ppw2->print_function = NULL;
 
   for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
+
     if ((index_k1 == ppt2->index_k1_out[index_k_out]) &&
         (index_k2 == ppt2->index_k2_out[index_k_out]) &&
         (index_k3 == ppt2->index_k3_out[index_k_out])) {
+
       ppw2->index_k_out = index_k_out;
       ppw2->print_function = perturb2_save_perturbations;
+      break; /* In the event of repeated output triplets, generate output only for the first one */
+
     }
   }
+
+  /* The tau output does not depend on k3, hence output triplets with identical
+  k1_out and k2_out must produce the same output. For these repeated pairs,
+  we produce the output only for the first one, in the file corresponding to the smallest
+  k_out index, and leave the other files empty. Here we compute such index. */
+
+  ppw2->index_k_out_for_tau_out = -1;
+
+  for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
+    
+    if ((index_k1 == ppt2->index_k1_out[index_k_out]) &&
+        (index_k2 == ppt2->index_k2_out[index_k_out]) &&
+        (ppt2->tau_out_size > 0)) {
+
+      ppw2->index_k_out_for_tau_out = index_k_out;
+      ppw2->print_function = perturb2_save_perturbations;
+      break; /* In the event of repeated (k1_out,k2_out) pairs, generate output only for the first one */
+
+    }
+  }
+
 
   /* Initialize indices relevant for back/thermo tables search */
   ppw2->last_index_back=0;
@@ -6236,10 +6274,19 @@ int perturb2_solve (
   free (interval_limit); 
   free(interval_number_of);
 
+  /* Close k_out files */
   if (ppw2->index_k_out != -1) {
-    fclose (ppt2->k_out_files[ppw2->index_k_out]);
-    if (ppt2->output_quadratic_sources == _TRUE_)
-      fclose (ppt2->k_out_files_quad[ppw2->index_k_out]);
+    
+    if ((index_k1 == ppt2->index_k1_out[ppw2->index_k_out]) &&
+        (index_k2 == ppt2->index_k2_out[ppw2->index_k_out]) &&
+        (index_k3 == ppt2->index_k3_out[ppw2->index_k_out])) {
+          
+      fclose (ppt2->k_out_files[ppw2->index_k_out]);
+
+      if (ppt2->output_quadratic_sources == _TRUE_)
+        fclose (ppt2->k_out_files_quad[ppw2->index_k_out]);
+        
+    }
   }
 
   return _SUCCESS_;
@@ -7029,6 +7076,9 @@ int perturb2_vector_free(
 
 
 
+/**
+ * Free all the memory space allocated by perturb2_init().
+ */ 
 
 int perturb2_free(
      struct precision2 * ppr2,
@@ -7037,8 +7087,10 @@ int perturb2_free(
 {
 
   /* Do not free memory if SONG was run only partially for debug purposes */
-  if (ppt2->stop_at_perturbations1 == _FALSE_)
+  if ((ppt2->stop_at_perturbations1 == _TRUE_) ||
+      (ppt2->stop_at_perturbations2 == _TRUE_))
     return _SUCCESS_;
+
 
   if (ppt2->has_perturbations2 == _TRUE_) {
     
@@ -7058,12 +7110,8 @@ int perturb2_free(
 
     free (ppt2->has_allocated_sources);
 
-    for (int index_type = 0; index_type < ppt2->tp2_size; index_type++) {
-        
+    for (int index_type = 0; index_type < ppt2->tp2_size; index_type++)
       free(ppt2->sources[index_type]);
-
-    } // End of for index_type
-
 
     for (int index_k1 = 0; index_k1 < k1_size; ++index_k1) {
       for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2)
@@ -7109,8 +7157,6 @@ int perturb2_free(
     } // end of for T,E,B...
     free (ppt2->coupling_coefficients);
 
-    free(ppt2->m);
-
     for (int l=0; l <= ppt2->largest_l; ++l)
       free(ppt2->lm_array[l]);
     free(ppt2->lm_array);
@@ -7145,6 +7191,8 @@ int perturb2_free(
     free (ppt2->d_minus);
     free (ppt2->d_plus);
     free (ppt2->d_zero);
+
+    free(ppt2->m);
 
     /* Free file arrays */
     if ((ppr2->store_sources_to_disk == _TRUE_) || (ppr2->load_sources_from_disk == _TRUE_)) {
@@ -9431,7 +9479,7 @@ int perturb2_rsa_variables (
 
   /* The quadratic contribution to the RSA approximation includes some higher-order
   terms that we normally omit, and that require the computation of the derivatives
-  of the quadratic soruces. We include them only if the user asked for
+  of the quadratic sources. We include them only if the user asked for
   ppt2->compute_quadsources_derivatives==_TRUE_ */
 
   if (ppt2->has_quadratic_sources == _TRUE_) {
@@ -12411,34 +12459,56 @@ int what_if_ndf15_fails(int (*derivs)(double x,
 
 
 
-
-
-
-
-
-
-
-
 /**
- * Output to file the state of the differential system.
+ * Output the state of the differential system at the time tau in ASCII
+ * format.
  *
- * This is the point where you can output to file or to screen the second-order transfer
- * functions, or any other quantity you are interested into.
+ * This function is called in two circumstances:
+ *
+ * - If the three wavemodes being evolved belong to the list of output
+ *   values in k1_out, k2_out and k3_out.
  * 
- * The transfer functions will be saved to the file ppt2->transfers_file, whose name
- * is specified in the parameter file via the parameter transfers_filename. The
- * quadratic sources will be saved to the file ppt2->quadsources_file, whose path is
- * specified via the quadsources_filename parameter.
+ * - If k1 and k2 belong to the k_out lists and the tau_out array is not
+ *   empty (ie. the user specified at least a time output value).
  *
- * Note that this function is called from within the evolver at each time step, so
- * expect the outputted files to be large.
+ * In the former case, a line with the values of the perturbations at the
+ * time tau will be appended to the k_out file corresponding to the 
+ * current wavemode (perturbations_song_kXXX.txt). The k_out files contain
+ * the perturbations as a function of time for specific (k1,k2,k3) triplets.
+ *
+ * In the latter case, and if tau belongs to the tau_out array, the line
+ * will be appended to the tau_out file that corresponds to tau
+ * (perturbations_song_kXXX_tauXXX.txt or perturbations_song_kXXX_zXXX.txt).
+ * The tau_out files contain the perturbations as a function of k3 for
+ * specific (k1,k2) pairs.
+ *
+ * This function is called directly from the differential evolver at the
+ * beginning of each time step, and whenever the evolver reaches a time
+ * inside the time sampling (ie. tau belongs to ppt2->tau_sampling).
+ * In the former case, index_tau is negative; in the latter, it is the
+ * index in ppt2->tau_sampling corresponding to tau.
+ *
+ * The k_out files are written only if index_tau<0, that is, if tau is
+ * a time step in the differential evolver. In this way, the k_out files
+ * can be used to debug the differential system.
+ *
+ * The tau_out files are written only if index_tau>=0, that is, if tau
+ * belongs to ppt2->tau_sampling. This is the simplest way I could think
+ * of to output the perturbations for a fixed time value.
+ * 
+ * The output files produced by this function are one-dimensional
+ * ASCII tables of the second-order perturbations, contrary to those
+ * produced in perturb2_output(), which are multi-dimensional binary
+ * tables of the source function.
  */
 
 int perturb2_save_perturbations (
-          double tau,
-          double * y,
-          double * dy,
-          void * parameters_and_workspace,
+          double tau, /**< Current conformal time */
+          int index_tau, /**< Location of tau inside the time-sampling array ppt2->tau_sampling. If negative,
+                         then tau is an intermediate time step rather than an output point. */
+          double * y, /**< Array with the value of the evolved perturbations in tau */
+          double * dy, /**< Derivative of y with respect to conformal time */
+          void * parameters_and_workspace, /**< Structure with accessory information*/
           ErrorMsg error_message
           )
 {
@@ -12470,12 +12540,48 @@ int perturb2_save_perturbations (
   double * k2_m = ppw2->k2_m;
   double * k1_ten_k2 = ppw2->k1_ten_k2;
 
-  /* Update the number of steps in the differential system */
-  ppw2->n_steps++;
+  /* Update the number of time steps taken so far by the differential system
+  to solve this (k1,k2,k3) triplet. The condition index_tau<0 selects the
+  calls to this function that come just after a new time step. */
+  if (index_tau < 0)
+    ppw2->n_steps++;
 
-  /* Debug - Investigate how many steps are needed to evolve the current mode.
-  If it exceeds 5000 steps, you should probably be suspicious. */
-  // printf ("ppw2->n_steps = %d\n", ppw2->n_steps);
+  /* We tabulate the perturbations in the k_out files only if all three
+  wavemodes are requested and only for the time steps in the differential
+  evolver. Uncomment the last condition in the if block below to include
+  in the k_out output also the times in ppt2->tau_sampling. */
+  short has_k_out = (ppt2->index_k1_out[ppw2->index_k_out] == ppw2->index_k1) &&
+                    (ppt2->index_k2_out[ppw2->index_k_out] == ppw2->index_k2) &&
+                    (ppt2->index_k3_out[ppw2->index_k_out] == ppw2->index_k3) &&
+                    (index_tau < 0);
+
+  /* Determine whether we need we need to write also the tau_out files. The
+  conditions are:
+   - That the current tau belongs to the time sampling in ppt2->tau_sampling (index_tau >= 0).
+   - That the user asked for at least one tau output value (ppt2->tau_out_size > 0).
+   - That the current tau belongs to one of the requested output values */
+  int index_tau_out = -1;
+  if ((index_tau >= 0) && (ppt2->tau_out_size > 0)) {  
+    index_tau_out = ppt2->tau_out_size - 1;
+    while ((index_tau_out >= 0) && (ppt2->index_tau_out[index_tau_out] != index_tau))
+      index_tau_out--;
+  }
+  short has_tau_out = (index_tau_out >= 0);
+
+  class_test ((has_k_out) && (has_tau_out),
+    ppt2->error_message,
+    "tau and k outputs must be mutually exclusive");
+
+  /* If no output is required, we can just return from this function */
+  if ((!has_k_out) && (!has_tau_out))
+    return _SUCCESS_;
+
+
+  /* Debug - Print the output time values */
+  // if (has_tau_out)
+  //   printf ("(%3d,%3d,%3d): index_tau_out=%3d, tau_out_size=%3d, index_tau=%3d, tau=%8g\n",
+  //     ppw2->index_k1, ppw2->index_k2, ppw2->index_k3, index_tau_out, ppt2->tau_out_size, index_tau, tau);
+
 
 
   // ====================================================================================
@@ -12483,10 +12589,10 @@ int perturb2_save_perturbations (
   // ====================================================================================
 
   /* Call functions that will fill pvec__ arrays with useful quantities.  Do not alter
-  the order in which these functions are called, since they all rely on the quantities
-  computed by the previous ones. */
+  the order in which these functions are called, since they generally rely on the
+  quantities computed by the previous ones. */
 
-  /* Interpolate background-related quantities (pvecback) */
+  /* Interpolate background quantities (pvecback) */
   class_call (background_at_tau(
                 pba,
                 tau,
@@ -12498,6 +12604,7 @@ int perturb2_save_perturbations (
     error_message);
 
   double a = pvecback[pba->index_bg_a];
+  double z = 1/a-1;
   double a_sq = a*a;
   double H = pvecback[pba->index_bg_H];
   double Hc = pvecback[pba->index_bg_H]*a;
@@ -12508,11 +12615,11 @@ int perturb2_save_perturbations (
   double Omega_m0 = pba->Omega0_cdm + pba->Omega0_b;
   double Omega_r0 = pba->Omega0_g + pba->Omega0_ur;
 
-  /* Interpolate thermodynaics-related quantities (pvecthermo) */
+  /* Interpolate thermodynamics quantities (pvecthermo) */
   class_call (thermodynamics_at_z(
                 pba,
                 pth,
-                1./pvecback[pba->index_bg_a]-1.,  /* redshift z=1/a-1 */
+                1/a-1,
                 pth->inter_closeby,
                 &(ppw2->last_index_thermo),
                 ppw2->pvecback,
@@ -12547,6 +12654,7 @@ int perturb2_save_perturbations (
       ppt2->error_message,
       error_message);
 
+    /* Interpolate the time derivatives of the quadratic sources if requested */
     if (ppt2->compute_quadsources_derivatives == _TRUE_) {
 
       /* Interpolate the time derivative of the total quadratic sources
@@ -12577,11 +12685,9 @@ int perturb2_save_perturbations (
         ppt2->error_message,
         ppt2->error_message);
     }
-
   }
-  
 
-  /* Set the perturbations that are influenced by approximations */
+  /* Set the value of those perturbations that are influenced by approximations */
   class_call (perturb2_workspace_at_tau(
                 ppr,
                 ppr2,
@@ -12632,7 +12738,7 @@ int perturb2_save_perturbations (
 
   /* Compute useful quantities in the radiation streaming limit. If the RSA
   is currently active, these quantities have already been computed in
-  perturb2_workspace_at_tau(). */
+  perturb2_einstein(). */
   if (ppw2->approx[ppw2->index_ap2_rsa] == (int)rsa_off)
     class_call (perturb2_rsa_variables(
                   ppr,
@@ -12665,12 +12771,12 @@ int perturb2_save_perturbations (
     error_message);
 
 
-  /* Debug - Print the quadratic collisional sources for the first k_out triplet */
+  /* Debug - Print the quadratic collisional sources for the first
+  (k1_out,k2_out,k3_out) triplet */
   // double xe = pvecthermo[pth->index_th_xe];
   // double xe_dot = pvecthermo[pth->index_th_dxe];
   // double delta_xe_1_approx = - ppw2->delta_b_1*(xe_dot/xe)/(3*Hc);
   // double delta_xe_2_approx = - ppw2->delta_b_2*(xe_dot/xe)/(3*Hc);
-  //
   // p11 (tau, kappa_dot, dI_qc2(0,0), dI_qc2(1,0), dI_qc2(2,0),
   //   ppw2->delta_b_1, ppw2->pvec_sources1[ppt->index_qs_delta_Xe], delta_xe_1_approx,
   //   ppw2->delta_b_2, ppw2->pvec_sources2[ppt->index_qs_delta_Xe], delta_xe_2_approx);
@@ -12727,13 +12833,14 @@ int perturb2_save_perturbations (
 
     if (ppr2->compute_m[1] == _TRUE_) {
 
-      /* Evolved vector potential omega */
+      /* Extract the vector potential omega_m1 as evolved from the space-space
+      Einstein equation (eq. 3.99 of http://arxiv.org/abs/1405.2280) */
       omega_m1 = y[ppw2->pv->index_pt2_omega_m1];
 
-      /* Compute the value of omega using the constraint equation in eq. 3.98 of
-      http://arxiv.org/abs/1405.2280, obtained from the the G^i_0 part of Einstein
-      equation. */
-      double rho_g, rho_b, rho_cdm, rho_ur, rho_dipole_m1, rho_dipole_1, rho_dipole_2;
+      /* Compute omega_m1 using the space-time Einstein equaiton (eq. 3.98 of
+      http://arxiv.org/abs/1405.2280) */
+      double rho_g=0, rho_b=0, rho_cdm=0, rho_ur=0;
+      double rho_dipole_m1=0, rho_dipole_1=0, rho_dipole_2=0;
 
       rho_g = ppw2->pvecback[pba->index_bg_rho_g];
       rho_dipole_m1        =  rho_g*ppw2->I_1m[1];
@@ -12745,7 +12852,7 @@ int perturb2_save_perturbations (
       rho_dipole_1         +=  rho_b*pvec_sources1[ppt->index_qs_dipole_b];
       rho_dipole_2         +=  rho_b*pvec_sources2[ppt->index_qs_dipole_b];
 
-      if (pba->has_cdm == _TRUE_) {
+      if ((pba->has_cdm == _TRUE_) && (ppt->gauge != synchronous)) {
         rho_cdm = ppw2->pvecback[pba->index_bg_rho_cdm];
         rho_dipole_m1        +=  rho_cdm*cdm(1,1,1);
         rho_dipole_1         +=  rho_cdm*pvec_sources1[ppt->index_qs_dipole_cdm];
@@ -12759,10 +12866,8 @@ int perturb2_save_perturbations (
         rho_dipole_2         +=  rho_ur*N_2_raw(1);
       }
 
-
-      /* Quadratic metric part */
-
-      double vector_quad = 2 *  /* coming from the perturbative expansion */
+      /* Quadratic part of the m=1 space-time equation */
+      double vector_quad = 2 *
         (
             2 * psi_1 * psi_2 * Hc  * (       k1_m[2]   +     k2_m[2] )
           - 2 * psi_1 * phi_2 * Hc  * (       k1_m[2]                 )
@@ -12776,15 +12881,14 @@ int perturb2_save_perturbations (
                          + k2_m[2]/k2*rho_dipole_2*(psi_1+phi_1) )
         );
 
-
-      /* Compute time derivative of Hc. Since Hc = a*H, we have that Hc' = a*H' + a'*H */
+      /* Compute time derivative of Hc. Since Hc=a*H, we have that Hc' = a*H' + a'*H */
       double Hc_prime = a*ppw2->pvecback[pba->index_bg_H_prime] + (a*Hc)*ppw2->pvecback[pba->index_bg_H];
       
-      /* Finally, omega */
+      /* Finally, build omega_m1 */
       omega_m1_constraint = 2/(4*Hc*Hc - 4*Hc_prime + k_sq) * (-a_sq*rho_dipole_m1 - vector_quad);
       
 
-    } // vector potential
+    }
 
 
     /* - Tensor potential */
@@ -12808,9 +12912,7 @@ int perturb2_save_perturbations (
 
   if (ppt->gauge == synchronous) {
 
-    if (ppr2->compute_m[0] == _TRUE_) {
 
-    }
   } // end of synchronous gauge
 
 
@@ -12821,7 +12923,9 @@ int perturb2_save_perturbations (
 
   /* We test SONG metric and matter variables by making use of known analytical limits.
   Some of these limits are valid in matter domination only, so expect deviations as
-  you approach today due to dark energy. */
+  you approach today due to dark energy. For more detail on this robustness test, see
+  sec. 5.6.3 of http://arxiv.org/abs/1405.2280. */
+
 
   /* - Scalar modes in matter domination */
 
@@ -12859,7 +12963,7 @@ int perturb2_save_perturbations (
   }
 
 
-  /* - Limits for the tensor modes */
+  /* - Tensor potential in matter domination */
 
   /* Compute the limit for the tensor potential in matter domination from eq. 2.7
   of Boubeker, Creminelli et al. 2009. */
@@ -12920,7 +13024,7 @@ int perturb2_save_perturbations (
 
 
   // ====================================================================================
-  // =                               Early universe limits                             =
+  // =                               Early universe limits                              =
   // ====================================================================================
 
   /* - Adiabatic velocity at early times */
@@ -12943,10 +13047,10 @@ int perturb2_save_perturbations (
 
 
   // ====================================================================================
-  // =                                  Print to file                                   =
+  // =                              Set columns to print                                =
   // ====================================================================================
 
-  /* Create column arrays */
+  /* Arrays containing all the information on the columns to be printed, labels included */
   char label[_MAX_NUM_COLUMNS_][_MAX_LENGTH_LABEL_];
   void * pointer_tr[_MAX_NUM_COLUMNS_];
   void * pointer_qs[_MAX_NUM_COLUMNS_];
@@ -12970,20 +13074,43 @@ int perturb2_save_perturbations (
   // -                               Time variables                                -
   // -------------------------------------------------------------------------------
 
-  /* Conformal time tau */
-  strcpy (label[++i], "tau");
-  pointer_tr[i] = &tau;
-  pointer_qs[i] = &tau;
+  if (has_k_out) {
 
-  /* Scale factor a */
-  strcpy (label[++i], "a");
-  pointer_tr[i] = &a;
-  pointer_qs[i] = &a;
+    /* Conformal time tau */
+    strcpy (label[++i], "tau");
+    pointer_tr[i] = &tau;
+    pointer_qs[i] = &tau;
 
-  /* Scale factor normalised to a_equality */
-  strcpy (label[++i], "y");
-  pointer_tr[i] = &Y;
-  pointer_qs[i] = &Y;
+    /* Scale factor a */
+    strcpy (label[++i], "a");
+    pointer_tr[i] = &a;
+    pointer_qs[i] = &a;
+
+    /* Scale factor normalised to a_equality */
+    strcpy (label[++i], "y");
+    pointer_tr[i] = &Y;
+    pointer_qs[i] = &Y;
+    
+  }
+
+
+  // -------------------------------------------------------------------------------
+  // -                                k3 variables                                 -
+  // -------------------------------------------------------------------------------
+
+  else if (has_tau_out) {
+
+    /* Conformal time tau */
+    strcpy (label[++i], "k3");
+    pointer_tr[i] = &ppw2->k;
+    pointer_qs[i] = &ppw2->k;
+
+    /* Cosine of the angle between k1 and k2 */
+    strcpy (label[++i], "mu");
+    pointer_tr[i] = &ppw2->cosk1k2;
+    pointer_qs[i] = &ppw2->cosk1k2;
+    
+  }
 
 
   // -------------------------------------------------------------------------------
@@ -13548,40 +13675,43 @@ int perturb2_save_perturbations (
   // -                             Background & misc                               -
   // -------------------------------------------------------------------------------
 
-  sprintf (label[++i], "kappa_dot");
-  pointer_tr[i] = &kappa_dot;
-  pointer_qs[i] = &kappa_dot;
-  condition[i] = (v>2);
+  if (has_k_out) {
 
-  sprintf (label[++i], "exp_m_kappa");
-  pointer_tr[i] = &pvecthermo[pth->index_th_exp_m_kappa];
-  pointer_qs[i] = &pvecthermo[pth->index_th_exp_m_kappa];
-  condition[i] = (v>2);
+    sprintf (label[++i], "kappa_dot");
+    pointer_tr[i] = &kappa_dot;
+    pointer_qs[i] = &kappa_dot;
+    condition[i] = (v>2);
+
+    sprintf (label[++i], "exp_m_kappa");
+    pointer_tr[i] = &pvecthermo[pth->index_th_exp_m_kappa];
+    pointer_qs[i] = &pvecthermo[pth->index_th_exp_m_kappa];
+    condition[i] = (v>2);
   
-  sprintf (label[++i], "g");
-  pointer_tr[i] = &pvecthermo[pth->index_th_g];
-  pointer_qs[i] = &pvecthermo[pth->index_th_g];
-  condition[i] = (v>2);
+    sprintf (label[++i], "g");
+    pointer_tr[i] = &pvecthermo[pth->index_th_g];
+    pointer_qs[i] = &pvecthermo[pth->index_th_g];
+    condition[i] = (v>2);
   
-  sprintf (label[++i], "xe");
-  pointer_tr[i] = &pvecthermo[pth->index_th_xe];
-  pointer_qs[i] = &pvecthermo[pth->index_th_xe];
-  condition[i] = (v>2);
+    sprintf (label[++i], "xe");
+    pointer_tr[i] = &pvecthermo[pth->index_th_xe];
+    pointer_qs[i] = &pvecthermo[pth->index_th_xe];
+    condition[i] = (v>2);
   
-  sprintf (label[++i], "H");
-  pointer_tr[i] = &pvecback[pba->index_bg_H];
-  pointer_qs[i] = &pvecback[pba->index_bg_H];
-  condition[i] = (v>2);
+    sprintf (label[++i], "H");
+    pointer_tr[i] = &pvecback[pba->index_bg_H];
+    pointer_qs[i] = &pvecback[pba->index_bg_H];
+    condition[i] = (v>2);
   
-  sprintf (label[++i], "Hc");
-  pointer_tr[i] = &Hc;
-  pointer_qs[i] = &Hc;
-  condition[i] = (v>2);
+    sprintf (label[++i], "Hc");
+    pointer_tr[i] = &Hc;
+    pointer_qs[i] = &Hc;
+    condition[i] = (v>2);
+  }
 
   
-  // -------------------------------------------------------------------------------
-  // -                             Write perturbations                             -
-  // -------------------------------------------------------------------------------
+  // ====================================================================================
+  // =                                   Print to file                                  =
+  // ====================================================================================
 
   /* Maximum number of columns that will be written */
   int n_max_columns = i;  
@@ -13590,70 +13720,133 @@ int perturb2_save_perturbations (
     "too many columns; raise _MAX_NUM_COLUMNS_ to at least %d",
     _MAX_NUM_COLUMNS_);
 
-  /* Shortcut to the file with the perturbations for this k triplet */
-  FILE * file_tr = ppt2->k_out_files[ppw2->index_k_out];
-
   /* Choose how label & values should be formatted */
   char format_label[64] = "%18s(%02d) ";
   char format_value[64] = "%+22.11e ";
-
-  /* Write an information header */
-  if (ppw2->n_steps==1) {
-    char line[1024];
-    sprintf (line, "Second-order perturbations tabulated as a function of conformal time tau for fixed (k1,k2,k3).");
-    fprintf (file_tr, "%s%s\n", _COMMENT_, line);
-    fprintf (file_tr, "%s", ppw2->file_header);
-  }
-
-  /* Write row with labels */
-  int n_columns_tr = 1;
-  if (ppw2->n_steps == 1) {
-    for (int i=0; i < n_max_columns; ++i)
-      if ((condition[i]) && (pointer_tr[i]!=NULL))
-        fprintf (file_tr, format_label, label[i], n_columns_tr++);
-    fprintf (file_tr, "\n");
-  }
-
-  /* Write row with data to file */
-  for (int i=0; i < n_max_columns; ++i)
-    if ((condition[i]) && (pointer_tr[i]!=NULL))
-      fprintf (file_tr, format_value, *((double *)pointer_tr[i]));
-  fprintf (file_tr, "\n");
-
+    
 
   // -------------------------------------------------------------------------------
-  // -                          Write quadratic sources                            -
+  // -                                Output to k_out                              -
   // -------------------------------------------------------------------------------
 
-  if (ppt2->output_quadratic_sources == _TRUE_) {
+  if (has_k_out) {
 
-    /* Shortcut to the file with the quadratic sources for this k triplet */
-    FILE * file_qs = ppt2->k_out_files_quad[ppw2->index_k_out];
+    /* Shortcut to the file with the perturbations for this k triplet */
+    FILE * file_tr = ppt2->k_out_files[ppw2->index_k_out];
 
     /* Write an information header */
-    if (ppw2->n_steps==1) {
+    if (ppw2->n_steps == 1) {
       char line[1024];
-      sprintf (line, "Quadratic soruces for the second-order system, tabulated as a function of conformal time tau for fixed (k1,k2,k3).");
-      fprintf (file_qs, "%s%s\n", _COMMENT_, line);
-      fprintf (file_qs, "%s", ppw2->file_header);
+      if ((ppt2->k_out_was_swapped[ppw2->index_k_out]) && (ppr2->m_max_song > 0))
+        fprintf (file_tr, "%s%s\n", _COMMENT_, ppt2->k_out_swap_message);
+      sprintf (line, "Second-order perturbations tabulated as a function of conformal time tau for fixed (k1,k2,k3).");
+      fprintf (file_tr, "%s%s\n", _COMMENT_, line);
+      fprintf (file_tr, "%s", ppw2->file_header);
+      fprintf (file_tr, "%s\n", _COMMENT_);
+      fprintf (file_tr, "%s", ppw2->info);
     }
 
     /* Write row with labels */
-    int n_columns_qs = 1;
+    int n_columns_tr = 1;
     if (ppw2->n_steps == 1) {
       for (int i=0; i < n_max_columns; ++i)
-        if ((condition[i]) && (pointer_qs[i]!=NULL))
-          fprintf (file_qs, format_label, label[i], n_columns_qs++);
-      fprintf (file_qs, "\n");
+        if ((condition[i]) && (pointer_tr[i]!=NULL))
+          fprintf (file_tr, format_label, label[i], n_columns_tr++);
+      fprintf (file_tr, "\n");
     }
 
     /* Write row with data to file */
     for (int i=0; i < n_max_columns; ++i)
-      if ((condition[i]) && (pointer_qs[i]!=NULL))
-        fprintf (file_qs, format_value, *((double *)pointer_qs[i]));
-    fprintf (file_qs, "\n");
+      if ((condition[i]) && (pointer_tr[i]!=NULL))
+        fprintf (file_tr, format_value, *((double *)pointer_tr[i]));
+    fprintf (file_tr, "\n");
 
-  }
+
+    /* Do the same for the quadratic sources, if requested */
+
+    if (ppt2->output_quadratic_sources == _TRUE_) {
+
+      /* Shortcut to the file with the quadratic sources for this k triplet */
+      FILE * file_qs = ppt2->k_out_files_quad[ppw2->index_k_out];
+
+      /* Write an information header */
+      if (ppw2->n_steps==1) {
+        char line[1024];
+        if ((ppt2->k_out_was_swapped[ppw2->index_k_out]) && (ppr2->m_max_song > 0))
+          fprintf (file_qs, "%s%s\n", _COMMENT_, ppt2->k_out_swap_message);
+        sprintf (line, "Quadratic sources for the second-order system, tabulated as a function of conformal time tau for fixed (k1,k2,k3).");
+        fprintf (file_qs, "%s%s\n", _COMMENT_, line);
+        fprintf (file_qs, "%s", ppw2->file_header);
+        fprintf (file_tr, "%s\n", _COMMENT_);
+        fprintf (file_tr, "%s", ppw2->info);
+      }
+
+      /* Write row with labels */
+      int n_columns_qs = 1;
+      if (ppw2->n_steps == 1) {
+        for (int i=0; i < n_max_columns; ++i)
+          if ((condition[i]) && (pointer_qs[i]!=NULL))
+            fprintf (file_qs, format_label, label[i], n_columns_qs++);
+        fprintf (file_qs, "\n");
+      }
+
+      /* Write row with data to file */
+      for (int i=0; i < n_max_columns; ++i)
+        if ((condition[i]) && (pointer_qs[i]!=NULL))
+          fprintf (file_qs, format_value, *((double *)pointer_qs[i]));
+      fprintf (file_qs, "\n");
+      
+    }
+
+  } // if k_out
+
+
+  // -------------------------------------------------------------------------------
+  // -                               Output to tau_out                             -
+  // -------------------------------------------------------------------------------
+
+  else if (has_tau_out) {
+
+    /* Shortcut to the file with the perturbations for this output time */
+    FILE * file_tr = ppt2->tau_out_files[ppw2->index_k_out_for_tau_out][index_tau_out];
+
+    /* Write an information header */
+    if (ppw2->index_k3 == 0) {
+      char line[1024];
+      if ((ppt2->k_out_was_swapped[ppw2->index_k_out_for_tau_out]) && (ppr2->m_max_song > 0)) 
+        fprintf (file_tr, "%s%s\n", _COMMENT_, ppt2->k_out_swap_message);
+      if (ppt2->tau_out_was_reduced[index_tau_out])
+        fprintf (file_tr, "%s%s\n", _COMMENT_, ppt2->tau_out_reduction_message);      
+      sprintf (line, "Second-order perturbations tabulated as a function of k3 for fixed (k1,k2,tau).");
+      fprintf (file_tr, "%s%s\n", _COMMENT_, line);
+      fprintf (file_tr, "%s", ppw2->file_header);
+      fprintf (file_tr, "%s\n", _COMMENT_);
+      fprintf (file_tr, "%sInformation on the perturbations:\n", _COMMENT_);
+      fprintf (file_tr, "%sk1 = %g, k2 = %g\n", _COMMENT_, ppt2->k[ppw2->index_k1], ppt2->k[ppw2->index_k2]);
+      fprintf (file_tr, "%sindex_k1 = %d/%d, index_k2 = %d/%d, k3_size = %d\n",
+        _COMMENT_, ppw2->index_k1, ppt2->k_size-1, ppw2->index_k2, ppt2->k_size-1, ppt2->k3_size[ppw2->index_k1][ppw2->index_k2]);
+      fprintf (file_tr, "%s\n", _COMMENT_);
+      fprintf (file_tr, "%sInformation on the output time:\n", _COMMENT_);
+      fprintf (file_tr, "%stau = %g, z = %g, a = %g, y = %g\n", _COMMENT_, tau, z, a, log10(a/pba->a_eq));
+    }
+
+    /* Write row with labels */
+    int n_columns_tr = 1;
+    if (ppw2->index_k3 == 0) {
+      for (int i=0; i < n_max_columns; ++i)
+        if ((condition[i]) && (pointer_tr[i]!=NULL))
+          fprintf (file_tr, format_label, label[i], n_columns_tr++);
+      fprintf (file_tr, "\n");
+    }
+
+    /* Write row with data to file */
+    for (int i=0; i < n_max_columns; ++i)
+      if ((condition[i]) && (pointer_tr[i]!=NULL))
+        fprintf (file_tr, format_value, *((double *)pointer_tr[i]));
+    fprintf (file_tr, "\n");
+
+  } // if tau_out
+
 
   return _SUCCESS_;
 
@@ -13955,16 +14148,21 @@ int perturb2_quadratic_sources_at_tau_spline (
 }
 
 
-
 /**
- * Output to file the source function for the considered value of index_k1
- * in binary format.
+ * Output to file the source function in binary format.
  *
- * This function is called inside a loop on index_k1, right after SONG computes
- * the source function for that index_k1. Its purpose is to copy the source 
- * function from the array ppt2->sources to binary files for later use.
+ * This function is called after SONG has solved the differential system for
+ * all (k1,k2,k3) wavemodes, and computed the source function. Its purpose is
+ * to copy the source function along with accessory data, from ppt2->sources
+ * to appositely created binary files.
  *
- * perturb2_output() produces three kinds of files:
+ * The output files that will be produced by this function are multi-dimensional
+ * binary tables of the source function, contrary to those produced by
+ * perturb2_save_perturbations(), which are one-dimensional ASCII tables of
+ * the second-order perturbations, and those created by store_sources_to_disk(),
+ * which are just a binary dump of ppt2->sources intended for freeing memory.
+ *  
+ * perturb2_output() produces two kinds of files:
  *
  * -# The SOURCE files, each containing the source function S_lm(k1,k2,k3,tau)
  *    for all types (T,E,B,delta_cdm...), multipoles (l,m), times (tau) and k3
@@ -13983,18 +14181,6 @@ int perturb2_quadratic_sources_at_tau_spline (
  *    without needing to use SONG. The source files are progressively named
  *    sources_song_tauXXX.dat and sources_song_zXXX.dat
  *
- * -# The STORAGE files, each containing the source function S_lm(k1,k2,k3,tau)
- *    for a fixed k1. With respect to the source files, the storage files also
- *    include the k2 dimension, but they lack accessory data. Their purpose is
- *    to save memory space at the expense of disk space, and to run SONG very
- *    quickly by precomputing the source function. The source function in k1
- *    is freed as soon as the binary files is produced. When the source function
- *    will be needed again, like in the transfer2.c module, it will be loaded
- *    back into ppt2->sources from disk using perturb2_load_sources_from_disk().
- *    To inspect and plot the data in the storage files, you need to use
- *    print_sources2.c. The files are created only if ppr2->store_sources_to_disk
- *    is true, are placed in the run directory, and are progressively named
- *    sources_XXX.dat
  */
 
 int perturb2_output(
@@ -14017,7 +14203,7 @@ int perturb2_output(
     _MAX_INFO_SIZE_ + /* For background information */
     _MAX_INFO_SIZE_ + /* For perturbations information */
     _MAX_INFO_SIZE_ + /* For other information */
-    _MAX_INFO_SIZE_ + _MAX_LINE_LENGTH_*ppt2->tp2_size; /* For binary map */
+    _MAX_INFO_SIZE_ + _MAX_HEADER_LINE_LENGTH_*ppt2->tp2_size; /* For binary map */
   
 
   // ====================================================================================
@@ -14140,6 +14326,8 @@ int perturb2_output(
     // ---------------------------------------------------------------------------
 
     /* Add information to the file header */
+    if ((ppt2->k_out_was_swapped[index_k_out]) && (ppr2->m_max_song > 0))
+      binary_sprintf (file, ppt2->k_out_swap_message);
     binary_sprintf (file, "Table of the source function S_lm(k1,k2,k3,tau) tabulated as a function of (l,m,k3,tau) for fixed k1 and k2.");
     binary_sprintf (file, "This binary file was generated by SONG (%s) on %s.", _SONG_URL_, ppr->date);
     binary_sprintf (file, "");
@@ -14148,7 +14336,7 @@ int perturb2_output(
     binary_sprintf (file, "");
     binary_sprintf (file, "Information on the perturbations:");
     binary_sprintf (file, "k1 = %g, k2 = %g", ppt2->k[index_k1], ppt2->k[index_k2]);
-    binary_sprintf (file, "index_k1 = %d/%d, index_k2 = %d/%d", index_k1, ppt2->k_size-1, index_k2, ppt2->k_size-1);
+    binary_sprintf (file, "index_k1 = %d/%d, index_k2 = %d/%d, k3_size = %d", index_k1, ppt2->k_size-1, index_k2, ppt2->k_size-1, k3_size);
     if (ppt->gauge == newtonian) binary_sprintf(file, "gauge = newtonian");
     if (ppt->gauge == synchronous) binary_sprintf(file, "gauge = synchronous");
 
@@ -14412,6 +14600,8 @@ int perturb2_output(
     // ---------------------------------------------------------------------------
 
     /* Add information to the file header */
+    if (ppt2->tau_out_was_reduced[index_tau_out])
+      binary_sprintf (file, ppt2->tau_out_reduction_message);
     binary_sprintf (file, "Table of the source function S_lm(k1,k2,k3,tau) tabulated as a function of (l,m,k1,k2,k3) for fixed tau=%g (z=%g).",
       tau, z);
     binary_sprintf (file, "This binary file was generated by SONG (%s) on %s.", _SONG_URL_, ppr->date);
@@ -14422,7 +14612,7 @@ int perturb2_output(
     if (ppt->gauge == synchronous) binary_sprintf(file, "gauge = synchronous");
     binary_sprintf (file, "");
     binary_sprintf (file, "Information on the output time:");
-    binary_sprintf (file, "tau = %g, z = %g, a = %g, y =%g", tau, z, a, log10(a/pba->a_eq));
+    binary_sprintf (file, "tau = %g, z = %g, a = %g, y = %g", tau, z, a, log10(a/pba->a_eq));
 
 
     // --------------------------------------------------------------------------
@@ -14685,13 +14875,25 @@ int perturb2_output(
 /**
  * Save the source function to disk for a given k1 index.
  * 
+ * The STORAGE files contain each the source function S_lm(k1,k2,k3,tau)
+ * for a fixed k1. With respect to the source files, the storage files also
+ * include the k2 dimension, but they lack accessory data. Their purpose is
+ * to save memory space at the expense of disk space, and to run SONG very
+ * quickly by precomputing the source function. The source function in k1
+ * is freed as soon as the binary files is produced. When the source function
+ * will be needed again, like in the transfer2.c module, it will be loaded
+ * back into ppt2->sources from disk using perturb2_load_sources_from_disk().
+ * To inspect and plot the data in the storage files, you need to use
+ * print_sources2.c. The files are created only if ppr2->store_sources_to_disk
+ * is true, are placed in the run directory, and are progressively named
+ * sources_XXX.dat
+ *
  * The source function is stored to disk in as many files as the number
- * of k1 values (index_k1). This function will append to each of these files
- * the source function relative to the considered index_k1.
+ * of k1 values (index_k1). This function appends to one such file the
+ * source function in ppt2->sources for the input value of index_k1.
  *
  * The path of the files is stored in ppt2->sources_paths[index_k1], while
  * their file reference is in ppt2->sources_files[index_k1].
- *
  */
 
 int perturb2_store_sources_to_disk(

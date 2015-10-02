@@ -931,7 +931,7 @@ int transfer2_indices_of_transfers(
   only for non scalar modes, otherwise they just vanish. */
   if (ppt2->has_cmb_polarization_b == _TRUE_) {
   
-    if (ppr2->m_max_2nd_order>0) {
+    if (ppr2->m_max_song>0) {
       ptr2->index_tt2_B = index_tt;
       index_tt += ptr2->n_transfers;
     }

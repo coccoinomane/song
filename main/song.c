@@ -140,39 +140,39 @@ int main(int argc, char **argv) {
     printf("\n\nError in fisher_free \n=>%s\n",fi.error_message);
     return _FAILURE_;
   }
-  
+
   if (bispectra_free(&pr,&pt,&sp,&le,&bi) == _FAILURE_) {
     printf("\n\nError in bispectra_free \n=>%s\n",bi.error_message);
     return _FAILURE_;
   }
-  
+
   if (lensing_free(&le) == _FAILURE_) {
     printf("\n\nError in lensing_free \n=>%s\n",le.error_message);
     return _FAILURE_;
   }
-  
+
   if (pt.has_cls == _TRUE_) {
     if (spectra_free(&sp) == _FAILURE_) {
       printf("\n\nError in spectra_free \n=>%s\n",sp.error_message);
       return _FAILURE_;
     }
   }
-    
+
   if (transfer2_free(&pr2,&pt2,&tr2) == _FAILURE_) {
     printf("\n\nError in transfer2_free \n=>%s\n",tr2.error_message);
     return _FAILURE_;
   }
-  
+
   if (bessel2_free(&pr,&pr2,&bs,&bs2) == _FAILURE_)  {
     printf("\n\nError in bessel2_free \n=>%s\n",bs2.error_message);
     return _FAILURE_;
   }
-  
+
   if (bessel_free(&bs) == _FAILURE_)  {
     printf("\n\nError in bessel_free \n=>%s\n",bs.error_message);
     return _FAILURE_;
   }
-  
+
   if (transfer_free(&tr) == _FAILURE_) {
     printf("\n\nError in transfer_free \n=>%s\n",tr.error_message);
     return _FAILURE_;
@@ -192,27 +192,27 @@ int main(int argc, char **argv) {
     printf("\n\nError in perturb2_free \n=>%s\n",pt2.error_message);
     return _FAILURE_;
   }
-  
+
   if (perturb_free(&pt) == _FAILURE_) {
     printf("\n\nError in perturb_free \n=>%s\n",pt.error_message);
     return _FAILURE_;
   }
-  
+
   if (thermodynamics_free(&th) == _FAILURE_) {
     printf("\n\nError in thermodynamics_free \n=>%s\n",th.error_message);
     return _FAILURE_;
   }
-  
+
   if (background_free(&ba) == _FAILURE_) {
     printf("\n\nError in background_free \n=>%s\n",ba.error_message);
     return _FAILURE_;
   }
-  
+
   if (input2_free(&pr2) == _FAILURE_) {
     printf("\n\nError in input2_free \n=>%s\n",pr2.error_message);
     return _FAILURE_;
   }
-  
+
   parser_free(pr.parameter_files_content);
   free (pr.parameter_files_content);
 

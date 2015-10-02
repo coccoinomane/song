@@ -832,7 +832,7 @@ int main(int argc, char **argv) {
         However, when only the scalar bispectrum was computed, there is no need to do so because
         in that case we have extracted the Gaunt structure analytically. */
         /* TODO: update for B-modes */
-        // if (pr2.m_max_2nd_order > 0)
+        // if (pr2.m_max_song > 0)
         //   if ((bi.l[index_l1]+bi.l[index_l2]+bi.l[index_l3])%2!=0)
         //     continue;
 
