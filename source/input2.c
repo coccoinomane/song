@@ -858,42 +858,7 @@ int input2_init (
 
   class_read_int("perturbations2_verbose",ppt2->perturbations2_verbose);
 
-  /* Write perturbations to file according to the given list of (index_k1, index_k2,
-  index_k3) indices */
-
-  class_call(parser_read_string(pfc,"dump_debug_files",&(string1),&(flag1),errmsg),errmsg,errmsg);
-  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-    ppt2->has_debug_files = _TRUE_;
-
-  if (ppt2->has_debug_files == _TRUE_) {
-
-    class_call(parser_read_string(pfc,"transfers_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);  
-    if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_))
-      sprintf(ppt2->transfers_filename, "%s/%s", pop->root, string1);
-    class_open(ppt2->transfers_file,ppt2->transfers_filename,"w",errmsg);
-
-    class_call(parser_read_string(pfc,"quadsources_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);      
-    if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_))
-      sprintf(ppt2->quadsources_filename, "%s/%s", pop->root, string1);
-    class_open(ppt2->quadsources_file,ppt2->quadsources_filename,"w",errmsg);
-
-    class_call(parser_read_string(pfc,"quadliouville_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);  
-    if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_))
-      sprintf(ppt2->quadliouville_filename, "%s/%s", pop->root, string1);
-    class_open(ppt2->quadliouville_file,ppt2->quadliouville_filename,"w",errmsg);
-
-    class_call(parser_read_string(pfc,"quadcollision_filename",&(string1),&(flag1),errmsg),errmsg,errmsg);      
-    if ((flag1 == _TRUE_) && (string1 != NULL) && (ppt2->has_debug_files==_TRUE_))
-      sprintf(ppt2->quadcollision_filename, "%s/%s", pop->root, string1);
-    class_open(ppt2->quadcollision_file,ppt2->quadcollision_filename,"w",errmsg);
-
-    class_read_int("index_k1_debug", ppt2->index_k1_debug);
-    class_read_int("index_k2_debug", ppt2->index_k2_debug);
-    class_read_int("index_k3_debug", ppt2->index_k3_debug);
-    class_read_int("l_max_debug", ppt2->l_max_debug);
-  
-  } // end of if has_debug_files
-
+  class_read_int("file_verbose", ppt2->file_verbose);
 
 
   /* Read values of (k1,k2,k3) for which to write output files */
@@ -1073,13 +1038,21 @@ int input2_init (
   }
 
 
+  /* Should we output the quadratic sources as well? */
+
+  class_call(parser_read_string(pfc,"output_quadratic_sources",&string1,&flag1,errmsg),
+	     errmsg,
+	     errmsg);	
+
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+    ppt2->output_quadratic_sources = _TRUE_;
+
+
   /* Create and open output files for the desired k-values */
 
-  int k_out_size = ppt2->k_out_size + ppt2->k_index_out_size;
+  if ((ppt2->k_out_size + ppt2->k_index_out_size) > 0) {
 
-  if (k_out_size > 0) {
-
-    for (int index_k_out=0; index_k_out < k_out_size; ++index_k_out) {
+    for (int index_k_out=0; index_k_out < (ppt2->k_out_size + ppt2->k_index_out_size); ++index_k_out) {
 
       /* Build ASCII filenames */
       sprintf (ppt2->k_out_paths[index_k_out],
@@ -1087,29 +1060,87 @@ int input2_init (
         pop->root,
         index_k_out);
 
-      /* Build binary filenames */
-      sprintf (ppt2->k_out_paths_sources[index_k_out],
-        "%s/sources_song_k%03d.dat",
-        pop->root,
-        index_k_out);
-
-      /* Open files */
+      /* Open ASCII files */
       class_open(ppt2->k_out_files[index_k_out],
         ppt2->k_out_paths[index_k_out],
         "w",
         errmsg);
 
-      /* Issue a warning if the user asked for configurations with k1<k2 */
-      if (((index_k_out < ppt2->k_out_size) && (ppt2->k1_out[index_k_out] < ppt2->k2_out[index_k_out])) ||
-          ((index_k_out >= ppt2->k_out_size) && (ppt2->k1_index_out[index_k_out-ppt2->k_out_size] < ppt2->k2_index_out[index_k_out-ppt2->k_out_size])))
-        fprintf (ppt2->k_out_files[index_k_out],
-          "NOTE: This file is empty because you specified a triplet where k1<k2, while SONG only\
- computes configurations where k1>=k2. To obtain the transfer functions for k1<k2, switch\
- k1 and k2 for this triplet in the parameter file and multiply the resulting output file\
- by a factor (-1)^m. For scalar quantities, this factor is 1. For a more detailed explanation,\
- please refer to Sec. B.2 of http://arxiv.org/abs/1405.2280.\n");
+      /* Build binary filenames, but do not open the files yet */
+      sprintf (ppt2->k_out_paths_sources[index_k_out],
+        "%s/sources_song_k%03d.dat",
+        pop->root,
+        index_k_out);
+        
+      if (ppt2->output_quadratic_sources == _TRUE_) {
+    
+        /* Build ASCII filenames */
+        sprintf (ppt2->k_out_paths_quad[index_k_out],
+          "%s/quadsources_song_k%03d.txt",
+          pop->root,
+          index_k_out);
 
+        /* Open ASCII files */
+        class_open(ppt2->k_out_files_quad[index_k_out],
+          ppt2->k_out_paths_quad[index_k_out],
+          "w",
+          errmsg);
+      }
+
+
+      /* Swap k1 and k2 if the user asked for configurations with k1<k2 */
+
+      ppt2->k_out_was_swapped[index_k_out] = _FALSE_;
+
+      sprintf (ppt2->k_out_swap_message,
+        "NOTE: You asked for a (k1,k2) pair with k1<k2, but SONG only computes configurations with\
+ k1>=k2. This file contains the perturbations with k1 and k2 swapped; multiply them by a factor\
+ (-1)^m to obtain the (k1,k2) pair you asked for. For scalar modes, m=0, there is no need for the\
+ factor. For details, please refer to Sec. B.2 of http://arxiv.org/abs/1405.2280.");
+
+      if ((index_k_out < ppt2->k_out_size) && (ppt2->k1_out[index_k_out] < ppt2->k2_out[index_k_out])) {
+
+        ppt2->k_out_was_swapped[index_k_out] = _TRUE_;
+
+        double swap = ppt2->k1_out[index_k_out];
+        ppt2->k1_out[index_k_out] = ppt2->k2_out[index_k_out];
+        ppt2->k2_out[index_k_out] = swap;
+
+      }
+
+      if ((index_k_out >= ppt2->k_out_size) && (ppt2->k1_index_out[index_k_out-ppt2->k_out_size] < ppt2->k2_index_out[index_k_out-ppt2->k_out_size])) {
+
+        ppt2->k_out_was_swapped[index_k_out] = _TRUE_;
+
+        int swap = ppt2->k1_index_out[index_k_out-ppt2->k_out_size];
+        ppt2->k1_index_out[index_k_out-ppt2->k_out_size] = ppt2->k2_index_out[index_k_out-ppt2->k_out_size];
+        ppt2->k2_index_out[index_k_out-ppt2->k_out_size] = swap;
+
+      }
+    } // for k_out
+    
+
+    /* Make sure that k3_out is given in ascending order for the output triplets with
+    the same k1_out and k2_out, lest we mess up the addition of the k3_out values
+    to the k3 grid in perturb2_get_k_lists() */
+  
+    for (int i=0; i < ppt2->k_out_size; ++i) {
+
+      for (int j=i; j < ppt2->k_out_size; ++j) {
+
+        if ((ppt2->k1_out[i] == ppt2->k1_out[j]) && (ppt2->k2_out[i] == ppt2->k2_out[j])) {
+        
+          class_test (ppt2->k3_out[i] > ppt2->k3_out[j],
+            errmsg, "k3_out[%d] is larger than k3_out[%d]; triplets with equal (k1_out, k2_out) should\
+ be given in ascending k3 order, lest the output files do not match the input k_out values", i, j);
+
+          if ((ppt2->k3_out[i] == ppt2->k3_out[j]) && (i!=j))
+            printf ("NOTE: output triplets #%d and #%d are equal; perturbation outputs for #%d will be empty\n", i, j, j);
+
+        }
+      }
     }
+
     
     /* Tell CLASS to output perturbations, too, unless otherwise specified with
     the flag output_class_perturbations */
@@ -1130,6 +1161,116 @@ int input2_init (
   } // if k_out
 
 
+  /* Read values of tau for which to write output files */
+
+  class_call(parser_read_list_of_doubles(
+               pfc,
+              "tau_out",
+              &(int1),
+              &(pointer1),
+              &flag1,
+              errmsg),
+    errmsg,
+    errmsg);
+
+  if (flag1 == _TRUE_) {
+    
+    class_test(int1 > _MAX_NUMBER_OF_TAU_FILES_, errmsg,
+      "increase _MAX_NUMBER_OF_TAU_FILES_ in include/perturbations2.h to at least %d",
+      int1);
+    
+    ppt2->tau_out_size = int1;
+
+    for (i=0; i<int1; i++)
+      ppt2->tau_out[i] = pointer1[i];
+    
+    free (pointer1);
+
+  }
+
+  /* Read values of redshift for which to write output files */
+
+  class_call(parser_read_list_of_doubles(
+               pfc,
+              "z_out",
+              &(int1),
+              &(pointer1),
+              &flag1,
+              errmsg),
+    errmsg,
+    errmsg);
+
+  if (flag1 == _TRUE_) {
+    
+    class_test((int1+ppt2->tau_out_size) > _MAX_NUMBER_OF_TAU_FILES_, errmsg,
+      "increase _MAX_NUMBER_OF_TAU_FILES_ in include/perturbations2.h to at least %d",
+      int1);
+    
+    ppt2->z_out_size = int1;
+
+    for (i=0; i<int1; i++)
+      ppt2->z_out[i] = pointer1[i];
+    
+    free (pointer1);
+
+  }
+  
+  /* Create and open output files for the desired tau values */
+
+  for (int index_tau_out=0; index_tau_out < ppt2->tau_out_size; ++index_tau_out) {
+
+    for (int index_k_out=0; index_k_out < (ppt2->k_out_size + ppt2->k_index_out_size); ++index_k_out) {
+
+      /* Build ASCII filenames */
+      sprintf (ppt2->tau_out_paths[index_k_out][index_tau_out],
+        "%s/perturbations_song_k%03d_tau%03d.txt",
+        pop->root,
+        index_k_out,
+        index_tau_out);
+
+      /* Open ASCII files, but only if some k-values are requested */
+      class_open(ppt2->tau_out_files[index_k_out][index_tau_out],
+        ppt2->tau_out_paths[index_k_out][index_tau_out],
+        "w",
+        errmsg);
+        
+    }
+
+    /* Build binary filenames */
+    sprintf (ppt2->tau_out_paths_sources[index_tau_out],
+      "%s/sources_song_tau%03d.dat",
+      pop->root,
+      index_tau_out);
+
+  }
+
+  /* For redshift values we use different file names but same data structures */
+
+  for (int index_z_out=0; index_z_out < ppt2->z_out_size; ++index_z_out) {
+
+    for (int index_k_out=0; index_k_out < (ppt2->k_out_size + ppt2->k_index_out_size); ++index_k_out) {
+
+      /* Build ASCII filenames */
+      sprintf (ppt2->tau_out_paths[index_k_out][ppt2->tau_out_size+index_z_out],
+        "%s/perturbations_song_k%03d_z%03d.txt",
+        pop->root,
+        index_k_out,
+        index_z_out);
+
+      /* Open ASCII files, but only if some k-values are requested */
+      class_open(ppt2->tau_out_files[index_k_out][ppt2->tau_out_size+index_z_out],
+        ppt2->tau_out_paths[index_k_out][ppt2->tau_out_size+index_z_out],
+        "w",
+        errmsg);
+
+    }
+
+    /* Build binary filenames */
+    sprintf (ppt2->tau_out_paths_sources[ppt2->tau_out_size+index_z_out],
+      "%s/sources_song_z%03d.dat",
+      pop->root,
+      index_z_out);
+  }
 
 
   // =================================================================================
@@ -1275,7 +1416,7 @@ int input2_init (
 
 
   // =============================================================================================
-  // =                                   Fisher matrices                                         =
+  // =                                     Fisher matrices                                       =
   // =============================================================================================
 
 
@@ -1283,8 +1424,17 @@ int input2_init (
   
 
   // =============================================================================================
-  // =                                Disk storage of sources                                    =
+  // =                                      File output                                          =
   // =============================================================================================
+
+  class_call(parser_read_string(pfc,"output_single_precision",&(string1),&(flag1),errmsg),errmsg,errmsg);
+  if ((flag1 == _TRUE_) && (strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL))
+    ppr2->output_single_precision = _FALSE_;
+
+
+  // ----------------------------------------------------------------------------------------
+  // -                               Disk storage of sources                                -
+  // ----------------------------------------------------------------------------------------
 
   /* Store to disk the second-order line of sight sources? */
   class_call(parser_read_string(pfc,"store_sources",&(string1),&(flag1),errmsg),
@@ -1342,9 +1492,9 @@ int input2_init (
     "cannot load and save sources at the same time!");
     
 
-  // =============================================================================================
-  // =                               Disk storage of transfers                                   =
-  // =============================================================================================
+  // ----------------------------------------------------------------------------------------
+  // -                               Disk storage of transfers                              -
+  // ----------------------------------------------------------------------------------------
 
   /* Store to disk the second-order transfer functions? */
   class_call(parser_read_string(pfc,"store_transfers",&(string1),&(flag1),errmsg),
@@ -1555,7 +1705,7 @@ int input2_init (
       "the m-list provided  in modes_song is not strictly ascending");
 
   /* Maximum 'm' that will be computed */
-  ppr2->m_max_2nd_order = ppr2->m[ppr2->m_size-1];
+  ppr2->m_max_song = ppr2->m[ppr2->m_size-1];
   
   /* Check that the m's are positive */
   class_test (ppr2->m[0] < 0,
@@ -1563,14 +1713,14 @@ int input2_init (
     "the m-list provided in modes_song has negative numbers in it");
 
   /* Check that m_max is smaller than limit */  
-  class_test (ppr2->m_max_2nd_order > (_MAX_NUM_AZIMUTHAL_-1),
+  class_test (ppr2->m_max_song > (_MAX_NUM_AZIMUTHAL_-1),
     errmsg,
     "the maximum value of m cannot exceed %d, please choose modes_song\
  accordingly or increase the macro _MAX_NUM_AZIMUTHAL_",
     _MAX_NUM_AZIMUTHAL_);
 
   /* Find out the index in ppr2->m corresponding to a given m. */
-	for(int m=0; m<=ppr2->m_max_2nd_order; ++m) {
+	for(int m=0; m<=ppr2->m_max_song; ++m) {
 
 		ppr2->index_m[m] = -1;
 
@@ -1583,16 +1733,16 @@ int input2_init (
 	for(int m=0; m<_MAX_NUM_AZIMUTHAL_; ++m)
     ppr2->compute_m[m] = _FALSE_;
 
-	for(int m=0; m<=ppr2->m_max_2nd_order; ++m)
+	for(int m=0; m<=ppr2->m_max_song; ++m)
 		for (int index_m=0; index_m<ppr2->m_size; ++index_m)
 			if (m==ppr2->m[index_m]) ppr2->compute_m[m] = _TRUE_;
 
   /* The largest l that will be needed by SONG. The first term (pbs->l_max) is the maximum
   multipole we shall compute the spectra and bispectra in. The second term represent
   the additional l's where we need to the Bessel functions in order to compute the projection
-  functions (ppr2->l_max_los) and the bispectrum integral (ppr2->m_max_2nd_order). This line
+  functions (ppr2->l_max_los) and the bispectrum integral (ppr2->m_max_song). This line
   must be after setting ppr2->l_max_los and ppr2->l_max_boltzmann. */
-  int l_max = pbs->l_max + MAX (ppr2->l_max_los, ppr2->m_max_2nd_order);
+  int l_max = pbs->l_max + MAX (ppr2->l_max_los, ppr2->m_max_song);
   
   /* In some debug scenarios, we will need to evolve a lot of Boltzmann moments, more than
   the maximum l for the C_l */
@@ -1635,7 +1785,7 @@ int input2_init (
   An exception to this rule is when ppr->l_linstep=1, that is, when we take all l's (even
   and odd) in our 1D l-list. In this case, nothing can be skipped and the Fisher estimator
   will give an exact result. */
-  if ((ppr->l_linstep!=1) && (pbi->has_intrinsic==_TRUE_) && (ppr2->m_max_2nd_order>0)) {
+  if ((ppr->l_linstep!=1) && (pbi->has_intrinsic==_TRUE_) && (ppr2->m_max_song>0)) {
        
     printf ("\n");
     printf ("   *@^#?!?! FORCING THE COMPUTATION OF A GRID OF EVEN L'S\n");
@@ -1672,7 +1822,7 @@ int input2_init (
 
   /* For m=0, the rescaling is equal to unity, so we do not apply it. This is an
   optimisation that you can comment out in case you want to test the rescaling. */
-  if (ppr2->m_max_2nd_order == 0)
+  if (ppr2->m_max_song == 0)
     ppt2->rescale_cmb_sources = _FALSE_;
 
 
@@ -1716,9 +1866,9 @@ int input2_init (
   pbs->x_max = MAX (pbs->x_max, pbs2->xx_max);
 
   /* Determine the maximum value of L for which we should compute the projection functions
-  J_Llm(x) in the second-order Bessel module. To explain the inclusion of ppr2->m_max_2nd_order,
+  J_Llm(x) in the second-order Bessel module. To explain the inclusion of ppr2->m_max_song,
   refer to the long comment in bessel2_get_l1_list(). */
-  pbs2->L_max = MAX (ppr2->l_max_los, ppr2->m_max_2nd_order);
+  pbs2->L_max = MAX (ppr2->l_max_los, ppr2->m_max_song);
 
   return _SUCCESS_;
 
@@ -1762,6 +1912,8 @@ int input2_default_params (
   // ===========================================================
   // =                     perturb1 structure                  =
   // ===========================================================
+
+  ppt->gauge = newtonian;
 
   /* Make sure CLASS does not add points to the k grid  */
   ppt->k_output_values_num = -1;
@@ -1877,22 +2029,17 @@ int input2_default_params (
 
   ppt2->perturbations2_verbose = 0;
   
-  ppt2->has_debug_files = _FALSE_;
-  strcpy(ppt2->transfers_filename,"output/transfers2.txt");
-  strcpy(ppt2->quadsources_filename,"output/quadsources.txt");
-  strcpy(ppt2->quadliouville_filename,"output/quadliouville.txt");
-  strcpy(ppt2->quadcollision_filename,"output/quadcollision.txt");
+  ppt2->file_verbose = 1;
+
+  ppt2->tau_out_size = 0;
+  ppt2->z_out_size = 0;
 
   ppt2->k_out_size = 0;
   ppt2->k_index_out_size = 0;
   ppt2->output_class_perturbations = _TRUE_;
+  ppt2->output_quadratic_sources = _FALSE_;
   ppt2->k_out_mode = _FALSE_;
-     
-  ppt2->index_k1_debug = 0;
-  ppt2->index_k2_debug = 0;
-  ppt2->index_k3_debug = 0;
-  ppt2->l_max_debug = 5;
-  
+          
 
   // =============================================================
   // =                     bessel2 structure                     =
@@ -1956,7 +2103,7 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   // =                          Multipole limits                      =
   // ==================================================================
 
-  ppr2->m_max_2nd_order=0;
+  ppr2->m_max_song=0;
 
   ppr2->l_max_g=8;
   ppr2->l_max_pol_g=8;
@@ -2041,6 +2188,7 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   // ===============================================================================
 
   ppr2->old_run = _FALSE_;
+  ppr2->output_single_precision = _TRUE_;
   ppr2->store_sources_to_disk = _FALSE_;
   ppr2->load_sources_from_disk = _FALSE_;
   ppr2->store_transfers_to_disk = _FALSE_;

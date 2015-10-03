@@ -210,7 +210,7 @@ int main(int argc, char **argv) {
   /* Precision parameters - multipoles */
   // printf("* Precision parameters - multipoles\n");
   // printf("\tpr2.m_size = %d, ", pr2.m_size);
-  // printf("\tpr2.m_max_2nd_order = %d, ", pr2.m_max_2nd_order);
+  // printf("\tpr2.m_max_song = %d, ", pr2.m_max_song);
   // printf("\tpr2.m = ");
   // for (int index_m=0; index_m < pr2.m_size; ++index_m)
   //   printf("%d%s ", pr2.m[index_m], index_m!=(pr2.m_size-1)?",":"\n");
@@ -243,15 +243,21 @@ int main(int argc, char **argv) {
 
   /* Perturbations output and debug parameters */
   printf("* Debug parameters\n");
-  printf("\tpt2.has_debug_files = %d\n", pt2.has_debug_files);
-  printf("\tpt2.transfers_filename = %s\n", pt2.transfers_filename);
-  printf("\tpt2.quadsources_filename = %s\n", pt2.quadsources_filename);
-  printf("\tpt2.quadliouville_filename = %s\n", pt2.quadliouville_filename);
-  printf("\tpt2.quadcollision_filename = %s\n", pt2.quadcollision_filename);
-  printf("\tpt2.index_k1_debug = %d\n", pt2.index_k1_debug);
-  printf("\tpt2.index_k2_debug = %d\n", pt2.index_k2_debug);
-  printf("\tpt2.index_k3_debug = %d\n", pt2.index_k3_debug);
-  printf("\tpt2.l_max_debug = %d\n", pt2.l_max_debug);
+  printf("\tpt2.file_verbose = %d\n", pt2.file_verbose);
+  printf("\tpt2.tau_out_size = %d\n", pt2.tau_out_size);
+  if (pt2.tau_out_size > 0) {
+    printf ("\t\t");
+    for (int index_tau_out=0; index_tau_out < pt2.tau_out_size; ++index_tau_out)
+      printf("%12g ", pt2.tau_out[index_tau_out]);
+    printf ("\n");
+  }
+  printf("\tpt2.z_out_size = %d\n", pt2.z_out_size);
+  if (pt2.z_out_size > 0) {
+    printf ("\t\t");
+    for (int index_z_out=0; index_z_out < pt2.z_out_size; ++index_z_out)
+      printf("%12g ", pt2.z_out[index_z_out]);
+    printf ("\n");
+  }
   printf("\tpt2.k_out_size = %d\n", pt2.k_out_size);
   for (int index_k_out=0; index_k_out < pt2.k_out_size; ++index_k_out)
     printf("\t\t%12g %12g %12g\n", pt2.k1_out[index_k_out], pt2.k2_out[index_k_out], pt2.k3_out[index_k_out]);
@@ -259,6 +265,9 @@ int main(int argc, char **argv) {
   for (int index_k_out=0; index_k_out < pt2.k_index_out_size; ++index_k_out)
     printf("\t\t%12d %12d %12d\n", pt2.k1_index_out[index_k_out], pt2.k2_index_out[index_k_out], pt2.k3_index_out[index_k_out]);
   printf("\tpt2.k_out_mode = %d\n", pt2.k_out_mode);
+  printf ("\tpr2.output_single_precision = %d\n", pr2.output_single_precision);
+  printf ("\tpt2.output_class_perturbations = %d\n", pt2.output_class_perturbations);
+  printf ("\tpt2.output_quadratic_sources = %d\n", pt2.output_quadratic_sources);
 
   /* Storage parameters */
   // printf("* Parameters related to the storage of intermediate results\n");

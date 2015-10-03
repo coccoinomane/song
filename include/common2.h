@@ -6,6 +6,7 @@
 #include "common.h"
 #include "song_tools.h"
 #include "slatec_3j_C.h"
+#include "binary.h"
 
 #ifndef __COMMON2__
 #define __COMMON2__
@@ -17,6 +18,13 @@
 factorial of m never overflows, assuming a limit of 10^30. The factorial of m is
 needed in bispectra2.c */
 #define _MAX_NUM_AZIMUTHAL_ 14
+
+/** Maximum number of output files that can be produced with the tau_out
+options */
+#define _MAX_NUMBER_OF_TAU_FILES_ 100
+
+/** Maximum number of columns in output ASCII files */
+#define _MAX_NUM_COLUMNS_ 1024
 
 
 /**
@@ -58,9 +66,9 @@ struct precision2
   m=3+ ->  no name because the metric does not have these modes */
   int m[_MAX_NUM_AZIMUTHAL_];
   int m_size; /**< Number of azimuthal modes to evolve */
-  int m_max_2nd_order;  /**< Maximum m contained in ppr2->m */
+  int m_max_song;  /**< Maximum m contained in ppr2->m */
 
-  /** Logical array of size ppr2->m_max_2nd_order; if compute_m[M]==_TRUE_, then SONG will solve
+  /** Logical array of size ppr2->m_max_song; if compute_m[M]==_TRUE_, then SONG will solve
   the Boltzmann equation for that azimuthal mode M. In other words, if M is contained in ppr2->m,
   then ppr2->compute[m] == _TRUE_. */
   int compute_m[_MAX_NUM_AZIMUTHAL_];  
@@ -211,6 +219,7 @@ struct precision2
   short store_sources_to_disk;    /**< Should we store the source functions to disk? */
   short load_sources_from_disk;   /**< Should we load the source functions from disk? */
   short old_run; /**< set to _TRUE_ if the run was stored with a version of SONG smaller than 1.0 */
+  short output_single_precision;  /**< Should SONG output single precision binary files rather than double precision? */
 
 };  /* end of struct precision2 declaration */
 

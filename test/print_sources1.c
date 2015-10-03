@@ -246,7 +246,7 @@ int main(int argc, char **argv) {
   /* Labels for the second-order quadsources */
   else {
     for (int index_tp = 0; index_tp < qs_size; ++index_tp)
-      fprintf (stderr, "%11s(%03d) ", pt.qs_labels[index_md][index_tp], index_print++);
+      fprintf (stderr, "%11s(%03d) ", pt.qs_labels[index_tp], index_print++);
   }
 
   fprintf (stderr, "\n");

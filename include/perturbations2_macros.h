@@ -326,9 +326,10 @@ yet, hence for the time being keep it equal to 2. */
 // ------------------------------------------------------------------------------------
                               
 #define fprintf_k_debug(args...) {                                  \
-  if((ppw2->index_k1==ppt2->index_k1_debug) &&                      \
-     (ppw2->index_k2==ppt2->index_k2_debug) &&                      \
-     (ppw2->index_k3==ppt2->index_k3_debug)) {                      \
+  if((ppt2->k_out_size > 0) &&                                      \
+     (ppw2->index_k1==ppt2->index_k1_out[0]) &&                     \
+     (ppw2->index_k2==ppt2->index_k2_out[0]) &&                     \
+     (ppw2->index_k3==ppt2->index_k3_out[0])) {                     \
     fprintf (args);                                                 \
   }                                                                 \
 }

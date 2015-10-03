@@ -59,6 +59,14 @@ enum transfer2_tau_sampling {
 
 
 /**
+ * Maximum number of transfer function types computed in this module.
+ *
+ * Feel free to increase it, it is just a memory parameter.
+ */
+#define _MAX_NUM_TRANSFERS_ 4096
+
+
+/**
  * Structure containing everything about the second-order transfer functions in
  * harmonic space \f$ \T_l^{X} (k1,k2,k3) \f$ that other modules need to know.
  *

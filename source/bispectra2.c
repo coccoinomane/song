@@ -118,7 +118,7 @@ int bispectra2_indices (
   /* For |m|>0, it is not possible to obtain the reduced form of the intrinsic bispectrum
   (see comment for 'has_reduced_bispectrum' in bispectra.h) */
   if (pbi->has_intrinsic == _TRUE_)
-    if (ppr2->m_max_2nd_order > 0)
+    if (ppr2->m_max_song > 0)
         pbi->has_reduced_bispectrum[pbi->index_bt_intrinsic] = _FALSE_;
 
   return _SUCCESS_;
@@ -559,11 +559,11 @@ int bispectra2_intrinsic_init (
 
                 pwb->Z = Z;
                           
-                if ((pbi->bispectra_verbose > 1) && (ppr2->m_max_2nd_order==0))
+                if ((pbi->bispectra_verbose > 1) && (ppr2->m_max_song==0))
                   printf("   \\ computing bispectrum %s_%s%s%s for m=%d\n",
                   pbi->bt_labels[index_bt], pbi->bf_labels[X], pbi->bf_labels[Y], pbi->bf_labels[Z], pwb->M3);
 
-                else if ((pbi->bispectra_verbose > 1) && (ppr2->m_max_2nd_order>0))
+                else if ((pbi->bispectra_verbose > 1) && (ppr2->m_max_song>0))
                   printf("   \\ computing bispectrum %s_%s%s%s for (m,offset_l3,offset_l1)=(%d,%d,%d)\n",
                   pbi->bt_labels[index_bt], pbi->bf_labels[X], pbi->bf_labels[Y], pbi->bf_labels[Z],
                   pwb->M3, offset_L3, offset_L1);
@@ -673,7 +673,7 @@ int bispectra2_intrinsic_init (
                 short parity = (pbi->field_parity[X] + pbi->field_parity[Y] + pbi->field_parity[Z])%2;
                 short is_even_configuration = ((pbi->l[index_l1]+pbi->l[index_l2]+pbi->l[index_l3])%2==0);
     
-                if (ppr2->m_max_2nd_order != 0) {
+                if (ppr2->m_max_song != 0) {
     
                   if (parity == _EVEN_) {
                     class_test ((!is_even_configuration) && (fabs(bispectrum)>_MINUSCULE_),
@@ -1212,7 +1212,7 @@ int bispectra2_intrinsic_integrate_over_k3 (
     int index_L3 = pbs2->index_l1[L3];
 
     /* Paranoid android */
-    class_test ((ppr2->m_max_2nd_order==0) && (l3!=L3),
+    class_test ((ppr2->m_max_song==0) && (l3!=L3),
       pbi->error_message,
       "inconsistency! for scalar modes, L3 must be equal to l3");
 
@@ -2186,7 +2186,7 @@ int bispectra2_intrinsic_integrate_over_k1 (
 
 #ifdef DEBUG
             /* Paranoid android */
-            class_test_parallel ((ppr2->m_max_2nd_order==0) && (l1!=L1),
+            class_test_parallel ((ppr2->m_max_song==0) && (l1!=L1),
               pbi->error_message,
               "inconsistency! for scalar modes, L1 must be equal to l1");
               
@@ -2863,7 +2863,7 @@ int bispectra2_intrinsic_geometrical_factors (
         /* TODO: the m_max check here should be removed. We want a unique way to define the
         reduced bispectrum regardless of the m */
         if (pwb->bispectrum_parity == _EVEN_) {
-          if (ppr2->m_max_2nd_order != 0) {
+          if (ppr2->m_max_song != 0) {
 
             #pragma omp atomic
             result[index_l3][index_l2][index_l1-index_l1_min]

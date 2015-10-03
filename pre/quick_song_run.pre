@@ -2,9 +2,9 @@
 ## and to explain the precision parameters.
 
 
-# ==================================================================
-# =                        Multipole sampling                      =
-# ==================================================================
+# =============================================================================
+# =                            Multipole sampling                             =
+# =============================================================================
 
 # Setting l_max_scalars=100 results in an extremely low angular
 # resolution and an extremely quick run
@@ -14,9 +14,13 @@ l_linstep = 50
 
 
 
-# ==================================================================
-# =                      First-order k-sampling                    =
-# ==================================================================
+# =============================================================================
+# =                          First-order k-sampling                           =
+# =============================================================================
+
+## These settings affect the computation of the first-order C_l and P(k).
+## The first-order quadratic sources used in the second-order system are
+## computed in the same k-sampling as the second-order system.
 
 ## Settings for about 10% precision of fnl_intrinsic
 k_min_tau0 = 0.05
@@ -44,9 +48,9 @@ k_step_transition = 0.2
 
 
 
-# ==================================================================
-# =                     Second-order k-sampling                    =
-# ==================================================================
+# =============================================================================
+# =                          Second-order k-sampling                          =
+# =============================================================================
 
 ## Second-order type of sampling for k (lin, log, class, smart)
 sources2_k_sampling = smart
@@ -69,9 +73,9 @@ k_step_transition_song = 0.2
 
 
 
-# ===================================================================
-# =                     Second-order k3-sampling                    =
-# ===================================================================
+# =============================================================================
+# =                         Second-order k3-sampling                          =
+# =============================================================================
 
 ## Second-order sampling for k3 (lin, log, smart, angle)
 sources2_k3_sampling = smart
@@ -79,9 +83,9 @@ k3_size_min = 5
 
 
 
-# =================================================================
-# =                   Transfer function sampling                  =
-# =================================================================
+# =============================================================================
+# =                         Transfer function sampling                        =
+# =============================================================================
 
 ## Second-order k-sampling for the transfer functions
 q_linstep = 0.4
@@ -90,9 +94,9 @@ transfer2_k3_sampling = smart
 
 
 
-# ===================================================================
-# =                           Interpolation                         =
-# ===================================================================
+# =============================================================================
+# =                              Interpolation                                =
+# =============================================================================
 	
 ## Interpolation parameters
 quadsources_time_interpolation = cubic
@@ -104,9 +108,9 @@ transfers_k2_interpolation = linear
 
 
 	
-# ================================================================================
-# =                              Time sampling                                   =
-# ================================================================================
+# =============================================================================
+# =                              Time sampling                                =
+# =============================================================================
 
 ## When to start evolving the second-order system? Set to zero to choose automatically.
 tau_start_evolution_song = 0
@@ -149,9 +153,9 @@ transfer2_tau_sampling = sources
 
 
 
-# ===========================================================================
-# =                          Boltzmann hierarchies                          =
-# ===========================================================================
+# =============================================================================
+# =                           Boltzmann hierarchies                           =
+# =============================================================================
 
 ## Second-order Boltzmann hierarchies
 l_max_g_song = 12
@@ -175,9 +179,9 @@ l_max_ur = 15
 
 
 
-# ===========================================================================
-# =                        Bispectrum integration                           =
-# ===========================================================================
+# =============================================================================
+# =                          Bispectrum integration                           =
+# =============================================================================
 
 # Integration of the bispectrum along the r-direction.
 #
@@ -216,9 +220,9 @@ bispectra_interpolation = mesh_2d
 
 
 
-# ===========================================================================
-# =                                 Lensing                                 =
-# ===========================================================================
+# =============================================================================
+# =                                  Lensing                                  =
+# =============================================================================
 
 l_switch_limber = 10 # set to 10 to match CAMB
 accurate_lensing = 1
@@ -227,9 +231,9 @@ delta_l_max = 250
 
 
 
-# ===================================================================
-# =                         Bessel functions                        =
-# ===================================================================
+# =============================================================================
+# =                              Bessel functions                             =
+# =============================================================================
 
 ## Linear step dx when sampling the projection functions for the second-order
 ## line of sight integral (see eq. 5.95 and 5.97 of http://arxiv.org/abs/1405.2280)
@@ -251,18 +255,18 @@ bessel_tol_x_min = 1.e-4
 
 
 
-# ==========================================================================
-# =                    Second-order differential system                    =
-# ==========================================================================
+# =============================================================================
+# =                           Differential system                             =
+# =============================================================================
 
 tol_perturb_integration_song = 1e-4
 tol_perturb_integration = 1e-5
 
 
 
-# ===============================================================
-# =                         Approximations                      =
-# ===============================================================
+# =============================================================================
+# =                              Approximations                               =
+# =============================================================================
 
 ## Decide which approximation schemes to use in CLASS and in SONG.
 ## The following snippet from perturbations.h shows the possible choices. The
@@ -280,9 +284,9 @@ enum rsa2_method {rsa2_none};
 enum ufa2_method {ufa2_none};
 enum nra2_method {nra2_none, nra2_all, nra2_fluid};
 
-# -------------------------------- */
-# - Tight coupling approximation - */
-# -------------------------------- */
+# -------------------------------------------------------------------
+# -                   Tight coupling approximation                  -
+# -------------------------------------------------------------------
 
 ## TCA at first order.
 ## In SONG, we have added the option to turn off the tight coupling 
@@ -298,9 +302,9 @@ tight_coupling_trigger_tau_c_over_tau_h_song = 0.01
 tight_coupling_trigger_tau_c_over_tau_k_song = 0.007
 
 
-# ------------------------------------- */
-# - Radiation streaming approximation - */
-# ------------------------------------- */
+# -------------------------------------------------------------------
+# -                Radiation streaming approximation                -
+# -------------------------------------------------------------------
 
 ## First order.
 ## The RSA substitutes the crazy oscillations of the photon & neutrino moments
@@ -328,9 +332,9 @@ radiation_streaming_trigger_tau_over_tau_k_song = 45
 radiation_streaming_trigger_tau_c_over_tau_song = 5
 
 
-# ------------------------------------------ */
-# - Ultra relativistic fluid approximation - */
-# ------------------------------------------ */
+# -------------------------------------------------------------------
+# -              Ultra relativistic fluid approximation             -
+# -------------------------------------------------------------------
 
 ## First order.
 ## The UFA approximation is similar to a radiation streaming approximation that works for
@@ -346,9 +350,9 @@ ur_fluid_approximation_song = 0
 ur_fluid_trigger_tau_over_tau_k_song = 30
 
 
-# ------------------------------ */
-# - No radiation approximation - */
-# ------------------------------ */
+# -------------------------------------------------------------------
+# -                   No radiation approximation                    -
+# -------------------------------------------------------------------
 
 ## Second order.
 ## This is the poor's man RSA approximation at second order. Stop evolving the radiation

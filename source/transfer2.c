@@ -931,7 +931,7 @@ int transfer2_indices_of_transfers(
   only for non scalar modes, otherwise they just vanish. */
   if (ppt2->has_cmb_polarization_b == _TRUE_) {
   
-    if (ppr2->m_max_2nd_order>0) {
+    if (ppr2->m_max_song>0) {
       ptr2->index_tt2_B = index_tt;
       index_tt += ptr2->n_transfers;
     }
@@ -945,6 +945,10 @@ int transfer2_indices_of_transfers(
     "exceeded maximum number of allowed transfer types (%d), increase _MAX_NUM_TRANSFERS_ in transfers2.h",
     _MAX_NUM_TRANSFERS_);
 
+  /* Initialise the labels of the transfer types */
+  for (int index_tt=0; index_tt<ptr2->tt2_size; ++index_tt)
+    for (int i=0; i < _MAX_LENGTH_LABEL_; ++i)
+      ptr2->tt2_labels[index_tt][i] = '\0';
 
   if (ptr2->transfer2_verbose > 1) {
     printf (" -> will compute tt2_size=%d transfer functions: ", ptr2->tt2_size);
