@@ -146,6 +146,12 @@ enum quadratic_source_computation {
 #define _MAX_NUM_SOURCES_ 1024
 
 /**
+ * Maximum number of output files that can be produced with the tau_out
+ * option.
+ */
+#define _MAX_NUMBER_OF_TAU_FILES_ 100
+
+/**
  * Exclude edges of the triangular condition on (k1,k2,k3).
  *
  * The differential system at second-order has to be solved for a set of three wavemodes
@@ -1011,18 +1017,18 @@ struct perturbs2
                                           with size k_out_size; filled in input2.c */
   double k3_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of k3 values where perturbation output is requested,
                                           with size k_out_size; filled in input2.c */
-  int k1_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of indices in ppt2->k where perturbation output is requested,
+  int k1_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of k1 indices in ppt2->k where perturbation output is requested,
                                              with size k_index_out_size; filled in input2 */
-  int k2_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of indices in ppt2->k where perturbation output is requested,
+  int k2_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of k2 indices in ppt2->k where perturbation output is requested,
                                              with size k_index_out_size; filled in input2.c */
-  int k3_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of indices in ppt2->k3[index_k1][index_k2] where perturbation
+  int k3_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of k3 indices in ppt2->k3[index_k1][index_k2] where perturbation
                                              output is requested, with size k_index_out_size; filled in input2.c */
-  int index_k1_out[_MAX_NUMBER_OF_K_FILES_]; /**< index_k1_out[index_k1_output] is the index in ppt2->k corresponding to
-                                             k1=k1_out[index_k1_output]; filled in perturbations2.c */
-  int index_k2_out[_MAX_NUMBER_OF_K_FILES_]; /**< index_k2_out[index_k2_output] is the index in ppt2->k corresponding to
-                                             k2=k2_out[index_k2_output]; filled in perturbations2.c */
-  int index_k3_out[_MAX_NUMBER_OF_K_FILES_]; /**< index_k3_out[index_k3_output] is the index in ppt2->k[index_k1][index_k2]
-                                             corresponding to k3=k3_out[index_k3_output]. If k3 does not satisfy the triangular
+  int index_k1_out[_MAX_NUMBER_OF_K_FILES_]; /**< index_k1_out[index_k_output] is the index in ppt2->k corresponding to
+                                             k1=k1_out[index_k_output]; filled in perturbations2.c */
+  int index_k2_out[_MAX_NUMBER_OF_K_FILES_]; /**< index_k2_out[index_k_output] is the index in ppt2->k corresponding to
+                                             k2=k2_out[index_k_output]; filled in perturbations2.c */
+  int index_k3_out[_MAX_NUMBER_OF_K_FILES_]; /**< index_k3_out[index_k_output] is the index in ppt2->k[index_k1][index_k2]
+                                             corresponding to k3=k3_out[index_k_output]. If k3 does not satisfy the triangular
                                              condition, its location in the array will contain -1. Filled in perturbations2.c */
   char k_out_paths[_MAX_NUMBER_OF_K_FILES_][_FILENAMESIZE_]; /**< Path of the ASCII files that will contain the perturbations as a function
                                                              of tau at the desired (k1,k2,k3) values; filled in the input2.c module */
@@ -1080,10 +1086,10 @@ struct perturbs2
    * Should SONG compute only a specific set of wavemodes?
    *
    * If _TRUE_, SONG will only compute the wavemodes in k1_out, k2_out and k3_out,
-   * and stop execution before computing any other observable.
+   * and stop execution after the source function has been computed.
    *
-   * This is a quick way to output the transfer functions from the perturbations2.c
-   * module without having to do a full run.
+   * This is a quick way to output the perturbations and the source function from
+   * the perturbations2.c module without having to do a full run.
    */
   short k_out_mode;
 
@@ -1555,7 +1561,7 @@ struct perturb2_workspace
   
   int index_k_out_for_tau_out;  /**< Variable passed to print_function() to decide whether to append data to
                                 the tau_out files. If negative, the perturbations will not be outputted to the
-                                tau_out files for the current (k1,k2) pair. If positive, is the index inside
+                                tau_out files for the current (k1,k2) pair. If positive, it is the index inside
                                 k1_out and k2_out of the current (k1,k2) pair. The difference with respect to 
                                 index_k_out is that index_k_out_for_tau_out is constant for triplets with
                                 identical values of (k1_out,k2_out), thus allowing SONG to output data to a

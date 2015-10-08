@@ -853,7 +853,7 @@ int input2_init (
   
 
   // ================================================================================
-  // =                            Perturbations, debug                              =
+  // =                            Perturbations, output                             =
   // ================================================================================
 
   class_read_int("perturbations2_verbose",ppt2->perturbations2_verbose);
@@ -1397,7 +1397,6 @@ int input2_init (
   if (ppr2->tau_linstep_song < 0)
     ppr2->tau_linstep_song = _HUGE_;
 
-
   
 
   // =============================================================================================
@@ -1415,6 +1414,7 @@ int input2_init (
   }
 
 
+
   // =============================================================================================
   // =                                     Fisher matrices                                       =
   // =============================================================================================
@@ -1426,11 +1426,6 @@ int input2_init (
   // =============================================================================================
   // =                                      File output                                          =
   // =============================================================================================
-
-  class_call(parser_read_string(pfc,"output_single_precision",&(string1),&(flag1),errmsg),errmsg,errmsg);
-  if ((flag1 == _TRUE_) && (strstr(string1,"y") == NULL) && (strstr(string1,"Y") == NULL))
-    ppr2->output_single_precision = _FALSE_;
-
 
   // ----------------------------------------------------------------------------------------
   // -                               Disk storage of sources                                -
@@ -2188,7 +2183,6 @@ int input2_default_precision ( struct precision2 * ppr2 ) {
   // ===============================================================================
 
   ppr2->old_run = _FALSE_;
-  ppr2->output_single_precision = _TRUE_;
   ppr2->store_sources_to_disk = _FALSE_;
   ppr2->load_sources_from_disk = _FALSE_;
   ppr2->store_transfers_to_disk = _FALSE_;
