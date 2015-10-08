@@ -10,20 +10,19 @@ CC			 = gcc
 AR       = ar rv
 
 # Optimization flags
-OPTFLAG    = -O2
+OPTFLAG  = -O2
 
 # Compilation flags
-CFLAGS     += -g
-# CFLAGS     += -w
-# CFLAGS     += -Wall -Wno-unused
-CFLAGS     += -std=c99
-CFLAGS     += -fopenmp # comment for compiling without parallel support
-# CFLAGS     += -DVALGRIND
-CFLAGS     += -DDEBUG
+CFLAGS   += -g
+# CFLAGS   += -w
+# CFLAGS   += -Wall -Wno-unused
+CFLAGS   += -std=c99
+CFLAGS   += -fopenmp
+CFLAGS   += -DDEBUG
 
 # Header files and libraries
-INCLUDES 					  = -I../include -I../$(CLASS_DIR)/include
-LIBRARIES           = -fopenmp -lm
+INCLUDES 	 = -I../include -I../$(CLASS_DIR)/include
+LIBRARIES  = -fopenmp -lm
 
 
 # =========================================================================
@@ -49,6 +48,9 @@ vpath .base build
 # Make sure to compile CLASS with support for SONG
 CFLAGS += -DWITH_SONG_SUPPORT
 CFLAGS += -DWITH_BISPECTRA
+
+# Pass to the code CLASS location
+CFLAGS += -D__CLASSDIR__='"$(CLASS_DIR)"'
 
 
 # =========================================================================
@@ -101,7 +103,10 @@ default: class song print_params print_sources1 print_sources2 print_transfers1 
 # CLASS executables
 .PHONY: libclass.a class test_background test_thermodynamics test_perturbations test_transfer classy tar
 libclass.a class test_background test_thermodynamics test_perturbations test_transfer classy tar: 
-	cd $(CLASS_DIR); export WITH_BISPECTRA=1; export WITH_SONG_SUPPORT=1; make $@; mv $@ ..
+	cd $(CLASS_DIR);
+	export WITH_BISPECTRA=1;
+	export WITH_SONG_SUPPORT=1;
+	make $@; mv $@ ..
 
 # SONG executables
 SONG = song.o

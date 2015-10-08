@@ -163,27 +163,32 @@ int main(int argc, char **argv) {
   // printf("\tpt2.primordial_local_fnl_phi = %g\n", pt2.primordial_local_fnl_phi);
 
   /* Bispectrum */
-  // printf("* Bispectrum parameters\n");
-  // printf("\tpt2.has_cmb_bispectra = %d\n", pt2.has_cmb_bispectra);
-  // printf("\tbi.has_bispectra = %d\n", bi.has_bispectra);
-  // printf("\tbi.has_local_model = %d\n", bi.has_local_model);
-  // printf("\tbi.has_equilateral_model = %d\n", bi.has_equilateral_model);
-  // printf("\tbi.has_orthogonal_model = %d\n", bi.has_orthogonal_model);
-  // printf("\tbi.has_galileon_model = %d\n", bi.has_galileon_model);
-  // printf("\tbi.has_intrinsic = %d\n", bi.has_intrinsic);
-  // printf("\tbi.has_intrinsic_squeezed = %d\n", bi.has_intrinsic_squeezed);
-  // printf("\tbi.has_intrinsic_squeezed_unlensed = %d\n", bi.has_intrinsic_squeezed_unlensed);
-  // printf("\tbi.has_quadratic_correction = %d\n", bi.has_quadratic_correction);
-  // printf("\tbi.add_quadratic_correction = %d\n", bi.add_quadratic_correction);
-  // printf("\tbi.include_lensing_effects = %d\n", bi.include_lensing_effects);
-  // printf("\tbi.lensed_intrinsic = %d\n", bi.lensed_intrinsic);
-  // printf("\tpr.extend_lensed_cls = %d\n", pr.extend_lensed_cls);
-  // printf("\tpr.bispectra_r_sampling = %d\n", pr.bispectra_r_sampling);
-  // printf("\tpr.r_left = %g\n", pr.r_left);
-  // printf("\tpr.r_right = %g\n", pr.r_right);
-  // printf("\tpr.r_min = %g\n", pr.r_min);
-  // printf("\tpr.r_max = %g\n", pr.r_max);
-  // printf("\tpr.r_size = %d\n", pr.r_size);
+  printf("* Bispectrum parameters\n");
+  printf("\tpt2.has_cmb_bispectra = %d\n", pt2.has_cmb_bispectra);
+  printf("\tbi.has_bispectra = %d\n", bi.has_bispectra);
+  printf("\tbi.has_local_model = %d\n", bi.has_local_model);
+  printf("\tbi.has_equilateral_model = %d\n", bi.has_equilateral_model);
+  printf("\tbi.has_orthogonal_model = %d\n", bi.has_orthogonal_model);
+  printf("\tbi.has_galileon_model = %d\n", bi.has_galileon_model);
+  printf("\tbi.has_intrinsic = %d\n", bi.has_intrinsic);
+  printf("\tbi.has_intrinsic_squeezed = %d\n", bi.has_intrinsic_squeezed);
+  printf("\tbi.has_intrinsic_squeezed_unlensed = %d\n", bi.has_intrinsic_squeezed_unlensed);
+  printf("\tbi.has_quadratic_correction = %d\n", bi.has_quadratic_correction);
+  printf("\tbi.add_quadratic_correction = %d\n", bi.add_quadratic_correction);
+  printf("\tbi.include_lensing_effects = %d\n", bi.include_lensing_effects);
+  printf("\tbi.lensed_intrinsic = %d\n", bi.lensed_intrinsic);
+  printf("\tpr.l_out_size = %d\n", pr.l_out_size);
+  for (int index_l_out=0; index_l_out < pr.l_out_size; ++index_l_out)
+    printf("\t\t%12d %12d\n", pr.l1_out[index_l_out], pr.l2_out[index_l_out]);
+  printf("\tpt.l_scalar_max = %d\n", pt.l_scalar_max);
+  printf("\tbi.output_binary_bispectra = %d\n", pt.output_binary_bispectra);
+  printf("\tpr.extend_lensed_cls = %d\n", pr.extend_lensed_cls);
+  printf("\tpr.bispectra_r_sampling = %d\n", pr.bispectra_r_sampling);
+  printf("\tpr.r_left = %g\n", pr.r_left);
+  printf("\tpr.r_right = %g\n", pr.r_right);
+  printf("\tpr.r_min = %g\n", pr.r_min);
+  printf("\tpr.r_max = %g\n", pr.r_max);
+  printf("\tpr.r_size = %d\n", pr.r_size);
 
   /* Fisher */
   // printf("\tfi.always_interpolate_bispectra = %d\n", fi.always_interpolate_bispectra);
@@ -242,32 +247,34 @@ int main(int argc, char **argv) {
   // printf("\tbs2.extend_l1_using_m = %d\n", bs2.extend_l1_using_m);
 
   /* Perturbations output and debug parameters */
-  printf("* Debug parameters\n");
-  printf("\tpt2.file_verbose = %d\n", pt2.file_verbose);
-  printf("\tpt2.tau_out_size = %d\n", pt2.tau_out_size);
-  if (pt2.tau_out_size > 0) {
-    printf ("\t\t");
-    for (int index_tau_out=0; index_tau_out < pt2.tau_out_size; ++index_tau_out)
-      printf("%12g ", pt2.tau_out[index_tau_out]);
-    printf ("\n");
-  }
-  printf("\tpt2.z_out_size = %d\n", pt2.z_out_size);
-  if (pt2.z_out_size > 0) {
-    printf ("\t\t");
-    for (int index_z_out=0; index_z_out < pt2.z_out_size; ++index_z_out)
-      printf("%12g ", pt2.z_out[index_z_out]);
-    printf ("\n");
-  }
-  printf("\tpt2.k_out_size = %d\n", pt2.k_out_size);
-  for (int index_k_out=0; index_k_out < pt2.k_out_size; ++index_k_out)
-    printf("\t\t%12g %12g %12g\n", pt2.k1_out[index_k_out], pt2.k2_out[index_k_out], pt2.k3_out[index_k_out]);
-  printf("\tpt2.k_index_out_size = %d\n", pt2.k_index_out_size);
-  for (int index_k_out=0; index_k_out < pt2.k_index_out_size; ++index_k_out)
-    printf("\t\t%12d %12d %12d\n", pt2.k1_index_out[index_k_out], pt2.k2_index_out[index_k_out], pt2.k3_index_out[index_k_out]);
-  printf("\tpt2.k_out_mode = %d\n", pt2.k_out_mode);
-  printf ("\tpr2.output_single_precision = %d\n", pr2.output_single_precision);
-  printf ("\tpt2.output_class_perturbations = %d\n", pt2.output_class_perturbations);
-  printf ("\tpt2.output_quadratic_sources = %d\n", pt2.output_quadratic_sources);
+  // printf("* Debug parameters\n");
+  // printf("\tpt2.file_verbose = %d\n", pt2.file_verbose);
+  // printf("\tpt2.tau_out_size = %d\n", pt2.tau_out_size);
+  // if (pt2.tau_out_size > 0) {
+  //   printf ("\t\t");
+  //   for (int index_tau_out=0; index_tau_out < pt2.tau_out_size; ++index_tau_out)
+  //     printf("%12g ", pt2.tau_out[index_tau_out]);
+  //   printf ("\n");
+  // }
+  // printf("\tpt2.z_out_size = %d\n", pt2.z_out_size);
+  // if (pt2.z_out_size > 0) {
+  //   printf ("\t\t");
+  //   for (int index_z_out=0; index_z_out < pt2.z_out_size; ++index_z_out)
+  //     printf("%12g ", pt2.z_out[index_z_out]);
+  //   printf ("\n");
+  // }
+  // printf("\tpt2.k_out_size = %d\n", pt2.k_out_size);
+  // for (int index_k_out=0; index_k_out < pt2.k_out_size; ++index_k_out)
+  //   printf("\t\t%12g %12g %12g\n", pt2.k1_out[index_k_out], pt2.k2_out[index_k_out], pt2.k3_out[index_k_out]);
+  // printf("\tpt2.k_index_out_size = %d\n", pt2.k_index_out_size);
+  // for (int index_k_out=0; index_k_out < pt2.k_index_out_size; ++index_k_out)
+  //   printf("\t\t%12d %12d %12d\n", pt2.k1_index_out[index_k_out], pt2.k2_index_out[index_k_out], pt2.k3_index_out[index_k_out]);
+  // printf("\tpt2.k_out_mode = %d\n", pt2.k_out_mode);
+  // printf ("\tpr2.output_single_precision = %d\n", pr2.output_single_precision);
+  // printf ("\tpt2.output_class_perturbations = %d\n", pt2.output_class_perturbations);
+  // printf ("\tpt2.output_quadratic_sources = %d\n", pt2.output_quadratic_sources);
+
+
 
   /* Storage parameters */
   // printf("* Parameters related to the storage of intermediate results\n");

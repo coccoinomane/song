@@ -314,7 +314,7 @@ int main(int argc, char **argv) {
   }
   
   if (pt2.has_perturbations2 == _TRUE_) {
-    if (compute_cls (&pr,&ba,&th,&sp,&le,errmsg) == _FAILURE_) {
+    if (compute_cls (&pr,&ba,&th,&pt,&sp,&le,errmsg) == _FAILURE_) {
       printf("\n\nError in compute_cls \n=>%s\n",errmsg);
       return _FAILURE_;
     }
@@ -386,7 +386,7 @@ int main(int argc, char **argv) {
     }
     else {
 
-      if (compute_cls (&pr,&ba,&th,&sp,&le,errmsg) == _FAILURE_) {
+      if (compute_cls (&pr,&ba,&th,&pt,&sp,&le,errmsg) == _FAILURE_) {
         printf("\n\nError in compute_cls \n=>%s\n",errmsg);
         return _FAILURE_;
       }

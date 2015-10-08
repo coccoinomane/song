@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
   }
 
   /* Compute the first-order C_l */
-  if (compute_cls (&pr,&ba,&th,&sp,&le,errmsg) == _FAILURE_) {
+  if (compute_cls (&pr,&ba,&th,&pt,&sp,&le,errmsg) == _FAILURE_) {
     printf("\n\nError in compute_cls \n=>%s\n",errmsg);
     return _FAILURE_;
   }

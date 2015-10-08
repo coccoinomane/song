@@ -11,20 +11,11 @@
 #ifndef __COMMON2__
 #define __COMMON2__
 
-#define _SONG_VERSION_ "v1.0-beta2"
-#define _SONG_URL_ "https://github.com/coccoinomane/song"
 
 /** Maximum number of azimuthal numbers that can be computed. We set it so that the
 factorial of m never overflows, assuming a limit of 10^30. The factorial of m is
 needed in bispectra2.c */
 #define _MAX_NUM_AZIMUTHAL_ 14
-
-/** Maximum number of output files that can be produced with the tau_out
-options */
-#define _MAX_NUMBER_OF_TAU_FILES_ 100
-
-/** Maximum number of columns in output ASCII files */
-#define _MAX_NUM_COLUMNS_ 1024
 
 
 /**
@@ -219,7 +210,6 @@ struct precision2
   short store_sources_to_disk;    /**< Should we store the source functions to disk? */
   short load_sources_from_disk;   /**< Should we load the source functions from disk? */
   short old_run; /**< set to _TRUE_ if the run was stored with a version of SONG smaller than 1.0 */
-  short output_single_precision;  /**< Should SONG output single precision binary files rather than double precision? */
 
 };  /* end of struct precision2 declaration */
 
