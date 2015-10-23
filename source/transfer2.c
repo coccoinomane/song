@@ -911,6 +911,7 @@ int transfer2_indices_of_transfers(
   if (ppt2->has_cmb_polarization_b == _TRUE_) {
   
     if (ppr2->m_max_2nd_order>0) {
+
       ptr2->index_tt2_B = index_tt;
       index_tt += ptr2->n_transfers;
     }
@@ -919,6 +920,7 @@ int transfer2_indices_of_transfers(
 
   /* Total number of transfer functions to compute */
   ptr2->tt2_size = index_tt;
+ 
 
   /* Allocate memory for the labels of the transfer types */
   class_alloc(ptr2->tt2_labels, ptr2->tt2_size*sizeof(char *), ptr2->error_message);
@@ -1024,7 +1026,6 @@ int transfer2_indices_of_transfers(
     class_alloc (ptr2->transfers_paths, ptr2->tt2_size*sizeof(char *), ptr2->error_message);
 
     for(int index_tt=0; index_tt<ptr2->tt2_size; ++index_tt) {
-      
       /* The name of each transfers file will have the tt index in it */
       class_alloc (ptr2->transfers_paths[index_tt], _FILENAMESIZE_*sizeof(char), ptr2->error_message);
       sprintf (ptr2->transfers_paths[index_tt], "%s/transfers_%03d.dat", ptr2->transfers_dir, index_tt);

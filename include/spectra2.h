@@ -5,7 +5,9 @@
 #include "primordial.h"
 #include "perturbations.h"
 #include "perturbations2.h"
-
+#include "transfer2.h"
+#include "transfer.h"
+#include "bessel2.h"
 
 struct spectra2 {
 
@@ -28,8 +30,10 @@ struct spectra2 {
   int ** k_physical_size_k1k2;
 
  	int k_size;
- 	double * k;
-
+ 	double * k; // k grid for fourier spectra (not numerical parameter)
+ 	
+ 	double * k3_grid; // k grid for angular power spectra 
+ 	
 
 
   // =================================================================================
@@ -63,6 +67,10 @@ int spectra2_init(
       struct thermo * pth,
       struct perturbs * ppt,
       struct perturbs2 * ppt2,
+      struct bessels *pbs,
+      struct bessels2 *pbs2,
+      struct transfers * ptr,
+      struct transfers2 * ptr2,
       struct spectra2 * psp2
       );
 

@@ -28,6 +28,10 @@ int spectra2_init(
       struct thermo * pth,
       struct perturbs * ppt,
       struct perturbs2 * ppt2,
+      struct bessels * pbs,
+      struct bessels2 * pbs2,
+      struct transfers * ptr,
+      struct transfers2 * ptr2,
       struct spectra2 * psp2
       )
 {
@@ -73,53 +77,209 @@ int spectra2_init(
 					}
   }
   
+  double step_k1, step_k2, step_k3;
+  
   printf("allocated workspace \n");
   
-  // angular power spectra
+  
+  // ==================================================================================
+  // =                               Angular power spectra                            =
+  // ==================================================================================
 
-if ((ppr2->load_transfers_from_disk == _TRUE_) || (ppr2->store_transfers_to_disk == _TRUE_)) {
-+      class_call (transfer2_load_transfers_from_disk (
-+                    ppt2,
-+                    ptr2,
-+                    index_tt2_k3 + lm_cls(index_l3, index_M3)),
-+        ptr2->error_message,
-+        pbi->error_message);
-+    }
-+  
-+  class_call_parallel (transfer2_get_k3_list (
-+                                 ppr,
-+                                 ppr2,
-+                                 ppt2,
-+                                 pbs,
-+                                 pbs2,
-+                                 ptr2,
-+                                 index_k1,
-+                                 index_k2,
-+                                 pwb->k3_grid[thread],  /* output */
-+                                 &dump   
-+                                 ),
-+            ptr2->error_message,
-+            pbi->error_message);
-+  
-+     /* Define the pointer to the second-order transfer function as a function of k3.
-+          Note that this transfer function has already been rescaled according to eq. 6.26
-+          of http://arxiv.org/abs/1405.2280 in the perturbations.c module.  */
-+          double * transfer = ptr2->transfer[index_tt2_k3 + lm_cls(index_l3,index_M3)]
-+                              [index_k1]
-+                              [index_k2];
-+                              
-+        /* Free the memory associated with the second order transfer function for this (l,m) */
-+    if ((ppr2->load_transfers_from_disk == _TRUE_)
-+      || (ppr2->store_transfers_to_disk == _TRUE_)) {
-+      class_call (transfer2_free_type_level (
-+                    ppt2,
-+                    ptr2,
-+                    index_tt2_k3 + lm_cls(index_l3, index_M3)),
-+        ptr2->error_message,
-+        pbi->error_message);
-+    }
+
+		class_calloc(psp2->k3_grid, ptr2->k3_size_max, sizeof(double), psp2->error_message);
   
+   
+		//set up an index for X and cross correlations, add m factors	
+			
+			
+    if (psp2->spectra2_verbose > 0)
+      printf(" -> computing TT spectrum\n");
+		if (ppt2->rescale_quadsources == _TRUE_) 
+			printf("rescaling sourcces. MUST INVERTY \n");
+      // -------------------------------------------------------------------------------------
+      // -                              Sum over M, cycle L                              -
+      // -------------------------------------------------------------------------------------
+    for (int index_l=0; index_l<ptr2->l_size; ++index_l) {
+  		
+  		int l = ptr2->l[index_l];
+  		double Cl = 0.;
+      // printf("loop level l = %d\n",l);	
+      for (int index_M=0; index_M < ppr2->m_size; ++index_M) {//here i now select Scal + the vector
+			//	printf("computing l = %d m = %d\n",ptr2->l[index_l],ptr2->m[index_M]);
+				int m = ptr2->m[index_M];
+				int index_tt2_X = ptr2->index_tt2_T + lm_cls(index_l, index_M);
+				if ((ppr2->load_transfers_from_disk == _TRUE_) || (ppr2->store_transfers_to_disk == _TRUE_)) {
+     			class_call (transfer2_load_transfers_from_disk (
+            	      ppt2,
+                    ptr2,
+                    index_tt2_X),
+        			ptr2->error_message,
+        			psp2->error_message);
+    		}
+  // ==================================================================================
+  // =                               integrations over k1,k2,k3                       =
+  // ==================================================================================
+				
+	
+				for (int index_k1 = 0; index_k1 < psp2->k_size; ++index_k1) {
+					
+				
+				
+					if (index_k1 == 0) step_k1 = (psp2->k[1] - psp2->k[0])/2.;
+        	else if (index_k1 == psp2->k_size -1) step_k1 = (psp2->k[psp2->k_size-1] - psp2->k[psp2->k_size -2])/2.;
+        	else step_k1 = (psp2->k[index_k1+1] - psp2->k[index_k1 -1])/2.;
+
+					double k1 = psp2->k[index_k1];
+					
+					
+					
+					double spectra_k1;
+    			
+    			class_call (primordial_spectrum_at_k (
+                  ppm,
+                  ppt->index_md_scalars,
+                  linear,
+                  k1,
+                  &spectra_k1),
+      			ppm->error_message,
+      			psp2->error_message);
+
+    			spectra_k1 = 2*_PI_*_PI_/(k1*k1*k1) * spectra_k1;
+    			
+    			
   
+					for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
+					
+						/* Print some info */
+      			if (psp2->spectra2_verbose > 2)
+        			printf(" -> computing integral for (k1,k2) = (%.3g,%.3g)\n", psp2->k[index_k1], psp2->k[index_k2]);
+						if (index_k1 == 0) step_k2 = 0.;
+						else if (index_k2 == 0) step_k2 = (psp2->k[1] - psp2->k[0])/2.;
+        		else if (index_k2 == index_k1) step_k2 = (psp2->k[index_k1] - psp2->k[index_k1-1])/2.;
+        		else step_k2 = (psp2->k[index_k2+1] - psp2->k[index_k2 -1])/2.;
+        
+        		double k2 = psp2->k[index_k2];
+        		
+        	
+        		
+						double spectra_k2;
+    				class_call (primordial_spectrum_at_k (
+                  ppm,
+                  ppt->index_md_scalars,
+                  linear,
+                  k2,
+                  &spectra_k2),
+      				ppm->error_message,
+      				psp2->error_message);
+
+	    			spectra_k2 = 2*_PI_*_PI_/(k2*k2*k2) * spectra_k2;
+  
+						int dump;
+						
+					
+						class_call(transfer2_get_k3_list (
+                                 ppr,
+                                 ppr2,
+                                 ppt2,
+                                 pbs,
+                                 pbs2,
+                                 ptr2,
+                                 index_k1,
+                                 index_k2,
+                                 psp2->k3_grid,  
+                                 &dump   
+                                 ),
+        	    ptr2->error_message,
+          	  psp2->error_message);
+          	  
+          	  
+          	int k3_size = ptr2->k_size_k1k2[index_k1][index_k2];
+          
+          	class_test(k3_size < 2,
+            		psp2->error_message,
+            		"integration grid has less than two elements, cannot use trapezoidal integration");
+        
+						
+         		/* Define the pointer to the second-order transfer function as a function of k3.
+          	Note that this transfer function has already been rescaled according to eq. 6.26
+          	of http://arxiv.org/abs/1405.2280 in the perturbations.c module.  */
+          	// Rescaling !!!!!! deal with it
+          	double * transfer = ptr2->transfer[index_tt2_X][index_k1][index_k2];
+          	int triangular_first = 0;
+          	int triangular_last = 0;	
+          	
+          	//printf("working on configuration k1 = %f, k2 = %f , diff = %f, sum = %f\n",k1,k2,k1-k2,k1+k2);
+          	
+          	
+          	for (int index_k3 = 0; index_k3 < k3_size; ++index_k3) {
+     					double k3 = psp2->k3_grid[index_k3];
+     					if (index_k3 == 0) step_k3 = (psp2->k3_grid[1] - psp2->k3_grid[0])/2.;
+        			else if (index_k3 == k3_size -1) step_k3 = (psp2->k3_grid[k3_size-1] - psp2->k3_grid[k3_size -2])/2.;
+        			else step_k3 = (psp2->k3_grid[index_k3+1] - psp2->k3_grid[index_k3 -1])/2.;
+     					
+     					// triangular condition
+     					if ( k3 < k1-k2 ||  k3 > k1+k2) {
+     						step_k3 = 0.;
+     					}
+     					if ( k3 >= k1-k2 && triangular_first == 0 && index_k3 < k3_size-1 ) {
+     						triangular_first = 1;
+     						step_k3 = (psp2->k3_grid[index_k3+1]-k3)/2. + k3 - (k1-k2);
+     						
+     					}
+     					if ( psp2->k3_grid[index_k3+1] > k1+k2 && triangular_last == 0 && index_k3 > 0) {
+     						triangular_last = 1;
+     						step_k3 = (k3 - psp2->k3_grid[index_k3-1])/2. + (k1+k2) - k3;
+     						
+     					}
+     					
+     					double scale = pow(sqrt( 1. - pow((k3*k3 + k1*k1 - k2*k2)/2./k3/k1,2)),m);
+     					
+     					
+     					Cl += 
+     					// symmetry factor (doing only half plane in k1 k2)
+					 		2.*
+							// integration weight	
+					 		k1*k2*k3*
+							// integration stepsize
+					 		step_k1*step_k2*step_k3*
+					 		// if the sources were rescaled we have to invert this for the cl spectrum rescaling
+					 		//the step_k3 condition makes sure that this is in triangular as the computation of angles fails out of trinagular region
+					 		 (ppt2->rescale_quadsources == _TRUE_ && step_k3 != 0. ? pow(scale,2) : 1. )*
+							// spectra factors (2l+1) already in transfer def (how does sum over m work? does this need a factor 2 for m neq 0? yes :))
+					 		2. /_PI_ /2./_PI_/2./_PI_/2./_PI_ *
+					 		// definition of second order perturbation theory
+					 		// already in transfer defenition 1./2./2.*
+					 		// factor 4 of Delta also already in transfer def
+							// primordial spectra
+					 	  spectra_k1*spectra_k2*
+							//sources
+					 		transfer[index_k3] *transfer[index_k3]
+					 		;
+						
+     					
+						} // loop k3
+						
+					
+					} // loop k2 
+					
+					
+				} // loop k1
+				
+				
+				if ((ppr2->load_transfers_from_disk == _TRUE_) || (ppr2->store_transfers_to_disk == _TRUE_)) {
+  	    	class_call (transfer2_free_type_level (
+                    ppt2,
+                    ptr2,
+                    index_tt2_X),
+        		ptr2->error_message,
+        		psp2->error_message);	
+    	  }
+	
+	    } // Sum over M
+	    printf("%d %g \n",l,Cl);
+  	} // Loop over l
+		free(psp2->k3_grid);
   // ==================================================================================
   // =                               ksampling					                              =
   // ==================================================================================
@@ -188,7 +348,7 @@ if ((ppr2->load_transfers_from_disk == _TRUE_) || (ppr2->store_transfers_to_disk
 	
 	
   /* Four loops over k1, k2, transfer type follow */
-  double step_k1, step_k2;
+  
  
   if ((ppt2->k3_sampling == sym_k3_sampling) ) {
 	/*using the symmetric k sampling*/

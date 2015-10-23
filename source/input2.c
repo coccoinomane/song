@@ -231,9 +231,26 @@ int input2_init (
     }
 
     if ((strstr(string1,"tCl2") != NULL) || (strstr(string1,"TCL2") != NULL)) {
-      ppt->has_cl_cmb_temperature = _TRUE_;
+      ppt2->has_cmb_temperature = _TRUE_;  
       ppt2->has_cls = _TRUE_;
+    
+    }
+    
+    if ((strstr(string1,"eCl2") != NULL) || (strstr(string1,"ECL2") != NULL)) {
+      ppt2->has_cmb_polarization_e = _TRUE_;
+      ppt2->has_cls = _TRUE_;
+    
+    }
+    
+    if ((strstr(string1,"bCl2") != NULL) || (strstr(string1,"BCL2") != NULL)) {
+      ppt2->has_cmb_polarization_b = _TRUE_;
+      ppt2->has_cls = _TRUE_;
+    
+    }
+    
+  	if ((strstr(string1,"matter_power") != NULL)) {
       ppt2->has_perturbations2 = _TRUE_;
+    
     }
 
     if ((strstr(string1,"early_transfers1") != NULL) || (strstr(string1,"ET1") != NULL)) {

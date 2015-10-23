@@ -104,13 +104,13 @@ int main(int argc, char **argv) {
   }
   
   /* Compute second-order transfer functions using the line of sight formalism */
-  // if (transfer2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2) == _FAILURE_) {
-  //   printf("\n\nError in transfer2_init \n=>%s\n",tr2.error_message);
-  //   return _FAILURE_;
-  // }
+   if (transfer2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2) == _FAILURE_) {
+     printf("\n\nError in transfer2_init \n=>%s\n",tr2.error_message);
+     return _FAILURE_;
+   }
   
   /* Compute the power spectra */
-  if (spectra2_init(&pm,&pr,&pr2,&ba,&th,&pt,&pt2,&sp2) == _FAILURE_) {
+  if (spectra2_init(&pm,&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&sp2) == _FAILURE_) {
     printf("\n\nError in primordial_init \n=>%s\n",pm.error_message);
     return _FAILURE_;
   }

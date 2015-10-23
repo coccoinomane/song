@@ -8100,7 +8100,6 @@ int perturb2_workspace_at_tau (
       int m = ppt2->m[index_m];
       double kappa_dot = ppw2->pvecthermo[pth->index_th_dkappa];
       ppw2->C_1m[m] = kappa_dot * (four_thirds*b(1,1,m) - I(1,m));
-     	/* magnetic fileds need the slip, this is a bit dirty here */
      	/* ppw2->U_slip_tca1[m] =  (four_thirds*b(1,1,m) - I(1,m))/4.;*/
      	
     }
