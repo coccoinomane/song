@@ -248,8 +248,9 @@ int input2_init (
     
     }
     
-  	if ((strstr(string1,"matter_power") != NULL)) {
+  	if ((strstr(string1,"fourier_power") != NULL)) {
       ppt2->has_perturbations2 = _TRUE_;
+      ppt2->has_pk_matter = _TRUE_;
     
     }
 
@@ -1370,7 +1371,7 @@ ur_fluid_trigger_tau_over_tau_k_song and radiation_streaming_trigger_tau_over_ta
   ppt2->rescale_quadsources = _TRUE_;
   
   /* Uncomment if you want the output functions to output non-rescaled functions */
-  if ((ppt2->has_early_transfers2_only == _TRUE_) || (ptr2->has_transfers2_only == _TRUE_) || (ppt2->has_magnetic_field == _TRUE_) /*add magentic field here*/) {
+  if ((ppt2->has_early_transfers2_only == _TRUE_) || (ptr2->has_transfers2_only == _TRUE_) || (ppt2-> has_pk_matter == _TRUE_)) {
     ppt2->rescale_quadsources = _FALSE_;
 
   /* Uncomment if you want the m=0 sources to be computed without the rescaling, when they are

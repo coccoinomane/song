@@ -720,15 +720,14 @@ at first order. Make sure that l_max_los_p is smaller or equal than l_max_pol_g.
   }
 
 	// -------------------------------------------------------------------------
-  // -                      magnetic field sources                      -
+  // -                      spectra sources                      -
   // -------------------------------------------------------------------------
   
-  if (ppt2->has_magnetic_field == _TRUE_) {
+  if ( ppt2->has_pk_matter == _TRUE_) {
   
-  	
   	ppt2->n_sources_M = size_l_indexm (1, ppt2->m, ppt2->m_size);
   	
-    ppt2->index_tp2_M = index_type;                  /* The first moment of the hierarchy is the monopole l=0, m=0 */
+    ppt2->index_tp2_M = index_type;   /* Index of requested fourier power spectrum */
     index_type += ppt2->n_sources_M;  /* Make space for l>0 moments of the hierarchy */
 	
   
@@ -1172,8 +1171,8 @@ int perturb2_get_lm_lists (
       // ppt2->tp2_labels[index_tp], ppt2->index_monopole[index_tp]);
 
     }
-     // *** magnetic field ***
-    else if ((ppt2->has_magnetic_field == _TRUE_) 
+     // *** fourier power spectra source ***
+    else if ((ppt2->has_pk_matter == _TRUE_) 
     && (index_tp >= ppt2->index_tp2_M) && (index_tp < ppt2->index_tp2_M+ppt2->n_sources_M)) {
 
       /* Find the position of the monopole of the same type as index_tp */
@@ -10774,9 +10773,9 @@ int perturb2_sources (
 
   
   // -------------------------------------------------------------------------------
-  // -                               magnetic field                                  -
+  // -                               fourier power spectra                         -
   // -------------------------------------------------------------------------------  
-	if (ppt2->has_magnetic_field == _TRUE_) {
+	if ( ppt2->has_pk_matter == _TRUE_) {
 
 		for (int l=0; l<=1; ++l) {
 			for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
@@ -10786,12 +10785,18 @@ int perturb2_sources (
       	double source = 0;    
         
         if (l==0) {
-					source += cdm(0,0,0);
+        	if (ppt2->has_magnetic_field == _TRUE_)
+        		source += mag(0,0);
+        	else
+						source += cdm(0,0,0);
 
 				}
         
       	if (l==1) {
-					source += ppw2->u_cdm[m];
+      		if (ppt2->has_magnetic_field == _TRUE_)
+      			source += mag(1,m);
+      		else						
+						source += ppw2->u_cdm[m];
 
 				} // end of dipole sources
 				

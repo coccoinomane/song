@@ -74,6 +74,24 @@ int spectra2_init(
       struct spectra2 * psp2
       );
 
+int spectra2_integrate_fourier_sym(
+			struct precision * ppr,
+      struct precision2 * ppr2,
+      struct perturbs * ppt,
+      struct primordial * ppm,
+      struct perturbs2 * ppt2,
+      struct spectra2 * psp2
+			);
+			
+int spectra2_integrate_fourier(
+			struct precision * ppr,
+      struct precision2 * ppr2,
+      struct perturbs * ppt,
+      struct primordial * ppm,
+      struct perturbs2 * ppt2,
+      struct spectra2 * psp2
+			);			
+
 int spectra2_interpolate_sources_in_k(
       struct precision * ppr,
       struct precision2 * ppr2,
