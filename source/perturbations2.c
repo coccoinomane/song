@@ -1270,7 +1270,7 @@ int perturb2_get_lm_lists (
     int m2_size = m2_max-m2_min+1;
   
     // --------------------------------------------------------------------------------
-    // -                        Allocate memory for the coefficients                  -
+    // -                             Allocate coefficients                            -
     // --------------------------------------------------------------------------------
 
     long int counter = 0;
@@ -1305,28 +1305,58 @@ int perturb2_get_lm_lists (
   
               counter += l2_size;        
 
-            } // end of for m1
-          } // end of for l1
-        } // end of for m
-      } // end of for l
-    } // end of for T,E,B...
+            } // for m1
+          } // for l1
+        } // for m
+      } // for l
+    } // for T,E,B...  
     
     if (ppt2->perturbations2_verbose > 1)
-      printf ("     * allocated %ld doubles for the coupling coefficients\n", counter);
+      printf ("     * allocated ~%ld doubles (~%g MB) for the coupling coefficients\n",
+        counter, counter*sizeof(double)/1e6);
+
+
+    // --------------------------------------------------------------------------------
+    // -                          Allocate temporary arrays                           -
+    // --------------------------------------------------------------------------------
   
-    /* Allocate memory for the 3J arrays. The function we are gonna use, computes computes the 3j
-    symbols for all the allowed values of l2, regardless of what is specified above for ppt2->l2_max.
-    Since MAX(l) is ppt2->largest_l and MAX(l1)=ppt2->l1_max, then the triangular condition imposes
-    MAX(l2)=ppr2->largest_l+ppt2->l1_max. */
+    /* We shall parallelise the computation of the coupling coefficients */
+    int number_of_threads = 1;
+    int thread = 0;
+    int abort = _FALSE_;
+
+    #ifdef _OPENMP
+    #pragma omp parallel
+    number_of_threads = omp_get_num_threads();
+    #endif
+
+    /* Temporary arrays */
+    double *** temp;
+    double ** three_j_000, ** three_j_mmm;
+
+    /* We need the 3j symbols for all the allowed values of l2, regardless of
+    what is specified above for ppt2->l2_max. Since MAX(l) is ppt2->largest_l
+    and MAX(l1)=ppt2->l1_max, then the triangular condition imposes MAX(l2)=
+    ppr2->largest_l+ppt2->l1_max. */
     int l_size_max = (ppt2->largest_l + ppt2->l1_max) - abs(ppt2->largest_l - ppt2->l1_max) + 1;
-    double *three_j_000, *three_j_mmm, **temp;
-    class_alloc (three_j_000, l_size_max*sizeof(double), ppt2->error_message);
-    class_alloc (three_j_mmm, l_size_max*sizeof(double), ppt2->error_message);
-    class_alloc (temp, l_size_max*sizeof(double*), ppt2->error_message);
-    for (int l2=0; l2 < l_size_max; ++l2)
-      class_alloc (temp[l2], l_size_max*sizeof(double), ppt2->error_message);
-  
-  
+
+    class_alloc (temp, number_of_threads*sizeof(double**), ppt2->error_message);
+    class_alloc (three_j_000, number_of_threads*sizeof(double*), ppt2->error_message);
+    class_alloc (three_j_mmm, number_of_threads*sizeof(double*), ppt2->error_message);
+
+    #pragma omp parallel private (thread)
+    {
+      #ifdef _OPENMP
+      thread = omp_get_thread_num();
+      #endif
+      class_alloc_parallel (three_j_000[thread], l_size_max*sizeof(double), ppt2->error_message);
+      class_alloc_parallel (three_j_mmm[thread], l_size_max*sizeof(double), ppt2->error_message);
+      class_alloc_parallel (temp[thread], l_size_max*sizeof(double*), ppt2->error_message);
+      for (int l2=0; l2 < l_size_max; ++l2)
+        class_alloc_parallel (temp[thread][l2], l_size_max*sizeof(double), ppt2->error_message);
+    }
+
+
     // ---------------------------------------------------------------------------------------
     // -                              Compute the coefficients                               -
     // ---------------------------------------------------------------------------------------
@@ -1336,7 +1366,7 @@ int perturb2_get_lm_lists (
       /* Determine the spin of the considered field, and the overall prefactor, using eqs. 3.6,
       3.7 and 3.9 of arXiv:1401.3296. We will include the sign-factors i^L and i^(L-1) later. */
       int F;
-      double sign, prefactor;
+      double prefactor;
 
       if ((ppt2->has_source_T == _TRUE_) && (index_pf == ppt2->index_pf_t)) {
         F = 0;
@@ -1354,92 +1384,113 @@ int perturb2_get_lm_lists (
         class_stop (ppt2->error_message, "mumble mumble, what is index_pf=(%d,%s)?",
           index_pf, ppt2->pf_labels[index_pf]);
       
-      for (int l2=0; l2 <= ppt2->l2_max; ++l2) {
-        for (int l3=0; l3 <= ppt2->largest_l; ++l3) {
+      #pragma omp parallel shared (abort) private (thread)
+      {
 
-          /* The absolute value of F must be always smaller than l2 and l3. This means
-          that the polarisation coefficient vanishes for for l2<2 and l3<2. */
-          if ((l2<abs(F)) || (l3<abs(F)))
-            continue;
+        #ifdef _OPENMP
+        thread = omp_get_thread_num();
+        #endif
 
-          for (int m1=m1_min; m1 <= m1_max; ++m1) {
+        #pragma omp for schedule (dynamic)
+        for (int l2=0; l2 <= ppt2->l2_max; ++l2) {
+          for (int l3=0; l3 <= ppt2->largest_l; ++l3) {
 
-            /* m1 must always be smaller than l1, whose upper limit is l2+l3 */
-            if (abs(m1)>l2+l3)
+            /* The absolute value of F must be always smaller than l2 and l3. This means
+            that the polarisation coefficient vanishes for for l2<2 and l3<2. */
+            if ((l2<abs(F)) || (l3<abs(F)))
               continue;
 
-            /* Compute the following coefficients for all values of l1 and m2: 
+            for (int m1=m1_min; m1 <= m1_max; ++m1) {
 
-            (-1)^m3 * (2*l3+1) * ( l1  l2  l3 ) * (  l1   l2      l3  )
-                                 (  0   F  -F )   (  m1   m2  -m1-m2  ) */
-            int l1_min_3j, l1_max_3j;
-            int m2_min_3j, m2_max_3j;
-
-            class_call (coupling_general(
-                          l2, l3, m1, F,
-                          three_j_000, l_size_max,
-                          three_j_mmm, l_size_max,
-                          &l1_min_3j, &l1_max_3j, /* out, allowed l values */
-                          &m2_min_3j, &m2_max_3j, /* out, allowed m values */
-                          temp,
-                          ppt2->error_message),
-              ppt2->error_message,
-              ppt2->error_message);
-
-            /* Fill the coupling coefficient array, but only for the allowed values of l2 and m1 */
-            for (int l1=0; l1 <= ppt2->l1_max; ++l1) {
-
-              int L = l3-l1-l2;
-
-              /* For even-parity fields (T and E), we skip the configurations where l1+l2+l3 is odd;
-              for odd-parity (B) fields, we skip the configurations where l1+l2+l3 is even */
-              if ( ((abs(L)%2==0) && (ppt2->field_parity[index_pf]==_ODD_))
-                || ((abs(L)%2!=0) && (ppt2->field_parity[index_pf]==_EVEN_)) )
+              /* m1 must always be smaller than l1, whose upper limit is l2+l3 */
+              if (abs(m1)>l2+l3)
                 continue;
-            
-              /* For even-parity fields, the sign-factor is i^L. For sign-parity ones, it is i^(L-1).
-              In both cases, the exponent is even (see above), so that the sign-factor is real-valued */
-              if (ppt2->field_parity[index_pf] == _EVEN_)
-                sign = ALTERNATING_SIGN (abs(L)/2);
-              else
-                sign = ALTERNATING_SIGN (abs(L-1)/2);
 
-              for (int index_m3=0; index_m3 <= ppr2->index_m_max[l3]; ++index_m3) {
+              /* Compute the following coefficients for all values of l1 and m2: 
 
-                /* What we need is
+              (-1)^m3 * (2*l3+1) * ( l1  l2  l3 ) * (  l1   l2      l3  )
+                                   (  0   F  -F )   (  m1   m2  -m1-m2  ) */
+              int l1_min_3j, l1_max_3j;
+              int m2_min_3j, m2_max_3j;
 
-                prefactor * (-1)^m3 * (2*l3+1) * ( l1  l2  l3 ) * (  l1   l2      l3  )
-                                                 (  0   F  -F )   (  m1   m3-m1  -m3  ) ,
-        
-                for all values of l1 and m3. We obtain it from what we have computed above by
-                defining m2=m3-m1 => m3=m1+m2. */            
-                int m3 = ppr2->m[index_m3];
-                int m2 = m3-m1;
+              class_call_parallel (coupling_general(
+                                     l2, l3, m1, F,
+                                     three_j_000[thread], l_size_max,
+                                     three_j_mmm[thread], l_size_max,
+                                     &l1_min_3j, &l1_max_3j, /* out, allowed l values */
+                                     &m2_min_3j, &m2_max_3j, /* out, allowed m values */
+                                     temp[thread],
+                                     ppt2->error_message),
+                ppt2->error_message,
+                ppt2->error_message);
+                
+              /* Fill the coupling coefficient array, but only for the allowed values of l2 and m1 */
+              for (int l1=0; l1 <= ppt2->l1_max; ++l1) {
 
-                /* Skip those configurations outside the triangular region, and those with abs(M)>L */
-                if ((l1<l1_min_3j) || (l1>l1_max_3j) || (m2<m2_min_3j) || (m2>m2_max_3j))
+                int L = l3-l1-l2;
+
+                /* For even-parity fields (T and E), we skip the configurations where l1+l2+l3 is odd;
+                for odd-parity (B) fields, we skip the configurations where l1+l2+l3 is even */
+                if ( ((abs(L)%2==0) && (ppt2->field_parity[index_pf]==_ODD_))
+                  || ((abs(L)%2!=0) && (ppt2->field_parity[index_pf]==_EVEN_)) )
                   continue;
+            
+                /* For even-parity fields, the sign-factor is i^L. For sign-parity ones, it is i^(L-1).
+                In both cases, the exponent is even (see above), so that the sign-factor is real-valued */
+                double sign = (ppt2->field_parity[index_pf] == _EVEN_) ?
+                                ALTERNATING_SIGN (abs(L)/2) :
+                                ALTERNATING_SIGN (abs(L-1)/2);
 
-                ppt2->coupling_coefficients[index_pf][lm(l3,m3)][l1][m1-m1_min][l2]
-                  = prefactor * sign * temp[l1-l1_min_3j][m2-m2_min_3j];
+                for (int index_m3=0; index_m3 <= ppr2->index_m_max[l3]; ++index_m3) {
+
+                  /* What we need is
+
+                  prefactor * (-1)^m3 * (2*l3+1) * ( l1  l2  l3 ) * (  l1   l2      l3  )
+                                                   (  0   F  -F )   (  m1   m3-m1  -m3  ) ,
+        
+                  for all values of l1 and m3. We obtain it from what we have computed above by
+                  defining m2=m3-m1 => m3=m1+m2. */            
+                  int m3 = ppr2->m[index_m3];
+                  int m2 = m3-m1;
+
+                  /* Skip those configurations outside the triangular region, and those with abs(M)>L */
+                  if ((l1<l1_min_3j) || (l1>l1_max_3j) || (m2<m2_min_3j) || (m2>m2_max_3j))
+                    continue;
+
+                  ppt2->coupling_coefficients[index_pf][lm(l3,m3)][l1][m1-m1_min][l2]
+                    = prefactor * sign * temp[thread][l1-l1_min_3j][m2-m2_min_3j];
+                  
+                  /* Debug - print out the values stored in ppt2->coupling_coefficients. */
+                  // printf ("C(l1=%d,l2=%d,l3=%d,m1=%d,m2=%d,m3=%d,F=%d)=%g\n",
+                  //   l1, l2, l3, m1, m2, m3, F, ppt2->coupling_coefficients[index_bf][lm(l3,m3)][l1][m1-m1_min][l2]);
             
-                /* Debug - print out the values stored in ppt2->coupling_coefficients. */
-                // printf ("C(l1=%d,l2=%d,l3=%d,m1=%d,m2=%d,m3=%d,F=%d)=%g\n",
-                //   l1, l2, l3, m1, m2, m3, F, ppt2->coupling_coefficients[index_bf][lm(l3,m3)][l1][m1-m1_min][l2]);
-            
-              } // end of for m1
-            } // end of for l2
-          } // end of for l1
-        } // end of for m
-      } // end of for l
-    } // end of for T,E,B...
+                } // for m3
+              } // for l1
+            } // for m1
+          } // for l3
+          
+          #pragma omp flush(abort)
+          
+        } // for l2
+      } if (abort == _TRUE_) return _FAILURE_;
+    } // for T,E,B...
   
     /* Free memory */
+
+    #pragma omp parallel private (thread)
+    {
+      #ifdef _OPENMP
+      thread = omp_get_thread_num();
+      #endif
+      for (int l2=0; l2 < l_size_max; ++l2)
+        free (temp[thread][l2]);
+      free (temp[thread]);
+      free (three_j_000[thread]);
+      free (three_j_mmm[thread]);
+    }
+    free (temp);
     free (three_j_000);
     free (three_j_mmm);
-    for (int l2=0; l2 < l_size_max; ++l2)
-      free (temp[l2]);
-    free (temp);
 
   } // if (has_cmb)
   
@@ -1447,7 +1498,7 @@ int perturb2_get_lm_lists (
   return _SUCCESS_;
 
 
-} // end of perturb2_get_lm_lists
+} // perturb2_get_lm_lists
 
 
 
