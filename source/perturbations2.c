@@ -14416,6 +14416,13 @@ int perturb2_output(
 
     /* Build the content of each memory block */
 
+    int label_size = _MAX_LENGTH_LABEL_;
+    sprintf (desc, "length of a label (=%d)", _MAX_LENGTH_LABEL_);
+    sprintf (name, "_MAX_LENGTH_LABEL_");
+    class_call (binary_append_int (file, &label_size, 1, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
     sprintf (desc, "wavemode k1 (=%g)", k1);
     sprintf (name, "ppt2->k[index_k1=%d]", index_k1);
     class_call (binary_append_double (file, &k1, 1, desc, name),
@@ -14480,15 +14487,8 @@ int perturb2_output(
       file->error_message,
       ppt2->error_message);
 
-    int label_size = _MAX_LENGTH_LABEL_;
-    sprintf (desc, "length of a first-order perturbation name (=%d)", _MAX_LENGTH_LABEL_);
-    sprintf (name, "_MAX_LENGTH_LABEL_");
-    class_call (binary_append_int (file, &label_size, 1, desc, name),
-      file->error_message,
-      ppt2->error_message);
-
     sprintf (desc, "array of names of first-order perturbations (each has %d char)", _MAX_LENGTH_LABEL_);
-    sprintf (name, "ppt2->tp2_labels");
+    sprintf (name, "ppt->qs_labels");
     class_call (binary_append_string (file, &ppt->qs_labels, ppt->qs_size_short*_MAX_LENGTH_LABEL_, desc, name),
       file->error_message,
       ppt2->error_message);
@@ -14510,12 +14510,6 @@ int perturb2_output(
     sprintf (desc, "number of source types, including l,m (=%d)", ppt2->tp2_size);
     sprintf (name, "ppt2->tp2_size");
     class_call (binary_append_int (file, &ppt2->tp2_size, 1, desc, name),
-      file->error_message,
-      ppt2->error_message);
-
-    sprintf (desc, "length of a source type name (=%d)", _MAX_LENGTH_LABEL_);
-    sprintf (name, "_MAX_LENGTH_LABEL_");
-    class_call (binary_append_int (file, &label_size, 1, desc, name),
       file->error_message,
       ppt2->error_message);
 
@@ -14690,6 +14684,13 @@ int perturb2_output(
 
     /* Build the content of each memory block */
 
+    int label_size = _MAX_LENGTH_LABEL_;
+    sprintf (desc, "length of a label (=%d)", _MAX_LENGTH_LABEL_);
+    sprintf (name, "_MAX_LENGTH_LABEL_");
+    class_call (binary_append_int (file, &label_size, 1, desc, name),
+      file->error_message,
+      ppt2->error_message);
+
     sprintf (desc, "redshift (=%g)", z);
     sprintf (name, "z");
     class_call (binary_append_double (file, &z, 1, desc, name),
@@ -14778,15 +14779,8 @@ int perturb2_output(
       file->error_message,
       ppt2->error_message);
 
-    int label_size = _MAX_LENGTH_LABEL_;
-    sprintf (desc, "length of a first-order perturbation name (=%d)", _MAX_LENGTH_LABEL_);
-    sprintf (name, "_MAX_LENGTH_LABEL_");
-    class_call (binary_append_int (file, &label_size, 1, desc, name),
-      file->error_message,
-      ppt2->error_message);
-
     sprintf (desc, "array of names of first-order perturbations (each has %d char)", _MAX_LENGTH_LABEL_);
-    sprintf (name, "ppt2->tp2_labels");
+    sprintf (name, "ppt->qs_labels");
     class_call (binary_append_string (file, &ppt->qs_labels, ppt->qs_size_short*_MAX_LENGTH_LABEL_, desc, name),
       file->error_message,
       ppt2->error_message);
@@ -14802,12 +14796,6 @@ int perturb2_output(
     sprintf (desc, "number of source types, including l,m (=%d)", ppt2->tp2_size);
     sprintf (name, "ppt2->tp2_size");
     class_call (binary_append_int (file, &ppt2->tp2_size, 1, desc, name),
-      file->error_message,
-      ppt2->error_message);
-
-    sprintf (desc, "length of a source type name (=%d)", _MAX_LENGTH_LABEL_);
-    sprintf (name, "_MAX_LENGTH_LABEL_");
-    class_call (binary_append_int (file, &label_size, 1, desc, name),
       file->error_message,
       ppt2->error_message);
 
