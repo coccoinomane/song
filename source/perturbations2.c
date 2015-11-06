@@ -790,6 +790,9 @@ int perturb2_indices_of_perturbs(
     ppt2->error_message,
     "SONG does not support neither vector nor tensor modes at first order");
 
+  class_test (ppt2->has_recombination_only && ppt2->has_reionisation_only,
+    ppt2->error_message,
+    "cannot have both recombination_only and reionisation_only flags active");
 
 
   // ======================================================================================
@@ -2775,9 +2778,64 @@ int perturb2_timesampling_for_sources (
   earlier, cut the time-sampling vector so that sources at later times are not
   computed. */
 
-  if ((ppt2->has_recombination_only == _TRUE_) && (ppt2->has_custom_timesampling == _FALSE_)) {
+  if (ppt2->has_recombination_only && !ppt2->has_custom_timesampling) {
 
     ppt2->tau_size = ppt2->index_tau_end_of_recombination;
+
+    if (ppt2->perturbations2_verbose > 1)
+      printf ("     * will stop integrating the system at the end of recombination (tau=%g)\n",
+        ppt2->tau_sampling[ppt2->tau_size-1]);
+
+  }
+
+
+
+  // ====================================================================================
+  // =                                  Reionisation                                    =
+  // ====================================================================================
+
+  /* Find index in time sampling when reionisation starts */
+  
+  ppt2->index_tau_reio_start = ppt2->tau_size - 1;
+
+  if (pth->reio_parametrization != reio_none) {
+    
+    int index_tau = ppt2->tau_size - 1;
+    
+    double tau_reio;
+
+    class_call(background_tau_of_z(pba,
+                                   pth->z_reio_start,
+                                   &tau_reio),
+               pba->error_message,
+               ppt2->error_message);
+
+    while (index_tau >= 0 && ppt2->tau_sampling[index_tau] > tau_reio)
+      index_tau--;
+    
+    class_test (index_tau < 0,
+     ppt2->error_message,
+     "couldn't find start of reionisation in time sampling");
+    
+    ppt2->index_tau_reio_start = index_tau;
+    
+  }
+
+  /* If the user asked for reionisation sources only, then start sampling 
+  at the beginning of reionisation */
+
+  if (ppt2->has_reionisation_only && !ppt2->has_custom_timesampling) {
+
+    class_test (pth->reio_parametrization == reio_none,
+      ppt2->error_message,
+      "cannot have reionisation-only sources without a reionisation scheme");
+      
+    /* Adjust size to include only reionisation sources */
+    ppt2->tau_size -= ppt2->index_tau_reio_start;
+    
+    /* Shift the start of time sampling array to the left */
+    for (int index_tau=0; index_tau < ppt2->tau_size; ++index_tau)
+      ppt2->tau_sampling[index_tau] = ppt2->tau_sampling[ppt2->index_tau_reio_start+index_tau];
 
     if (ppt2->perturbations2_verbose > 1)
       printf ("     * will stop integrating the system at the end of recombination (tau=%g)\n",
@@ -2903,7 +2961,7 @@ int perturb2_timesampling_for_sources (
   //   }
   //   fprintf (stderr, "\n");
   // }
-  
+
   
 
   // ====================================================================================

@@ -674,6 +674,11 @@ int input2_init (
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
     ppt2->has_recombination_only = _TRUE_;
 
+  /* Should we consider only the sources at reionisation? */
+  class_call(parser_read_string(pfc,"only_reionisation",&(string1),&(flag1),errmsg),errmsg,errmsg);
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+    ppt2->has_reionisation_only = _TRUE_;
+
   /* Doesn't make sense not to have polarisation, if you want to compute polarisation */
   class_test ((ppt2->has_polarization2 == _FALSE_) &&
     ((ppt2->has_cmb_polarization_e == _TRUE_) || ((ppt2->has_cmb_polarization_b == _TRUE_))),
@@ -1959,6 +1964,7 @@ int input2_default_params (
 	ppt2->use_test_source = _FALSE_;
 
   ppt2->has_recombination_only = _FALSE_;
+  ppt2->has_reionisation_only = _FALSE_;
   
   ppt2->has_cls = _FALSE_;
   ppt2->has_cmb_bispectra = _FALSE_;

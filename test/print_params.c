@@ -63,7 +63,6 @@ int main(int argc, char **argv) {
   // printf("\tpt.has_cl_cmb_zeta = %d\n", pt.has_cl_cmb_zeta);
   // printf("\tpt.recombination_only_zeta = %d\n", pt.recombination_only_zeta);
   // printf("\tpt2.perturbations2_verbose = %d\n", pt2.perturbations2_verbose);
-
   
   /* Interpolation */
   // printf("* Interpolation options\n");
@@ -97,19 +96,20 @@ int main(int argc, char **argv) {
   // printf("\tpt.has_isw = %d\n", pt.has_isw);
 
   /* LOS effects at second order */
-  // printf("* Line-of-sight effects at second order\n");
-  // printf("\tpt2.has_pure_scattering_in_los = %d\n", pt2.has_pure_scattering_in_los);
-  // printf("\tpt2.has_quad_scattering_in_los = %d\n", pt2.has_quad_scattering_in_los);
-  // printf("\tpt2.has_pure_metric_in_los = %d*\n", pt2.has_pure_metric_in_los);
-  // printf("\tpt2.has_quad_metric_in_los = %d\n", pt2.has_quad_metric_in_los);
-  // printf("\tpt2.has_time_delay_in_los = %d\n", pt2.has_time_delay_in_los);
-  // printf("\tpt2.has_redshift_in_los = %d\n", pt2.has_redshift_in_los);
-  // printf("\tpt2.has_lensing_in_los = %d\n", pt2.has_lensing_in_los);
-  // printf("\tpt2.use_delta_tilde_in_los = %d\n", pt2.use_delta_tilde_in_los);
-  // printf("\tpt2.has_sw = %d*\n", pt2.has_sw);
-  // printf("\tpt2.has_isw = %d*\n", pt2.has_isw);
-  // printf("\tpt2.only_early_isw = %d\n", pt2.only_early_isw);
-  // printf("\tpt2.has_recombination_only = %d\n", pt2.has_recombination_only);
+  printf("* Line-of-sight effects at second order\n");
+  printf("\tpt2.has_pure_scattering_in_los = %d\n", pt2.has_pure_scattering_in_los);
+  printf("\tpt2.has_quad_scattering_in_los = %d\n", pt2.has_quad_scattering_in_los);
+  printf("\tpt2.has_pure_metric_in_los = %d*\n", pt2.has_pure_metric_in_los);
+  printf("\tpt2.has_quad_metric_in_los = %d\n", pt2.has_quad_metric_in_los);
+  printf("\tpt2.has_time_delay_in_los = %d\n", pt2.has_time_delay_in_los);
+  printf("\tpt2.has_redshift_in_los = %d\n", pt2.has_redshift_in_los);
+  printf("\tpt2.has_lensing_in_los = %d\n", pt2.has_lensing_in_los);
+  printf("\tpt2.use_delta_tilde_in_los = %d\n", pt2.use_delta_tilde_in_los);
+  printf("\tpt2.has_sw = %d*\n", pt2.has_sw);
+  printf("\tpt2.has_isw = %d*\n", pt2.has_isw);
+  printf("\tpt2.only_early_isw = %d\n", pt2.only_early_isw);
+  printf("\tpt2.has_recombination_only = %d\n", pt2.has_recombination_only);
+  printf("\tpt2.has_reionisation_only = %d\n", pt2.has_reionisation_only);
 
   /* Time sampling for quadratic sources */
   // printf("* Time sampling for quadratic sources\n");
@@ -163,32 +163,32 @@ int main(int argc, char **argv) {
   // printf("\tpt2.primordial_local_fnl_phi = %g\n", pt2.primordial_local_fnl_phi);
 
   /* Bispectrum */
-  printf("* Bispectrum parameters\n");
-  printf("\tpt2.has_cmb_bispectra = %d\n", pt2.has_cmb_bispectra);
-  printf("\tbi.has_bispectra = %d\n", bi.has_bispectra);
-  printf("\tbi.has_local_model = %d\n", bi.has_local_model);
-  printf("\tbi.has_equilateral_model = %d\n", bi.has_equilateral_model);
-  printf("\tbi.has_orthogonal_model = %d\n", bi.has_orthogonal_model);
-  printf("\tbi.has_galileon_model = %d\n", bi.has_galileon_model);
-  printf("\tbi.has_intrinsic = %d\n", bi.has_intrinsic);
-  printf("\tbi.has_intrinsic_squeezed = %d\n", bi.has_intrinsic_squeezed);
-  printf("\tbi.has_intrinsic_squeezed_unlensed = %d\n", bi.has_intrinsic_squeezed_unlensed);
-  printf("\tbi.has_quadratic_correction = %d\n", bi.has_quadratic_correction);
-  printf("\tbi.add_quadratic_correction = %d\n", bi.add_quadratic_correction);
-  printf("\tbi.include_lensing_effects = %d\n", bi.include_lensing_effects);
-  printf("\tbi.lensed_intrinsic = %d\n", bi.lensed_intrinsic);
-  printf("\tpr.l_out_size = %d\n", pr.l_out_size);
-  for (int index_l_out=0; index_l_out < pr.l_out_size; ++index_l_out)
-    printf("\t\t%12d %12d\n", pr.l1_out[index_l_out], pr.l2_out[index_l_out]);
-  printf("\tpt.l_scalar_max = %d\n", pt.l_scalar_max);
-  printf("\tbi.output_binary_bispectra = %d\n", pt.output_binary_bispectra);
-  printf("\tpr.extend_lensed_cls = %d\n", pr.extend_lensed_cls);
-  printf("\tpr.bispectra_r_sampling = %d\n", pr.bispectra_r_sampling);
-  printf("\tpr.r_left = %g\n", pr.r_left);
-  printf("\tpr.r_right = %g\n", pr.r_right);
-  printf("\tpr.r_min = %g\n", pr.r_min);
-  printf("\tpr.r_max = %g\n", pr.r_max);
-  printf("\tpr.r_size = %d\n", pr.r_size);
+  // printf("* Bispectrum parameters\n");
+  // printf("\tpt2.has_cmb_bispectra = %d\n", pt2.has_cmb_bispectra);
+  // printf("\tbi.has_bispectra = %d\n", bi.has_bispectra);
+  // printf("\tbi.has_local_model = %d\n", bi.has_local_model);
+  // printf("\tbi.has_equilateral_model = %d\n", bi.has_equilateral_model);
+  // printf("\tbi.has_orthogonal_model = %d\n", bi.has_orthogonal_model);
+  // printf("\tbi.has_galileon_model = %d\n", bi.has_galileon_model);
+  // printf("\tbi.has_intrinsic = %d\n", bi.has_intrinsic);
+  // printf("\tbi.has_intrinsic_squeezed = %d\n", bi.has_intrinsic_squeezed);
+  // printf("\tbi.has_intrinsic_squeezed_unlensed = %d\n", bi.has_intrinsic_squeezed_unlensed);
+  // printf("\tbi.has_quadratic_correction = %d\n", bi.has_quadratic_correction);
+  // printf("\tbi.add_quadratic_correction = %d\n", bi.add_quadratic_correction);
+  // printf("\tbi.include_lensing_effects = %d\n", bi.include_lensing_effects);
+  // printf("\tbi.lensed_intrinsic = %d\n", bi.lensed_intrinsic);
+  // printf("\tpr.l_out_size = %d\n", pr.l_out_size);
+  // for (int index_l_out=0; index_l_out < pr.l_out_size; ++index_l_out)
+  //   printf("\t\t%12d %12d\n", pr.l1_out[index_l_out], pr.l2_out[index_l_out]);
+  // printf("\tpt.l_scalar_max = %d\n", pt.l_scalar_max);
+  // printf("\tbi.output_binary_bispectra = %d\n", bi.output_binary_bispectra);
+  // printf("\tpr.extend_lensed_cls = %d\n", pr.extend_lensed_cls);
+  // printf("\tpr.bispectra_r_sampling = %d\n", pr.bispectra_r_sampling);
+  // printf("\tpr.r_left = %g\n", pr.r_left);
+  // printf("\tpr.r_right = %g\n", pr.r_right);
+  // printf("\tpr.r_min = %g\n", pr.r_min);
+  // printf("\tpr.r_max = %g\n", pr.r_max);
+  // printf("\tpr.r_size = %d\n", pr.r_size);
 
   /* Fisher */
   // printf("\tfi.always_interpolate_bispectra = %d\n", fi.always_interpolate_bispectra);

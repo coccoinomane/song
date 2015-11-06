@@ -295,6 +295,22 @@ struct perturbs2
 
 
   /**
+   * Should we start sampling the line of sight sources at the beginning of
+   * reionisation?
+   *
+   * This flag is useful to investigate and debug reionisation effects.
+   *
+   * The time marking the beginning of reionisation is
+   *
+   *   ppt2->tau_sampling[ppt2->index_tau_reio_start],
+   *
+   * This flag is ignored if the user asked for a custom time sampling for the sources
+   * (custom_time_sampling_song_sources=yes).
+   */
+  int has_reionisation_only;
+
+
+  /**
    * Which equation should we use to evolve the curvature potential phi in Newtonian gauge?
    *
    * The current options are:
@@ -858,7 +874,9 @@ struct perturbs2
 
   double z_end_of_recombination; /**< Redshift that marks the end of recombination. Defined only if has_recombination_only==_TRUE_. */
 
-  int index_tau_rec; /**< Index in ppt2->tau_sampling where the visibility function peaks */
+  int index_tau_rec; /**< Index in ppt2->tau_sampling where the visibility function peaks at recombination */
+
+  int index_tau_reio_start; /**< Index in ppt2->tau_sampling where reionisation starts */
 
   /** Value of g/g(tau_rec) when to stop sampling the line of sight sources, where g is the
   visibility function. For example, if set to 100, then the last conformal time used
