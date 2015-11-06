@@ -108,8 +108,10 @@ int main(int argc, char **argv) {
   printf("\tpt2.has_sw = %d*\n", pt2.has_sw);
   printf("\tpt2.has_isw = %d*\n", pt2.has_isw);
   printf("\tpt2.only_early_isw = %d\n", pt2.only_early_isw);
-  printf("\tpt2.has_recombination_only = %d\n", pt2.has_recombination_only);
-  printf("\tpt2.has_reionisation_only = %d\n", pt2.has_reionisation_only);
+  printf("\tpt2.has_only_recombination = %d\n", pt2.has_only_recombination);
+  printf("\tpt2.has_only_reionisation = %d\n", pt2.has_only_reionisation);
+  printf("\tpt2.has_only_loss_term = %d\n", pt2.has_only_loss_term);
+  printf("\tpt2.has_only_gain_term = %d\n", pt2.has_only_gain_term);
 
   /* Time sampling for quadratic sources */
   // printf("* Time sampling for quadratic sources\n");

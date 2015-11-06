@@ -790,7 +790,7 @@ int perturb2_indices_of_perturbs(
     ppt2->error_message,
     "SONG does not support neither vector nor tensor modes at first order");
 
-  class_test (ppt2->has_recombination_only && ppt2->has_reionisation_only,
+  class_test (ppt2->has_only_recombination && ppt2->has_only_reionisation,
     ppt2->error_message,
     "cannot have both recombination_only and reionisation_only flags active");
 
@@ -2778,7 +2778,7 @@ int perturb2_timesampling_for_sources (
   earlier, cut the time-sampling vector so that sources at later times are not
   computed. */
 
-  if (ppt2->has_recombination_only && !ppt2->has_custom_timesampling) {
+  if (ppt2->has_only_recombination && !ppt2->has_custom_timesampling) {
 
     ppt2->tau_size = ppt2->index_tau_end_of_recombination;
 
@@ -2824,7 +2824,7 @@ int perturb2_timesampling_for_sources (
   /* If the user asked for reionisation sources only, then start sampling 
   at the beginning of reionisation */
 
-  if (ppt2->has_reionisation_only && !ppt2->has_custom_timesampling) {
+  if (ppt2->has_only_reionisation && !ppt2->has_custom_timesampling) {
 
     class_test (pth->reio_parametrization == reio_none,
       ppt2->error_message,
@@ -3640,8 +3640,7 @@ int perturb2_initial_conditions (
                   compute_total_and_collision,
                   ppw2->pvec_quadsources,
                   ppw2->pvec_quadcollision,
-                  ppw2
-                  ),
+                  ppw2),
       ppt2->error_message,
       ppt2->error_message);
   }
@@ -6273,8 +6272,7 @@ int perturb2_solve (
               pth,            
               ppt,
               ppt2,
-              ppw2
-              ),
+              ppw2),
           ppt2->error_message,
           ppt2->error_message);
   }
@@ -7490,8 +7488,7 @@ int perturb2_derivs (
                  ppt2,
                  tau,
                  interpolate_total,
-                 ppw2
-                 ),
+                 ppw2),
       ppt2->error_message,
       error_message);
   }
@@ -7513,8 +7510,7 @@ int perturb2_derivs (
   //                 compute_total_and_collision,
   //                 ppw2->pvec_quadsources,
   //                 ppw2->pvec_quadcollision,
-  //                 ppw2
-  //                 ),
+  //                 ppw2),
   //     ppt2->error_message,
   //     error_message);
   // }
@@ -9204,8 +9200,7 @@ int perturb2_tca_variables (
                   compute_only_collision,
                   ppw2->pvec_quadsources,
                   ppw2->pvec_quadcollision,
-                  ppw2
-                  ),
+                  ppw2),
       ppt2->error_message,
       ppt2->error_message);
   }
@@ -9225,8 +9220,7 @@ int perturb2_tca_variables (
   //                ppt2,
   //                tau,
   //                interpolate_collision,
-  //                ppw2
-  //                ),
+  //                ppw2),
   //     ppt2->error_message,
   //     ppt2->error_message);
   // }
@@ -9595,8 +9589,7 @@ int perturb2_rsa_variables (
                   compute_only_collision,
                   ppw2->pvec_quadsources,
                   ppw2->pvec_quadcollision,
-                  ppw2
-                  ),
+                  ppw2),
       ppt2->error_message,
       ppt2->error_message);
   }
@@ -9607,6 +9600,7 @@ int perturb2_rsa_variables (
   ppt2->compute_quadsources_derivatives==_TRUE_ */
 
   if (ppt2->has_quadratic_sources == _TRUE_) {
+
     if (ppt2->compute_quadsources_derivatives == _TRUE_) {
 
       /* Interpolate the time derivative of the full quadratic sources
@@ -9618,8 +9612,7 @@ int perturb2_rsa_variables (
                    ppt2,
                    tau,
                    interpolate_d_total,
-                   ppw2
-                   ),
+                   ppw2),
         ppt2->error_message,
         ppt2->error_message);
 
@@ -9632,8 +9625,7 @@ int perturb2_rsa_variables (
                    ppt2,
                    tau,
                    interpolate_d_collision,
-                   ppw2
-                   ),
+                   ppw2),
         ppt2->error_message,
         ppt2->error_message);
 
@@ -9646,8 +9638,7 @@ int perturb2_rsa_variables (
                    ppt2,
                    tau,
                    interpolate_dd_total,
-                   ppw2
-                   ),
+                   ppw2),
         ppt2->error_message,
         ppt2->error_message);
     }
@@ -10216,8 +10207,7 @@ int perturb2_quadratic_sources_for_k1k2k (
                   compute_total_and_collision,
                   ppw2->pvec_quadsources,
                   ppw2->pvec_quadcollision,
-                  ppw2
-                  ),
+                  ppw2),
       ppt2->error_message,
       ppt2->error_message);
 
@@ -11052,10 +11042,13 @@ int perturb2_quadratic_sources (
  
     } // end of if(has_quadratic_liouville)
   
-  } // end of if (compute_total_and_collision)
+  } // end of if(compute_total_and_collision)
 
 
-  if ((what_to_compute == compute_total_and_collision) || (what_to_compute == compute_only_collision)) {
+  if ((what_to_compute == compute_total_and_collision) ||
+      (what_to_compute == compute_only_collision) ||
+      (what_to_compute == compute_only_loss_term) ||
+      (what_to_compute == compute_only_gain_term)) {
 
     // ==========================================================================================
     // =                                    Collision term                                      =
@@ -11297,12 +11290,23 @@ int perturb2_quadratic_sources (
           is the same for every l-moment. In the tight coupling regime, this contribution should
           be O(1) for l>=3 because all first-order multipoles with l>=2 are strongly suppressed,
           while the contributions to the dipole and the quadrupole are of order O(kappa_dot). */
-          dI_qc2(l,m) +=  (A_1 + delta_e_1)*c_2  +  (A_2 + delta_e_2)*c_1
-                        + c_minus_12(l,m) * v_0_1 * I_2_raw(l-1)
-                        - c_plus_12(l,m)  * v_0_1 * I_2_raw(l+1)
-                        /* Symmetrisation */
-                        + c_minus_21(l,m) * v_0_2 * I_1_raw(l-1)
-                        - c_plus_21(l,m)  * v_0_2 * I_1_raw(l+1);
+          
+          double loss_term = (A_1 + delta_e_1)*c_2  +  (A_2 + delta_e_2)*c_1
+                             + c_minus_12(l,m) * v_0_1 * I_2_raw(l-1)
+                             - c_plus_12(l,m)  * v_0_1 * I_2_raw(l+1)
+                             /* Symmetrisation */
+                             + c_minus_21(l,m) * v_0_2 * I_1_raw(l-1)
+                             - c_plus_21(l,m)  * v_0_2 * I_1_raw(l+1);
+
+          dI_qc2(l,m) += loss_term;
+
+          /* The quadratic loss term is given by all the terms that are unbound in l */
+          if (what_to_compute == compute_only_loss_term)
+            dI_qc2(l,m) = loss_term;
+
+          /* The quadratic gain term is given by all the terms that are bound in l */
+          if (what_to_compute == compute_only_gain_term)
+            dI_qc2(l,m) -= loss_term;
  
         } // end of for (index_m)
       } // end of for (l)
@@ -11373,14 +11377,24 @@ int perturb2_quadratic_sources (
 
             /* - Terms valid for all moments */
 
-            /* First-order collision term, plus fourth line of equation 2.19 */
-            dE_qc2(l,m) += (A_1 + delta_e_1)*c_2  +  (A_2 + delta_e_2)*c_1
-                           + d_minus_12(l,m) * v_0_1 * E_2_raw(l-1)
-                           - d_plus_12(l,m)  * v_0_1 * E_2_raw(l+1)
-                           /* Symmetrisation */
-                           + d_minus_21(l,m) * v_0_2 * E_1_raw(l-1)
-                           - d_plus_21(l,m)  * v_0_2 * E_1_raw(l+1);
+            /* First-order collision term plus fourth line of equation 2.19 */
+            
+            double loss_term = (A_1 + delta_e_1)*c_2  +  (A_2 + delta_e_2)*c_1
+                               + d_minus_12(l,m) * v_0_1 * E_2_raw(l-1)
+                               - d_plus_12(l,m)  * v_0_1 * E_2_raw(l+1)
+                               /* Symmetrisation */
+                               + d_minus_21(l,m) * v_0_2 * E_1_raw(l-1)
+                               - d_plus_21(l,m)  * v_0_2 * E_1_raw(l+1);
+            
+            dE_qc2(l,m) += loss_term;
 
+            /* The quadratic loss term is given by all the terms that are unbound in l */
+            if (what_to_compute == compute_only_loss_term)
+              dE_qc2(l,m) = loss_term;
+
+            /* The quadratic gain term is given by all the terms that are bound in l */
+            else if (what_to_compute == compute_only_gain_term)
+              dE_qc2(l,m) -= loss_term;
 
           } // end of for (index_m)
         } // end of for (l)
@@ -11401,15 +11415,25 @@ int perturb2_quadratic_sources (
             int m = ppt2->m[index_m];
           
             // *** Quadrupole
+
             if (l==2)
               dB_qc2(2,m) = - 0.2*sqrt_6 *
                              (  d_zero_12(2,m) * v_0_1 * (I_2_raw(2) - sqrt_6*E_2_raw(2))
                               + d_zero_21(2,m) * v_0_2 * (I_1_raw(2) - sqrt_6*E_1_raw(2)));
  
-            /* Second line of equation 2.20 */
-            dB_qc2(l,m) +=    d_zero_12(l,m) * v_0_1 * E_2_raw(l)
-                            + d_zero_21(l,m) * v_0_2 * E_1_raw(l);
 
+            /* Second line of equation 2.20 */
+
+            double loss_term =   d_zero_12(l,m) * v_0_1 * E_2_raw(l)
+                               + d_zero_21(l,m) * v_0_2 * E_1_raw(l);
+            
+            dB_qc2(l,m) += loss_term;
+            
+            if (what_to_compute == compute_only_loss_term)
+              dB_qc2(l,m) = loss_term;
+
+            else if (what_to_compute == compute_only_gain_term)
+              dB_qc2(l,m) -= loss_term;
           
           } // end of for (index_m)
         } // end of for (l)
@@ -11448,7 +11472,9 @@ int perturb2_quadratic_sources (
       // ---------------------------------------------------------------------
 
       for (int index_qs2=0; index_qs2 < ppw2->qs2_size; ++index_qs2) {
+
         pvec_quadcollision[index_qs2] *= kappa_dot;
+
         if (what_to_compute == compute_total_and_collision)
           pvec_quadsources[index_qs2] += pvec_quadcollision[index_qs2];
       }
@@ -11624,10 +11650,14 @@ int perturb2_sources (
   double exp_minus_kappa = pvecthermo[pth->index_th_exp_m_kappa];
   double g = pvecthermo[pth->index_th_g];
     
-  /* Compute the quadratic sources at tau, without interpolation. In perturb2_derivs()
-  we called the faster and less precise perturb2_quadratic_sources_at_tau() because
-  perturb2_derivs() is called many more times than this function. */
+  /* Compute the quadratic sources at tau, without interpolation. Contrary
+  to what we did in perturb2_derivs(), where we called the fast interpolation
+  function perturb2_quadratic_sources_at_tau(), here we compute the sources
+  directly with perturb2_quadratic_sources(), because this function is called
+  far fewer times than perturb2_derivs(). */
+
   if (ppt2->has_quadratic_sources == _TRUE_) {
+
     class_call (perturb2_quadratic_sources(
                   ppr,
                   ppr2,
@@ -11640,10 +11670,39 @@ int perturb2_sources (
                   compute_total_and_collision,
                   ppw2->pvec_quadsources,
                   ppw2->pvec_quadcollision,
-                  ppw2
-                  ),
+                  ppw2),
       ppt2->error_message,
       error_message);
+
+
+    /* If the user asked to exclude either the loss or gain term from the
+    quadratic collision term, overwrite pvec_quadcollision accordingly */
+
+    int what_to_compute = -1;
+    
+    if (ppt2->has_only_loss_term)
+      what_to_compute = compute_only_loss_term;
+
+    else if (ppt2->has_only_gain_term) 
+      what_to_compute = compute_only_gain_term;
+    
+    if (what_to_compute > -1)
+      class_call (perturb2_quadratic_sources(
+                    ppr,
+                    ppr2,
+                    pba,
+                    pth,
+                    ppt,
+                    ppt2,
+                    -1,
+                    tau,
+                    what_to_compute,
+                    ppw2->pvec_quadsources,
+                    ppw2->pvec_quadcollision,
+                    ppw2),
+        ppt2->error_message,
+        error_message);
+
   }
   
   /* Define shorthands */
@@ -11917,7 +11976,7 @@ int perturb2_sources (
 
         }
 
-  
+
         /* Scattering from quadratic sources of the form multipole times baryon_velocity */
         if (ppt2->has_quad_scattering_in_los == _TRUE_)
           source += dI_qc2(l,m);
@@ -12773,8 +12832,7 @@ int perturb2_save_perturbations (
                   compute_total_and_collision,
                   ppw2->pvec_quadsources,
                   ppw2->pvec_quadcollision,
-                  ppw2
-                  ),
+                  ppw2),
       ppt2->error_message,
       error_message);
 
@@ -12790,8 +12848,7 @@ int perturb2_save_perturbations (
                    ppt2,
                    tau,
                    interpolate_d_total,
-                   ppw2
-                   ),
+                   ppw2),
         ppt2->error_message,
         ppt2->error_message);
 
@@ -12804,8 +12861,7 @@ int perturb2_save_perturbations (
                    ppt2,
                    tau,
                    interpolate_d_collision,
-                   ppw2
-                   ),
+                   ppw2),
         ppt2->error_message,
         ppt2->error_message);
     }
@@ -14003,8 +14059,7 @@ int perturb2_quadratic_sources_at_tau (
               ppt2,
               tau,
               what_to_interpolate,
-              ppw2
-              ),
+              ppw2),
           ppt2->error_message,
           ppt2->error_message);
 
@@ -14017,8 +14072,7 @@ int perturb2_quadratic_sources_at_tau (
               ppt2,
               tau,
               what_to_interpolate,
-              ppw2
-              ),
+              ppw2),
           ppt2->error_message,
           ppt2->error_message);
 

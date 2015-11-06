@@ -666,18 +666,30 @@ int input2_init (
    && (ppt2->has_pk_delta_cdm == _FALSE_)
    && (ppt2->has_bk_delta_cdm == _FALSE_)
    && (pth->reio_parametrization == reio_none))
-    ppt2->has_recombination_only = _TRUE_;
+    ppt2->has_only_recombination = _TRUE_;
   
   /* Should we stop integrating the second-order system just after recombination, regardless of the
   other flags? */
   class_call(parser_read_string(pfc,"only_recombination",&(string1),&(flag1),errmsg),errmsg,errmsg);
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-    ppt2->has_recombination_only = _TRUE_;
+    ppt2->has_only_recombination = _TRUE_;
 
   /* Should we consider only the sources at reionisation? */
   class_call(parser_read_string(pfc,"only_reionisation",&(string1),&(flag1),errmsg),errmsg,errmsg);
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
-    ppt2->has_reionisation_only = _TRUE_;
+    ppt2->has_only_reionisation = _TRUE_;
+
+  class_call(parser_read_string(pfc,"only_loss_term",&(string1),&(flag1),errmsg),errmsg,errmsg);
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+    ppt2->has_only_loss_term = _TRUE_;
+
+  class_call(parser_read_string(pfc,"only_gain_term",&(string1),&(flag1),errmsg),errmsg,errmsg);
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+    ppt2->has_only_gain_term = _TRUE_;
+
+  class_test (ppt2->has_only_loss_term && ppt2->has_only_gain_term,
+    errmsg,
+    "choose between gain and loss term");
 
   /* Doesn't make sense not to have polarisation, if you want to compute polarisation */
   class_test ((ppt2->has_polarization2 == _FALSE_) &&
@@ -696,7 +708,7 @@ int input2_init (
     ppt2->use_test_source = _TRUE_;
     ppt2->has_sw = _FALSE_;
     ppt2->has_isw = _FALSE_;
-		ppt2->has_recombination_only = _TRUE_;	
+		ppt2->has_only_recombination = _TRUE_;	
 	}
 
 
@@ -1963,8 +1975,10 @@ int input2_default_params (
 
 	ppt2->use_test_source = _FALSE_;
 
-  ppt2->has_recombination_only = _FALSE_;
-  ppt2->has_reionisation_only = _FALSE_;
+  ppt2->has_only_recombination = _FALSE_;
+  ppt2->has_only_reionisation = _FALSE_;
+  ppt2->has_only_loss_term = _FALSE_;
+  ppt2->has_only_gain_term = _FALSE_;
   
   ppt2->has_cls = _FALSE_;
   ppt2->has_cmb_bispectra = _FALSE_;

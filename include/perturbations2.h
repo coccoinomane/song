@@ -129,8 +129,10 @@ enum quadratic_source_computation {
                                 of the collision term alone in pvec_quadcollision. */
   compute_only_liouville,       /**< compute only the quadratic part of the Liouville term in
                                 pvec_quadsources */
-  compute_only_collision        /**< compute only the quadratic part of the collision term in 
+  compute_only_collision,       /**< compute only the quadratic part of the collision term in
                                 pvec_quadcollision */
+  compute_only_loss_term,       /**< compute only the collisional loss term in pvec_quadcollision */ 
+  compute_only_gain_term        /**< compute only the collisional gain term in pvec_quadcollision */ 
 };
 
 
@@ -291,7 +293,7 @@ struct perturbs2
    * (custom_time_sampling_song_sources=yes), while it is always true if the user
    * explicitly set only_recombination=yes in the parameter file.
    */
-  int has_recombination_only;
+  int has_only_recombination;
 
 
   /**
@@ -307,7 +309,21 @@ struct perturbs2
    * This flag is ignored if the user asked for a custom time sampling for the sources
    * (custom_time_sampling_song_sources=yes).
    */
-  int has_reionisation_only;
+  int has_only_reionisation;
+
+
+  /**
+   * Debug flag: should we include only the loss part of the collision term in 
+   * the second order line of sight sources?
+   */
+  int has_only_loss_term;
+
+
+  /**
+   * Debug flag: should we include only the gain part of the collision term in 
+   * the second-order line of sight sources?
+   */
+  int has_only_gain_term;
 
 
   /**
@@ -870,9 +886,9 @@ struct perturbs2
   int tau_size; /**< Size of ppt2->tau_sampling */
 
   int index_tau_end_of_recombination; /**< Index in ppt2->tau_sampling that marks the end of recombination.
-                                      Defined only if has_recombination_only==_TRUE_. */
+                                      Defined only if has_only_recombination==_TRUE_. */
 
-  double z_end_of_recombination; /**< Redshift that marks the end of recombination. Defined only if has_recombination_only==_TRUE_. */
+  double z_end_of_recombination; /**< Redshift that marks the end of recombination. Defined only if has_only_recombination==_TRUE_. */
 
   int index_tau_rec; /**< Index in ppt2->tau_sampling where the visibility function peaks at recombination */
 
