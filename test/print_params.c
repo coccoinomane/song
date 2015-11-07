@@ -47,22 +47,25 @@ int main(int argc, char **argv) {
 
   /* Flags */
   // printf("* Flags & switches\n");
-  // printf("\tpt2.has_cls = %d\n", pt2.has_cls);
-  // printf("\tpt2.has_cmb_temperature = %d\n", pt2.has_cmb_temperature);
-  // printf("\tpt2.has_cmb_polarization_e = %d\n", pt2.has_cmb_polarization_e);
-  // printf("\tpt2.has_cmb_polarization_b = %d\n", pt2.has_cmb_polarization_b);
-  // printf("\tpt2.has_perturbations2 = %d\n", pt2.has_perturbations2);
-  // printf("\tpt.has_perturbations2 = %d\n", pt.has_perturbations2);
-  // printf("\tpt2.has_polarization2 = %d\n", pt2.has_polarization2);
-  // printf("\tpt.has_polarization2 = %d\n", pt.has_polarization2);
-  // printf("\tpt2.has_quadratic_sources = %d\n", pt2.has_quadratic_sources);
-  // printf("\tpt2.has_quadratic_liouville = %d\n", pt2.has_quadratic_liouville);
-  // printf("\tpt2.has_quadratic_collision = %d\n", pt2.has_quadratic_collision);
-  // printf("\tpt2.has_perfect_baryons = %d\n", pt2.has_perfect_baryons);
-  // printf("\tpt2.has_perfect_cdm = %d\n", pt2.has_perfect_cdm);
-  // printf("\tpt.has_cl_cmb_zeta = %d\n", pt.has_cl_cmb_zeta);
-  // printf("\tpt.recombination_only_zeta = %d\n", pt.recombination_only_zeta);
-  // printf("\tpt2.perturbations2_verbose = %d\n", pt2.perturbations2_verbose);
+  printf("\tpt2.has_cls = %d\n", pt2.has_cls);
+  printf("\tpt2.has_cmb_temperature = %d\n", pt2.has_cmb_temperature);
+  printf("\tpt2.has_cmb_polarization_e = %d\n", pt2.has_cmb_polarization_e);
+  printf("\tpt2.has_cmb_polarization_b = %d\n", pt2.has_cmb_polarization_b);
+  printf("\tpt2.has_perturbations2 = %d\n", pt2.has_perturbations2);
+  printf("\tpt.has_perturbations2 = %d\n", pt.has_perturbations2);
+  printf("\tpt2.has_polarization2 = %d\n", pt2.has_polarization2);
+  printf("\tpt.has_polarization2 = %d\n", pt.has_polarization2);
+  printf("\tpt2.has_quadratic_sources = %d\n", pt2.has_quadratic_sources);
+  printf("\tpt2.has_quadratic_liouville = %d\n", pt2.has_quadratic_liouville);
+  printf("\tpt2.has_quadratic_collision = %d\n", pt2.has_quadratic_collision);
+  printf("\tpt2.has_perfect_baryons = %d\n", pt2.has_perfect_baryons);
+  printf("\tpt2.has_perfect_cdm = %d\n", pt2.has_perfect_cdm);
+  printf("\tpt.has_cl_cmb_zeta = %d\n", pt.has_cl_cmb_zeta);
+  printf("\tpt.recombination_only_zeta = %d\n", pt.recombination_only_zeta);
+  printf("\tpt2.perturbations2_verbose = %d\n", pt2.perturbations2_verbose);
+  printf("\tpt2.has_cmb_bispectra = %d\n", pt2.has_cmb_bispectra);
+  printf("\tpt2.has_cmb_spectra = %d\n", pt2.has_cmb_spectra);
+  printf("\tsp.has_intrinsic = %d\n", sp.has_intrinsic);
   
   /* Interpolation */
   // printf("* Interpolation options\n");
@@ -96,22 +99,22 @@ int main(int argc, char **argv) {
   // printf("\tpt.has_isw = %d\n", pt.has_isw);
 
   /* LOS effects at second order */
-  printf("* Line-of-sight effects at second order\n");
-  printf("\tpt2.has_pure_scattering_in_los = %d\n", pt2.has_pure_scattering_in_los);
-  printf("\tpt2.has_quad_scattering_in_los = %d\n", pt2.has_quad_scattering_in_los);
-  printf("\tpt2.has_pure_metric_in_los = %d*\n", pt2.has_pure_metric_in_los);
-  printf("\tpt2.has_quad_metric_in_los = %d\n", pt2.has_quad_metric_in_los);
-  printf("\tpt2.has_time_delay_in_los = %d\n", pt2.has_time_delay_in_los);
-  printf("\tpt2.has_redshift_in_los = %d\n", pt2.has_redshift_in_los);
-  printf("\tpt2.has_lensing_in_los = %d\n", pt2.has_lensing_in_los);
-  printf("\tpt2.use_delta_tilde_in_los = %d\n", pt2.use_delta_tilde_in_los);
-  printf("\tpt2.has_sw = %d*\n", pt2.has_sw);
-  printf("\tpt2.has_isw = %d*\n", pt2.has_isw);
-  printf("\tpt2.only_early_isw = %d\n", pt2.only_early_isw);
-  printf("\tpt2.has_only_recombination = %d\n", pt2.has_only_recombination);
-  printf("\tpt2.has_only_reionisation = %d\n", pt2.has_only_reionisation);
-  printf("\tpt2.has_only_loss_term = %d\n", pt2.has_only_loss_term);
-  printf("\tpt2.has_only_gain_term = %d\n", pt2.has_only_gain_term);
+  // printf("* Line-of-sight effects at second order\n");
+  // printf("\tpt2.has_pure_scattering_in_los = %d\n", pt2.has_pure_scattering_in_los);
+  // printf("\tpt2.has_quad_scattering_in_los = %d\n", pt2.has_quad_scattering_in_los);
+  // printf("\tpt2.has_pure_metric_in_los = %d*\n", pt2.has_pure_metric_in_los);
+  // printf("\tpt2.has_quad_metric_in_los = %d\n", pt2.has_quad_metric_in_los);
+  // printf("\tpt2.has_time_delay_in_los = %d\n", pt2.has_time_delay_in_los);
+  // printf("\tpt2.has_redshift_in_los = %d\n", pt2.has_redshift_in_los);
+  // printf("\tpt2.has_lensing_in_los = %d\n", pt2.has_lensing_in_los);
+  // printf("\tpt2.use_delta_tilde_in_los = %d\n", pt2.use_delta_tilde_in_los);
+  // printf("\tpt2.has_sw = %d*\n", pt2.has_sw);
+  // printf("\tpt2.has_isw = %d*\n", pt2.has_isw);
+  // printf("\tpt2.only_early_isw = %d\n", pt2.only_early_isw);
+  // printf("\tpt2.has_only_recombination = %d\n", pt2.has_only_recombination);
+  // printf("\tpt2.has_only_reionisation = %d\n", pt2.has_only_reionisation);
+  // printf("\tpt2.has_only_loss_term = %d\n", pt2.has_only_loss_term);
+  // printf("\tpt2.has_only_gain_term = %d\n", pt2.has_only_gain_term);
 
   /* Time sampling for quadratic sources */
   // printf("* Time sampling for quadratic sources\n");

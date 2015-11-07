@@ -221,19 +221,35 @@ int input2_init (
     
     if (((strstr(string1,"pBisp") != NULL) || (strstr(string1,"PBISP") != NULL)) /* obsolete */
        ||(strstr(string1,"eBisp") != NULL) || (strstr(string1,"EBISP") != NULL)) {
-      ppt->has_cl_cmb_temperature = _TRUE_;
       ppt2->has_cmb_polarization_e = _TRUE_;
+      ppt->has_cl_cmb_temperature = _TRUE_;
     }
 
     if ((strstr(string1,"bBisp") != NULL) || (strstr(string1,"BBISP") != NULL)) {
-      ppt->has_cl_cmb_temperature = _TRUE_;
       ppt2->has_cmb_polarization_b = _TRUE_;
+      ppt->has_cl_cmb_temperature = _TRUE_;
     }
 
     if ((strstr(string1,"tCl2") != NULL) || (strstr(string1,"TCL2") != NULL)) {
-      ppt->has_cl_cmb_temperature = _TRUE_;
-      ppt2->has_cls = _TRUE_;
       ppt2->has_perturbations2 = _TRUE_;
+      ppt2->has_cmb_spectra = _TRUE_;
+      ppt2->has_cmb_temperature = _TRUE_;
+      ppt2->has_cls = _TRUE_;    
+    }
+    
+    if ((strstr(string1,"pCl2") != NULL) || (strstr(string1,"PCL2") != NULL) ||
+        (strstr(string1,"eCl2") != NULL) || (strstr(string1,"ECL2") != NULL)) {
+      ppt2->has_perturbations2 = _TRUE_;
+      ppt2->has_cmb_spectra = _TRUE_;
+      ppt2->has_cmb_polarization_e = _TRUE_;
+      ppt2->has_cls = _TRUE_;
+    }
+
+    if ((strstr(string1,"bCl2") != NULL) || (strstr(string1,"BCL2") != NULL)) {
+      ppt2->has_perturbations2 = _TRUE_;
+      ppt2->has_cmb_spectra = _TRUE_;
+      ppt2->has_cmb_polarization_b = _TRUE_;
+      ppt2->has_cls = _TRUE_;
     }
 
     if (((strstr(string1,"delta_cdm_pk") != NULL) || (strstr(string1,"pk_delta_cdm") != NULL) || (strstr(string1,"mPk") != NULL))) {
@@ -1981,6 +1997,7 @@ int input2_default_params (
   ppt2->has_only_gain_term = _FALSE_;
   
   ppt2->has_cls = _FALSE_;
+  ppt2->has_cmb_spectra = _FALSE_;
   ppt2->has_cmb_bispectra = _FALSE_;
   
   ppt2->stop_at_perturbations2 = _FALSE_;

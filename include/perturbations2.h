@@ -3,11 +3,10 @@
 #ifndef __PERTURBATIONS2__
 #define __PERTURBATIONS2__
 
-#include "perturbations2_macros.h"
-#include "perturbations.h"
-#include "input.h"
 #include "common2.h"
-
+#include "input.h"
+#include "perturbations.h"
+#include "perturbations2_macros.h"
 
 
 // ======================================================================================
@@ -198,6 +197,8 @@ struct perturbs2
   short has_perturbations2;      /**< Do we need second-order perturbations at all? */
 
   short has_cmb_bispectra;       /**< Do we need to compute the second-order bispectrum of the CMB? */
+
+  short has_cmb_spectra;         /**< Do we need to compute the second-order spectrum of the CMB? */
 
   short has_cls;                 /**< Do we need to compute the second-order C_l? */
 
