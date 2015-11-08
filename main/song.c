@@ -120,6 +120,12 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
   
+  /* Compute the intrinsic C_l */
+  if (spectra2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&sp,&le,&bi) == _FAILURE_) {
+    printf("\n\nError in bispectra2_init \n=>%s\n",bi.error_message);
+    return _FAILURE_;
+  }
+
   /* Compute Fisher matrix */
   if (fisher_init(&pr,&ba,&th,&pt,&bs,&tr,&pm,&sp,&le,&bi,&fi) == _FAILURE_) {
     printf("\n\nError in fisher_init \n=>%s\n",fi.error_message);

@@ -12,6 +12,7 @@
 #include "transfer2.h"
 #include "bessel2.h"
 #include "bispectra2.h"
+#include "spectra2.h"
 
 /* Tools needed by SONG */
 #include "song_tools.h"
