@@ -43,6 +43,24 @@ extern "C" {
         struct spectra * psp
         );
 
+  int spectra2_cls (
+       struct precision * ppr,
+       struct precision2 * ppr2,
+       struct background * pba,
+       struct thermo * pth,
+       struct perturbs * ppt,
+       struct perturbs2 * ppt2,
+       struct bessels * pbs,
+       struct bessels2 * pbs2,
+       struct transfers * ptr,
+       struct transfers2 * ptr2,
+       struct primordial * ppm,
+       struct lensing * ple,
+       struct bispectra * pbi,
+       struct spectra * psp
+       );
+
+
   int spectra2_integrate_fourier_sym(
   			struct precision * ppr,
         struct precision2 * ppr2,

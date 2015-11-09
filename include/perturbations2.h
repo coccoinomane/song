@@ -198,7 +198,7 @@ struct perturbs2
 
   short has_cmb_bispectra;       /**< Do we need to compute the second-order bispectrum of the CMB? */
 
-  short has_cmb_spectra;         /**< Do we need to compute the second-order spectrum of the CMB? */
+  short has_cmb_spectra;         /**< Do we need to compute the second-order spectrum (C_l and Pk) of the CMB? */
 
   short has_cls;                 /**< Do we need to compute the second-order C_l? */
 

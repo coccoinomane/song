@@ -44,379 +44,24 @@ int spectra2_init(
       "Computing second-order spectra.\n");
   }
 
-  
-  
+
+
   // ====================================================================================
   // =                               Angular power spectra                              =
   // ====================================================================================
 
-  /* We use the same sampling as used in ppt2, for k3 we use the sampling of tr2
-  for angular power spectra */
-  
-  psp->k_size = ppt2->k_size;
-  psp->k = ppt2->k;
-  
-  class_calloc(psp->k3_grid, ptr2->k3_size_max, sizeof(double), psp->error_message);
-
-  double step_k1, step_k2, step_k3;
-  int index_tt2_T, index_tt2_E, index_tt2_B;
-
-  class_test (!ppt->has_scalars || ppt->md_size > 1,
-    psp->error_message,
-    "SONG supports only scalar modes at first order");
-
-  class_test (ppt->ic_size[0] > 1,
-    psp->error_message,
-    "SONG only supports one type of initial condition");
-
   if (ppt2->has_cls == _TRUE_) {
 
-    /* TEMPORARILY DISABLED */  
-    // if ((ppt2->k3_sampling == sym_k3_sampling))
-    //   printf("Angular power spectra can only be computed in standart k3 sampling. Change sampling strategy\n");
-      
-
-    // -------------------------------------------------------------------------------
-    // -                             Sum over M, cycle L                             -
-    // -------------------------------------------------------------------------------
-
-    int index_md = ppt->index_md_scalars;
-
-    for (int index_ct=0; index_ct < psp->ct_size; ++index_ct) {
-      
-      if (psp->cl_type[index_ct] != second_order)
-        continue;
-
-      printf_log_if (psp->spectra_verbose, 0,
-        " -> computing second-order Cl_%s\n", psp->ct_labels[index_ct]);
-
-      // #pragma omp parallel for schedule (dynamic)
-      for (int index_l=0; index_l<psp->l_size[index_md]; ++index_l) {
-
-        int l = psp->l[index_l];
-
-        /* Initialise spectrum */
-        double * result = &psp->cl[index_md][index_l * psp->ct_size + index_ct];
-        *result = 0;
-
-        /* If lensing is included, then it is probable that the l sampling in the
-        spectra structure (psp->l) extends farther than the one for which we computed
-        the second-order transfer functions (ptr2->l). This mechanism is implemented
-        in compute_cls() and is crucial to obtain the lensed C_l all the way to
-        ptr2->l_max. Here we make sure that the second-order C_l are equal to zero
-        for l>ptr2->l_max. */
-        if (l > ptr2->l[ptr2->l_size-1])
-          continue;
-
-        /* Array to store the various m contributions */
-        double result_m[ppr2->m_size];
-
-        /* Loop over m */
-        for (int index_M=0; index_M < ppr2->m_size; ++index_M) {
-
-          int m = ptr2->m[index_M];
-          
-          result_m[index_M] = 0;
-          
-          printf_log_if (psp->spectra_verbose, 1,
-            "     * computing spectra for l = %d m = %d\n", l, m);
-
-
-          /* Determine the transfer functions needed to compute the requested Cl */
-
-          int index_tt_1;
-          int index_tt_2;
-        
-          if (psp->has_tt2 && index_ct==psp->index_ct_tt2) { 
-            index_tt_1 = ptr2->index_tt2_T + lm_cls(index_l, index_M);
-            index_tt_2 = ptr2->index_tt2_T + lm_cls(index_l, index_M);
-          }
-          else if (psp->has_ee2 && index_ct==psp->index_ct_ee2) { 
-            index_tt_1 = ptr2->index_tt2_E + lm_cls(index_l, index_M);
-            index_tt_2 = ptr2->index_tt2_E + lm_cls(index_l, index_M);
-          }
-          else if (psp->has_te2 && index_ct==psp->index_ct_te2) { 
-            index_tt_1 = ptr2->index_tt2_T + lm_cls(index_l, index_M);
-            index_tt_2 = ptr2->index_tt2_E + lm_cls(index_l, index_M);
-          }
-          else if (psp->has_bb2 && index_ct==psp->index_ct_bb2) {
-            index_tt_1 = ptr2->index_tt2_B + lm_cls(index_l, index_M);
-            index_tt_2 = ptr2->index_tt2_B + lm_cls(index_l, index_M);
-            if (m==0) continue; /* scalars do not contribute to b_modes */
-          }
-
-
-          /* Load transfer functions if needed */
-
-          if (ppr2->load_transfers_from_disk || ppr2->store_transfers_to_disk) {
-
-            class_call (transfer2_load_transfers_from_disk (
-                    ppt2,
-                    ptr2,
-                    index_tt_1),
-              ptr2->error_message,
-              psp->error_message);
-
-            if (index_tt_2 != index_tt_1)
-              class_call (transfer2_load_transfers_from_disk (
-                      ppt2,
-                      ptr2,
-                      index_tt_2),
-                ptr2->error_message,
-                psp->error_message);
-          }
-
-
-
-          // =====================================================================================
-          // =                                Integrate over k1,k2,k3                            =
-          // =====================================================================================
-
-          for (int index_k1 = 0; index_k1 < psp->k_size; ++index_k1) {
-
-            /* Find stepsize */
-
-            if (index_k1 == 0) step_k1 = (psp->k[1] - psp->k[0])/2.;
-            else if (index_k1 == psp->k_size-1) step_k1 = (psp->k[psp->k_size-1] - psp->k[psp->k_size -2])/2.;
-            else step_k1 = (psp->k[index_k1+1] - psp->k[index_k1 -1])/2.;
-
-            double k1 = psp->k[index_k1];
-
-            /* Primordial spectrum k1 */
-
-            double spectra_k1;
-            class_call (primordial_spectrum_at_k (
-                    ppm,
-                    index_md,
-                    linear,
-                    k1,
-                    &spectra_k1),
-              ppm->error_message,
-              psp->error_message);
-            spectra_k1 = 2*_PI_*_PI_/(k1*k1*k1) * spectra_k1;
-
-            /* Loop over k2 */
-
-            for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
-
-              /* Print some info */
-              printf_log_if (psp->spectra_verbose, 2,
-                "     \\ computing integral for (k1,k2) = (%.3g,%.3g)\n",
-                psp->k[index_k1], psp->k[index_k2]);
-
-
-              /* Find stepsize */
-
-              if (index_k1 == 0) step_k2 = 0.;
-              else if (index_k2 == 0) step_k2 = (psp->k[1] - psp->k[0])/2.;
-              else if (index_k2 == index_k1) step_k2 = (psp->k[index_k1] - psp->k[index_k1-1])/2.;
-              else step_k2 = (psp->k[index_k2+1] - psp->k[index_k2 -1])/2.;
-
-              double k2 = psp->k[index_k2];
-
-
-              /* Primordial spectrum k2 */
-
-              double spectra_k2;
-              class_call (primordial_spectrum_at_k (
-                    ppm,
-                    index_md,
-                    linear,
-                    k2,
-                    &spectra_k2),
-                ppm->error_message,
-                psp->error_message);
-              spectra_k2 = 2*_PI_*_PI_/(k2*k2*k2) * spectra_k2;
-
-
-              /* Integration grid in k3 */
-
-              int dump;
-              class_call (transfer2_get_k3_list (
-                            ppr,
-                            ppr2,
-                            ppt2,
-                            pbs,
-                            pbs2,
-                            ptr2,
-                            index_k1,
-                            index_k2,
-                            psp->k3_grid,
-                            &dump
-                            ),
-                ptr2->error_message,
-                psp->error_message);
-
-              int k3_size = ptr2->k_size_k1k2[index_k1][index_k2];
-
-              class_test(k3_size < 2,
-                psp->error_message,
-                "integration grid has less than two elements, cannot use trapezoidal integration");
-
-
-              /* Define the pointer to the second-order transfer functions as a function of k3.
-              Note that this transfer function has already been rescaled according to eq. 6.26
-              of http://arxiv.org/abs/1405.2280 in the perturbations.c module.  */
-
-              double * transfer_1 = ptr2->transfer[index_tt_1][index_k1][index_k2];
-              double * transfer_2 = ptr2->transfer[index_tt_2][index_k1][index_k2];
-
-              int triangular_first = 0;
-              int triangular_last = 0;
-
-              /* Final integration over k3 */
-
-              for (int index_k3 = 0; index_k3 < k3_size; ++index_k3) {
-
-                double k3 = psp->k3_grid[index_k3];
-
-                /* Find stepsize including the triangular condition edge */
-
-                if (index_k3 == 0) step_k3 = (psp->k3_grid[1] - psp->k3_grid[0])/2.;
-                else if (index_k3 == k3_size -1) step_k3 = (psp->k3_grid[k3_size-1] - psp->k3_grid[k3_size -2])/2.;
-                else step_k3 = (psp->k3_grid[index_k3+1] - psp->k3_grid[index_k3 -1])/2.;
-
-                /* Triangular condition */
-
-                if ( k3 < k1-k2 ||  k3 > k1+k2) { // out of triangular region
-                  step_k3 = 0.;
-                }
-                if ( k3 >= k1-k2 && triangular_first == 0 && index_k3 < k3_size-1 ) { //first point
-                  triangular_first = 1;
-                  step_k3 = (psp->k3_grid[index_k3+1]-k3)/2. + k3 - (k1-k2);
-                }
-                if ( psp->k3_grid[index_k3+1] > k1+k2 && triangular_last == 0 && index_k3 > 0) {
-                  //last point, note that this may not be found if the last point is bigger than kmax,
-                  // however in that case no special treatment for the last point is needed.
-                  triangular_last = 1;
-                  step_k3 = (k3 - psp->k3_grid[index_k3-1])/2. + (k1+k2) - k3;
-                }
-                
-                /* If we are in the extrapolated range, skip this k3 */
-                if (step_k3 == 0)
-                  continue;
-
-                /* This counters the rescaling performed for the bispectrum */
-                double scale = pow(sqrt( 1. - pow((k3*k3 + k1*k1 - k2*k2)/2./k3/k1,2)),m);
-
-
-                /* Add up contributions */
-
-                double total_factor =
-                    // symmetry factor (doing only half plane in k1 k2)
-                    2.*
-                    // integration weight
-                    k1*k2*k3*
-                    // integration stepsize
-                    step_k1*step_k2*step_k3*
-                    // if the sources were rescaled we have to invert this for the cl spectrum rescaling
-                    //the step_k3 condition makes sure that this is in triangular as the computation of angles fails out of trinagular region
-                    (ppt2->rescale_cmb_sources && step_k3 != 0. ? pow(scale,2) : 1. )*
-                    // spectra factors (2l+1) already in transfer def (how does sum over m work? does this need a factor 2 for m neq 0? yes :))
-                    2. /_PI_ /2./_PI_/2./_PI_/2./_PI_ *
-                    // definition of second order perturbation theory
-                    // already in transfer definition 1./2./2.*
-                    // factor 4 of Delta also already in transfer def
-                    // primordial spectra
-                    spectra_k1*spectra_k2;
-
-                double integrand = total_factor * transfer_1[index_k3] * transfer_2[index_k3];
-
-                *result += integrand;
-                result_m[index_M] += integrand;
-
-                /* Debug: print the integrand function */
-                // if (l==2 && m==0)
-                //   printf ("integrand = %g, result =%g\n", integrand, *result);
-
-              } // loop k3
-            } // loop k2
-          } // loop k1
-
-          if (ppr2->load_transfers_from_disk || ppr2->store_transfers_to_disk) {
-
-            class_call (transfer2_free_type_level (
-                          ppt2,
-                          ptr2,
-                          index_tt_1),
-              ptr2->error_message,
-              psp->error_message);
-
-            if (index_tt_2 != index_tt_1)
-              class_call (transfer2_free_type_level (
-                            ppt2,
-                            ptr2,
-                            index_tt_2),
-                ptr2->error_message,
-                psp->error_message);
-          }
-
-          /* Debug: print the M contribution */
-          // if (m==0 || m==1)
-          //   printf ("%10d %14g %14g\n", l, result_m[index_M], *result);
-
-        } // sum over M
-        
-      } // loop over l
-
-    } // loop over ct
-
-    /* Compute Cl derivatives in view of spline interpolation */
-
-    class_call (spectra_cls_spline(
-                  pba,
-                  ppt,
-                  ptr,
-                  ppm,
-                  psp,
-                  index_md),
+    class_call (spectra2_cls (
+                  ppr, ppr2, pba, pth, ppt, ppt2, pbs,
+                  pbs2, ptr, ptr2, ppm, ple, pbi, psp),
       psp->error_message,
       psp->error_message);
-    
-    free(psp->k3_grid);
-    
-    /* Debug: test the interpolation */
-    // for (int l=2; l <= psp->l_max[index_md]; ++l) {
-    //
-    //   double * cl = calloc (psp->ct_size, sizeof (double));
-    //   double ** cl_md = malloc (psp->md_size * sizeof(double*));
-    //   double ** cl_md_ic = malloc (ppt->md_size * sizeof(double*));
-    //
-    //   for (int index_mode = 0; index_mode < psp->md_size; index_mode++) {
-    //     class_alloc(cl_md[index_mode], psp->ct_size*sizeof(double), psp->error_message);
-    //     class_alloc(cl_md_ic[index_mode], psp->ic_ic_size[index_mode]*psp->ct_size*sizeof(double), psp->error_message);
-    //   }
-    //
-    //   class_call (spectra_cl_at_l(
-    //                 psp,
-    //                 (double)l,
-    //                 cl,
-    //                 cl_md,
-    //                 cl_md_ic),
-    //     psp->error_message,
-    //     psp->error_message);
-    //
-    //   int index_ct = psp->index_ct_tt2;
-    //
-    //   int index_L = -1;
-    //   for (int index_l=0; index_l < psp->l_size[index_md]; ++index_l) {
-    //     if ((int)(psp->l[index_l]+_EPS_) == l) {
-    //       index_L = index_l;
-    //       break;
-    //     }
-    //   }
-    //
-    //   double cl_node = index_L<0 ? 0:psp->cl[index_md][index_L * psp->ct_size + index_ct];
-    //   double ddcl_node = index_L<0 ? 0:psp->ddcl[index_md][index_L * psp->ct_size + index_ct];
-    //
-    //   fprintf (stderr, "%10d %16g %16g %16g\n", l, cl[psp->index_ct_tt2], cl_node, ddcl_node);
-    //
-    // }
-    
-  } // if(has_cls)
-    
 
-    
+  }
+
+  
+  
   // ==================================================================================
   // =                               Fourier Power Spectra                            =
   // ==================================================================================
@@ -583,6 +228,399 @@ int spectra2_init(
 //   fclose(psp->spectra_file);
   return _SUCCESS_;
 }
+
+
+
+/**
+ * Compute the angular power spectrum of the CMB at second-order.
+ *
+ * The second-order C_l are obtained by solving a 3D integral in Fourier
+ * space (k1,k2,k3) and are stored in the psp->cl array.
+ */
+
+int spectra2_cls (
+     struct precision * ppr,
+     struct precision2 * ppr2,
+     struct background * pba,
+     struct thermo * pth,
+     struct perturbs * ppt,
+     struct perturbs2 * ppt2,
+     struct bessels * pbs,
+     struct bessels2 * pbs2,
+     struct transfers * ptr,
+     struct transfers2 * ptr2,
+     struct primordial * ppm,
+     struct lensing * ple,
+     struct bispectra * pbi,
+     struct spectra * psp
+     )
+{
+  
+  /* We use the same sampling as used in ppt2, for k3 we use the sampling of tr2
+  for angular power spectra */
+  
+  psp->k_size = ppt2->k_size;
+  psp->k = ppt2->k;
+  
+  class_calloc(psp->k3_grid, ptr2->k3_size_max, sizeof(double), psp->error_message);
+
+  double step_k1, step_k2, step_k3;
+  int index_tt2_T, index_tt2_E, index_tt2_B;
+
+  class_test (!ppt->has_scalars || ppt->md_size > 1,
+    psp->error_message,
+    "SONG supports only scalar modes at first order");
+
+  class_test (ppt->ic_size[0] > 1,
+    psp->error_message,
+    "SONG only supports one type of initial condition");
+
+  /* TEMPORARILY DISABLED */  
+  // if ((ppt2->k3_sampling == sym_k3_sampling))
+  //   printf("Angular power spectra can only be computed in standart k3 sampling. Change sampling strategy\n");
+    
+
+  // -------------------------------------------------------------------------------
+  // -                             Sum over M, cycle L                             -
+  // -------------------------------------------------------------------------------
+
+  int index_md = ppt->index_md_scalars;
+
+  for (int index_ct=0; index_ct < psp->ct_size; ++index_ct) {
+    
+    if (psp->cl_type[index_ct] != second_order)
+      continue;
+
+    printf_log_if (psp->spectra_verbose, 0,
+      " -> computing second-order Cl_%s\n", psp->ct_labels[index_ct]);
+
+    // #pragma omp parallel for schedule (dynamic)
+    for (int index_l=0; index_l<psp->l_size[index_md]; ++index_l) {
+
+      int l = psp->l[index_l];
+
+      /* Initialise spectrum */
+      double * result = &psp->cl[index_md][index_l * psp->ct_size + index_ct];
+      *result = 0;
+
+      /* If lensing is included, then it is probable that the l sampling in the
+      spectra structure (psp->l) extends farther than the one for which we computed
+      the second-order transfer functions (ptr2->l). This mechanism is implemented
+      in compute_cls() and is crucial to obtain the lensed C_l all the way to
+      ptr2->l_max. Here we make sure that the second-order C_l are equal to zero
+      for l>ptr2->l_max. */
+      if (l > ptr2->l[ptr2->l_size-1])
+        continue;
+
+      /* Array to store the various m contributions */
+      double result_m[ppr2->m_size];
+
+      /* Loop over m */
+      for (int index_M=0; index_M < ppr2->m_size; ++index_M) {
+
+        int m = ptr2->m[index_M];
+        
+        result_m[index_M] = 0;
+        
+        printf_log_if (psp->spectra_verbose, 1,
+          "     * computing spectra for l = %d m = %d\n", l, m);
+
+
+        /* Determine the transfer functions needed to compute the requested Cl */
+
+        int index_tt_1;
+        int index_tt_2;
+      
+        if (psp->has_tt2 && index_ct==psp->index_ct_tt2) { 
+          index_tt_1 = ptr2->index_tt2_T + lm_cls(index_l, index_M);
+          index_tt_2 = ptr2->index_tt2_T + lm_cls(index_l, index_M);
+        }
+        else if (psp->has_ee2 && index_ct==psp->index_ct_ee2) { 
+          index_tt_1 = ptr2->index_tt2_E + lm_cls(index_l, index_M);
+          index_tt_2 = ptr2->index_tt2_E + lm_cls(index_l, index_M);
+        }
+        else if (psp->has_te2 && index_ct==psp->index_ct_te2) { 
+          index_tt_1 = ptr2->index_tt2_T + lm_cls(index_l, index_M);
+          index_tt_2 = ptr2->index_tt2_E + lm_cls(index_l, index_M);
+        }
+        else if (psp->has_bb2 && index_ct==psp->index_ct_bb2) {
+          index_tt_1 = ptr2->index_tt2_B + lm_cls(index_l, index_M);
+          index_tt_2 = ptr2->index_tt2_B + lm_cls(index_l, index_M);
+          if (m==0) continue; /* scalars do not contribute to b_modes */
+        }
+
+
+        /* Load transfer functions if needed */
+
+        if (ppr2->load_transfers_from_disk || ppr2->store_transfers_to_disk) {
+
+          class_call (transfer2_load_transfers_from_disk (
+                  ppt2,
+                  ptr2,
+                  index_tt_1),
+            ptr2->error_message,
+            psp->error_message);
+
+          if (index_tt_2 != index_tt_1)
+            class_call (transfer2_load_transfers_from_disk (
+                    ppt2,
+                    ptr2,
+                    index_tt_2),
+              ptr2->error_message,
+              psp->error_message);
+        }
+
+
+
+        // =====================================================================================
+        // =                                Integrate over k1,k2,k3                            =
+        // =====================================================================================
+
+        for (int index_k1 = 0; index_k1 < psp->k_size; ++index_k1) {
+
+          /* Find stepsize */
+
+          if (index_k1 == 0) step_k1 = (psp->k[1] - psp->k[0])/2.;
+          else if (index_k1 == psp->k_size-1) step_k1 = (psp->k[psp->k_size-1] - psp->k[psp->k_size -2])/2.;
+          else step_k1 = (psp->k[index_k1+1] - psp->k[index_k1 -1])/2.;
+
+          double k1 = psp->k[index_k1];
+
+          /* Primordial spectrum k1 */
+
+          double spectra_k1;
+          class_call (primordial_spectrum_at_k (
+                  ppm,
+                  index_md,
+                  linear,
+                  k1,
+                  &spectra_k1),
+            ppm->error_message,
+            psp->error_message);
+          spectra_k1 = 2*_PI_*_PI_/(k1*k1*k1) * spectra_k1;
+
+          /* Loop over k2 */
+
+          for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
+
+            /* Print some info */
+            printf_log_if (psp->spectra_verbose, 2,
+              "     \\ computing integral for (k1,k2) = (%.3g,%.3g)\n",
+              psp->k[index_k1], psp->k[index_k2]);
+
+
+            /* Find stepsize */
+
+            if (index_k1 == 0) step_k2 = 0.;
+            else if (index_k2 == 0) step_k2 = (psp->k[1] - psp->k[0])/2.;
+            else if (index_k2 == index_k1) step_k2 = (psp->k[index_k1] - psp->k[index_k1-1])/2.;
+            else step_k2 = (psp->k[index_k2+1] - psp->k[index_k2 -1])/2.;
+
+            double k2 = psp->k[index_k2];
+
+
+            /* Primordial spectrum k2 */
+
+            double spectra_k2;
+            class_call (primordial_spectrum_at_k (
+                  ppm,
+                  index_md,
+                  linear,
+                  k2,
+                  &spectra_k2),
+              ppm->error_message,
+              psp->error_message);
+            spectra_k2 = 2*_PI_*_PI_/(k2*k2*k2) * spectra_k2;
+
+
+            /* Integration grid in k3 */
+
+            int dump;
+            class_call (transfer2_get_k3_list (
+                          ppr,
+                          ppr2,
+                          ppt2,
+                          pbs,
+                          pbs2,
+                          ptr2,
+                          index_k1,
+                          index_k2,
+                          psp->k3_grid,
+                          &dump
+                          ),
+              ptr2->error_message,
+              psp->error_message);
+
+            int k3_size = ptr2->k_size_k1k2[index_k1][index_k2];
+
+            class_test(k3_size < 2,
+              psp->error_message,
+              "integration grid has less than two elements, cannot use trapezoidal integration");
+
+
+            /* Define the pointer to the second-order transfer functions as a function of k3.
+            Note that this transfer function has already been rescaled according to eq. 6.26
+            of http://arxiv.org/abs/1405.2280 in the perturbations.c module.  */
+
+            double * transfer_1 = ptr2->transfer[index_tt_1][index_k1][index_k2];
+            double * transfer_2 = ptr2->transfer[index_tt_2][index_k1][index_k2];
+
+            int triangular_first = 0;
+            int triangular_last = 0;
+
+            /* Final integration over k3 */
+
+            for (int index_k3 = 0; index_k3 < k3_size; ++index_k3) {
+
+              double k3 = psp->k3_grid[index_k3];
+
+              /* Find stepsize including the triangular condition edge */
+
+              if (index_k3 == 0) step_k3 = (psp->k3_grid[1] - psp->k3_grid[0])/2.;
+              else if (index_k3 == k3_size -1) step_k3 = (psp->k3_grid[k3_size-1] - psp->k3_grid[k3_size -2])/2.;
+              else step_k3 = (psp->k3_grid[index_k3+1] - psp->k3_grid[index_k3 -1])/2.;
+
+              /* Triangular condition */
+
+              if ( k3 < k1-k2 ||  k3 > k1+k2) { // out of triangular region
+                step_k3 = 0.;
+              }
+              if ( k3 >= k1-k2 && triangular_first == 0 && index_k3 < k3_size-1 ) { //first point
+                triangular_first = 1;
+                step_k3 = (psp->k3_grid[index_k3+1]-k3)/2. + k3 - (k1-k2);
+              }
+              if ( psp->k3_grid[index_k3+1] > k1+k2 && triangular_last == 0 && index_k3 > 0) {
+                //last point, note that this may not be found if the last point is bigger than kmax,
+                // however in that case no special treatment for the last point is needed.
+                triangular_last = 1;
+                step_k3 = (k3 - psp->k3_grid[index_k3-1])/2. + (k1+k2) - k3;
+              }
+              
+              /* If we are in the extrapolated range, skip this k3 */
+              if (step_k3 == 0)
+                continue;
+
+              /* This counters the rescaling performed for the bispectrum */
+              double scale = pow(sqrt( 1. - pow((k3*k3 + k1*k1 - k2*k2)/2./k3/k1,2)),m);
+
+
+              /* Add up contributions */
+
+              double total_factor =
+                  // symmetry factor (doing only half plane in k1 k2)
+                  2.*
+                  // integration weight
+                  k1*k2*k3*
+                  // integration stepsize
+                  step_k1*step_k2*step_k3*
+                  // if the sources were rescaled we have to invert this for the cl spectrum rescaling
+                  //the step_k3 condition makes sure that this is in triangular as the computation of angles fails out of trinagular region
+                  (ppt2->rescale_cmb_sources && step_k3 != 0. ? pow(scale,2) : 1. )*
+                  // spectra factors (2l+1) already in transfer def (how does sum over m work? does this need a factor 2 for m neq 0? yes :))
+                  2. /_PI_ /2./_PI_/2./_PI_/2./_PI_ *
+                  // definition of second order perturbation theory
+                  // already in transfer definition 1./2./2.*
+                  // factor 4 of Delta also already in transfer def
+                  // primordial spectra
+                  spectra_k1*spectra_k2;
+
+              double integrand = total_factor * transfer_1[index_k3] * transfer_2[index_k3];
+
+              *result += integrand;
+              result_m[index_M] += integrand;
+
+              /* Debug: print the integrand function */
+              // if (l==2 && m==0)
+              //   printf ("integrand = %g, result =%g\n", integrand, *result);
+
+            } // loop k3
+          } // loop k2
+        } // loop k1
+
+        if (ppr2->load_transfers_from_disk || ppr2->store_transfers_to_disk) {
+
+          class_call (transfer2_free_type_level (
+                        ppt2,
+                        ptr2,
+                        index_tt_1),
+            ptr2->error_message,
+            psp->error_message);
+
+          if (index_tt_2 != index_tt_1)
+            class_call (transfer2_free_type_level (
+                          ppt2,
+                          ptr2,
+                          index_tt_2),
+              ptr2->error_message,
+              psp->error_message);
+        }
+
+        /* Debug: print the M contribution */
+        // if (m==0 || m==1)
+        //   printf ("%10d %14g %14g\n", l, result_m[index_M], *result);
+
+      } // sum over M
+      
+    } // loop over l
+
+  } // loop over ct
+
+  /* Compute Cl derivatives in view of spline interpolation */
+
+  class_call (spectra_cls_spline(
+                pba,
+                ppt,
+                ptr,
+                ppm,
+                psp,
+                index_md),
+    psp->error_message,
+    psp->error_message);
+  
+  free(psp->k3_grid);
+  
+  /* Debug: test the interpolation */
+  // for (int l=2; l <= psp->l_max[index_md]; ++l) {
+  //
+  //   double * cl = calloc (psp->ct_size, sizeof (double));
+  //   double ** cl_md = malloc (psp->md_size * sizeof(double*));
+  //   double ** cl_md_ic = malloc (ppt->md_size * sizeof(double*));
+  //
+  //   for (int index_mode = 0; index_mode < psp->md_size; index_mode++) {
+  //     class_alloc(cl_md[index_mode], psp->ct_size*sizeof(double), psp->error_message);
+  //     class_alloc(cl_md_ic[index_mode], psp->ic_ic_size[index_mode]*psp->ct_size*sizeof(double), psp->error_message);
+  //   }
+  //
+  //   class_call (spectra_cl_at_l(
+  //                 psp,
+  //                 (double)l,
+  //                 cl,
+  //                 cl_md,
+  //                 cl_md_ic),
+  //     psp->error_message,
+  //     psp->error_message);
+  //
+  //   int index_ct = psp->index_ct_tt2;
+  //
+  //   int index_L = -1;
+  //   for (int index_l=0; index_l < psp->l_size[index_md]; ++index_l) {
+  //     if ((int)(psp->l[index_l]+_EPS_) == l) {
+  //       index_L = index_l;
+  //       break;
+  //     }
+  //   }
+  //
+  //   double cl_node = index_L<0 ? 0:psp->cl[index_md][index_L * psp->ct_size + index_ct];
+  //   double ddcl_node = index_L<0 ? 0:psp->ddcl[index_md][index_L * psp->ct_size + index_ct];
+  //
+  //   fprintf (stderr, "%10d %16g %16g %16g\n", l, cl[psp->index_ct_tt2], cl_node, ddcl_node);
+  //
+  // }
+  
+  return _SUCCESS_;
+  
+}
+
 
 
 
