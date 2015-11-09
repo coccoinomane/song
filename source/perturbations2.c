@@ -164,7 +164,7 @@ int perturb2_init (
     ppt->has_perturbations = _FALSE_;
     ppt->has_cls = _FALSE_;
     ppt->has_cmb_bispectra = _FALSE_;
-    ppt2->has_cls = _FALSE_;
+    ppt2->has_cmb_spectra = _FALSE_;
     ppt2->has_cmb_bispectra = _FALSE_;
 
     if (ppt2->perturbations2_verbose > 0)
@@ -430,7 +430,7 @@ int perturb2_init (
     ppt->has_perturbations = _FALSE_;
     ppt->has_cls = _FALSE_;
     ppt->has_cmb_bispectra = _FALSE_;
-    ppt2->has_cls = _FALSE_;
+    ppt2->has_cmb_spectra = _FALSE_;
     ppt2->has_cmb_bispectra = _FALSE_;
   }
 
@@ -769,7 +769,7 @@ int perturb2_indices_of_perturbs(
     (ppr2->compute_m[1]==_TRUE_) && (ppt2->radiation_streaming_approximation!=rsa2_none),
     ppt2->error_message,
     "WARNING: the radiation streaming approximation for m=1 is not implemented yet.\
- The monopole and dipole for photons and neutrinos will be set to zero.");
+ The monopole and dipole for photons and neutrinos will be set to zero at late times");
 
   class_test (
     (ppr2->compute_m[0] == _FALSE_) && (

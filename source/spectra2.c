@@ -31,7 +31,7 @@ int spectra2_init(
 
   /* Check whether we need to compute intrinsic spectra at all */  
 
-  if (!ppt2->has_cmb_spectra || !ppt2->has_cls) {
+  if (!ppt2->has_cmb_spectra) {
 
     printf_log_if (psp->spectra_verbose, 0,
       "No second-order spectrum requested; spectra2 module skipped.\n");
@@ -50,7 +50,7 @@ int spectra2_init(
   // =                               Angular power spectra                              =
   // ====================================================================================
 
-  if (ppt2->has_cls == _TRUE_) {
+  if (ppt2->has_cmb_spectra == _TRUE_) {
 
     class_call (spectra2_cls (
                   ppr, ppr2, pba, pth, ppt, ppt2, pbs,
@@ -255,13 +255,10 @@ int spectra2_cls (
      struct spectra * psp
      )
 {
-  
-  /* We use the same sampling as used in ppt2, for k3 we use the sampling of tr2
-  for angular power spectra */
-  
-  psp->k_size = ppt2->k_size;
-  psp->k = ppt2->k;
-  
+
+  /* SONG supports only scalar perturbations at first order */
+  int index_md = ppt->index_md_scalars;
+
   class_test (!ppt->has_scalars || ppt->md_size > 1,
     psp->error_message,
     "SONG supports only scalar modes at first order");
@@ -269,6 +266,24 @@ int spectra2_cls (
   class_test (ppt->ic_size[0] > 1,
     psp->error_message,
     "SONG only supports one type of initial condition");
+
+
+  /* We compute the C_l for all l where we computed the second-order transfer
+  functions; these are determined by the user via the parameters l_linstep and
+  l_logstep. Note that if lensing is requested, the maximum l in this sampling
+  might be smaller than the one for the first-order C_l (psp->l). */
+  psp->l_size_song = ptr2->l_size;
+  psp->l_song = ptr2->l;
+
+
+  /* The second-order C_l are obtained by solving a (k1,k2,k3) integral. We solve
+  the integral summing over the nodes of the second-order transfer functions, using
+  the trapezoidal rule. Therefore, for k1 and k2 we use the smooth sampling in ppt2->k,
+  while for the triangular direction k3 we use the fine sampling of the transfer2
+  module. */  
+  psp->k_size = ppt2->k_size;
+  psp->k = ppt2->k;
+  
 
   /* TEMPORARILY DISABLED */  
   // if ((ppt2->k3_sampling == sym_k3_sampling))
@@ -279,10 +294,8 @@ int spectra2_cls (
   // -                             Sum over M, cycle L                             -
   // -------------------------------------------------------------------------------
 
-  int index_md = ppt->index_md_scalars;
-
   for (int index_ct=0; index_ct < psp->ct_size; ++index_ct) {
-    
+
     if (psp->cl_type[index_ct] != second_order)
       continue;
 
@@ -293,9 +306,9 @@ int spectra2_cls (
     int abort = _FALSE_;
     
     #pragma omp parallel for schedule (dynamic)
-    for (int index_l=0; index_l<psp->l_size[index_md]; ++index_l) {
+    for (int index_l=0; index_l<psp->l_size_song; ++index_l) {
 
-      int l = psp->l[index_l];
+      int l = psp->l_song[index_l];
 
       /* Generate grid for k3 integration. We do it inside the l-loop
       to avoid race conditions */
@@ -304,15 +317,6 @@ int spectra2_cls (
       /* Initialise spectrum */
       double * result = &psp->cl[index_md][index_l * psp->ct_size + index_ct];
       *result = 0;
-
-      /* If lensing is included, then it is probable that the l sampling in the
-      spectra structure (psp->l) extends farther than the one for which we computed
-      the second-order transfer functions (ptr2->l). This mechanism is implemented
-      in compute_cls() and is crucial to obtain the lensed C_l all the way to
-      ptr2->l_max. Here we make sure that the second-order C_l are equal to zero
-      for l>ptr2->l_max. */
-      if (l > ptr2->l[ptr2->l_size-1])
-        continue;
 
       /* Array to store the various m contributions */
       double result_m[ppr2->m_size];
@@ -333,22 +337,26 @@ int spectra2_cls (
         int index_tt_1;
         int index_tt_2;
       
-        if (psp->has_tt2 && index_ct==psp->index_ct_tt2) { 
+        if (psp->has_tt2 && index_ct==psp->index_ct_tt2) {
           index_tt_1 = ptr2->index_tt2_T + lm_cls(index_l, index_M);
           index_tt_2 = ptr2->index_tt2_T + lm_cls(index_l, index_M);
+          // printf ("l=%3d[%3d], m=%d[%d]: index_tt = %d\n", l, index_l, m, index_M, index_tt_1);
         }
         else if (psp->has_ee2 && index_ct==psp->index_ct_ee2) { 
           index_tt_1 = ptr2->index_tt2_E + lm_cls(index_l, index_M);
           index_tt_2 = ptr2->index_tt2_E + lm_cls(index_l, index_M);
+          // printf ("l=%3d[%3d], m=%d[%d]: index_tt = %d\n", l, index_l, m, index_M, index_tt_1);
         }
         else if (psp->has_te2 && index_ct==psp->index_ct_te2) { 
           index_tt_1 = ptr2->index_tt2_T + lm_cls(index_l, index_M);
           index_tt_2 = ptr2->index_tt2_E + lm_cls(index_l, index_M);
+          // printf ("l=%3d[%3d], m=%d[%d]: index_tt_1 = %d, index_tt_2 = %d\n", l, index_l, m, index_M, index_tt_1, index_tt_2);
         }
         else if (psp->has_bb2 && index_ct==psp->index_ct_bb2) {
+          if (m==0) continue; /* scalars do not contribute to b_modes */
           index_tt_1 = ptr2->index_tt2_B + lm_cls(index_l, index_M);
           index_tt_2 = ptr2->index_tt2_B + lm_cls(index_l, index_M);
-          if (m==0) continue; /* scalars do not contribute to b_modes */
+          // printf ("l=%3d[%3d], m=%d[%d]: index_tt = %d\n", l, index_l, m, index_M, index_tt_1);
         }
 
 
@@ -509,7 +517,9 @@ int spectra2_cls (
               double scale = pow(sqrt( 1. - pow((k3*k3 + k1*k1 - k2*k2)/2./k3/k1,2)),m);
 
 
-              /* Add up contributions */
+              // =====================================================================================
+              // =                                Add up contributions                               =
+              // =====================================================================================
 
               double total_factor =
                   // symmetry factor (doing only half plane in k1 k2)
@@ -519,7 +529,7 @@ int spectra2_cls (
                   // integration stepsize
                   step_k1*step_k2*step_k3*
                   // if the sources were rescaled we have to invert this for the cl spectrum rescaling
-                  //the step_k3 condition makes sure that this is in triangular as the computation of angles fails out of trinagular region
+                  // the step_k3 condition makes sure that this is in triangular as the computation of angles fails out of trinagular region
                   (ppt2->rescale_cmb_sources && step_k3 != 0. ? pow(scale,2) : 1. )*
                   // spectra factors (2l+1) already in transfer def (how does sum over m work? does this need a factor 2 for m neq 0? yes :))
                   2. /_PI_ /2./_PI_/2./_PI_/2./_PI_ *
@@ -527,7 +537,7 @@ int spectra2_cls (
                   // already in transfer definition 1./2./2.*
                   // factor 4 of Delta also already in transfer def
                   // primordial spectra
-                  spectra_k1*spectra_k2;
+                  spectra_k1 * spectra_k2;
 
               double integrand = total_factor * transfer_1[index_k3] * transfer_2[index_k3];
 
@@ -577,8 +587,12 @@ int spectra2_cls (
 
   } // loop over ct
 
-  /* Compute Cl derivatives in view of spline interpolation */
 
+  // =====================================================================================
+  // =                                    Interpolation                                  =
+  // =====================================================================================
+
+  /* Compute Cl derivatives in view of spline interpolation */
   class_call (spectra_cls_spline(
                 pba,
                 ppt,
@@ -588,7 +602,31 @@ int spectra2_cls (
                 index_md),
     psp->error_message,
     psp->error_message);
-  
+
+
+  for (int index_ct=0; index_ct < psp->ct_size; ++index_ct) {
+
+    if (psp->cl_type[index_ct] != second_order)
+      continue;
+
+    /* Make sure that the interpolating the C_l for l>l_max_song yields zer0 */
+    psp->l_max_ct[index_md][index_ct] = psp->l_song[psp->l_size_song-1];
+
+    /* Make sure that the C_l and their derivatives vanish for l > l_max */
+    for (int index_l=0; index_l<psp->l_size[index_md]; ++index_l) {
+      int l = psp->l[index_l];
+      if (l > psp->l_song[psp->l_size_song-1]) {
+        psp->cl[index_md][index_l*psp->ct_size + index_ct] = 0;
+        psp->ddcl[index_md][index_l*psp->ct_size + index_ct] = 0;
+        if (psp->compute_cl_derivative == _TRUE_) {
+          psp->d_lsq_cl[index_md][index_l*psp->ct_size + index_ct] = 0;
+          psp->dd_lsq_cl[index_md][index_l*psp->ct_size + index_ct] = 0;
+          psp->spline_d_lsq_cl[index_md][index_l*psp->ct_size + index_ct] = 0;
+        }
+      }
+    }
+  }
+
   /* Debug: test the interpolation */
   // for (int l=2; l <= psp->l_max[index_md]; ++l) {
   //

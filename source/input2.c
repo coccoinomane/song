@@ -234,7 +234,6 @@ int input2_init (
       ppt2->has_perturbations2 = _TRUE_;
       ppt2->has_cmb_spectra = _TRUE_;
       ppt2->has_cmb_temperature = _TRUE_;
-      ppt2->has_cls = _TRUE_;    
     }
     
     if ((strstr(string1,"pCl2") != NULL) || (strstr(string1,"PCL2") != NULL) ||
@@ -242,14 +241,12 @@ int input2_init (
       ppt2->has_perturbations2 = _TRUE_;
       ppt2->has_cmb_spectra = _TRUE_;
       ppt2->has_cmb_polarization_e = _TRUE_;
-      ppt2->has_cls = _TRUE_;
     }
 
     if ((strstr(string1,"bCl2") != NULL) || (strstr(string1,"BCL2") != NULL)) {
       ppt2->has_perturbations2 = _TRUE_;
       ppt2->has_cmb_spectra = _TRUE_;
       ppt2->has_cmb_polarization_b = _TRUE_;
-      ppt2->has_cls = _TRUE_;
     }
 
     if (((strstr(string1,"delta_cdm_pk") != NULL) || (strstr(string1,"pk_delta_cdm") != NULL) || (strstr(string1,"mPk") != NULL))) {
@@ -275,7 +272,7 @@ int input2_init (
     if ((strstr(string1,"stop_at_transfers2") != NULL) || (strstr(string1,"T2") != NULL)) {
       ptr2->stop_at_transfers2 = _TRUE_;
       ppt2->has_perturbations2 = _TRUE_;
-      ppt2->has_cls = _TRUE_;
+      ppt2->has_cmb_spectra = _TRUE_;
     }
 
     if (strstr(string1,"k_out") != NULL) {
@@ -1706,7 +1703,7 @@ int input2_init (
     pfc,"modes_song",&(ppr2->m_size),&(int_pointer2),&flag2, errmsg),
     errmsg,
     errmsg);
-    
+
   /* string2 wins over string1 */
   flag = _TRUE_;
   if (flag2 == _TRUE_)
@@ -1734,6 +1731,11 @@ int input2_init (
 
   /* Maximum 'm' that will be computed */
   ppr2->m_max_song = ppr2->m[ppr2->m_size-1];
+
+  if (ppt2->has_cmb_polarization_b && ppr2->m_max_song == 0)
+    printf ("WARNING: will ignore any requested B-mode output. Second-order B-modes vanish\
+ for scalar perturbations; to obtain a non-vanishing B-mode result, please include in the\
+ modes_song parameter at least one value larger than zero");
   
   /* Check that the m's are positive */
   class_test (ppr2->m[0] < 0,
@@ -1996,7 +1998,6 @@ int input2_default_params (
   ppt2->has_only_loss_term = _FALSE_;
   ppt2->has_only_gain_term = _FALSE_;
   
-  ppt2->has_cls = _FALSE_;
   ppt2->has_cmb_spectra = _FALSE_;
   ppt2->has_cmb_bispectra = _FALSE_;
   

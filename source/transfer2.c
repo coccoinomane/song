@@ -96,10 +96,8 @@ int transfer2_init(
 
   /* Check whether any spectrum in harmonic space (i.e., any C_l's) is actually requested */
 
-  if ((ppt2->has_perturbations2 == _FALSE_)
-     || ((ppt2->has_cls == _FALSE_)
-     && (ppt2->has_cmb_bispectra == _FALSE_)
-     && (ptr2->stop_at_transfers2 == _FALSE_)) ) {
+  if (!ppt2->has_perturbations2 ||
+     (!ppt2->has_cmb_spectra && !ppt2->has_cmb_bispectra && !ptr2->stop_at_transfers2)) {
 
     ptr2->has_cls = _FALSE_;
     if (ptr2->transfer2_verbose > 0)
@@ -615,7 +613,7 @@ int transfer2_init(
   if (ptr2->stop_at_transfers2 == _TRUE_) {
     ppt->has_cls = _FALSE_;
     ppt->has_cmb_bispectra = _FALSE_;
-    ppt2->has_cls = _FALSE_;
+    ppt2->has_cmb_spectra = _FALSE_;
     ppt2->has_cmb_bispectra = _FALSE_;
   }
     
@@ -914,28 +912,27 @@ int transfer2_indices_of_transfers(
     ptr2->n_nonzero_transfers_B -= 1;
 
   /* Photon temperature transfer functions */
-  if (ppt2->has_cmb_temperature == _TRUE_) {
+  if (ppt2->has_source_T) {
 
     ptr2->index_tt2_T = index_tt;
     index_tt += ptr2->n_transfers; 
   }
 
   /* Photon E-mode polarisation transfer functions */
-  if (ppt2->has_cmb_polarization_e == _TRUE_) {
+  if (ppt2->has_source_E) {
   
     ptr2->index_tt2_E = index_tt;
     index_tt += ptr2->n_transfers;    
   }
 
-  /* Photon B-mode polarisation transfer functions. To be computed
+  /* Photon B-mode polarisation transfer functions. They will be computed
   only for non scalar modes, otherwise they just vanish. */
-  if (ppt2->has_cmb_polarization_b == _TRUE_) {
-  
-    if (ppr2->m_max_song>0) {
-      ptr2->index_tt2_B = index_tt;
-      index_tt += ptr2->n_transfers;
-    }
+  if (ppt2->has_source_B) {
+
+    ptr2->index_tt2_B = index_tt;
+    index_tt += ptr2->n_transfers;
   }
+
 
   /* Total number of transfer functions to compute */
   ptr2->tt2_size = index_tt;
@@ -952,10 +949,10 @@ int transfer2_indices_of_transfers(
 
   if (ptr2->transfer2_verbose > 1) {
     printf (" -> will compute tt2_size=%d transfer functions: ", ptr2->tt2_size);
-    if (ppt2->has_cmb_temperature == _TRUE_) printf ("T=%d ", ptr2->n_transfers);
-    if (ppt2->has_cmb_polarization_e == _TRUE_) printf ("E=%d (%d non-zero) ",
+    if (ppt2->has_source_B == _TRUE_) printf ("T=%d ", ptr2->n_transfers);
+    if (ppt2->has_source_E == _TRUE_) printf ("E=%d (%d non-zero) ",
       ptr2->n_transfers, ptr2->n_nonzero_transfers_E);
-    if (ppt2->has_cmb_polarization_b == _TRUE_) printf ("B=%d (%d non-zero) ",
+    if (ppt2->has_source_B == _TRUE_) printf ("B=%d (%d non-zero) ",
       ptr2->n_transfers, ptr2->n_nonzero_transfers_B);
     printf ("\n");
   }  
@@ -1894,7 +1891,7 @@ int transfer2_compute (
   // =                                   Temperature                                     =
   // =====================================================================================
   
-  if ((ppt2->has_cmb_temperature==_TRUE_) && (transfer_type==ptr2->index_tt2_T)) {
+  if (ppt2->has_source_T && transfer_type==ptr2->index_tt2_T) {
   
     /* Number of multipole sources to consider */
     pw->L_max = ppr2->l_max_los_t;
@@ -1929,7 +1926,7 @@ int transfer2_compute (
   // =                                     E-modes                                       =
   // =====================================================================================
   
-  else if ((ppt2->has_cmb_polarization_e==_TRUE_) && (transfer_type==ptr2->index_tt2_E)) {
+  else if (ppt2->has_source_E && transfer_type==ptr2->index_tt2_E) {
 
     /* Number of multipole sources to consider */
     pw->L_max = ppr2->l_max_los_p;
@@ -1998,81 +1995,71 @@ int transfer2_compute (
   // =                                     B-modes                                       =
   // =====================================================================================
   
-  /* We consider the B-modes only for non-scalar modes. Even if didn't do so, both the 
-  direct and mixed contributions would vanish. The direct contribution vanishes because
-  it involves the B-mode sources at m=0, which vanish. The mixed contribution vanishes
-  because the projection function vanishes for m=0 (see odd function in eq. 5.104 of
-  http://arxiv.org/abs/1405.2280) */
+  /* We consider the B-modes only for non-scalar modes (ppt2->has_source_B is false 
+  for m=0). Even if didn't do so, both the direct and mixed contributions would vanish.
+  The direct contribution vanishes because it involves the B-mode sources at m=0, which
+  vanish. The mixed contribution vanishes because the projection function vanishes for
+  m=0 (see odd function in eq. 5.104 of http://arxiv.org/abs/1405.2280) */
 
-  if ((ppt2->has_cmb_polarization_b==_TRUE_) && (transfer_type==ptr2->index_tt2_B)) {
+  else if (ppt2->has_source_B && transfer_type==ptr2->index_tt2_B) {
   
-    if (ptr2->m[index_m] == 0) {
-    
-      pw->transfer = 0;
-    
-    }
-  
-    else {
+    /* Number of multipole sources to consider */
+    pw->L_max = ppr2->l_max_los_p;
 
-      /* Number of multipole sources to consider */
-      pw->L_max = ppr2->l_max_los_p;
+    double direct_contribution=0, mixing_contribution=0;
 
-      double direct_contribution=0, mixing_contribution=0;
-  
-      /* Direct contribution (B -> B). The projection function for this contribution (J_BB)
-      is equal to the one for E->E (J_EE). */
-      class_call (transfer2_integrate(
-                    ppr,
-                    ppr2,
-                    ppt2,
-                    pbs,
-                    pbs2,
-                    ptr2,
-                    index_k1,
-                    index_k2,
-                    index_k,
-                    index_l,
-                    index_m,
-                    interpolated_sources_in_time,
-                    pbs2->index_J_EE,   /* E-mode projection function (same as J_BB) */
-                    ppt2->index_tp2_B,  /* B-mode source function, vanishes for m=0 */
-                    pw,
-                    &(direct_contribution)),
-        ptr2->error_message,
-        ptr2->error_message);
+    /* Direct contribution (B -> B). The projection function for this contribution (J_BB)
+    is equal to the one for E->E (J_EE). */
+    class_call (transfer2_integrate(
+                  ppr,
+                  ppr2,
+                  ppt2,
+                  pbs,
+                  pbs2,
+                  ptr2,
+                  index_k1,
+                  index_k2,
+                  index_k,
+                  index_l,
+                  index_m,
+                  interpolated_sources_in_time,
+                  pbs2->index_J_EE,   /* E-mode projection function (same as J_BB) */
+                  ppt2->index_tp2_B,  /* B-mode source function, vanishes for m=0 */
+                  pw,
+                  &(direct_contribution)),
+      ptr2->error_message,
+      ptr2->error_message);
 
-      /* Mixing contribution (E->B). The projection function for this contribution (J_BE)
-      is equal to minus the one for B->E (-J_EB). We shall adjust for this sign below,
-      when we sum the direct and mixed contributions. */
-      class_call (transfer2_integrate(
-                    ppr,
-                    ppr2,
-                    ppt2,
-                    pbs,
-                    pbs2,
-                    ptr2,
-                    index_k1,
-                    index_k2,
-                    index_k,
-                    index_l,
-                    index_m,
-                    interpolated_sources_in_time,
-                    pbs2->index_J_EB,   /* EB mixing projection function (equal to minus BE),
-                                        vanishes for m=0 (see eq. 5.104 of http://arxiv.org/abs/1405.2280)*/
-                    ppt2->index_tp2_E,  /* E-mode source function */
-                    pw,
-                    &(mixing_contribution)),
-        ptr2->error_message,
-        ptr2->error_message);
-      
-        /* The integral is given by the sum of the B->B and E->B contributions.
-        IMPORTANT: the mixing projection function J_BE is given by -J_EB. This follows from 
-        the properties of the H matrix in appendix B of http://arxiv.org/abs/1102.1524. Hence,
-        here we multiply the mixing contribution by a minus sign. */
-        pw->transfer = direct_contribution - mixing_contribution;
-      
-    } // end of if m!=0
+    /* Mixing contribution (E->B). The projection function for this contribution (J_BE)
+    is equal to minus the one for B->E (-J_EB). We shall adjust for this sign below,
+    when we sum the direct and mixed contributions. */
+    class_call (transfer2_integrate(
+                  ppr,
+                  ppr2,
+                  ppt2,
+                  pbs,
+                  pbs2,
+                  ptr2,
+                  index_k1,
+                  index_k2,
+                  index_k,
+                  index_l,
+                  index_m,
+                  interpolated_sources_in_time,
+                  pbs2->index_J_EB,   /* EB mixing projection function (equal to minus BE),
+                                      vanishes for m=0 (see eq. 5.104 of http://arxiv.org/abs/1405.2280)*/
+                  ppt2->index_tp2_E,  /* E-mode source function */
+                  pw,
+                  &(mixing_contribution)),
+      ptr2->error_message,
+      ptr2->error_message);
     
+      /* The integral is given by the sum of the B->B and E->B contributions.
+      IMPORTANT: the mixing projection function J_BE is given by -J_EB. This follows from 
+      the properties of the H matrix in appendix B of http://arxiv.org/abs/1102.1524. Hence,
+      here we multiply the mixing contribution by a minus sign. */
+      pw->transfer = direct_contribution - mixing_contribution;
+
   } // end of B-modes
 
 
