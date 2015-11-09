@@ -19,9 +19,9 @@ int spectra2_init(
      struct transfers * ptr,
      struct transfers2 * ptr2,
      struct primordial * ppm,
-     struct spectra * psp,
      struct lensing * ple,
-     struct bispectra * pbi
+     struct bispectra * pbi,
+     struct spectra * psp
      )
 {
 
@@ -29,65 +29,46 @@ int spectra2_init(
   // =                               Preliminary checks                                 =
   // ====================================================================================
 
-  if ((ppt2->has_perturbations2 == _FALSE_)
-     || (ppt2->has_cls == _FALSE_) ){
-     /* TEMPORARILY DISABLED */
-     // || ((ppt2->has_cls == _FALSE_) && (ppt2->has_pk_matter == _FALSE_)) ){
+  /* Check whether we need to compute intrinsic spectra at all */  
 
-    if (psp2->spectra2_verbose > 0) 
-      printf("Second-order spectra module skipped.\n");
-      
+  if (!ppt2->has_cmb_spectra || !ppt2->has_cls) {
+
+    printf_log_if (psp->spectra_verbose, 0,
+      "No second-order spectrum requested; spectra2 module skipped.\n");
+
     return _SUCCESS_;
   }
-
-  
-
-  // ====================================================================================
-  // =                                 k-sampling                                       =
-  // ====================================================================================
-
-  // We use the same sampling as used in ppt2, for k3 we use the sampling of tr2 for angular power spectra
-  
-  psp2->k_size = ppt2->k_size;
-  psp2->k = ppt2->k;
-  
-  class_calloc(psp2->k3_grid, ptr2->k3_size_max, sizeof(double), psp2->error_message);
- 
-
-
-  // ====================================================================================
-  // =                              Allocate workspaces                                 =
-  // ====================================================================================
-  
-  class_alloc (psp2 -> spectra, ppt2->tp2_size*sizeof(double *),psp2->error_message);
-  
-  for (int index_tp=0; index_tp<ppt2->tp2_size; ++index_tp) {
-         
-    class_alloc(
-      psp2->spectra[index_tp],
-      psp2->k_size*ppt2->tau_size*sizeof(double),
-      psp2->error_message);
-
-    for (int index_k3 = 0; index_k3 < psp2->k_size; ++index_k3) {
-      for (int index_tau = 0; index_tau < ppt2->tau_size; ++index_tau) {
-        psp2->spectra[index_tp][index_k3*ppt2->tau_size + index_tau] = 0.;
-      } 
-    }
+  else {
+    
+    printf_log_if (psp->spectra_verbose, 0,
+      "Computing second-order spectra.\n");
   }
- 
-  if (psp2->spectra2_verbose > 1) 
-    printf("     * allocated workspace \n");
 
-
+  
   
   // ====================================================================================
   // =                               Angular power spectra                              =
   // ====================================================================================
 
+  /* We use the same sampling as used in ppt2, for k3 we use the sampling of tr2
+  for angular power spectra */
+  
+  psp->k_size = ppt2->k_size;
+  psp->k = ppt2->k;
+  
+  class_calloc(psp->k3_grid, ptr2->k3_size_max, sizeof(double), psp->error_message);
+
   double step_k1, step_k2, step_k3;
-  double ClTT,ClTE,ClEE,ClBB;
-  int index_tt2_T,index_tt2_E,index_tt2_B;
-    
+  int index_tt2_T, index_tt2_E, index_tt2_B;
+
+  class_test (!ppt->has_scalars || ppt->md_size > 1,
+    psp->error_message,
+    "SONG supports only scalar modes at first order");
+
+  class_test (ppt->ic_size[0] > 1,
+    psp->error_message,
+    "SONG only supports one type of initial condition");
+
   if (ppt2->has_cls == _TRUE_) {
 
     /* TEMPORARILY DISABLED */  
@@ -95,306 +76,346 @@ int spectra2_init(
     //   printf("Angular power spectra can only be computed in standart k3 sampling. Change sampling strategy\n");
       
 
-    // -------------------------------------------------------------------------------------
-    // -                              Sum over M, cycle L                              -
-    // -------------------------------------------------------------------------------------
+    // -------------------------------------------------------------------------------
+    // -                             Sum over M, cycle L                             -
+    // -------------------------------------------------------------------------------
 
-    for (int index_l=0; index_l<ptr2->l_size; ++index_l) {
-    
-      int l = ptr2->l[index_l];
-    
-      //if parallelisation os wanted it probably should be done here
-    
-      ClTT = 0.;
-      ClEE = 0.;
-      ClBB = 0.;
-      ClTE = 0.;
-    
-      //loop over M
-    
-      for (int index_M=0; index_M < ppr2->m_size; ++index_M) {
-        if (psp2->spectra2_verbose > 2)
-          printf("computing angular spectra for l = %d m = %d\n",ptr2->l[index_l],ptr2->m[index_M]);
-        int m = ptr2->m[index_M];
-      
-        //load transfer functions
-      
-        if (ppt2-> has_cmb_temperature == _TRUE_) {
-          index_tt2_T = ptr2->index_tt2_T + lm_cls(index_l, index_M);
-          if ((ppr2->load_transfers_from_disk == _TRUE_) || (ppr2->store_transfers_to_disk == _TRUE_)) {
-            class_call (transfer2_load_transfers_from_disk (
-                    ppt2,
-                    ptr2,
-                    index_tt2_T),
-              ptr2->error_message,
-              psp2->error_message);
-          }
-        }
-      
-        if (ppt2->has_cmb_polarization_e == _TRUE_) {
-          index_tt2_E = ptr2->index_tt2_E + lm_cls(index_l, index_M);
-          if ((ppr2->load_transfers_from_disk == _TRUE_) || (ppr2->store_transfers_to_disk == _TRUE_)) {
-            class_call (transfer2_load_transfers_from_disk (
-                    ppt2,
-                    ptr2,
-                    index_tt2_E),
-              ptr2->error_message,
-              psp2->error_message);
-          }
-        }
-      
-        if (ppt2->has_cmb_polarization_b == _TRUE_) {
-          index_tt2_B = ptr2->index_tt2_B + lm_cls(index_l, index_M);
-          if ((ppr2->load_transfers_from_disk == _TRUE_) || (ppr2->store_transfers_to_disk == _TRUE_)) {
-            class_call (transfer2_load_transfers_from_disk (
-                    ppt2,
-                    ptr2,
-                    index_tt2_B),
-              ptr2->error_message,
-              psp2->error_message);
-          }
-        }
-        
-        
-        // ==================================================================================
-        // =                               integrations over k1,k2,k3                       =
-        // ==================================================================================
-        
-  
-        for (int index_k1 = 0; index_k1 < psp2->k_size; ++index_k1) {
-          
-          // find stepsize
-        
-          if (index_k1 == 0) step_k1 = (psp2->k[1] - psp2->k[0])/2.;
-          else if (index_k1 == psp2->k_size -1) step_k1 = (psp2->k[psp2->k_size-1] - psp2->k[psp2->k_size -2])/2.;
-          else step_k1 = (psp2->k[index_k1+1] - psp2->k[index_k1 -1])/2.;
+    int index_md = ppt->index_md_scalars;
 
-          double k1 = psp2->k[index_k1];
+    for (int index_ct=0; index_ct < psp->ct_size; ++index_ct) {
+      
+      if (psp->cl_type[index_ct] != second_order)
+        continue;
+
+      printf_log_if (psp->spectra_verbose, 0,
+        " -> computing second-order Cl_%s\n", psp->ct_labels[index_ct]);
+
+      // #pragma omp parallel for schedule (dynamic)
+      for (int index_l=0; index_l<psp->l_size[index_md]; ++index_l) {
+
+        int l = psp->l[index_l];
+
+        /* Initialise spectrum */
+        double * result = &psp->cl[index_md][index_l * psp->ct_size + index_ct];
+        *result = 0;
+
+        /* If lensing is included, then it is probable that the l sampling in the
+        spectra structure (psp->l) extends farther than the one for which we computed
+        the second-order transfer functions (ptr2->l). This mechanism is implemented
+        in compute_cls() and is crucial to obtain the lensed C_l all the way to
+        ptr2->l_max. Here we make sure that the second-order C_l are equal to zero
+        for l>ptr2->l_max. */
+        if (l > ptr2->l[ptr2->l_size-1])
+          continue;
+
+        /* Array to store the various m contributions */
+        double result_m[ppr2->m_size];
+
+        /* Loop over m */
+        for (int index_M=0; index_M < ppr2->m_size; ++index_M) {
+
+          int m = ptr2->m[index_M];
           
-          //primordial spectrum k1
+          result_m[index_M] = 0;
           
-          double spectra_k1;
-          class_call (primordial_spectrum_at_k (
-                  ppm,
-                  ppt->index_md_scalars,
-                  linear,
-                  k1,
-                  &spectra_k1),
-            ppm->error_message,
-            psp2->error_message);
-          spectra_k1 = 2*_PI_*_PI_/(k1*k1*k1) * spectra_k1;
-          
-          // Loop over k2
-  
-          for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
-          
-            /* Print some info */
-            if (psp2->spectra2_verbose > 3)
-              printf(" -> computing integral for (k1,k2) = (%.3g,%.3g)\n", psp2->k[index_k1], psp2->k[index_k2]);
-              
-            // find stepsize 
-              
-            if (index_k1 == 0) step_k2 = 0.;
-            else if (index_k2 == 0) step_k2 = (psp2->k[1] - psp2->k[0])/2.;
-            else if (index_k2 == index_k1) step_k2 = (psp2->k[index_k1] - psp2->k[index_k1-1])/2.;
-            else step_k2 = (psp2->k[index_k2+1] - psp2->k[index_k2 -1])/2.;
+          printf_log_if (psp->spectra_verbose, 1,
+            "     * computing spectra for l = %d m = %d\n", l, m);
+
+
+          /* Determine the transfer functions needed to compute the requested Cl */
+
+          int index_tt_1;
+          int index_tt_2;
         
-            double k2 = psp2->k[index_k2];
-            
-            //primordial spectrum k2
-            
-            double spectra_k2;
+          if (psp->has_tt2 && index_ct==psp->index_ct_tt2) { 
+            index_tt_1 = ptr2->index_tt2_T + lm_cls(index_l, index_M);
+            index_tt_2 = ptr2->index_tt2_T + lm_cls(index_l, index_M);
+          }
+          else if (psp->has_ee2 && index_ct==psp->index_ct_ee2) { 
+            index_tt_1 = ptr2->index_tt2_E + lm_cls(index_l, index_M);
+            index_tt_2 = ptr2->index_tt2_E + lm_cls(index_l, index_M);
+          }
+          else if (psp->has_te2 && index_ct==psp->index_ct_te2) { 
+            index_tt_1 = ptr2->index_tt2_T + lm_cls(index_l, index_M);
+            index_tt_2 = ptr2->index_tt2_E + lm_cls(index_l, index_M);
+          }
+          else if (psp->has_bb2 && index_ct==psp->index_ct_bb2) {
+            index_tt_1 = ptr2->index_tt2_B + lm_cls(index_l, index_M);
+            index_tt_2 = ptr2->index_tt2_B + lm_cls(index_l, index_M);
+            if (m==0) continue; /* scalars do not contribute to b_modes */
+          }
+
+
+          /* Load transfer functions if needed */
+
+          if (ppr2->load_transfers_from_disk || ppr2->store_transfers_to_disk) {
+
+            class_call (transfer2_load_transfers_from_disk (
+                    ppt2,
+                    ptr2,
+                    index_tt_1),
+              ptr2->error_message,
+              psp->error_message);
+
+            if (index_tt_2 != index_tt_1)
+              class_call (transfer2_load_transfers_from_disk (
+                      ppt2,
+                      ptr2,
+                      index_tt_2),
+                ptr2->error_message,
+                psp->error_message);
+          }
+
+
+
+          // =====================================================================================
+          // =                                Integrate over k1,k2,k3                            =
+          // =====================================================================================
+
+          for (int index_k1 = 0; index_k1 < psp->k_size; ++index_k1) {
+
+            /* Find stepsize */
+
+            if (index_k1 == 0) step_k1 = (psp->k[1] - psp->k[0])/2.;
+            else if (index_k1 == psp->k_size-1) step_k1 = (psp->k[psp->k_size-1] - psp->k[psp->k_size -2])/2.;
+            else step_k1 = (psp->k[index_k1+1] - psp->k[index_k1 -1])/2.;
+
+            double k1 = psp->k[index_k1];
+
+            /* Primordial spectrum k1 */
+
+            double spectra_k1;
             class_call (primordial_spectrum_at_k (
-                  ppm,
-                  ppt->index_md_scalars,
-                  linear,
-                  k2,
-                  &spectra_k2),
+                    ppm,
+                    index_md,
+                    linear,
+                    k1,
+                    &spectra_k1),
               ppm->error_message,
-              psp2->error_message);
-            spectra_k2 = 2*_PI_*_PI_/(k2*k2*k2) * spectra_k2;
-  
-            int dump;
-            class_call(transfer2_get_k3_list (
-                                 ppr,
-                                 ppr2,
-                                 ppt2,
-                                 pbs,
-                                 pbs2,
-                                 ptr2,
-                                 index_k1,
-                                 index_k2,
-                                 psp2->k3_grid,  
-                                 &dump   
-                                 ),
-              ptr2->error_message,
-              psp2->error_message);
-              
-              
-            int k3_size = ptr2->k_size_k1k2[index_k1][index_k2];
-          
-            class_test(k3_size < 2,
-                psp2->error_message,
-                "integration grid has less than two elements, cannot use trapezoidal integration");
-        
-            
-            /* Define the pointer to the second-order transfer function as a function of k3.
-            Note that this transfer function has already been rescaled according to eq. 6.26
-            of http://arxiv.org/abs/1405.2280 in the perturbations.c module.  */
-            
-            double * transferT = ptr2->transfer[index_tt2_T][index_k1][index_k2];
-            double * transferE = ptr2->transfer[index_tt2_E][index_k1][index_k2];
-            double * transferB = ptr2->transfer[index_tt2_B][index_k1][index_k2];
-            
-            int triangular_first = 0;
-            int triangular_last = 0;  
-            
-            //final integration over k3
-            
-            for (int index_k3 = 0; index_k3 < k3_size; ++index_k3) {
-              double k3 = psp2->k3_grid[index_k3];
-              
-              //find stepsize including the triangular condition edge
-              
-              if (index_k3 == 0) step_k3 = (psp2->k3_grid[1] - psp2->k3_grid[0])/2.;
-              else if (index_k3 == k3_size -1) step_k3 = (psp2->k3_grid[k3_size-1] - psp2->k3_grid[k3_size -2])/2.;
-              else step_k3 = (psp2->k3_grid[index_k3+1] - psp2->k3_grid[index_k3 -1])/2.;
-              
-              // triangular condition
-              if ( k3 < k1-k2 ||  k3 > k1+k2) { // out of triangular region
-                step_k3 = 0.;
-              }
-              if ( k3 >= k1-k2 && triangular_first == 0 && index_k3 < k3_size-1 ) { //first point
-                triangular_first = 1;
-                step_k3 = (psp2->k3_grid[index_k3+1]-k3)/2. + k3 - (k1-k2);
-                
-              }
-              if ( psp2->k3_grid[index_k3+1] > k1+k2 && triangular_last == 0 && index_k3 > 0) {
-                //last point, note that this may not be found if the last point is bigger than kmax, 
-                // however in that case no special treatment for the last point is needed. 
-                triangular_last = 1;
-                step_k3 = (k3 - psp2->k3_grid[index_k3-1])/2. + (k1+k2) - k3;
-                
-              }
-              
-              
-              // This counters the rescaling performed for the bispectrum 
-              double scale = pow(sqrt( 1. - pow((k3*k3 + k1*k1 - k2*k2)/2./k3/k1,2)),m);
-              
-              
-              // add up contributions
-              
-              double total_factor = 
-                  // symmetry factor (doing only half plane in k1 k2)
-                  2.*
-                  // integration weight 
-                  k1*k2*k3*
-                  // integration stepsize
-                  step_k1*step_k2*step_k3*
-                  // if the sources were rescaled we have to invert this for the cl spectrum rescaling
-                  //the step_k3 condition makes sure that this is in triangular as the computation of angles fails out of trinagular region
-                  (ppt2->rescale_cmb_sources == _TRUE_ && step_k3 != 0. ? pow(scale,2) : 1. )*
-                  // spectra factors (2l+1) already in transfer def (how does sum over m work? does this need a factor 2 for m neq 0? yes :))
-                  2. /_PI_ /2./_PI_/2./_PI_/2./_PI_ *
-                  // definition of second order perturbation theory
-                  // already in transfer defenition 1./2./2.*
-                  // factor 4 of Delta also already in transfer def
-                  // primordial spectra
-                  spectra_k1*spectra_k2;
-              
-              if (ppt2-> has_cmb_temperature == _TRUE_) 
-                ClTT += total_factor*transferT[index_k3]*transferT[index_k3] ;
-              if (ppt2-> has_cmb_polarization_e == _TRUE_) 
-                ClEE += total_factor*transferE[index_k3]*transferE[index_k3] ;
-              if (ppt2-> has_cmb_polarization_b == _TRUE_) 
-                ClBB += total_factor*transferB[index_k3]*transferB[index_k3] ;
-              if ((ppt2-> has_cmb_temperature == _TRUE_) && (ppt2->has_cmb_polarization_e == _TRUE_)) 
-                ClTE += total_factor*transferT[index_k3]*transferE[index_k3] ;
-                            
-              
-              
-            } // loop k3
-            
-          
-          } // loop k2 
-          
-          
-        } // loop k1
-        
-        if (ppt2-> has_cmb_temperature == _TRUE_) {
-          if ((ppr2->load_transfers_from_disk == _TRUE_) || (ppr2->store_transfers_to_disk == _TRUE_)) {
-            class_call (transfer2_free_type_level (
-                    ppt2,
-                    ptr2,
-                    index_tt2_T),
-            ptr2->error_message,
-            psp2->error_message); 
-         }
-        }
-        
-        
-        if (ppt2-> has_cmb_polarization_e == _TRUE_) {
-          if ((ppr2->load_transfers_from_disk == _TRUE_) || (ppr2->store_transfers_to_disk == _TRUE_)) {
-            class_call (transfer2_free_type_level (
-                    ppt2,
-                    ptr2,
-                    index_tt2_E),
-            ptr2->error_message,
-            psp2->error_message); 
-         }
-        }
-        
-        
-        if (ppt2-> has_cmb_polarization_b == _TRUE_) {
-          if ((ppr2->load_transfers_from_disk == _TRUE_) || (ppr2->store_transfers_to_disk == _TRUE_)) {
-            // class_call (transfer2_free_type_level (
-            //                     ppt2,
-            //                     ptr2,
-            //                     index_tt2_B),
-            //             ptr2->error_message,
-            //             psp2->error_message);
-         }
-        }
-      } // Sum over M
-      
-      
-      // -------------------------------------------------------------------------------
-      // -                                 Output to file                              -
-      // -------------------------------------------------------------------------------
-      
-      /* First order C_l */
-      
-      double ClTT1 = 0;
-      double ClTE1 = 0;
-      double ClEE1 = 0;
-      double ClBB1 = 0;
-      
-      int index_mode = 0;
-      
-      if (ppt->has_cl_cmb_temperature == _TRUE_)
-        ClTT1 = psp->cl[index_mode][index_l * psp->ct_size + psp->index_ct_tt];
+              psp->error_message);
+            spectra_k1 = 2*_PI_*_PI_/(k1*k1*k1) * spectra_k1;
 
-      if (ppt->has_cl_cmb_polarization == _TRUE_) {
-        ClEE1 = psp->cl[index_mode][index_l * psp->ct_size + psp->index_ct_ee];
-        ClBB1 = psp->cl[index_mode][index_l * psp->ct_size + psp->index_ct_bb];
-        if (ppt->has_cl_cmb_temperature == _TRUE_)
-          ClTE1 = psp->cl[index_mode][index_l * psp->ct_size + psp->index_ct_te];
-      }
-      
-      char line[2096];
-      
-      sprintf(line, "%8d %12g %12g %12g %12g %12g %12g %12g %12g \n",
-        l, ClTT, ClTT1, ClTE, ClTE1, ClEE, ClEE1, ClBB, ClBB1);
+            /* Loop over k2 */
+
+            for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
+
+              /* Print some info */
+              printf_log_if (psp->spectra_verbose, 2,
+                "     \\ computing integral for (k1,k2) = (%.3g,%.3g)\n",
+                psp->k[index_k1], psp->k[index_k2]);
+
+
+              /* Find stepsize */
+
+              if (index_k1 == 0) step_k2 = 0.;
+              else if (index_k2 == 0) step_k2 = (psp->k[1] - psp->k[0])/2.;
+              else if (index_k2 == index_k1) step_k2 = (psp->k[index_k1] - psp->k[index_k1-1])/2.;
+              else step_k2 = (psp->k[index_k2+1] - psp->k[index_k2 -1])/2.;
+
+              double k2 = psp->k[index_k2];
+
+
+              /* Primordial spectrum k2 */
+
+              double spectra_k2;
+              class_call (primordial_spectrum_at_k (
+                    ppm,
+                    index_md,
+                    linear,
+                    k2,
+                    &spectra_k2),
+                ppm->error_message,
+                psp->error_message);
+              spectra_k2 = 2*_PI_*_PI_/(k2*k2*k2) * spectra_k2;
+
+
+              /* Integration grid in k3 */
+
+              int dump;
+              class_call (transfer2_get_k3_list (
+                            ppr,
+                            ppr2,
+                            ppt2,
+                            pbs,
+                            pbs2,
+                            ptr2,
+                            index_k1,
+                            index_k2,
+                            psp->k3_grid,
+                            &dump
+                            ),
+                ptr2->error_message,
+                psp->error_message);
+
+              int k3_size = ptr2->k_size_k1k2[index_k1][index_k2];
+
+              class_test(k3_size < 2,
+                psp->error_message,
+                "integration grid has less than two elements, cannot use trapezoidal integration");
+
+
+              /* Define the pointer to the second-order transfer functions as a function of k3.
+              Note that this transfer function has already been rescaled according to eq. 6.26
+              of http://arxiv.org/abs/1405.2280 in the perturbations.c module.  */
+
+              double * transfer_1 = ptr2->transfer[index_tt_1][index_k1][index_k2];
+              double * transfer_2 = ptr2->transfer[index_tt_2][index_k1][index_k2];
+
+              int triangular_first = 0;
+              int triangular_last = 0;
+
+              /* Final integration over k3 */
+
+              for (int index_k3 = 0; index_k3 < k3_size; ++index_k3) {
+
+                double k3 = psp->k3_grid[index_k3];
+
+                /* Find stepsize including the triangular condition edge */
+
+                if (index_k3 == 0) step_k3 = (psp->k3_grid[1] - psp->k3_grid[0])/2.;
+                else if (index_k3 == k3_size -1) step_k3 = (psp->k3_grid[k3_size-1] - psp->k3_grid[k3_size -2])/2.;
+                else step_k3 = (psp->k3_grid[index_k3+1] - psp->k3_grid[index_k3 -1])/2.;
+
+                /* Triangular condition */
+
+                if ( k3 < k1-k2 ||  k3 > k1+k2) { // out of triangular region
+                  step_k3 = 0.;
+                }
+                if ( k3 >= k1-k2 && triangular_first == 0 && index_k3 < k3_size-1 ) { //first point
+                  triangular_first = 1;
+                  step_k3 = (psp->k3_grid[index_k3+1]-k3)/2. + k3 - (k1-k2);
+                }
+                if ( psp->k3_grid[index_k3+1] > k1+k2 && triangular_last == 0 && index_k3 > 0) {
+                  //last point, note that this may not be found if the last point is bigger than kmax,
+                  // however in that case no special treatment for the last point is needed.
+                  triangular_last = 1;
+                  step_k3 = (k3 - psp->k3_grid[index_k3-1])/2. + (k1+k2) - k3;
+                }
+                
+                /* If we are in the extrapolated range, skip this k3 */
+                if (step_k3 == 0)
+                  continue;
+
+                /* This counters the rescaling performed for the bispectrum */
+                double scale = pow(sqrt( 1. - pow((k3*k3 + k1*k1 - k2*k2)/2./k3/k1,2)),m);
+
+
+                /* Add up contributions */
+
+                double total_factor =
+                    // symmetry factor (doing only half plane in k1 k2)
+                    2.*
+                    // integration weight
+                    k1*k2*k3*
+                    // integration stepsize
+                    step_k1*step_k2*step_k3*
+                    // if the sources were rescaled we have to invert this for the cl spectrum rescaling
+                    //the step_k3 condition makes sure that this is in triangular as the computation of angles fails out of trinagular region
+                    (ppt2->rescale_cmb_sources && step_k3 != 0. ? pow(scale,2) : 1. )*
+                    // spectra factors (2l+1) already in transfer def (how does sum over m work? does this need a factor 2 for m neq 0? yes :))
+                    2. /_PI_ /2./_PI_/2./_PI_/2./_PI_ *
+                    // definition of second order perturbation theory
+                    // already in transfer definition 1./2./2.*
+                    // factor 4 of Delta also already in transfer def
+                    // primordial spectra
+                    spectra_k1*spectra_k2;
+
+                double integrand = total_factor * transfer_1[index_k3] * transfer_2[index_k3];
+
+                *result += integrand;
+                result_m[index_M] += integrand;
+
+                /* Debug: print the integrand function */
+                // if (l==2 && m==0)
+                //   printf ("integrand = %g, result =%g\n", integrand, *result);
+
+              } // loop k3
+            } // loop k2
+          } // loop k1
+
+          if (ppr2->load_transfers_from_disk || ppr2->store_transfers_to_disk) {
+
+            class_call (transfer2_free_type_level (
+                          ppt2,
+                          ptr2,
+                          index_tt_1),
+              ptr2->error_message,
+              psp->error_message);
+
+            if (index_tt_2 != index_tt_1)
+              class_call (transfer2_free_type_level (
+                            ppt2,
+                            ptr2,
+                            index_tt_2),
+                ptr2->error_message,
+                psp->error_message);
+          }
+
+          /* Debug: print the M contribution */
+          // if (m==0 || m==1)
+          //   printf ("%10d %14g %14g\n", l, result_m[index_M], *result);
+
+        } // sum over M
         
-      printf ("%s", line);
-      fprintf (psp2->spectra_file, "%s", line);
-        
-    } // Loop over l
-    free(psp2->k3_grid);
+      } // loop over l
+
+    } // loop over ct
+
+    /* Compute Cl derivatives in view of spline interpolation */
+
+    class_call (spectra_cls_spline(
+                  pba,
+                  ppt,
+                  ptr,
+                  ppm,
+                  psp,
+                  index_md),
+      psp->error_message,
+      psp->error_message);
     
-  } 
+    free(psp->k3_grid);
     
-  fclose (psp2->spectra_file);
+    /* Debug: test the interpolation */
+    // for (int l=2; l <= psp->l_max[index_md]; ++l) {
+    //
+    //   double * cl = calloc (psp->ct_size, sizeof (double));
+    //   double ** cl_md = malloc (psp->md_size * sizeof(double*));
+    //   double ** cl_md_ic = malloc (ppt->md_size * sizeof(double*));
+    //
+    //   for (int index_mode = 0; index_mode < psp->md_size; index_mode++) {
+    //     class_alloc(cl_md[index_mode], psp->ct_size*sizeof(double), psp->error_message);
+    //     class_alloc(cl_md_ic[index_mode], psp->ic_ic_size[index_mode]*psp->ct_size*sizeof(double), psp->error_message);
+    //   }
+    //
+    //   class_call (spectra_cl_at_l(
+    //                 psp,
+    //                 (double)l,
+    //                 cl,
+    //                 cl_md,
+    //                 cl_md_ic),
+    //     psp->error_message,
+    //     psp->error_message);
+    //
+    //   int index_ct = psp->index_ct_tt2;
+    //
+    //   int index_L = -1;
+    //   for (int index_l=0; index_l < psp->l_size[index_md]; ++index_l) {
+    //     if ((int)(psp->l[index_l]+_EPS_) == l) {
+    //       index_L = index_l;
+    //       break;
+    //     }
+    //   }
+    //
+    //   double cl_node = index_L<0 ? 0:psp->cl[index_md][index_L * psp->ct_size + index_ct];
+    //   double ddcl_node = index_L<0 ? 0:psp->ddcl[index_md][index_L * psp->ct_size + index_ct];
+    //
+    //   fprintf (stderr, "%10d %16g %16g %16g\n", l, cl[psp->index_ct_tt2], cl_node, ddcl_node);
+    //
+    // }
+    
+  } // if(has_cls)
+    
+
     
   // ==================================================================================
   // =                               Fourier Power Spectra                            =
@@ -408,15 +429,15 @@ int spectra2_init(
 //       ppr,
 //       ppr2,
 //       ppt2,
-//       psp2
+//       psp
 //       ),
-//     psp2->error_message,
-//     psp2->error_message);
+//     psp->error_message,
+//     psp->error_message);
 //
 //
 //
 //   /* Shortcut to the file where we shall print the transfer functions. */
-//   FILE * file_sp = psp2->spectra_file;
+//   FILE * file_sp = psp->spectra_file;
 //
 //   /* Choose how label & values should be formatted */
 //   char format_label[64] = "%13s(%02d) ";
@@ -437,8 +458,8 @@ int spectra2_init(
 //   fprintf(file_sp, format_label, "Y",index_sp);
 //   index_sp++;
 //
-//   for (int index_k3 = 0; index_k3 < psp2->k_size; ++index_k3) {
-//       sprintf(buffer, "magnet k=%f", psp2->k[index_k3] );
+//   for (int index_k3 = 0; index_k3 < psp->k_size; ++index_k3) {
+//       sprintf(buffer, "magnet k=%f", psp->k[index_k3] );
 //       fprintf(file_sp, format_label, buffer,index_sp );
 //       index_sp++;
 //     }
@@ -472,9 +493,9 @@ int spectra2_init(
 //           ppt,
 //           ppm,
 //           ppt2,
-//           psp2),
+//           psp),
 //         ptr2->error_message,
-//         psp2->error_message);
+//         psp->error_message);
 //
 //
 //   } else {
@@ -485,9 +506,9 @@ int spectra2_init(
 //           ppt,
 //           ppm,
 //           ppt2,
-//           psp2),
+//           psp),
 //         ptr2->error_message,
-//         psp2->error_message);
+//         psp->error_message);
 //
 //   }
 //
@@ -495,15 +516,15 @@ int spectra2_init(
 //
 //
 //
-// //  for (int index_k3 = 0; index_k3 < psp2->k_size; ++index_k3) {
-//  //   fprintf(file_sp, format_value, psp2->k[index_k3]);
-//  //   fprintf(file_sp, format_value, psp2->spectra[ppt2->index_tp2_M + lm(1,1)][index_k3*ppt2->tau_size + 300] );
+// //  for (int index_k3 = 0; index_k3 < psp->k_size; ++index_k3) {
+//  //   fprintf(file_sp, format_value, psp->k[index_k3]);
+//  //   fprintf(file_sp, format_value, psp->spectra[ppt2->index_tp2_M + lm(1,1)][index_k3*ppt2->tau_size + 300] );
 //  //   fprintf(file_sp, "\n");
 // //  }
 //   int last_index = 0;
 //
 //   double *pvecback;
-//   class_alloc (pvecback, pba->bg_size*sizeof(double), psp2->error_message);
+//   class_alloc (pvecback, pba->bg_size*sizeof(double), psp->error_message);
 //
 //  // print time
 //  /*
@@ -517,7 +538,7 @@ int spectra2_init(
 //                 &last_index,
 //                 pvecback),
 //     pba->error_message,
-//     psp2->error_message);
+//     psp->error_message);
 //
 //     double a = pvecback[pba->index_bg_a];
 //     double H = pvecback[pba->index_bg_H];
@@ -531,9 +552,9 @@ int spectra2_init(
 //
 //     fprintf(file_sp, format_value, Y);
 //
-//     for (int index_k3 = 0; index_k3 < psp2->k_size; ++index_k3) {
+//     for (int index_k3 = 0; index_k3 < psp->k_size; ++index_k3) {
 //
-//       fprintf(file_sp, format_value, psp2->spectra[ppt2->index_tp2_M + lm(0,0)][index_k3*ppt2->tau_size + index_tau] );
+//       fprintf(file_sp, format_value, psp->spectra[ppt2->index_tp2_M + lm(0,0)][index_k3*ppt2->tau_size + index_tau] );
 //
 //     }
 //     fprintf(file_sp, "\n");
@@ -541,14 +562,14 @@ int spectra2_init(
 //   */
 //   // Print k
 //
-//   for (int index_k3 = 0; index_k3 < psp2->k_size; ++index_k3) {
+//   for (int index_k3 = 0; index_k3 < psp->k_size; ++index_k3) {
 //
 //
-//     fprintf(file_sp, format_value, psp2->k[index_k3]);
+//     fprintf(file_sp, format_value, psp->k[index_k3]);
 //
 //     for (int index_tau = 0; index_tau < ppt2->tau_size; ++index_tau) {
 //
-//       fprintf(file_sp, format_value, psp2->spectra[ppt2->index_tp2_M + lm(0,0)][index_k3*ppt2->tau_size + index_tau] );
+//       fprintf(file_sp, format_value, psp->spectra[ppt2->index_tp2_M + lm(0,0)][index_k3*ppt2->tau_size + index_tau] );
 //
 //     }
 //     fprintf(file_sp, "\n");
@@ -559,7 +580,7 @@ int spectra2_init(
 //
 //   printf("keq = %f \n",pba->k_eq);
 //
-//   fclose(psp2->spectra_file);
+//   fclose(psp->spectra_file);
   return _SUCCESS_;
 }
 
@@ -575,7 +596,7 @@ int spectra2_init(
 //  * @param ppt                   Input : pointer to perturbation structure
 //  * @param ppt2                  Input : pointer to 2nd-order perturbation structure
 //  * @param pbs                   Input : pointer to Bessel structure
-//  * @param psp2                  Input : pointer to 2nd-order spectra structure
+//  * @param psp                   Input : pointer to 2nd-order spectra structure
 //  * @return the error status
 //  */
 //
@@ -584,7 +605,7 @@ int spectra2_init(
 //       struct precision2 * ppr2,
 //       struct perturbs * ppt,
 //       struct perturbs2 * ppt2,
-//       struct spectra2 * psp2,
+//       struct spectra * psp,
 //       int index_k1,
 //       int index_k2,
 //       int index_tp2,
@@ -598,7 +619,7 @@ int spectra2_init(
 //   /* Shortcuts */
 //   int k_pt_size = ppt2->k3_size[index_k1][index_k2];
 //   double * k_pt = ppt2->k3[index_k1][index_k2];
-//   int k_sp_size = psp2->k_size;
+//   int k_sp_size = psp->k_size;
 //   double * k_sp = k_grid;
 //
 //
@@ -617,9 +638,9 @@ int spectra2_init(
 //                   ppt2->tau_size,
 //                   sources_k_spline,
 //                   _SPLINE_EST_DERIV_,
-//                   psp2->error_message),
-//          psp2->error_message,
-//          psp2->error_message);
+//                   psp->error_message),
+//          psp->error_message,
+//          psp->error_message);
 //   }
 //
 //   // =======================================================
@@ -627,8 +648,8 @@ int spectra2_init(
 //   // =======================================================
 //
 //   /* Limits where for which we shall interpolate the sources */
-//   int physical_size = psp2->k_physical_size_k1k2[index_k1][index_k2];
-//   int first_physical_index = psp2->k_physical_start_k1k2[index_k1][index_k2];
+//   int physical_size = psp->k_physical_size_k1k2[index_k1][index_k2];
+//   int first_physical_index = psp->k_physical_start_k1k2[index_k1][index_k2];
 //   int last_physical_index = first_physical_index + physical_size - 1;
 //
 //   /* Interpolate at each k value using the usual spline interpolation algorithm */
@@ -645,7 +666,7 @@ int spectra2_init(
 //       h = k_pt[index_k+1] - k_pt[index_k];
 //     }
 //
-//     class_test(h==0., psp2->error_message, "stop to avoid division by zero");
+//     class_test(h==0., psp->error_message, "stop to avoid division by zero");
 //
 //     double b = (k_sp[index_k_sp] - k_pt[index_k])/h;
 //     double a = 1.-b;
@@ -690,16 +711,16 @@ int spectra2_init(
 //       struct precision * ppr,
 //       struct precision2 * ppr2,
 //       struct perturbs2 * ppt2,
-//       struct spectra2 * psp2
+//       struct spectra * psp
 //       )
 // {
 //
 //    /* Allocate k1 level */
-//   int k1_size = psp2->k_size;
+//   int k1_size = psp->k_size;
 //
-//   class_alloc(psp2->k_true_physical_start_k1k2, k1_size*sizeof(int *), psp2->error_message);
-//   class_alloc(psp2->k_physical_start_k1k2, k1_size*sizeof(int *), psp2->error_message);
-//   class_alloc(psp2->k_physical_size_k1k2, k1_size*sizeof(int *), psp2->error_message);
+//   class_alloc(psp->k_true_physical_start_k1k2, k1_size*sizeof(int *), psp->error_message);
+//   class_alloc(psp->k_physical_start_k1k2, k1_size*sizeof(int *), psp->error_message);
+//   class_alloc(psp->k_physical_size_k1k2, k1_size*sizeof(int *), psp->error_message);
 //
 //   int index_k1, index_k2;
 //
@@ -710,9 +731,9 @@ int spectra2_init(
 //     /* Allocate k2 level */
 //     int k2_size = index_k1 + 1;
 //
-//     class_alloc(psp2->k_true_physical_start_k1k2[index_k1], k2_size*sizeof(int), psp2->error_message);
-//     class_alloc(psp2->k_physical_start_k1k2[index_k1], k2_size*sizeof(int), psp2->error_message);
-//     class_alloc(psp2->k_physical_size_k1k2[index_k1], k2_size*sizeof(int), psp2->error_message);
+//     class_alloc(psp->k_true_physical_start_k1k2[index_k1], k2_size*sizeof(int), psp->error_message);
+//     class_alloc(psp->k_physical_start_k1k2[index_k1], k2_size*sizeof(int), psp->error_message);
+//     class_alloc(psp->k_physical_size_k1k2[index_k1], k2_size*sizeof(int), psp->error_message);
 //
 //     /* Fill k_size_k1k2, k_min and k_max */
 //     for(index_k2=0; index_k2<=index_k1; ++index_k2) {
@@ -730,28 +751,28 @@ int spectra2_init(
 //
 //         index_k_sp = 0;
 //
-//         double k = psp2->k[index_k_sp];
+//         double k = psp->k[index_k_sp];
 //
 //
 //
-//         while (k < k_min_pt && index_k_sp<psp2->k_size -1) {
+//         while (k < k_min_pt && index_k_sp<psp->k_size -1) {
 //           index_k_sp++;
-//           k = psp2->k[index_k_sp];
+//           k = psp->k[index_k_sp];
 //         }
 //
 //       /* The regime where the triangular condition is satisfied starts here */
 //       /*This needs allocation!!!!*/
-//       psp2->k_physical_start_k1k2[index_k1][index_k2] = index_k_sp;
+//       psp->k_physical_start_k1k2[index_k1][index_k2] = index_k_sp;
 //
-//       index_k_sp = psp2->k_size - 1;
-//       k = psp2->k[index_k_sp];
+//       index_k_sp = psp->k_size - 1;
+//       k = psp->k[index_k_sp];
 //       while (k > k_max_pt && index_k_sp > 1) {
 //         index_k_sp--;
-//         k = psp2->k[index_k_sp];
+//         k = psp->k[index_k_sp];
 //       }
 //
-//       psp2->k_physical_size_k1k2[index_k1][index_k2] = index_k_sp- psp2->k_physical_start_k1k2[index_k1][index_k2]+1;
-//       if (psp2->k_physical_size_k1k2[index_k1][index_k2] < 1) printf("Alert empty k3 range for k1 = %f and k2 = %f \n", psp2->k[index_k1],psp2->k[index_k2]);
+//       psp->k_physical_size_k1k2[index_k1][index_k2] = index_k_sp- psp->k_physical_start_k1k2[index_k1][index_k2]+1;
+//       if (psp->k_physical_size_k1k2[index_k1][index_k2] < 1) printf("Alert empty k3 range for k1 = %f and k2 = %f \n", psp->k[index_k1],psp->k[index_k2]);
 //
 //
 //     // Here we compute the physical size based on the excat triangular condition
@@ -761,16 +782,16 @@ int spectra2_init(
 //
 //         index_k_sp = 0; /*?????*/
 //
-//         k = psp2->k[index_k_sp];
+//         k = psp->k[index_k_sp];
 //
 //
-//         while (k < (psp2->k[index_k1] - psp2->k[index_k2]) && index_k_sp<psp2->k_size -1) {
+//         while (k < (psp->k[index_k1] - psp->k[index_k2]) && index_k_sp<psp->k_size -1) {
 //           index_k_sp++;
-//           k = psp2->k[index_k_sp];
+//           k = psp->k[index_k_sp];
 //         }
 //
 //
-//       psp2->k_true_physical_start_k1k2[index_k1][index_k2] = index_k_sp;
+//       psp->k_true_physical_start_k1k2[index_k1][index_k2] = index_k_sp;
 //
 //
 //
@@ -795,38 +816,38 @@ int spectra2_init(
 //       struct perturbs * ppt,
 //       struct primordial * ppm,
 //       struct perturbs2 * ppt2,
-//       struct spectra2 * psp2
+//       struct spectra * psp
 //
 // )
 // {
 //
 //     /* Vector that will contain the interpolated sources for a given k1,k2 and source type */
 //   double ** interpolated_sources_in_k;
-//   class_alloc (interpolated_sources_in_k, ppt2->tp2_size*sizeof(double *), psp2->error_message);
+//   class_alloc (interpolated_sources_in_k, ppt2->tp2_size*sizeof(double *), psp->error_message);
 //
 //   /* Spline coefficients for the source interpolation */
 //   double ** sources_k_spline;
-//   class_alloc (sources_k_spline, ppt2->tp2_size*sizeof(double *), psp2->error_message);
+//   class_alloc (sources_k_spline, ppt2->tp2_size*sizeof(double *), psp->error_message);
 //
 //   double step_k1,step_k2;
 //   // loop over k1
-//   for (int index_k1 = 0; index_k1 < psp2->k_size; ++index_k1) {
-//     if (psp2->spectra2_verbose > 1)
+//   for (int index_k1 = 0; index_k1 < psp->k_size; ++index_k1) {
+//     if (psp->spectra_verbose > 1)
 //       printf (" computing integral for index_k1=%d of %d, k1=%g\n",
-//         index_k1, psp2->k_size, psp2->k[index_k1]);
+//         index_k1, psp->k_size, psp->k[index_k1]);
 //
 //
 //         if ((ppr2->load_sources_from_disk == _TRUE_) || (ppr2->store_sources_to_disk == _TRUE_))
 //           class_call(perturb2_load_sources_from_disk(ppt2, index_k1),
 //             ppt2->error_message,
-//             psp2->error_message);
+//             psp->error_message);
 //
 //         // compute stepsize in k1
-//         if (index_k1 == 0) step_k1 = (psp2->k[1] - psp2->k[0])/2.;
-//         else if (index_k1 == psp2->k_size -1) step_k1 = (psp2->k[psp2->k_size-1] - psp2->k[psp2->k_size -2])/2.;
-//         else step_k1 = (psp2->k[index_k1+1] - psp2->k[index_k1 -1])/2.;
+//         if (index_k1 == 0) step_k1 = (psp->k[1] - psp->k[0])/2.;
+//         else if (index_k1 == psp->k_size -1) step_k1 = (psp->k[psp->k_size-1] - psp->k[psp->k_size -2])/2.;
+//         else step_k1 = (psp->k[index_k1+1] - psp->k[index_k1 -1])/2.;
 //
-//         double k1 = psp2->k[index_k1];
+//         double k1 = psp->k[index_k1];
 //
 //         //compute primordial spektrum
 //         double spectra_k1;
@@ -837,7 +858,7 @@ int spectra2_init(
 //                   k1,
 //                   &spectra_k1),
 //             ppm->error_message,
-//             psp2->error_message);
+//             psp->error_message);
 //
 //             /* Convert CLASS dimensionless power spectrum for the curvature perturbation into the dimensional one. */
 //             spectra_k1 = 2*_PI_*_PI_/(k1*k1*k1) * spectra_k1;
@@ -845,16 +866,16 @@ int spectra2_init(
 //     //loop over k2
 //     for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
 //       /* Print some info */
-//       if (psp2->spectra2_verbose > 2)
-//         printf(" -> computing integral for (k1,k2) = (%.3g,%.3g)\n", psp2->k[index_k1], psp2->k[index_k2]);
+//       if (psp->spectra_verbose > 2)
+//         printf(" -> computing integral for (k1,k2) = (%.3g,%.3g)\n", psp->k[index_k1], psp->k[index_k2]);
 //         if (index_k1 == 0) step_k2 = 0.;
-//         else if (index_k2 == 0) step_k2 = (psp2->k[1] - psp2->k[0])/2.;
-//         else if (index_k2 == index_k1) step_k2 = (psp2->k[index_k1] - psp2->k[index_k1-1])/2.;
-//         else step_k2 = (psp2->k[index_k2+1] - psp2->k[index_k2 -1])/2.;
+//         else if (index_k2 == 0) step_k2 = (psp->k[1] - psp->k[0])/2.;
+//         else if (index_k2 == index_k1) step_k2 = (psp->k[index_k1] - psp->k[index_k1-1])/2.;
+//         else step_k2 = (psp->k[index_k2+1] - psp->k[index_k2 -1])/2.;
 //
 //
 //
-//         double k2 = psp2->k[index_k2];
+//         double k2 = psp->k[index_k2];
 //         double spectra_k2;
 //         class_call (primordial_spectrum_at_k (
 //                   ppm,
@@ -863,13 +884,13 @@ int spectra2_init(
 //                   k2,
 //                   &spectra_k2),
 //             ppm->error_message,
-//             psp2->error_message);
+//             psp->error_message);
 //
 //             /* Convert CLASS dimensionless power spectrum for the curvature perturbation into the dimensional one. */
 //             spectra_k2 = 2*_PI_*_PI_/(k2*k2*k2) * spectra_k2;
 //
 //
-//       if (psp2->spectra2_verbose > 2)
+//       if (psp->spectra_verbose > 2)
 //         printf(" -> stepsizes (step_k1,step_k2) = (%.3g,%.3g)\n", step_k1,step_k2);
 //
 //
@@ -883,13 +904,13 @@ int spectra2_init(
 //
 //        class_alloc(
 //           interpolated_sources_in_k[index_tp],
-//           psp2->k_size*ppt2->tau_size*sizeof(double),
-//           psp2->error_message);
+//           psp->k_size*ppt2->tau_size*sizeof(double),
+//           psp->error_message);
 //
 //        class_alloc(
 //           sources_k_spline[index_tp],
 //           ppt2->k3_size[index_k1][index_k2]*ppt2->tau_size*sizeof(double),
-//           psp2->error_message);
+//           psp->error_message);
 //
 //        /* we use the same grid for k that is also used for k1*/
 //         // we interpolate the sources in k3
@@ -898,20 +919,20 @@ int spectra2_init(
 //                       ppr2,
 //                       ppt,
 //                       ppt2,
-//                       psp2,
+//                       psp,
 //                       index_k1,
 //                       index_k2,
 //                       index_tp,
-//                       psp2->k,                       /* All the k_grid are filled */
+//                       psp->k,                       /* All the k_grid are filled */
 //                       sources_k_spline[index_tp],
 //                       interpolated_sources_in_k[index_tp]   /* Will be filled with interpolated values */
 //                       ),
-//           psp2->error_message,
-//           psp2->error_message);
+//           psp->error_message,
+//           psp->error_message);
 //
 //
 //         // We now have a point in k1,k2 and interpolation in k3, we are ready to perform the integrtion
-//         for (int index_k3 = 0; index_k3 < psp2->k_size; ++index_k3) {
+//         for (int index_k3 = 0; index_k3 < psp->k_size; ++index_k3) {
 //
 //
 //
@@ -920,26 +941,26 @@ int spectra2_init(
 //
 //
 //           // first region, excluded by triangular equality
-//           if (psp2->k[index_k1] < psp2->k[index_k3] /2.) {triangular_step_k2 = 0.;
+//           if (psp->k[index_k1] < psp->k[index_k3] /2.) {triangular_step_k2 = 0.;
 //           }
 //
 //           // second region with growing width
-//           else if (psp2->k[index_k1] < psp2->k[index_k3]) {
+//           else if (psp->k[index_k1] < psp->k[index_k3]) {
 //           // This region k2 starts from k - k1
 //             // is k_2 next to the boundary?
-//             if (index_k2 < psp2->k_true_physical_start_k1k2[index_k3][index_k1] ) {
+//             if (index_k2 < psp->k_true_physical_start_k1k2[index_k3][index_k1] ) {
 //               triangular_step_k2 = 0.;
 //
 //             }
-//             else if (index_k2 == psp2->k_true_physical_start_k1k2[index_k3][index_k1]) {
+//             else if (index_k2 == psp->k_true_physical_start_k1k2[index_k3][index_k1]) {
 //               if (index_k2 == index_k1) {
-//                 triangular_step_k2 = (2.*psp2->k[index_k1] - psp2->k[index_k3]) ;
+//                 triangular_step_k2 = (2.*psp->k[index_k1] - psp->k[index_k3]) ;
 //
 //               }
 //               else {
 //
-//                 triangular_step_k2 = (psp2->k[index_k2+1] - psp2->k[index_k2])/2.
-//                  + (psp2->k[index_k2] - (psp2->k[index_k3]- psp2->k[index_k1]));
+//                 triangular_step_k2 = (psp->k[index_k2+1] - psp->k[index_k2])/2.
+//                  + (psp->k[index_k2] - (psp->k[index_k3]- psp->k[index_k1]));
 //
 //
 //                 }
@@ -952,20 +973,20 @@ int spectra2_init(
 //           //final region with constant width
 //           else {
 //           // This region starts from k1 - k
-//             if (index_k2 < psp2->k_true_physical_start_k1k2[index_k1][index_k3] ) {
+//             if (index_k2 < psp->k_true_physical_start_k1k2[index_k1][index_k3] ) {
 //               triangular_step_k2 = 0.;
 //
 //             }
-//             else if (index_k2 == psp2->k_true_physical_start_k1k2[index_k1][index_k3]) {
+//             else if (index_k2 == psp->k_true_physical_start_k1k2[index_k1][index_k3]) {
 //               if (index_k2 == index_k1) {
 //
-//                 triangular_step_k2 = psp2->k[index_k3] ;
+//                 triangular_step_k2 = psp->k[index_k3] ;
 //
 //               }
 //               else {
 //
-//                 triangular_step_k2 = (psp2->k[index_k2+1]-psp2->k[index_k2])/2.
-//                  + (psp2->k[index_k2] -psp2->k[index_k1] + psp2->k[index_k3]) ;
+//                 triangular_step_k2 = (psp->k[index_k2+1]-psp->k[index_k2])/2.
+//                  + (psp->k[index_k2] -psp->k[index_k1] + psp->k[index_k3]) ;
 //
 //               }
 //             }
@@ -977,12 +998,12 @@ int spectra2_init(
 //
 //           //loop over time, no integration
 //           for (int index_tau = 0; index_tau < ppt2->tau_size; ++index_tau) {
-//             psp2->spectra[index_tp][index_k3*ppt2->tau_size + index_tau] +=
+//             psp->spectra[index_tp][index_k3*ppt2->tau_size + index_tau] +=
 //           // (index_k1==53 ? triangular_step_k2: 0.)
 //           // symmetry factor (doing only half plane in k1 k2)
 //            2.*
 //           // integration weight
-//            k1*k2/psp2->k[index_k3]*
+//            k1*k2/psp->k[index_k3]*
 //           // integration stepsize
 //            step_k1*triangular_step_k2*
 //           // phi integration
@@ -1045,47 +1066,47 @@ int spectra2_init(
 //       struct perturbs * ppt,
 //       struct primordial * ppm,
 //       struct perturbs2 * ppt2,
-//       struct spectra2 * psp2
+//       struct spectra * psp
 // )
 // {
 //
 //   /* Vector that will contain the interpolated sources for a given k1,k2 and source type */
 //   double ** interpolated_sources_in_k;
-//   class_alloc (interpolated_sources_in_k, ppt2->tp2_size*sizeof(double *), psp2->error_message);
+//   class_alloc (interpolated_sources_in_k, ppt2->tp2_size*sizeof(double *), psp->error_message);
 //
 //   /* Spline coefficients for the source interpolation */
 //   double ** sources_k_spline;
-//   class_alloc (sources_k_spline, ppt2->tp2_size*sizeof(double *), psp2->error_message);
+//   class_alloc (sources_k_spline, ppt2->tp2_size*sizeof(double *), psp->error_message);
 //
 //   double step_k1,step_k3;
 //   // loop over k1t (here we call k1t the transformed k1, which is indexed by index_k1)
-//   for (int index_k1 = 0; index_k1 < psp2->k_size; ++index_k1) {
-//     if (psp2->spectra2_verbose > 1)
+//   for (int index_k1 = 0; index_k1 < psp->k_size; ++index_k1) {
+//     if (psp->spectra_verbose > 1)
 //       printf (" computing integral for index_k1=%d of %d, k1t=%g\n",
-//         index_k1, psp2->k_size, psp2->k[index_k1]);
+//         index_k1, psp->k_size, psp->k[index_k1]);
 //
 //     // load sources
 //     if ((ppr2->load_sources_from_disk == _TRUE_) || (ppr2->store_sources_to_disk == _TRUE_))
 //           class_call(perturb2_load_sources_from_disk(ppt2, index_k1),
 //             ppt2->error_message,
-//             psp2->error_message);
+//             psp->error_message);
 //
 //
 //
-//     double k1t = psp2->k[index_k1];
+//     double k1t = psp->k[index_k1];
 //
 //     //loop over k3t
-//     for (int index_k3 = 0; index_k3 < psp2->k_size; ++index_k3) {
-//       if (psp2->spectra2_verbose > 2)
-//         printf(" -> computing integral for (k1t,k3t) = (%.3g,%.3g)\n", psp2->k[index_k1], psp2->k[index_k3]);
+//     for (int index_k3 = 0; index_k3 < psp->k_size; ++index_k3) {
+//       if (psp->spectra_verbose > 2)
+//         printf(" -> computing integral for (k1t,k3t) = (%.3g,%.3g)\n", psp->k[index_k1], psp->k[index_k3]);
 //
 //       double step_k3;
 //
-//       if (index_k3 == 0) step_k3 = (psp2->k[1] - psp2->k[0])/2.;
-//       else if (index_k3 == psp2->k_size -1) step_k3 = (psp2->k[psp2->k_size-1] - psp2->k[psp2->k_size -2])/2.;
-//       else step_k3 = (psp2->k[index_k3+1] - psp2->k[index_k3 -1])/2.;
+//       if (index_k3 == 0) step_k3 = (psp->k[1] - psp->k[0])/2.;
+//       else if (index_k3 == psp->k_size -1) step_k3 = (psp->k[psp->k_size-1] - psp->k[psp->k_size -2])/2.;
+//       else step_k3 = (psp->k[index_k3+1] - psp->k[index_k3 -1])/2.;
 //
-//       double k3t = psp2->k[index_k3];
+//       double k3t = psp->k[index_k3];
 //
 //
 //
@@ -1099,13 +1120,13 @@ int spectra2_init(
 //
 //       class_alloc(
 //           interpolated_sources_in_k[index_tp],
-//           psp2->k_size*ppt2->tau_size*sizeof(double),
-//           psp2->error_message);
+//           psp->k_size*ppt2->tau_size*sizeof(double),
+//           psp->error_message);
 //
 //        class_alloc(
 //           sources_k_spline[index_tp],
 //           ppt2->k_size*ppt2->tau_size*sizeof(double),
-//           psp2->error_message);
+//           psp->error_message);
 //
 //        /* we use the same grid for k that is also used for k1t*/
 //
@@ -1114,26 +1135,26 @@ int spectra2_init(
 //                       ppr2,
 //                       ppt,
 //                       ppt2,
-//                       psp2,
+//                       psp,
 //                       index_k1,
 //                       index_k3,
 //                       index_tp,
-//                       psp2->k,                   /*this is actually not used properly in our interpolation, clean up!*/    /* All the k_grid are filled */
+//                       psp->k,                   /*this is actually not used properly in our interpolation, clean up!*/    /* All the k_grid are filled */
 //                       sources_k_spline[index_tp],
 //                       interpolated_sources_in_k[index_tp]   /* Will be filled with interpolated values */
 //                       ),
-//           psp2->error_message,
-//           psp2->error_message);
+//           psp->error_message,
+//           psp->error_message);
 //
 //
 //         // here we loop over k3, not k2t. This is output.
 //         /* We now have a position in k1t,k3t and an interpolation in k2t. This translates into
 //         knowing k1,k2 and have an interpolation in k3. So we are ready for integration*/
-//         for (int index_k = 0; index_k < psp2->k_size; ++index_k) {
+//         for (int index_k = 0; index_k < psp->k_size; ++index_k) {
 //           int print = 0;
 //
 //           // construct the non transformed variables
-//           double k = psp2->k[index_k];
+//           double k = psp->k[index_k];
 //           double k1 =  (-k1t + k3t + 2.*k)/2.;
 //           double k2 = (k1t + k3t)/2.;
 //
@@ -1141,7 +1162,7 @@ int spectra2_init(
 //
 //           double spectra_k1;
 //
-//           if (psp2->spectra2_verbose > 2)
+//           if (psp->spectra_verbose > 2)
 //             printf(" -> analysing k = %f, k1 = %f, k2 = %f \n", k,k1,k2);
 //
 //
@@ -1154,7 +1175,7 @@ int spectra2_init(
 //                   k1,
 //                   &spectra_k1),
 //               ppm->error_message,
-//               psp2->error_message);
+//               psp->error_message);
 //
 //             /* Convert CLASS dimensionless power spectrum for the curvature perturbation into the dimensional one. */
 //               spectra_k1 = 2*_PI_*_PI_/(k1*k1*k1) * spectra_k1;
@@ -1170,7 +1191,7 @@ int spectra2_init(
 //                   k2,
 //                   &spectra_k2),
 //               ppm->error_message,
-//               psp2->error_message);
+//               psp->error_message);
 //
 //             /* Convert CLASS dimensionless power spectrum for the curvature perturbation into the dimensional one. */
 //               spectra_k2 = 2*_PI_*_PI_/(k2*k2*k2) * spectra_k2;
@@ -1215,7 +1236,7 @@ int spectra2_init(
 //
 //           //loop over time (no integration)
 //           for (int index_tau = 0; index_tau < ppt2->tau_size; ++index_tau) {
-//             psp2->spectra[index_tp][index_k*ppt2->tau_size + index_tau] +=
+//             psp->spectra[index_tp][index_k*ppt2->tau_size + index_tau] +=
 //           // (index_k1==53 ? triangular_step_k2: 0.)
 //           // symmetry factor (doing only half plane in k1 k3)
 //            2.*
@@ -1279,7 +1300,7 @@ int spectra2_init(
 //       struct precision2 * ppr2,
 //       struct perturbs * ppt,
 //       struct perturbs2 * ppt2,
-//       struct spectra2 * psp2,
+//       struct spectra * psp,
 //       int index_k1,
 //       int index_k3,
 //       int index_tp2,
@@ -1313,7 +1334,7 @@ int spectra2_init(
 //       rsources,
 //         ppt2->tau_size*(index_k1+1),
 //         sizeof(double),
-//         psp2->error_message);
+//         psp->error_message);
 //
 //   double * derivs;
 //
@@ -1322,7 +1343,7 @@ int spectra2_init(
 //       derivs,
 //         ppt2->tau_size*(index_k1+1),
 //         sizeof(double),
-//         psp2->error_message);
+//         psp->error_message);
 //
 //
 //   double * subk;
@@ -1331,7 +1352,7 @@ int spectra2_init(
 //       subk,
 //         (index_k1+1),
 //         sizeof(double),
-//         psp2->error_message);
+//         psp->error_message);
 //
 //   for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2){
 //     subk[index_k2] = ppt2->k[index_k2];
@@ -1352,9 +1373,9 @@ int spectra2_init(
 //                   ppt2->tau_size,
 //                   derivs,
 //                   _SPLINE_EST_DERIV_,
-//                   psp2->error_message),
-//          psp2->error_message,
-//          psp2->error_message);
+//                   psp->error_message),
+//          psp->error_message,
+//          psp->error_message);
 //   }
 //
 //
@@ -1385,7 +1406,7 @@ int spectra2_init(
 //        h = k_pt[index_k+1] - k_pt[index_k];
 //       }
 //
-//       class_test(h==0., psp2->error_message, "stop to avoid division by zero");
+//       class_test(h==0., psp->error_message, "stop to avoid division by zero");
 //
 //       double b = (k2t- k_pt[index_k])/h;
 //

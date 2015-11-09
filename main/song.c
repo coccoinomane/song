@@ -121,7 +121,7 @@ int main(int argc, char **argv) {
   }
   
   /* Compute the intrinsic C_l */
-  if (spectra2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&sp,&le,&bi) == _FAILURE_) {
+  if (spectra2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&le,&bi,&sp) == _FAILURE_) {
     printf("\n\nError in bispectra2_init \n=>%s\n",bi.error_message);
     return _FAILURE_;
   }
@@ -137,7 +137,8 @@ int main(int argc, char **argv) {
     printf("\n\nError in output_init \n=>%s\n",op.error_message);
     return _FAILURE_;
   }
-  
+
+
   // =================================================================================
   // =                                  Free memory                                  =
   // =================================================================================

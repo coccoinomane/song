@@ -42,7 +42,7 @@ int bispectra2_init (
 {
 
   /* Check whether we need to compute intrinsic spectra at all */  
-  if ((ppt2->has_cmb_bispectra == _FALSE_)       /* Have we computed the needed 2nd-order perturbations? */
+  if ((ppt2->has_cmb_bispectra == _FALSE_)   /* Have we computed the needed 2nd-order perturbations? */
      || (pbi->has_bispectra == _FALSE_)      /* Did we load the 1st-order bispectrum module? */
      || (pbi->n[intrinsic_bispectrum]<1)) {  /* Did we request at least a second-order bispectrum? */
 

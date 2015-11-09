@@ -17,51 +17,6 @@
                [(INDEX_TAU)*k_pt_size + (INDEX_K_TRIANGULAR)]
 
 
-struct spectra2 {
-
-  double ** spectra;
-
-  /* For a given (k1,k2), index of the first value of k3 that satisfies the triangular condition. All
-  entries must be equal zero when no extrapolation is used */
-  int ** k_physical_start_k1k2;
-	int ** k_true_physical_start_k1k2;
-	
-	// physical start is based on ppt2 k sampling, true physical start is based on the triangular condition and usually contains a bit more based on the k smapling. 
-
-  /* For a given (k1,k2), number of k3 values that satisfy the triangular condition */
-  int ** k_physical_size_k1k2;
-
- 	int k_size;
- 	double * k; // k grid for fourier spectra (not numerical parameter)
- 	
- 	double * k3_grid; // k grid for angular power spectra 
- 	
-
-
-  // =================================================================================
-  // =                        Storage of intermediate results                        =
-  // =================================================================================
-  
-
- char spectra_filename[_FILENAMESIZE_];  
- FILE * spectra_file;
-
- 
-
-  // ====================================================================================
-  // =                                 Debug parameters                                 =
-  // ====================================================================================
-
-  short spectra2_verbose; /**< flag regulating the amount of information sent to standard output (none if set to zero) */
-
-  ErrorMsg error_message; /**< zone for writing error messages */
-
-
-
-};
-
-
-
 /*************************************************************************************************************/
 
 /*
@@ -83,9 +38,9 @@ extern "C" {
         struct transfers * ptr,
         struct transfers2 * ptr2,
         struct primordial * ppm,
-        struct spectra * psp,
         struct lensing * ple,
-        struct bispectra * pbi
+        struct bispectra * pbi,
+        struct spectra * psp
         );
 
   int spectra2_integrate_fourier_sym(
@@ -94,7 +49,7 @@ extern "C" {
         struct perturbs * ppt,
         struct primordial * ppm,
         struct perturbs2 * ppt2,
-        struct spectra2 * psp2
+        struct spectra * psp
   			);
 			
   int spectra2_integrate_fourier(
@@ -103,7 +58,7 @@ extern "C" {
         struct perturbs * ppt,
         struct primordial * ppm,
         struct perturbs2 * ppt2,
-        struct spectra2 * psp2
+        struct spectra * psp
   			);			
 
   int spectra2_interpolate_sources_in_k(
@@ -111,7 +66,7 @@ extern "C" {
         struct precision2 * ppr2,
         struct perturbs * ppt,
         struct perturbs2 * ppt2,
-        struct spectra2 * psp2,
+        struct spectra * psp,
         int index_k1,
         int index_k2,
         int index_tp2,
@@ -126,7 +81,7 @@ extern "C" {
         struct precision2 * ppr2,
         struct perturbs * ppt,
         struct perturbs2 * ppt2,
-        struct spectra2 * psp2,
+        struct spectra * psp,
         int index_kt1,
         int index_kt3,
         int index_tp2,
@@ -139,7 +94,7 @@ extern "C" {
         struct precision * ppr,
         struct precision2 * ppr2,
         struct perturbs2 * ppt2,
-        struct spectra2 * psp2
+        struct spectra * psp
         );
       
 #ifdef __cplusplus

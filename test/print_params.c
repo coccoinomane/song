@@ -65,7 +65,9 @@ int main(int argc, char **argv) {
   printf("\tpt2.perturbations2_verbose = %d\n", pt2.perturbations2_verbose);
   printf("\tpt2.has_cmb_bispectra = %d\n", pt2.has_cmb_bispectra);
   printf("\tpt2.has_cmb_spectra = %d\n", pt2.has_cmb_spectra);
-  printf("\tsp.has_intrinsic = %d\n", sp.has_intrinsic);
+  printf("\tpt.has_cl_cmb_temperature2 = %d\n", pt.has_cl_cmb_temperature2);
+  printf("\tpt.has_cl_cmb_polarization_e2 = %d\n", pt.has_cl_cmb_polarization_e2);
+  printf("\tpt.has_cl_cmb_polarization_b2 = %d\n", pt.has_cl_cmb_polarization_b2);
   
   /* Interpolation */
   // printf("* Interpolation options\n");
