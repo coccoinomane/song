@@ -262,11 +262,6 @@ int spectra2_cls (
   psp->k_size = ppt2->k_size;
   psp->k = ppt2->k;
   
-  class_calloc(psp->k3_grid, ptr2->k3_size_max, sizeof(double), psp->error_message);
-
-  double step_k1, step_k2, step_k3;
-  int index_tt2_T, index_tt2_E, index_tt2_B;
-
   class_test (!ppt->has_scalars || ppt->md_size > 1,
     psp->error_message,
     "SONG supports only scalar modes at first order");
@@ -294,10 +289,17 @@ int spectra2_cls (
     printf_log_if (psp->spectra_verbose, 0,
       " -> computing second-order Cl_%s\n", psp->ct_labels[index_ct]);
 
-    // #pragma omp parallel for schedule (dynamic)
+    /* Variables used for the output of the parallel computation */
+    int abort = _FALSE_;
+    
+    #pragma omp parallel for schedule (dynamic)
     for (int index_l=0; index_l<psp->l_size[index_md]; ++index_l) {
 
       int l = psp->l[index_l];
+
+      /* Generate grid for k3 integration. We do it inside the l-loop
+      to avoid race conditions */
+      double * k3_grid = malloc (ptr2->k3_size_max*sizeof(double));
 
       /* Initialise spectrum */
       double * result = &psp->cl[index_md][index_l * psp->ct_size + index_ct];
@@ -354,18 +356,18 @@ int spectra2_cls (
 
         if (ppr2->load_transfers_from_disk || ppr2->store_transfers_to_disk) {
 
-          class_call (transfer2_load_transfers_from_disk (
-                  ppt2,
-                  ptr2,
-                  index_tt_1),
+          class_call_parallel (transfer2_load_transfers_from_disk (
+                                 ppt2,
+                                 ptr2,
+                                 index_tt_1),
             ptr2->error_message,
             psp->error_message);
 
           if (index_tt_2 != index_tt_1)
-            class_call (transfer2_load_transfers_from_disk (
-                    ppt2,
-                    ptr2,
-                    index_tt_2),
+            class_call_parallel (transfer2_load_transfers_from_disk (
+                                   ppt2,
+                                   ptr2,
+                                   index_tt_2),
               ptr2->error_message,
               psp->error_message);
         }
@@ -380,6 +382,7 @@ int spectra2_cls (
 
           /* Find stepsize */
 
+          double step_k1;
           if (index_k1 == 0) step_k1 = (psp->k[1] - psp->k[0])/2.;
           else if (index_k1 == psp->k_size-1) step_k1 = (psp->k[psp->k_size-1] - psp->k[psp->k_size -2])/2.;
           else step_k1 = (psp->k[index_k1+1] - psp->k[index_k1 -1])/2.;
@@ -389,12 +392,12 @@ int spectra2_cls (
           /* Primordial spectrum k1 */
 
           double spectra_k1;
-          class_call (primordial_spectrum_at_k (
-                  ppm,
-                  index_md,
-                  linear,
-                  k1,
-                  &spectra_k1),
+          class_call_parallel (primordial_spectrum_at_k (
+                                 ppm,
+                                 index_md,
+                                 linear,
+                                 k1,
+                                 &spectra_k1),
             ppm->error_message,
             psp->error_message);
           spectra_k1 = 2*_PI_*_PI_/(k1*k1*k1) * spectra_k1;
@@ -411,6 +414,7 @@ int spectra2_cls (
 
             /* Find stepsize */
 
+            double step_k2;
             if (index_k1 == 0) step_k2 = 0.;
             else if (index_k2 == 0) step_k2 = (psp->k[1] - psp->k[0])/2.;
             else if (index_k2 == index_k1) step_k2 = (psp->k[index_k1] - psp->k[index_k1-1])/2.;
@@ -422,12 +426,12 @@ int spectra2_cls (
             /* Primordial spectrum k2 */
 
             double spectra_k2;
-            class_call (primordial_spectrum_at_k (
-                  ppm,
-                  index_md,
-                  linear,
-                  k2,
-                  &spectra_k2),
+            class_call_parallel (primordial_spectrum_at_k (
+                                   ppm,
+                                   index_md,
+                                   linear,
+                                   k2,
+                                   &spectra_k2),
               ppm->error_message,
               psp->error_message);
             spectra_k2 = 2*_PI_*_PI_/(k2*k2*k2) * spectra_k2;
@@ -436,24 +440,24 @@ int spectra2_cls (
             /* Integration grid in k3 */
 
             int dump;
-            class_call (transfer2_get_k3_list (
-                          ppr,
-                          ppr2,
-                          ppt2,
-                          pbs,
-                          pbs2,
-                          ptr2,
-                          index_k1,
-                          index_k2,
-                          psp->k3_grid,
-                          &dump
-                          ),
+            class_call_parallel (transfer2_get_k3_list (
+                                   ppr,
+                                   ppr2,
+                                   ppt2,
+                                   pbs,
+                                   pbs2,
+                                   ptr2,
+                                   index_k1,
+                                   index_k2,
+                                   k3_grid,
+                                   &dump
+                                   ),
               ptr2->error_message,
               psp->error_message);
 
             int k3_size = ptr2->k_size_k1k2[index_k1][index_k2];
 
-            class_test(k3_size < 2,
+            class_test_parallel (k3_size < 2,
               psp->error_message,
               "integration grid has less than two elements, cannot use trapezoidal integration");
 
@@ -472,13 +476,14 @@ int spectra2_cls (
 
             for (int index_k3 = 0; index_k3 < k3_size; ++index_k3) {
 
-              double k3 = psp->k3_grid[index_k3];
+              double k3 = k3_grid[index_k3];
 
               /* Find stepsize including the triangular condition edge */
 
-              if (index_k3 == 0) step_k3 = (psp->k3_grid[1] - psp->k3_grid[0])/2.;
-              else if (index_k3 == k3_size -1) step_k3 = (psp->k3_grid[k3_size-1] - psp->k3_grid[k3_size -2])/2.;
-              else step_k3 = (psp->k3_grid[index_k3+1] - psp->k3_grid[index_k3 -1])/2.;
+              double step_k3;
+              if (index_k3 == 0) step_k3 = (k3_grid[1] - k3_grid[0])/2.;
+              else if (index_k3 == k3_size -1) step_k3 = (k3_grid[k3_size-1] - k3_grid[k3_size -2])/2.;
+              else step_k3 = (k3_grid[index_k3+1] - k3_grid[index_k3 -1])/2.;
 
               /* Triangular condition */
 
@@ -487,13 +492,13 @@ int spectra2_cls (
               }
               if ( k3 >= k1-k2 && triangular_first == 0 && index_k3 < k3_size-1 ) { //first point
                 triangular_first = 1;
-                step_k3 = (psp->k3_grid[index_k3+1]-k3)/2. + k3 - (k1-k2);
+                step_k3 = (k3_grid[index_k3+1]-k3)/2. + k3 - (k1-k2);
               }
-              if ( psp->k3_grid[index_k3+1] > k1+k2 && triangular_last == 0 && index_k3 > 0) {
+              if ( k3_grid[index_k3+1] > k1+k2 && triangular_last == 0 && index_k3 > 0) {
                 //last point, note that this may not be found if the last point is bigger than kmax,
                 // however in that case no special treatment for the last point is needed.
                 triangular_last = 1;
-                step_k3 = (k3 - psp->k3_grid[index_k3-1])/2. + (k1+k2) - k3;
+                step_k3 = (k3 - k3_grid[index_k3-1])/2. + (k1+k2) - k3;
               }
               
               /* If we are in the extrapolated range, skip this k3 */
@@ -539,18 +544,18 @@ int spectra2_cls (
 
         if (ppr2->load_transfers_from_disk || ppr2->store_transfers_to_disk) {
 
-          class_call (transfer2_free_type_level (
-                        ppt2,
-                        ptr2,
-                        index_tt_1),
+          class_call_parallel (transfer2_free_type_level (
+                                 ppt2,
+                                 ptr2,
+                                 index_tt_1),
             ptr2->error_message,
             psp->error_message);
 
           if (index_tt_2 != index_tt_1)
-            class_call (transfer2_free_type_level (
-                          ppt2,
-                          ptr2,
-                          index_tt_2),
+            class_call_parallel (transfer2_free_type_level (
+                                   ppt2,
+                                   ptr2,
+                                   index_tt_2),
               ptr2->error_message,
               psp->error_message);
         }
@@ -560,8 +565,15 @@ int spectra2_cls (
         //   printf ("%10d %14g %14g\n", l, result_m[index_M], *result);
 
       } // sum over M
+    
+      free (k3_grid);
+      
+      #pragma omp flush(abort)
       
     } // loop over l
+
+    if (abort)
+      return _FAILURE_;
 
   } // loop over ct
 
@@ -576,8 +588,6 @@ int spectra2_cls (
                 index_md),
     psp->error_message,
     psp->error_message);
-  
-  free(psp->k3_grid);
   
   /* Debug: test the interpolation */
   // for (int l=2; l <= psp->l_max[index_md]; ++l) {
