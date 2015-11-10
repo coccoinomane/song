@@ -7262,22 +7262,24 @@ int perturb2_free(
     int m1_size = m1_max-m1_min+1;
     int m2_size = m2_max-m2_min+1;
     
-    for (int index_pf=0; index_pf < ppt2->pf_size; ++index_pf) {
-      for (int l=0; l <= ppt2->largest_l; ++l) {
-        for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
-          int m = ppr2->m[index_m];
-          for (int l1=0; l1 <= ppt2->l1_max; ++l1) {  
-            for (int m1=m1_min; m1 <= m1_max; ++m1) {
-              free (ppt2->coupling_coefficients[index_pf][lm(l,m)][l1][m1-m1_min]);
-            } // end of for m1
-            free (ppt2->coupling_coefficients[index_pf][lm(l,m)][l1]);
-          } // end of for l1
-          free (ppt2->coupling_coefficients[index_pf][lm(l,m)]);
-        } // end of for m
-      } // end of for l
-    free (ppt2->coupling_coefficients[index_pf]);
-    } // end of for T,E,B...
-    free (ppt2->coupling_coefficients);
+    if (ppt2->has_cmb && ppt2->use_delta_tilde_in_los) {
+      for (int index_pf=0; index_pf < ppt2->pf_size; ++index_pf) {
+        for (int l=0; l <= ppt2->largest_l; ++l) {
+          for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
+            int m = ppr2->m[index_m];
+            for (int l1=0; l1 <= ppt2->l1_max; ++l1) {  
+              for (int m1=m1_min; m1 <= m1_max; ++m1) {
+                free (ppt2->coupling_coefficients[index_pf][lm(l,m)][l1][m1-m1_min]);
+              } // end of for m1
+              free (ppt2->coupling_coefficients[index_pf][lm(l,m)][l1]);
+            } // end of for l1
+            free (ppt2->coupling_coefficients[index_pf][lm(l,m)]);
+          } // end of for m
+        } // end of for l
+      free (ppt2->coupling_coefficients[index_pf]);
+      } // end of for T,E,B...
+      free (ppt2->coupling_coefficients);
+    }
 
     for (int l=0; l <= ppt2->largest_l; ++l)
       free(ppt2->lm_array[l]);
