@@ -46,8 +46,8 @@ vpath .base build
 	touch build/.base
 
 # Make sure to compile CLASS with support for SONG
-CFLAGS += -DWITH_SONG_SUPPORT
-CFLAGS += -DWITH_BISPECTRA
+CFLAGS += -DWITH_SONG1 # support for SONG features requiring a first-order computation
+CFLAGS += -DWITH_SONG2 # support for SONG features requiring a second-order computation
 
 # Pass to the code CLASS location
 CFLAGS += -D__CLASSDIR__='"$(CLASS_DIR)"'
@@ -105,8 +105,8 @@ default: class song print_params print_sources1 print_sources2 print_transfers1 
 .PHONY: libclass.a class test_background test_thermodynamics test_perturbations test_transfer classy tar
 libclass.a class test_background test_thermodynamics test_perturbations test_transfer classy tar: 
 	cd $(CLASS_DIR);\
-	export WITH_BISPECTRA=1;\
-	export WITH_SONG_SUPPORT=1;\
+	export WITH_SONG1=1;\
+	export WITH_SONG2=1;\
 	make $@; mv $@ ..
 
 # SONG executables
