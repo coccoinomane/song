@@ -775,6 +775,8 @@ int transfer2_free(
 
   if (ptr2->has_cls == _TRUE_) {
   
+    free (ptr2->tt2_labels);
+  
     int k1_size = ppt2->k_size;
 
     /* Free the k1 level of ptr2->transfer only if we are neither loading nor storing the transfers to disk.
@@ -937,15 +939,11 @@ int transfer2_indices_of_transfers(
   /* Total number of transfer functions to compute */
   ptr2->tt2_size = index_tt;
 
-  class_test (ptr2->tt2_size > _MAX_NUM_TRANSFERS_,
-    ptr2->error_message,
-    "exceeded maximum number of allowed transfer types (%d), increase _MAX_NUM_TRANSFERS_ in transfers2.h",
-    _MAX_NUM_TRANSFERS_);
-
   /* Initialise the labels of the transfer types */
-  for (int index_tt=0; index_tt<ptr2->tt2_size; ++index_tt)
-    for (int i=0; i < _MAX_LENGTH_LABEL_; ++i)
-      ptr2->tt2_labels[index_tt][i] = '\0';
+  class_calloc (ptr2->tt2_labels,
+    ptr2->tt2_size*_MAX_LENGTH_LABEL_,
+    sizeof(char),
+    ptr2->error_message);
 
   if (ptr2->transfer2_verbose > 1) {
     printf (" -> will compute tt2_size=%d transfer functions: ", ptr2->tt2_size);

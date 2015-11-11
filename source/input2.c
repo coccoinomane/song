@@ -904,12 +904,12 @@ int input2_init (
     errmsg);
 
   if (flag1 == _TRUE_) {
-    
-    class_test(int1 > _MAX_NUMBER_OF_K_FILES_, errmsg,
-      "increase _MAX_NUMBER_OF_K_FILES_ in include/perturbations.h to at least %d",
-      int1);
-    
+
     ppt2->k_out_size = int1;
+    
+    class_calloc (ppt2->k1_out, ppt2->k_out_size, sizeof(double), errmsg);
+    class_calloc (ppt2->k2_out, ppt2->k_out_size, sizeof(double), errmsg);
+    class_calloc (ppt2->k3_out, ppt2->k_out_size, sizeof(double), errmsg);
 
     for (i=0; i<int1; i++)
       ppt2->k1_out[i] = pointer1[i];
@@ -1005,12 +1005,16 @@ int input2_init (
       errmsg);
 
     if (flag1 == _TRUE_) {
-    
-      class_test((int1+ppt2->k_out_size) > _MAX_NUMBER_OF_K_FILES_, errmsg,
-        "increase _MAX_NUMBER_OF_K_FILES_ in include/perturbations.h to at least %d",
-        int1);
-    
+        
       ppt2->k_index_out_size = int1;
+
+      class_realloc (ppt2->k1_out, ppt2->k1_out, (ppt2->k_out_size+ppt2->k_index_out_size)*sizeof(double), errmsg);
+      class_realloc (ppt2->k2_out, ppt2->k2_out, (ppt2->k_out_size+ppt2->k_index_out_size)*sizeof(double), errmsg);
+      class_realloc (ppt2->k3_out, ppt2->k3_out, (ppt2->k_out_size+ppt2->k_index_out_size)*sizeof(double), errmsg);
+
+      class_calloc (ppt2->k1_index_out, ppt2->k_index_out_size, sizeof(int), errmsg);
+      class_calloc (ppt2->k2_index_out, ppt2->k_index_out_size, sizeof(int), errmsg);
+      class_calloc (ppt2->k3_index_out, ppt2->k_index_out_size, sizeof(int), errmsg);
 
       for (i=0; i<int1; i++)
         ppt2->k1_index_out[i] = int_pointer1[i];
@@ -1072,7 +1076,7 @@ int input2_init (
 
   class_call(parser_read_string(pfc,"output_quadratic_sources",&string1,&flag1,errmsg),
 	     errmsg,
-	     errmsg);	
+	     errmsg);
 
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
     ppt2->output_quadratic_sources = _TRUE_;
@@ -1080,9 +1084,26 @@ int input2_init (
 
   /* Create and open output files for the desired k-values */
 
-  if ((ppt2->k_out_size + ppt2->k_index_out_size) > 0) {
+  int k_out_total_size = ppt2->k_out_size + ppt2->k_index_out_size;
 
-    for (int index_k_out=0; index_k_out < (ppt2->k_out_size + ppt2->k_index_out_size); ++index_k_out) {
+  if (k_out_total_size > 0) {
+
+    class_calloc (ppt2->index_k1_out, k_out_total_size, sizeof(int), errmsg);
+    class_calloc (ppt2->index_k2_out, k_out_total_size, sizeof(int), errmsg);
+    class_calloc (ppt2->index_k3_out, k_out_total_size, sizeof(int), errmsg);
+    class_calloc (ppt2->k_out_data_byte, k_out_total_size, sizeof(int), errmsg);
+    class_calloc (ppt2->k_out_was_swapped, k_out_total_size, sizeof(int), errmsg);
+    class_calloc (ppt2->k_out_files, k_out_total_size, sizeof(FILE *), errmsg);
+    class_calloc (ppt2->k_out_files_sources, k_out_total_size, sizeof(FILE *), errmsg);
+    class_calloc (ppt2->k_out_paths, k_out_total_size*_FILENAMESIZE_, sizeof(char), errmsg);
+    class_calloc (ppt2->k_out_paths_sources, k_out_total_size*_FILENAMESIZE_, sizeof(char), errmsg);
+
+    if (ppt2->output_quadratic_sources) {
+      class_calloc (ppt2->k_out_paths_quad, k_out_total_size*_FILENAMESIZE_, sizeof(char), errmsg);
+      class_calloc (ppt2->k_out_files_quad, k_out_total_size, sizeof(FILE *), errmsg);
+    }
+
+    for (int index_k_out=0; index_k_out < k_out_total_size; ++index_k_out) {
 
       /* Build ASCII filenames */
       sprintf (ppt2->k_out_paths[index_k_out],
@@ -1205,11 +1226,9 @@ int input2_init (
 
   if (flag1 == _TRUE_) {
     
-    class_test(int1 > _MAX_NUMBER_OF_TAU_FILES_, errmsg,
-      "increase _MAX_NUMBER_OF_TAU_FILES_ in include/perturbations2.h to at least %d",
-      int1);
-    
     ppt2->tau_out_size = int1;
+
+    class_calloc (ppt2->tau_out, ppt2->tau_out_size, sizeof(double), errmsg);
 
     for (i=0; i<int1; i++)
       ppt2->tau_out[i] = pointer1[i];
@@ -1231,12 +1250,11 @@ int input2_init (
     errmsg);
 
   if (flag1 == _TRUE_) {
-    
-    class_test((int1+ppt2->tau_out_size) > _MAX_NUMBER_OF_TAU_FILES_, errmsg,
-      "increase _MAX_NUMBER_OF_TAU_FILES_ in include/perturbations2.h to at least %d",
-      int1);
-    
+        
     ppt2->z_out_size = int1;
+
+    class_realloc (ppt2->tau_out, ppt2->tau_out, (ppt2->tau_out_size + ppt2->z_out_size)*sizeof(double), errmsg);
+    class_calloc (ppt2->z_out, ppt2->z_out_size, sizeof(double), errmsg);
 
     for (i=0; i<int1; i++)
       ppt2->z_out[i] = pointer1[i];
@@ -1245,63 +1263,87 @@ int input2_init (
 
   }
   
-  /* Create and open output files for the desired tau values */
+  
+  int tau_out_total_size = ppt2->tau_out_size + ppt2->z_out_size;
+  
+  if (tau_out_total_size > 0) {
+        
+    /* Allocate output file arrays */
+    
+    class_calloc (ppt2->index_tau_out, tau_out_total_size, sizeof(int), errmsg);
+    class_calloc (ppt2->tau_out_was_reduced, tau_out_total_size, sizeof(int), errmsg);
 
-  for (int index_tau_out=0; index_tau_out < ppt2->tau_out_size; ++index_tau_out) {
+    class_alloc (ppt2->tau_out_paths, k_out_total_size*sizeof(char*), errmsg);
+    class_alloc (ppt2->tau_out_files, k_out_total_size*sizeof(FILE**), errmsg);
+    for (int index_k=0; index_k < k_out_total_size; ++index_k) {
+      class_alloc (ppt2->tau_out_paths[index_k], tau_out_total_size*_FILENAMESIZE_*sizeof(char), errmsg);
+      class_alloc (ppt2->tau_out_files[index_k], tau_out_total_size*sizeof(FILE*), errmsg);
+    }
 
-    for (int index_k_out=0; index_k_out < (ppt2->k_out_size + ppt2->k_index_out_size); ++index_k_out) {
+    class_calloc (ppt2->tau_out_paths_sources, tau_out_total_size*_FILENAMESIZE_, sizeof(char), errmsg);
+    class_calloc (ppt2->tau_out_files_sources, tau_out_total_size, sizeof(FILE *), errmsg);
 
-      /* Build ASCII filenames */
-      sprintf (ppt2->tau_out_paths[index_k_out][index_tau_out],
-        "%s/perturbations_song_k%03d_tau%03d.txt",
+
+    /* Create and open output files for the desired tau values */
+
+    for (int index_tau_out=0; index_tau_out < ppt2->tau_out_size; ++index_tau_out) {
+
+      for (int index_k_out=0; index_k_out < k_out_total_size; ++index_k_out) {
+
+        /* Build ASCII filenames */
+        sprintf (ppt2->tau_out_paths[index_k_out][index_tau_out],
+          "%s/perturbations_song_k%03d_tau%03d.txt",
+          pop->root,
+          index_k_out,
+          index_tau_out);
+
+        /* Open ASCII files, but only if some k-values are requested */
+        class_open(ppt2->tau_out_files[index_k_out][index_tau_out],
+          ppt2->tau_out_paths[index_k_out][index_tau_out],
+          "w",
+          errmsg);
+        
+      }
+
+      /* Build binary filenames */
+      sprintf (ppt2->tau_out_paths_sources[index_tau_out],
+        "%s/sources_song_tau%03d.dat",
         pop->root,
-        index_k_out,
         index_tau_out);
 
-      /* Open ASCII files, but only if some k-values are requested */
-      class_open(ppt2->tau_out_files[index_k_out][index_tau_out],
-        ppt2->tau_out_paths[index_k_out][index_tau_out],
-        "w",
-        errmsg);
-        
     }
 
-    /* Build binary filenames */
-    sprintf (ppt2->tau_out_paths_sources[index_tau_out],
-      "%s/sources_song_tau%03d.dat",
-      pop->root,
-      index_tau_out);
+    /* For redshift values we use different file names but same data structures */
 
-  }
+    for (int index_z_out=0; index_z_out < ppt2->z_out_size; ++index_z_out) {
 
-  /* For redshift values we use different file names but same data structures */
+      for (int index_k_out=0; index_k_out < k_out_total_size; ++index_k_out) {
 
-  for (int index_z_out=0; index_z_out < ppt2->z_out_size; ++index_z_out) {
+        /* Build ASCII filenames */
+        sprintf (ppt2->tau_out_paths[index_k_out][ppt2->tau_out_size+index_z_out],
+          "%s/perturbations_song_k%03d_z%03d.txt",
+          pop->root,
+          index_k_out,
+          index_z_out);
 
-    for (int index_k_out=0; index_k_out < (ppt2->k_out_size + ppt2->k_index_out_size); ++index_k_out) {
+        /* Open ASCII files, but only if some k-values are requested */
+        class_open(ppt2->tau_out_files[index_k_out][ppt2->tau_out_size+index_z_out],
+          ppt2->tau_out_paths[index_k_out][ppt2->tau_out_size+index_z_out],
+          "w",
+          errmsg);
 
-      /* Build ASCII filenames */
-      sprintf (ppt2->tau_out_paths[index_k_out][ppt2->tau_out_size+index_z_out],
-        "%s/perturbations_song_k%03d_z%03d.txt",
+      }
+
+      /* Build binary filenames */
+      sprintf (ppt2->tau_out_paths_sources[ppt2->tau_out_size+index_z_out],
+        "%s/sources_song_z%03d.dat",
         pop->root,
-        index_k_out,
         index_z_out);
-
-      /* Open ASCII files, but only if some k-values are requested */
-      class_open(ppt2->tau_out_files[index_k_out][ppt2->tau_out_size+index_z_out],
-        ppt2->tau_out_paths[index_k_out][ppt2->tau_out_size+index_z_out],
-        "w",
-        errmsg);
-
     }
 
-    /* Build binary filenames */
-    sprintf (ppt2->tau_out_paths_sources[ppt2->tau_out_size+index_z_out],
-      "%s/sources_song_z%03d.dat",
-      pop->root,
-      index_z_out);
-  }
-
+  } // if (tau_out)
+  
+  
 
   // =================================================================================
   // =                                Bessel functions                               =

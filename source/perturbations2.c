@@ -806,6 +806,12 @@ int perturb2_indices_of_perturbs(
   for (int index_m=0; index_m<ppt2->m_size; ++index_m)
     ppt2->m[index_m] = ppr2->m[index_m];
 
+  /* Initialise labels for field types (T,E,B...) */
+  class_calloc (ppt2->pf_labels,
+    _MAX_NUM_FIELDS_*_MAX_LENGTH_LABEL_,
+    sizeof(char),
+    ppt2->error_message);
+
   /* Count source types and assign corresponding indices (index_type). Also set the
   flags to their default values and count the CMB fields (temperature, E-modes, B-modes...)
   that are needed using index_pf.  */
@@ -930,19 +936,15 @@ int perturb2_indices_of_perturbs(
   ppt2->tp2_size = index_type;
   ppt2->pf_size = index_pf;
 
-  class_test (ppt2->tp2_size > _MAX_NUM_SOURCES_,
-    ppt2->error_message,
-    "exceeded maximum number of allowed source types (%d), increase _MAX_NUM_SOURCES_ in perturbations2.h",
-    _MAX_NUM_SOURCES_);
-
   class_test (ppt2->pf_size > _MAX_NUM_FIELDS_,
     "exceeded maximum number of allowed fields, increase _MAX_NUM_FIELDS_ in common.h",
     ppt2->error_message);
 
-  /* Initialise the labels of the transfer types */
-  for (int index_tp=0; index_tp<ppt2->tp2_size; ++index_tp)
-    for (int i=0; i < _MAX_LENGTH_LABEL_; ++i)
-      ppt2->tp2_labels[index_tp][i] = '\0';
+  /* Initialise the labels of the source functions */
+  class_calloc (ppt2->tp2_labels,
+    ppt2->tp2_size*_MAX_LENGTH_LABEL_,
+    sizeof(char),
+    ppt2->error_message);
   
   if (ppt2->perturbations2_verbose > 1) {
     printf ("     * will compute tp2_size=%d source terms: ", ppt2->tp2_size);
@@ -6490,8 +6492,10 @@ int perturb2_vector_init (
   ppv->use_closure_ur = _TRUE_;
 
   /* Initialise the labels */
-  for (int index_pt=0; index_pt < _MAX_NUM_LABELS_; ++index_pt)
-    ppv->pt2_labels[index_pt][0] = '\0';
+  class_calloc (ppv->pt2_labels,
+    _MAX_NUM_EQUATIONS_*_MAX_LENGTH_LABEL_,
+    sizeof(char),
+    ppt2->error_message);
   
 
   // ====================================================================================
@@ -7188,6 +7192,7 @@ int perturb2_vector_free(
   free(pv->y);
   free(pv->dy);
   free(pv->used_in_sources);
+  free(pv->pt2_labels);
   free(pv);
   
   return _SUCCESS_;
@@ -7215,6 +7220,46 @@ int perturb2_free(
 
 
   if (ppt2->has_perturbations2 == _TRUE_) {
+    
+    free (ppt2->pf_labels);
+    free (ppt2->tp2_labels);
+    
+    if (ppt2->k_out_size > 0) {
+      free (ppt2->k1_out);
+      free (ppt2->k2_out);
+      free (ppt2->k3_out);
+      free (ppt2->index_k1_out);
+      free (ppt2->index_k2_out);
+      free (ppt2->index_k3_out);      
+      free (ppt2->k1_index_out);
+      free (ppt2->k2_index_out);
+      free (ppt2->k3_index_out);
+      free (ppt2->k_out_paths);
+      free (ppt2->k_out_files);
+      free (ppt2->k_out_paths_sources);
+      free (ppt2->k_out_files_sources);
+      if (ppt2->output_quadratic_sources == _TRUE_) {
+        free (ppt2->k_out_paths_quad);
+        free (ppt2->k_out_files_quad);
+      }
+    }
+    
+    if (ppt2->tau_out_size > 0) {      
+      free (ppt2->tau_out);
+      free (ppt2->z_out);
+      free (ppt2->index_tau_out);
+      free (ppt2->tau_out_was_reduced);
+
+      for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
+        free (ppt2->tau_out_paths[index_k_out]);
+        free (ppt2->tau_out_files[index_k_out]);
+      }
+      free (ppt2->tau_out_paths);
+      free (ppt2->tau_out_files);
+
+      free (ppt2->tau_out_paths_sources);
+      free (ppt2->tau_out_files_sources);
+    }
     
     int k1_size = ppt2->k_size;
 

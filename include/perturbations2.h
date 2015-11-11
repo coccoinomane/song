@@ -140,17 +140,11 @@ enum quadratic_source_computation {
 // ======================================================================================
 
 /**
- * Maximum number of source function types computed in this module.
+ * Maximum number of equations evolved in the differential system.
  *
  * Feel free to increase it, it is just a memory parameter.
  */
-#define _MAX_NUM_SOURCES_ 1024
-
-/**
- * Maximum number of output files that can be produced with the tau_out
- * option.
- */
-#define _MAX_NUMBER_OF_TAU_FILES_ 100
+#define _MAX_NUM_EQUATIONS_ 4096
 
 /**
  * Exclude edges of the triangular condition on (k1,k2,k3).
@@ -493,8 +487,8 @@ struct perturbs2
 
   int tp2_size;              /**< Number of source types that we need to compute */
 
-  char tp2_labels[_MAX_NUM_SOURCES_][_MAX_LENGTH_LABEL_];  /**< Labels of the various source types. For example, ppt2->tp2_labels[index_tp2_phi]
-                                                           is equal to the string "phi". Useful for printing out results. */
+  char (*tp2_labels)[_MAX_LENGTH_LABEL_];  /**< Labels of the various source types. For example, ppt2->tp2_labels[index_tp2_phi]
+                                           is equal to the string "phi". Useful for printing out results. */
 
 
   
@@ -525,8 +519,8 @@ struct perturbs2
   int field_parity[_MAX_NUM_FIELDS_];  /**< ppt2->field_parity[ppt2->index_pf_x] with x=t,e,b is the parity of the
                                        field x; it is either EVEN or ODD. The size of the array is ppt2->pf_size. */
 
-  char pf_labels[_MAX_NUM_FIELDS_][_MAX_LENGTH_LABEL_]; /**< Labels of the fields; for example, if temperature is requested,
-                                                        ppt2->pf_labels[ppt2->index_pf_t] is "t" */
+  char (*pf_labels)[_MAX_LENGTH_LABEL_]; /**< Labels of the fields; for example, if temperature is requested,
+                                         ppt2->pf_labels[ppt2->index_pf_t] is "t" */
   //@}
 
   
@@ -1044,77 +1038,80 @@ struct perturbs2
   /* - k output files */
 
   int k_out_size; /**< Number of (k1,k2,k3) triplets where to output the perturbations (default=0) */
+
   int k_index_out_size;  /**< Number of (index_k1,index_k2,index_k3) triplets where to output the
                          perturbations (default=0) */
-  double k1_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of k1 values where perturbation output is requested,
-                                          with size k_out_size; filled in input2.c */
-  double k2_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of k2 values where perturbation output is requested,
-                                          with size k_out_size; filled in input2.c */
-  double k3_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of k3 values where perturbation output is requested,
-                                          with size k_out_size; filled in input2.c */
-  int k1_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of k1 indices in ppt2->k where perturbation output is requested,
-                                             with size k_index_out_size; filled in input2 */
-  int k2_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of k2 indices in ppt2->k where perturbation output is requested,
-                                             with size k_index_out_size; filled in input2.c */
-  int k3_index_out[_MAX_NUMBER_OF_K_FILES_]; /**< List of k3 indices in ppt2->k3[index_k1][index_k2] where perturbation
-                                             output is requested, with size k_index_out_size; filled in input2.c */
-  int index_k1_out[_MAX_NUMBER_OF_K_FILES_]; /**< index_k1_out[index_k_output] is the index in ppt2->k corresponding to
-                                             k1=k1_out[index_k_output]; filled in perturbations2.c */
-  int index_k2_out[_MAX_NUMBER_OF_K_FILES_]; /**< index_k2_out[index_k_output] is the index in ppt2->k corresponding to
-                                             k2=k2_out[index_k_output]; filled in perturbations2.c */
-  int index_k3_out[_MAX_NUMBER_OF_K_FILES_]; /**< index_k3_out[index_k_output] is the index in ppt2->k[index_k1][index_k2]
-                                             corresponding to k3=k3_out[index_k_output]. If k3 does not satisfy the triangular
-                                             condition, its location in the array will contain -1. Filled in perturbations2.c */
-  char k_out_paths[_MAX_NUMBER_OF_K_FILES_][_FILENAMESIZE_]; /**< Path of the ASCII files that will contain the perturbations as a function
-                                                             of tau at the desired (k1,k2,k3) values; filled in the input2.c module */
-  FILE * k_out_files[_MAX_NUMBER_OF_K_FILES_]; /**< ASCII file that will contain the perturbations as a function
-                                               of tau at the desired (k1,k2,k3) values; filled in the input2.c module */
-  char k_out_paths_sources[_MAX_NUMBER_OF_K_FILES_][_FILENAMESIZE_]; /**< Path of the binary files that will contain the source function as a function
-                                                                     of (k3,tau) at the desired (k1,k2) values; filled in the input2.c module */
-  FILE * k_out_files_sources[_MAX_NUMBER_OF_K_FILES_]; /**< Binary files that will contain the sources as a function
-                                                       of (k3,tau) at the desired (k1,k2) values; filled in the input2.c module */
-  int k_out_data_byte[_MAX_NUMBER_OF_K_FILES_]; /**< k_out_data_byte[index_k_tau] is the location in the binary file 
-                                                k_out_files_sources[index_k_tau] of the first data block with the elements
-                                                of ppt2->sources. In practice, this tells the functions that want to
-                                                access the output files where the actual data starts, ignoring the 
-                                                preceding accessory data (eg. tau grid, k3 grid) */
+  double * k1_out; /**< List of k1 values where perturbation output is requested,
+                   with size k_out_size; filled in input2.c */
+  double * k2_out; /**< List of k2 values where perturbation output is requested,
+                   with size k_out_size; filled in input2.c */
+  double * k3_out; /**< List of k3 values where perturbation output is requested,
+                   with size k_out_size; filled in input2.c */
+  int * k1_index_out; /**< List of k1 indices in ppt2->k where perturbation output is requested,
+                      with size k_index_out_size; filled in input2 */
+  int * k2_index_out; /**< List of k2 indices in ppt2->k where perturbation output is requested,
+                      with size k_index_out_size; filled in input2.c */
+  int * k3_index_out; /**< List of k3 indices in ppt2->k3[index_k1][index_k2] where perturbation
+                      output is requested, with size k_index_out_size; filled in input2.c */
+  int * index_k1_out; /**< index_k1_out[index_k_output] is the index in ppt2->k corresponding to
+                      k1=k1_out[index_k_output]; filled in perturbations2.c */
+  int * index_k2_out; /**< index_k2_out[index_k_output] is the index in ppt2->k corresponding to
+                      k2=k2_out[index_k_output]; filled in perturbations2.c */
+  int * index_k3_out; /**< index_k3_out[index_k_output] is the index in ppt2->k[index_k1][index_k2]
+                      corresponding to k3=k3_out[index_k_output]. If k3 does not satisfy the triangular
+                      condition, its location in the array will contain -1. Filled in perturbations2.c */
+  char (*k_out_paths)[_FILENAMESIZE_]; /**< Path of the ASCII files that will contain the perturbations as a function
+                                       of tau at the desired (k1,k2,k3) values; filled in the input2.c module */
+  FILE * *k_out_files; /**< ASCII file that will contain the perturbations as a function
+                       of tau at the desired (k1,k2,k3) values; filled in the input2.c module */
+  char (*k_out_paths_sources)[_FILENAMESIZE_]; /**< Path of the binary files that will contain the source function as a function
+                                               of (k3,tau) at the desired (k1,k2) values; filled in the input2.c module */
+  FILE * * k_out_files_sources; /**< Binary files that will contain the sources as a function
+                               of (k3,tau) at the desired (k1,k2) values; filled in the input2.c module */
+  int * k_out_data_byte; /**< k_out_data_byte[index_k_tau] is the location in the binary file 
+                         k_out_files_sources[index_k_tau] of the first data block with the elements
+                         of ppt2->sources. In practice, this tells the functions that want to
+                         access the output files where the actual data starts, ignoring the 
+                         preceding accessory data (eg. tau grid, k3 grid) */
   short output_class_perturbations; /**< If _TRUE_, output the first-order perturbations for all the values contained in ppt2->k1_out
                                     and ppt2->k2_out */
   short output_quadratic_sources;   /**< If _TRUE_, output the quadratic sources of the second-order differential system for all
                                     the values contained in ppt2->k1_out and ppt2->k2_out */
 
-  char k_out_paths_quad[_MAX_NUMBER_OF_K_FILES_][_FILENAMESIZE_]; /**< Path of the ASCII files that will contain the quadratic sources as a function
-                                                                  of tau at the desired (k1,k2,k3) values; filled in the input2.c module */
-  FILE * k_out_files_quad[_MAX_NUMBER_OF_K_FILES_]; /**< ASCII file that will contain the quadratic sources as a function
-                                                    of tau at the desired (k1,k2,k3) values; filled in the input2.c module */
+  char (*k_out_paths_quad)[_FILENAMESIZE_]; /**< Path of the ASCII files that will contain the quadratic sources as a function
+                                            of tau at the desired (k1,k2,k3) values; filled in the input2.c module */
+  FILE * *k_out_files_quad; /**< ASCII file that will contain the quadratic sources as a function
+                            of tau at the desired (k1,k2,k3) values; filled in the input2.c module */
     
   char k_out_swap_message[_MAX_INFO_SIZE_]; /**< Message to be printed to the output files when the user asks for a (k1,k2) pair with k2>k1 */
   
-  short k_out_was_swapped[_MAX_NUMBER_OF_K_FILES_]; /**< Logical array to keep track whether a k_out configuration had k1 and k2 swapped */
+  int * k_out_was_swapped; /**< Logical array to keep track whether a k_out configuration had k1 and k2 swapped */
   
 
   /* - tau output files */
 
   int tau_out_size; /**< Number of tau values where to output the perturbations (default=0) */
   int z_out_size;   /**< Number of z values where to output the perturbations (default=0) */
-  double tau_out[_MAX_NUMBER_OF_TAU_FILES_]; /**< List of tau values where perturbation output is requested,
-                                             with size tau_out_size; filled in input2.c. V */
-  double z_out[_MAX_NUMBER_OF_TAU_FILES_]; /**< List of z values where perturbation output is requested,
-                                           with size z_out_size; filled in input2.c */
-  int index_tau_out[_MAX_NUMBER_OF_TAU_FILES_]; /**< index_tau_out[index_tau_output] is the index in ppt2->tau_sampling corresponding to
-                                                tau=tau_out[index_tau_output]; filled in perturbations2.c */
-  char tau_out_paths[_MAX_NUMBER_OF_K_FILES_][_MAX_NUMBER_OF_TAU_FILES_][_FILENAMESIZE_]; /**< Path of the ASCII files that will contain the perturbations as a function
-                                                                                          of k3 at the desired (k1,k2,tau) values; filled in the input2.c module */
-  FILE * tau_out_files[_MAX_NUMBER_OF_K_FILES_][_MAX_NUMBER_OF_TAU_FILES_]; /**< ASCII file that will contain the perturbations as a function
-                                                                                                       of k3 at the desired (k1,k2,tau) values; filled in the input2.c module */
-  char tau_out_paths_sources[_MAX_NUMBER_OF_TAU_FILES_][_FILENAMESIZE_]; /**< Path of the binary files that will contain the source function as a function
-                                                                         of (k1,k2,k3) at the desired tau values; filled in the input2.c module */
-  FILE * tau_out_files_sources[_MAX_NUMBER_OF_TAU_FILES_]; /**< Binary files that will contain the sources as a function
-                                                           of (k1,k2,k3) at the desired tau values; filled in the input2.c module */
+  double * tau_out; /**< List of tau values where perturbation output is requested,
+                    with size tau_out_size; filled in input2.c. V */
+  double * z_out; /**< List of z values where perturbation output is requested,
+                  with size z_out_size; filled in input2.c */
+  int * index_tau_out; /**< index_tau_out[index_tau_output] is the index in ppt2->tau_sampling corresponding to
+                       tau=tau_out[index_tau_output]; filled in perturbations2.c */
+  char (**tau_out_paths)[_FILENAMESIZE_]; /**< Path of the ASCII files that will contain the perturbations as a function
+                                          of k3 at the desired (k1,k2,tau) values; filled in the input2.c module and
+                                          indexed as [index_k_out][index_tau_out]. */
+  FILE * (**tau_out_files); /**< ASCII file that will contain the perturbations as a function
+                            of k3 at the desired (k1,k2,tau) values; filled in the input2.c module
+                            and indexed as [index_k_out][index_tau_out] */
+  char (*tau_out_paths_sources)[_FILENAMESIZE_]; /**< Path of the binary files that will contain the source function as a function
+                                                 of (k1,k2,k3) at the desired tau values; filled in the input2.c module */
+  FILE * *tau_out_files_sources; /**< Binary files that will contain the sources as a function
+                                 of (k1,k2,k3) at the desired tau values; filled in the input2.c module */
 
   char tau_out_reduction_message[_MAX_INFO_SIZE_]; /**< Message to be printed to the output files when the user asks for a time too large or a redshift too low*/
   
-  short tau_out_was_reduced[_MAX_NUMBER_OF_TAU_FILES_]; /**< Logical array to keep track whether a tau_out configuration had tau reduced (or z increased) */
+  int * tau_out_was_reduced; /**< Logical array to keep track whether a tau_out configuration had tau reduced (or z increased) */
 
 
   /**
@@ -1728,7 +1725,7 @@ struct perturb2_vector
 
   /** Array of strings that contain the labels of the various evolved perturbations.
   For debug purposes only. */
-  char pt2_labels[_MAX_NUM_LABELS_][_MAX_LENGTH_LABEL_];
+  char (*pt2_labels)[_MAX_LENGTH_LABEL_];
 
 
 };
