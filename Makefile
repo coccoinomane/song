@@ -21,8 +21,8 @@ CFLAGS   += -fopenmp
 CFLAGS   += -DDEBUG
 
 # Header files and libraries
-INCLUDES 	 = -I../include -I../$(CLASS_DIR)/include
-LIBRARIES  = -fopenmp -lm
+INCLUDES = -I../include -I../$(CLASS_DIR)/include
+LDFLAGS  = -fopenmp -lm
 
 
 # =========================================================================
@@ -104,9 +104,9 @@ default: class song print_params print_sources1 print_sources2 print_transfers1 
 # CLASS executables
 .PHONY: libclass.a class test_background test_thermodynamics test_perturbations test_transfer classy tar
 libclass.a class test_background test_thermodynamics test_perturbations test_transfer classy tar: 
-	cd $(CLASS_DIR);
-	export WITH_BISPECTRA=1;
-	export WITH_SONG_SUPPORT=1;
+	cd $(CLASS_DIR);\
+	export WITH_BISPECTRA=1;\
+	export WITH_SONG_SUPPORT=1;\
 	make $@; mv $@ ..
 
 # SONG executables
@@ -123,45 +123,45 @@ PRINT_COUPLINGS = print_couplings.o
 
 song: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2)\
 	$(BESSEL2) $(TRANSFER2) $(BISPECTRA2) $(SPECTRA2) $(OUTPUT) $(SONG)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+	$(CC) $(LDFLAGS) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_params: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PRINT_PARAMS)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+	$(CC) $(LDFLAGS) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_sources1: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2) \
 	$(PRINT_SOURCES1)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+	$(CC) $(LDFLAGS) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_sources2: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2) \
 	$(PRINT_SOURCES2)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+	$(CC) $(LDFLAGS) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_transfers1: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2) $(PRINT_TRANSFERS1)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+	$(CC) $(LDFLAGS) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_transfers2: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2)\
 	$(BESSEL2) $(TRANSFER2) $(PRINT_TRANSFERS2)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+	$(CC) $(LDFLAGS) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_bispectra: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2)\
 	$(BESSEL2) $(TRANSFER2) $(BISPECTRA2) $(SPECTRA2) $(OUTPUT) $(PRINT_BISPECTRA)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+	$(CC) $(LDFLAGS) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_background: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PRINT_BACKGROUND)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+	$(CC) $(LDFLAGS) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_thermo: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PRINT_THERMO)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+	$(CC) $(LDFLAGS) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_couplings: $(SONG_TOOLS) $(SOURCE_CLASS) $(PRINT_COUPLINGS)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+	$(CC) $(LDFLAGS) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 clean: .base
 	rm -rf $(WRKDIR);
 	cd $(CLASS_DIR); $(MAKE) clean;
 
-# THE EXECUTABLES BELOW THIS POINT ARE BROKEN AND NEED TO BE UPDATED TO THE
-# LATEST VERSION OF SONG!
+
+# THE EXECUTABLES BELOW THIS POINT ARE BROKEN
 
 PRINT_K = print_k.o
 PRINT_K_SONG = print_k_song.o
@@ -170,19 +170,19 @@ PRINT_INITIAL_CONDITIONS_SONG = print_initial_conditions_song.o
 PRINT_KERNEL = print_kernel.o
 
 print_k: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PRINT_K)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+	$(CC) $(LDFLAGS) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_k_song: $(SONG_TOOLS) $(SOURCE_CLASS) $(PRINT_K_SONG)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+	$(CC) $(LDFLAGS) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_tau_song: $(SONG_TOOLS) $(SOURCE_CLASS) $(PERTURBATIONS2) $(PRINT_TAU_SONG)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+	$(CC) $(LDFLAGS) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_initial_conditions_song: $(SONG_TOOLS) $(SOURCE_CLASS) $(PERTURBATIONS2) \
 	$(PRINT_INITIAL_CONDITIONS_SONG)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm	
+	$(CC) $(LDFLAGS) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_kernel: $(SONG_TOOLS) $(SOURCE_CLASS) $(PERTURBATIONS2) $(PRINT_KERNEL)
-	$(CC) $(LIBRARIES) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+	$(CC) $(LDFLAGS) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 
