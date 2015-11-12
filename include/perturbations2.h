@@ -91,10 +91,27 @@ enum sources2_k_sampling {
  * Possible sampling methods for the ppt2->k3[index_k1][index_k2] array.
  */
 enum sources2_k3_sampling {
-  lin_k3_sampling,                  /**< Linear k3 sampling */
-  log_k3_sampling,                  /**< Logarithmic k3 sampling */
-  smart_k3_sampling,                /**< Smart k3-sampling k, see perturb2_get_k3_list() */
-  theta12_k3_sampling               /**< Linear sampling in the angle between k1 and k2 */
+
+  lin_k3_sampling,         /**< Linear k3 sampling */
+
+  log_k3_sampling,         /**< Logarithmic k3 sampling */
+
+  smart_k3_sampling,       /**< Smart k3-sampling k, see perturb2_get_k3_list() */
+
+  sym_k3_sampling,         /**< Adopt a symmetric sampling in (k1,k2,k3) by means of a transformation whereby
+                           the three wavemodes end up sharing the same grid. This sampling allows to describe
+                           the physical Fourier space as a cube despite the triangular condition. The symmetric
+                           sampling is crucial to compute the power spectrum P(k) of second-order perturbations,
+                           as it allows to sample the edges of the triangular condition with a logarithmic power.
+                           SONG's default sampling, the 'smart' sampling, will always fail to describe P(k) at
+                           some small enough value of k. In some cases (eg. the magnetic field at early times), the
+                           failure happens quicker because of a specific structure of the kernel, but also for 
+                           the simple matter power spectrum you need the symmetric sampling at small k. Note that
+                           the symmetric sampling can be considered the Fourier-space version of the (l1,l2,l3)
+                           sampling adopted in Ferguson et al 2009 (http://arxiv.org/abs/0812.3413) for the cubic
+                           interpolation of the bispectrum. */
+
+  theta12_k3_sampling      /**< Linear sampling in the angle between k1 and k2 */
 };
 
 

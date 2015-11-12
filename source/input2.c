@@ -494,8 +494,11 @@ int input2_init (
     else if ((strcmp(string1,"log") == 0) || (strcmp(string1,"logarithmic")) == 0)
       ppt2->k3_sampling = log_k3_sampling;
 
-    else if ((strcmp(string1,"smart") == 0) || (strcmp(string1,"class") ==0))
+    else if ((strcmp(string1,"smart") == 0) || (strcmp(string1,"class") == 0))
       ppt2->k3_sampling = smart_k3_sampling;
+
+    else if ((strcmp(string1,"sym") == 0) || (strcmp(string1,"symmetric") == 0))
+      ppt2->k3_sampling = sym_k3_sampling;
 
     else if (strcmp(string1,"theta_12") == 0)
       ppt2->k3_sampling = theta12_k3_sampling;
@@ -511,6 +514,22 @@ int input2_init (
   
   /* Fixed number of grid points for any (k1,k2) pair, used when k3_sampling is set to either lin or log */
   class_read_int("k3_size", ppr2->k3_size);
+
+  if (ppt2->has_cmb_bispectra && ppt2->k3_sampling == sym_k3_sampling) {
+    printf ("\nWARNING: symmetric sampling not supported for intrinsic bispectrum; switching to 'smart' sampling\n\n");
+    ppt2->k3_sampling = smart_k3_sampling;
+  }
+
+  if (ppt2->has_cmb_spectra && ppt2->k3_sampling == sym_k3_sampling) {
+    printf ("\nWARNING: symmetric sampling not supported for second-order C_l; switching to 'smart' sampling\n\n");
+    ppt2->k3_sampling = smart_k3_sampling;
+  }
+
+  /* DISABLED: Uncomment once you sort out the spectra flags */  
+  //  if (ppt2->has_cmb_spectra_fourier && ppt2->k3_sampling != sym_k3_sampling) {
+  //    printf ("WARNING: you are computing second-order Fourier spectra without a symmetric k3 sampling\
+  // (sources2_k3_sampling=sym); expect the accuracy of the resulting P(k) to decrease for small k\n");
+  //  }
 
 
   // ====================================================================================
@@ -1775,9 +1794,9 @@ int input2_init (
   ppr2->m_max_song = ppr2->m[ppr2->m_size-1];
 
   if (ppt2->has_cmb_polarization_b && ppr2->m_max_song == 0)
-    printf ("WARNING: will ignore any requested B-mode output. Second-order B-modes vanish\
+    printf ("\nWARNING: will ignore any requested B-mode output. Second-order B-modes vanish\
  for scalar perturbations; to obtain a non-vanishing B-mode result, please include in the\
- modes_song parameter at least one value larger than zero");
+ modes_song parameter at least one value larger than zero\n\n");
   
   /* Check that the m's are positive */
   class_test (ppr2->m[0] < 0,

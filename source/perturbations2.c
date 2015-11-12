@@ -2024,6 +2024,29 @@ int perturb2_get_k_lists (
 
 
       // -------------------------------------------------------------------------------
+      // -                              Symmetric sampling                             -
+      // -------------------------------------------------------------------------------
+
+      /* Use for k3 exactly the same sampling as for k1 an k2. In this symmetric 
+      sampling, the three Fourier modes are actuallygk1 Here we use a grid in transformed quantities k1t,k2t and k3t in which the
+      triangular condition is trivial. Therefore we can use the full first quadrant
+      and sample k3 as k1 */
+
+      else if (ppt2->k3_sampling == sym_k3_sampling) {
+
+        /* The size of the k3 array is the same for every (k1,k2) configuration*/
+        k3_size = ppt2->k_size;
+
+        class_alloc (k3_grid, k3_size*sizeof(double), ppt2->error_message);
+        
+        /* Build the grids */
+        for (int index_k3=0; index_k3 < k3_size; ++index_k3)
+          k3_grid[index_k3] = ppt2->k[index_k3];
+        
+      } // end of sym sampling
+
+
+      // -------------------------------------------------------------------------------
       // -                             Smart sampling for k3                           -
       // -------------------------------------------------------------------------------
 
@@ -3570,6 +3593,7 @@ int perturb2_initial_conditions (
   double * y = ppw2->pv->y;
   double k1 = ppw2->k1;
   double k2 = ppw2->k2;
+    
   double k = ppw2->k;
   double k_sq = ppw2->k_sq;
   double k1_0 = ppw2->k1_m[0+1];
@@ -5334,16 +5358,30 @@ int perturb2_geometrical_corner (
 
   /* Update the workspace with the wavemodes that are going to be evolved */
   ppw2->index_k1 = index_k1;
-  double k1 = ppw2->k1 = ppt2->k[index_k1];
   ppw2->index_k2 = index_k2;
-  double k2 = ppw2->k2 = ppt2->k[index_k2];
   ppw2->index_k3 = index_k3;
-  double k = ppw2->k = ppt2->k3[index_k1][index_k2][index_k3];
-  double k_sq = ppw2->k_sq = k*k;
+
+  double k1 = ppw2->k1 = ppt2->k[index_k1];
+  double k2 = ppw2->k2 = ppt2->k[index_k2];
+  double k  = ppw2->k  = ppt2->k3[index_k1][index_k2][index_k3];
+
+  /* In the symmetric sampling, the index refers to the transformed k while (k1,k2,k) are the actual wavemodes */
+  if (ppt2->k3_sampling == sym_k3_sampling) {
+  
+    ppw2->k1 = (k2 + k)/2;
+    ppw2->k2 = (k1 + k)/2;
+    ppw2->k  = (k1 + k2)/2;
+  
+    k1 = ppw2->k1;
+    k2 = ppw2->k2;
+    k  = ppw2->k;
+
+  }
 
   /* Compute the angles between the various wavevectors. Here and in the following, we
   assume that \vec{k} is aligned with the polar axis and that \vec{k1} and \vec{k2} lie
   in the x-z plane. */
+  double k_sq = ppw2->k_sq = k*k;
   double cosk1k2 = ppw2->cosk1k2 = (k_sq - k1*k1 - k2*k2)/(2*k1*k2);
   double cosk1k = ppw2->cosk1k = (k1 + k2*cosk1k2)/k;
   double cosk2k = ppw2->cosk2k = (k2 + k1*cosk1k2)/k;
@@ -8931,13 +8969,14 @@ int perturb2_fluid_variables (
 
   if (ppt2->has_quadratic_sources == _TRUE_) {
 
-    class_call (perturb_song_sources_at_tau (
+    class_call (perturb_song_sources_at_tau_and_k (
                  ppr,
                  ppt,
                  ppt->index_md_scalars,
                  ppt2->index_ic_first_order,
-                 ppw2->index_k1,
                  tau,
+                 (ppt2->k3_sampling==sym_k3_sampling)?-1:ppw2->index_k1,
+                 ppw2->k1,
                  ppt->qs_size_short, /* just delta and vpot */
                  ppt->inter_normal,
                  &(ppw2->last_index_sources),
@@ -8945,13 +8984,14 @@ int perturb2_fluid_variables (
        ppt->error_message,
        ppt2->error_message);
 
-    class_call (perturb_song_sources_at_tau (
+    class_call (perturb_song_sources_at_tau_and_k (
                  ppr,
                  ppt,
                  ppt->index_md_scalars,
                  ppt2->index_ic_first_order,
-                 ppw2->index_k2,
                  tau,
+                 (ppt2->k3_sampling==sym_k3_sampling)?-1:ppw2->index_k2,
+                 ppw2->k2,
                  ppt->qs_size_short, /* just delta and vpot */
                  ppt->inter_normal,
                  &(ppw2->last_index_sources),                 
@@ -9977,7 +10017,7 @@ int perturb2_rsa_variables (
  * -# thermodynamics_at_z()
  * -# perturb2_quadratic_sources() to fill ppw2->pvec_quadsources, ppw2->pvec_sources1
  *    and ppw2->pvec_sources2, or perturb2_quadratic_sources_at_tau() followed by two
- *    calls to perturb_song_sources_at_tau().
+ *    calls to perturb_song_sources_at_tau_and_k().
  * -# perturb2_workspace_at_tau()
  * -# perturb2_einstein()
  */
@@ -10011,13 +10051,14 @@ int perturb2_compute_psi_prime(
 
   if (ppt2->has_quadratic_sources == _TRUE_) {
 
-    class_call (perturb_song_sources_at_tau (
+    class_call (perturb_song_sources_at_tau_and_k (
                  ppr,
                  ppt,
                  ppt->index_md_scalars,
                  ppt2->index_ic_first_order,
-                 ppw2->index_k1,
                  tau,
+                 (ppt2->k3_sampling==sym_k3_sampling)?-1:ppw2->index_k1,
+                 ppw2->k1,
                  ppt->qs_size_short, /* just delta and vpot */
                  ppt->inter_normal,
                  &(ppw2->last_index_sources),
@@ -10025,13 +10066,14 @@ int perturb2_compute_psi_prime(
        ppt->error_message,
        ppt2->error_message);
 
-    class_call (perturb_song_sources_at_tau (
+    class_call (perturb_song_sources_at_tau_and_k (
                  ppr,
                  ppt,
                  ppt->index_md_scalars,
                  ppt2->index_ic_first_order,
-                 ppw2->index_k2,
                  tau,
+                 (ppt2->k3_sampling==sym_k3_sampling)?-1:ppw2->index_k2,
+                 ppw2->k2,
                  ppt->qs_size_short, /* just delta and vpot */
                  ppt->inter_normal,
                  &(ppw2->last_index_sources),                 
@@ -10250,7 +10292,7 @@ int perturb2_quadratic_sources_for_k1k2k (
                   ppt,
                   ppt2,
                   index_tau,
-                  1e99, /* tau not used, no interp */
+                  tau, /* tau not used, no interp */
                   compute_total_and_collision,
                   ppw2->pvec_quadsources,
                   ppw2->pvec_quadcollision,
@@ -10479,75 +10521,98 @@ int perturb2_quadratic_sources (
   int l_max_g = ppw2->l_max_g;
   int l_max_pol_g = ppw2->l_max_pol_g;
   int l_max_ur = ppw2->l_max_ur;
- 
+
+  class_test (index_tau >= 0 && tau != ppt->tau_sampling_quadsources[index_tau],
+    ppt2->error_message,
+    "inconsistent input!");
+
+
 
   // =====================================================================================
   // =                               Get first order moments                             =
   // =====================================================================================
   
-  /* Fill the arrays ppw2->pvec_sources1 and ppw2->pvec_sources2 with the
-  first-order perturbations in k1 and k2, respectively. These arrays are
-  indexed using the ppt->index_qs_XXX indices and have size equal to
-  ppt->qs_size[ppt->index_md_scalars] */
-  int qs_size = ppt->qs_size[ppt->index_md_scalars];
+  /* Fill the arrays ppw2->pvec_sources1 and ppw2->pvec_sources2 with the first-order
+  perturbations in k1 and k2, respectively. These arrays are indexed using the
+  ppt->index_qs_XXX indices and have size equal to ppt->qs_size[ppt->index_md_scalars] */
   
-  /* If the user provides a valid time index (index_tau>=0), use the
-  first-order transfer functions in the tabulated values; otherwise interpolate
-  them at the desired tau */
-  if (index_tau >= 0) { 
+  int qs_size = ppt->qs_size[ppt->index_md_scalars];
+
+  
+  /* If the user provides a valid time index (index_tau>=0), then we skip
+  interpolation over time and just extract the first-order perturbations
+  in (index_tau, index_k1) and (index_tau,index_k2). One exception is if
+  we are using the symmetric k-sampling, in which case we should interpolate
+  over k, because k does not belong to the first-order sampling. */
+    
+  if (index_tau >= 0  &&  ppt2->k3_sampling != sym_k3_sampling) { 
 
     class_test (index_tau >= ppt->tau_size_quadsources,
       ppt2->error_message,
       "time index cannot be larger than size of time array for quadsources");
-    
+  
     tau = ppt->tau_sampling_quadsources[index_tau];
 
     for (int index_type=0; index_type<qs_size; ++index_type) {
- 
+
       /* First-order sources in k1 */
       ppw2->pvec_sources1[index_type] =
         ppt->quadsources[ppt->index_md_scalars][ppt2->index_ic_first_order*qs_size + index_type]
                         [index_tau*ppt->k_size[ppt->index_md_scalars]+ppw2->index_k1];
- 
+
       /* First-order sources in k2 */
       ppw2->pvec_sources2[index_type] =
         ppt->quadsources[ppt->index_md_scalars][ppt2->index_ic_first_order*qs_size + index_type]
                         [index_tau*ppt->k_size[ppt->index_md_scalars]+ppw2->index_k2];
     }
   }
-  /* Interpolate first-order sources at the desired time */
+
   else {
-        
-    /* Interpolate first-order quantities in tau and k1 (ppw2->psources_1) */
-    class_call (perturb_song_sources_at_tau (
-                 ppr,
-                 ppt,
-                 ppt->index_md_scalars,
-                 ppt2->index_ic_first_order,
-                 ppw2->index_k1,
-                 tau,
-                 ppt->qs_size[ppt->index_md_scalars],
-                 ppt->inter_normal,
-                 &(ppw2->last_index_sources),
-                 ppw2->pvec_sources1),
-       ppt->error_message,
-       ppt2->error_message);
-  
-    /* Interpolate first-order quantities in tau and k2 (ppw2->psources_2) */ 
-    class_call (perturb_song_sources_at_tau (
-                 ppr,
-                 ppt,
-                 ppt->index_md_scalars,
-                 ppt2->index_ic_first_order,
-                 ppw2->index_k2,
-                 tau,
-                 ppt->qs_size[ppt->index_md_scalars],
-                 ppt->inter_normal,
-                 &(ppw2->last_index_sources),                 
-                 ppw2->pvec_sources2),
-      ppt->error_message,
-      ppt2->error_message);      
-  }
+    
+    /* Interpolate first-order quantities in tau, and store the result
+    in ppw2->psources_1. If index_k1 is negative, then the function will
+    interpolate also in k1. */
+    
+    int index_k1 = (ppt2->k3_sampling==sym_k3_sampling) ? -1 : ppw2->index_k1;
+    
+		class_call (perturb_song_sources_at_tau_and_k (
+              ppr,
+              ppt,
+              ppt->index_md_scalars,
+              ppt2->index_ic_first_order,
+              tau,
+              index_k1,
+              ppw2->k1,
+              qs_size,
+              ppt->inter_normal,
+              &(ppw2->last_index_sources),
+              ppw2->pvec_sources1),
+  		ppt->error_message,
+  		ppt2->error_message);
+
+    /* Interpolate first-order quantities in tau, and store the result
+    in ppw2->psources_1. If index_k1 is negative, then the function will
+    interpolate also in k2. */
+
+    int index_k2 = (ppt2->k3_sampling==sym_k3_sampling) ? -1 : ppw2->index_k2;
+
+  	class_call (perturb_song_sources_at_tau_and_k (
+              ppr,
+              ppt,
+              ppt->index_md_scalars,
+              ppt2->index_ic_first_order,
+              tau,
+              index_k2,
+              ppw2->k2,
+              qs_size,
+              ppt->inter_normal,
+              &(ppw2->last_index_sources),
+              ppw2->pvec_sources2),
+  		ppt->error_message,
+  		ppt2->error_message);
+
+ 	}
+
  
   /* Debug - Test the interpolation */
   // if ((ppw2->index_k1==0) && (ppw2->index_k2==0)) {
@@ -12577,8 +12642,8 @@ int perturb2_print_variables(double tau,
   struct perturbs * ppt = pppaw2->ppt;
   struct perturbs2 * ppt2 = pppaw2->ppt2;  
   struct perturb2_workspace * ppw2 = pppaw2->ppw2;
-  double k1 = ppt2->k[ppw2->index_k1];  
-  double k2 = ppt2->k[ppw2->index_k2];
+  double k1 = ppw2->k1;
+  double k2 = ppw2->k2;
   double * pvecback = ppw2->pvecback;
   double * pvecthermo = ppw2->pvecthermo;
   double * pvecmetric = ppw2->pvecmetric;
@@ -14049,7 +14114,7 @@ int perturb2_save_perturbations (
       fprintf (file_tr, "%s", ppw2->file_header);
       fprintf (file_tr, "%s\n", _COMMENT_);
       fprintf (file_tr, "%sInformation on the perturbations:\n", _COMMENT_);
-      fprintf (file_tr, "%sk1 = %g, k2 = %g\n", _COMMENT_, ppt2->k[ppw2->index_k1], ppt2->k[ppw2->index_k2]);
+      fprintf (file_tr, "%sk1 = %g, k2 = %g\n", _COMMENT_, ppw2->k1, ppw2->k2);
       fprintf (file_tr, "%sindex_k1 = %d/%d, index_k2 = %d/%d, k3_size = %d\n",
         _COMMENT_, ppw2->index_k1, ppt2->k_size-1, ppw2->index_k2, ppt2->k_size-1, ppt2->k3_size[ppw2->index_k1][ppw2->index_k2]);
       fprintf (file_tr, "%s\n", _COMMENT_);
