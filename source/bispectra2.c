@@ -431,14 +431,6 @@ int bispectra2_intrinsic_init (
 
     for (int X=0; X < pbi->bf_size; ++X) {
 
-      /* Do not consider the second-order part of Rayleigh scattering */
-      if ((pbi->has_bispectra_r == _TRUE_) && (X == pbi->index_bf_r)) {
-        if (pbi->bispectra_verbose > 0)
-          printf(" -> will set to zero the %s bispectrum involving %s^(2)\n",
-          pbi->bt_labels[index_bt], pbi->bf_labels[X]);
-        continue;
-      }
-
       pwb->X = X;
 
       if (pbi->bispectra_verbose > 0)
@@ -1007,10 +999,6 @@ int bispectra2_intrinsic_workspace_init (
     }
     else if ((pbi->has_bispectra_b == _TRUE_) && (X == pbi->index_bf_b)) {
       pwb->index_tt2_of_bf[X] = ptr2->index_tt2_B;
-    }
-    /* The Rayleigh bispectrum will be computed ignoring its second-order part */
-    else if ((pbi->has_bispectra_r == _TRUE_) && (X == pbi->index_bf_r)) {
-      pwb->index_tt2_of_bf[X] = -1;
     }
     else {
       class_stop (pbi->error_message, "%s bispectrum not implemented yet", pbi->bf_labels[X]);
