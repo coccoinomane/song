@@ -223,6 +223,8 @@ struct perturbs2
 
   short has_pk_delta_cdm;        /**< Do we need to compute the power spectrum of the density contrast of the cold dark matter component? */
 
+  short has_pk_magnetic;         /**< Do we need to compute the power spectrum of the magnetic field generated at recombination? 
+                                 For reference, see Fidler, Pettinari & Pitrou 2015. */
   //@}
   
 
@@ -420,6 +422,8 @@ struct perturbs2
   short has_source_E;          /**< Should we store in ppt2->sources the source function for the CMB E-polarization? */
   short has_source_B;          /**< Should we store in ppt2->sources the source function for the CMB B-polarization? */
   short has_source_delta_cdm;  /**< Should we store in ppt2->sources the density contrast of cold dark matter? */
+  short has_source_M;          /**< Should we store in ppt2->sources the source function the magnetic field generated
+                               at recombination? Includes only the dipole. For reference, see Fidler, Pettinari & Pitrou 2015. */
 
   short has_cmb;               /**< Do we need CMB-related sources at all? (e.g. photon temperature or polarisation) */
   short has_lss;               /**< Do we need sources related to the large scale structure? (e.g. lensing potential) ? */  
@@ -491,10 +495,13 @@ struct perturbs2
   int index_tp2_E;             /**< Beginning of the photon E-mode hierarchy in the ppt2->sources array */
   int index_tp2_B;             /**< Beginning of the photon B-mode hierarchy in the ppt2->sources array */
   int index_tp2_delta_cdm;     /**< Index for the second-order density contrast of cold dark matter in the ppt2->sources array */
+  int index_tp2_M;             /**< Index for the magnetic field source in the ppt2->sources array. If both scalar and vector modes
+                               are computed, index_tp2_M+1 is reserved too. */
 
   int n_sources_T;           /**< Number of sources to be computed for photon temperature */
   int n_sources_E;           /**< Number of sources to be computed for photon E-polarization */
   int n_sources_B;           /**< Number of sources to be computed for photon B-polarization */
+  int n_sources_M;           /**< Number of sources to be computed for the magnetic field */
 
   int n_nonzero_sources_E;   /**< Number of nonzero sources to be computed for photon E-polarization; this
                              is basically ppt2->n_sources_E minus the l=0 and l=1 modes */

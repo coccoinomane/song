@@ -254,6 +254,11 @@ int input2_init (
       ppt2->has_perturbations2 = _TRUE_;
     }
 
+    if (((strstr(string1,"magnetic_pk") != NULL) || (strstr(string1,"pk_magnetic") != NULL) || (strstr(string1,"magPk") != NULL))) {
+      ppt2->has_pk_magnetic = _TRUE_;
+      ppt2->has_perturbations2 = _TRUE_;
+    }
+
     if (((strstr(string1,"delta_cdm_bk") != NULL) || (strstr(string1,"bk_delta_cdm") != NULL) || (strstr(string1,"mBisp") != NULL))) {
       ppt2->has_bk_delta_cdm = _TRUE_;
       ppt2->has_perturbations2 = _TRUE_;
@@ -425,7 +430,7 @@ int input2_init (
     ppr2->error_message,
     "logarithmic step must be larger than 1");
 
-  if ((ppt2->has_pk_delta_cdm == _TRUE_) || (ppt2->has_bk_delta_cdm == _TRUE_)) {
+  if (ppt2->has_pk_delta_cdm || ppt2->has_bk_delta_cdm || ppt2->has_pk_magnetic) {
 
     class_call(parser_read_double(pfc,"P_k_max_h/Mpc_song",&param1,&flag1,errmsg),errmsg,errmsg);
     class_call(parser_read_double(pfc,"P_k_max_1/Mpc_song",&param2,&flag2,errmsg),errmsg,errmsg);
@@ -436,6 +441,9 @@ int input2_init (
       ppt2->k_max_for_pk = param1*pba->h;
     if (flag2 == _TRUE_)
       ppt2->k_max_for_pk = param2;
+
+    /* Shortcut */
+    class_read_double("k_max_for_pk",ppt2->k_max_for_pk);    
 
     // class_call(parser_read_list_of_doubles(
     //              pfc,
@@ -696,6 +704,7 @@ int input2_init (
    && (ppt2->has_redshift_in_los == _FALSE_)
    && (ppt2->has_lensing_in_los == _FALSE_)
    && (ppt2->has_pk_delta_cdm == _FALSE_)
+   && (ppt2->has_pk_magnetic == _FALSE_)
    && (ppt2->has_bk_delta_cdm == _FALSE_)
    && (pth->reio_parametrization == reio_none))
     ppt2->has_only_recombination = _TRUE_;
@@ -2022,6 +2031,7 @@ int input2_default_params (
   ppt2->has_cmb_polarization_e = _FALSE_; 
   ppt2->has_cmb_polarization_b = _FALSE_; 
   ppt2->has_pk_delta_cdm = _FALSE_;
+  ppt2->has_pk_magnetic = _FALSE_;
   ppt2->has_bk_delta_cdm = _FALSE_;
 
   ppt2->has_perturbations2 = _FALSE_;

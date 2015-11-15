@@ -681,11 +681,12 @@ int perturb2_indices_of_perturbs(
   
   /* We need to compute something, don't we? :-) */
   class_test (
-    (ppt2->has_cmb_temperature == _FALSE_) &&
-    (ppt2->has_cmb_polarization_e == _FALSE_) &&
-    (ppt2->has_cmb_polarization_b == _FALSE_) &&
-    (ppt2->has_bk_delta_cdm == _FALSE_) &&
-    (ppt2->has_pk_delta_cdm == _FALSE_),
+    !ppt2->has_cmb_temperature &&
+    !ppt2->has_cmb_polarization_e &&
+    !ppt2->has_cmb_polarization_b &&
+    !ppt2->has_bk_delta_cdm &&
+    !ppt2->has_pk_delta_cdm &&
+    !ppt2->has_pk_magnetic,
     ppt2->error_message, "please specify at least an output");
 
   /* Synchronous gauge not supported yet */
@@ -777,6 +778,12 @@ int perturb2_indices_of_perturbs(
     (ppt2->has_bk_delta_cdm == _TRUE_)) ,
     ppt2->error_message,
     "density power spectra and bispectra exist only for scalar modes");
+
+  class_test (
+    ppt2->has_pk_magnetic &&
+    ((!ppr2->compute_m[0] && !ppr2->compute_m[1]) || ppr2->l_max_g<1),
+    ppt2->error_message,
+    "magnetic sources cannot be computated without the dipole");
 
   class_test ((ppt2->has_quadratic_sources==_FALSE_) && (ppt2->primordial_local_fnl_phi==0),
     ppt2->error_message,
@@ -928,6 +935,19 @@ int perturb2_indices_of_perturbs(
   }
 
 
+  if (ppt2->has_pk_magnetic) {
+  
+    ppt2->has_lss = _TRUE_;
+    ppt2->has_source_M = _TRUE_;
+
+    /* The magnetic field has only dipole sources */
+  	ppt2->n_sources_M = (ppr2->compute_m[0]?1:0) + (ppr2->compute_m[1]?1:0);
+    ppt2->index_tp2_M = index_type;
+    index_type += ppt2->n_sources_M;
+  
+  }
+
+
   // --------------------------------------------------------------------------
   // -                              Sum up sources                            -
   // --------------------------------------------------------------------------
@@ -958,6 +978,9 @@ int perturb2_indices_of_perturbs(
     }
     if (ppt2->has_source_delta_cdm == _TRUE_) {
       printf ("delta_cdm ");
+    }
+    if (ppt2->has_source_M == _TRUE_) {
+      printf ("magnetic=%d ", ppt2->n_sources_M);
     }
     printf ("\n");
   }  
