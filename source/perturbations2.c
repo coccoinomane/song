@@ -709,12 +709,17 @@ int perturb2_indices_of_perturbs(
     
   /* Check that the m-list is within bounds */
   class_test (
-    (ppr2->m_max_song > ppr2->l_max_los) ||
     (ppr2->m_max_song > ppr2->l_max_g) ||
     (ppr2->m_max_song > ppr2->l_max_pol_g) ||
     (ppr2->m_max_song > ppr2->l_max_ur),
     ppt2->error_message,
-    "all entries in modes_song should be between 0 and l_max.");
+    "all entries in modes_song should be between 0 and l_max, lest there is no CMB to evolve.");
+
+  class_test (
+    (ppt2->has_cmb_temperature || ppt2->has_cmb_polarization_e || ppt2->has_cmb_polarization_b) &&
+    (ppr2->m_max_song > ppr2->l_max_los),
+    ppt2->error_message,
+    "all entries in modes_song should be between 0 and l_max_los, lest all CMB sources vanish.");
 
   /* Make sure that we compute enough first-order multipoles to solve the
   second-order system (must be below the initialisation of ppt2->lm_extra). */
@@ -780,10 +785,14 @@ int perturb2_indices_of_perturbs(
     "density power spectra and bispectra exist only for scalar modes");
 
   class_test (
-    ppt2->has_pk_magnetic &&
-    ((!ppr2->compute_m[0] && !ppr2->compute_m[1]) || ppr2->l_max_g<1),
+    ppt2->has_pk_magnetic && (!ppr2->compute_m[1] || ppr2->l_max_g<1),
     ppt2->error_message,
-    "magnetic sources cannot be computated without the dipole");
+    "magnetic sources cannot be computed without vector modes (m=1)");
+
+  class_test (
+    ppt2->has_pk_magnetic && ppt->gauge != newtonian,
+    ppt2->error_message,
+    "magnetic sources implemented only for Newtonian gauge");
 
   class_test ((ppt2->has_quadratic_sources==_FALSE_) && (ppt2->primordial_local_fnl_phi==0),
     ppt2->error_message,
@@ -928,22 +937,17 @@ int perturb2_indices_of_perturbs(
 
   if ((ppt2->has_bk_delta_cdm == _TRUE_) || (ppt2->has_pk_delta_cdm == _TRUE_)) {
     
-    ppt2->index_tp2_delta_cdm = index_type++;
-    ppt2->has_lss = _TRUE_;
     ppt2->has_source_delta_cdm = _TRUE_;
+    ppt2->has_lss = _TRUE_;
+    ppt2->index_tp2_delta_cdm = index_type++;
     
   }
 
-
   if (ppt2->has_pk_magnetic) {
-  
-    ppt2->has_lss = _TRUE_;
-    ppt2->has_source_M = _TRUE_;
 
-    /* The magnetic field has only dipole sources */
-  	ppt2->n_sources_M = (ppr2->compute_m[0]?1:0) + (ppr2->compute_m[1]?1:0);
-    ppt2->index_tp2_M = index_type;
-    index_type += ppt2->n_sources_M;
+    ppt2->has_source_M = _TRUE_;
+    ppt2->has_lss = _TRUE_;
+    ppt2->index_tp2_M = index_type++;
   
   }
 
@@ -979,8 +983,8 @@ int perturb2_indices_of_perturbs(
     if (ppt2->has_source_delta_cdm == _TRUE_) {
       printf ("delta_cdm ");
     }
-    if (ppt2->has_source_M == _TRUE_) {
-      printf ("magnetic=%d ", ppt2->n_sources_M);
+    if (ppt2->has_source_M) {
+      printf ("magnetic_field ");
     }
     printf ("\n");
   }  
@@ -4451,6 +4455,17 @@ int perturb2_workspace_init_quadratic_sources (
     
   }
   
+  // ----------------------------------------------
+  // -               Magnetic field               -
+  // ----------------------------------------------
+
+  if (ppr2->compute_m[1] && ppt2->has_source_M) {
+
+  	ppw2->index_qs2_M = index_qs2++;
+
+  }
+  
+  
   /* Set the size of the quadratic sources */
   ppw2->qs2_size = index_qs2;
 
@@ -6890,6 +6905,17 @@ int perturb2_vector_init (
 
   }
 
+
+  // ------------------------------------------------------------------------------------
+  // -                                 Magnetic field                                   -
+  // ------------------------------------------------------------------------------------
+
+	if (ppr2->compute_m[1] && ppt2->has_source_M) {
+    strcpy (ppv->pt2_labels[index_pt], "magnetic");
+		ppv->index_pt2_M = index_pt++;
+	}
+
+
   /* Finally, the number of differential equations to solve */
   ppv->pt2_size = index_pt;
 
@@ -7071,6 +7097,11 @@ int perturb2_vector_init (
         y_new[ppv->index_pt2_gamma_m2_prime] = y_old[ppw2->pv->index_pt2_gamma_m2_prime];
       }
     }
+
+    /* Magnetic field */
+  	if (ppr2->compute_m[1] && ppt2->has_source_M)
+			y_new[ppv->index_pt2_M] = y_old[ppw2->pv->index_pt2_M];
+
 
     /* The massless hierarchies are affected by several approximations. Apart from the
     tight coupling approximation, they all start turned off and are later turned on all
@@ -8194,6 +8225,27 @@ int perturb2_derivs (
   } // end of if(cdm)
   
 
+  // -------------------------------------------------------------------------------
+  // -                               Magnetic field                                -
+  // -------------------------------------------------------------------------------
+
+	if (ppr2->compute_m[1] && ppt2->has_source_M) {
+		      
+    /* The magnetic field is suppressed by the Hubble dilution and sourced by
+    the (tight-coupling suppressed) velocity difference between the baryon and
+    photon velocity. The quadsources contain the quadratic part and the generation 
+    of magnetic field from photon anisotropic stress. */
+    
+    double M = y[ppw2->pv->index_pt2_M];
+    double rho_g = pvecback[pba->index_bg_rho_g];
+     
+    dy[ppw2->pv->index_pt2_M] = -2 * Hc * M + 
+                                k * rho_g/3 * ppw2->C_1m[1]/kappa_dot;
+
+		if (ppt2->has_quadratic_sources)
+      dy[ppw2->pv->index_pt2_M] += ppw2->pvec_quadsources[ppw2->index_qs2_M];
+
+	}
 
 
   // ===============================================================================
@@ -11589,9 +11641,50 @@ int perturb2_quadratic_sources (
  
       }
 
+
+  		// -------------------------------------------
+      // -             Magnetic fields             -
+      // -------------------------------------------
+    
+      /* Note that we have put the magnetic field here. It is not a collision term
+      in the classical sense, because it is not multiplied by the scattering rate
+      kappa_dot, but the origin of the magnetic field is directly linked to
+      collisions. */
+
+   		if (ppr2->compute_m[1] && ppt2->has_source_M) {
+
+        double rho_g = pvecback[pba->index_bg_rho_g];
+
+        double c_1 = 4*u_b_1[1] - I_1(1,1);
+        double c_2 = 4*u_b_2[1] - I_2(1,1);
+
+        /* The magnetic field is sourced by the photon intensity collision term, minus
+        the perturbation to x_e, the free electron density, which comes from delta_b
+        and from the perturbed recombination. We remove this part of the collision term
+        manually. Then an  additional term of - psi from the tetrad transformation has
+        to be added seperately; this contribution is already included in the photon
+        collision term. Note that we are omitting factors of sigma_t/e. */
+
+        double phi_1 =  pvec_sources1[ppt->index_qs_phi];
+        double phi_2 =  pvec_sources2[ppt->index_qs_phi];
+
+        /* The quadratic source should not include the scattering rate kappa_dot,
+        hence we divide them by kappa_dot. It is better to perform the division
+        here rather than in perturb2_derivs() for optimal interpolation quality. */
+        ppw2->pvec_quadcollision[ppw2->index_qs2_M] =
+          k * rho_g/3 * (
+            dI_qc2(1,1) - (delta_e_1 + phi_1)*c_2 - (delta_e_2 + phi_2)*c_1
+          )/kappa_dot;
+
+      }
+
+
       // ---------------------------------------------------------------------
       // -                      Add collisions to sources                    -
       // ---------------------------------------------------------------------
+
+      /* Multiply all collisional quadratic sources by kappa_dot, and then
+      add them to the total quadsources array. */
 
       for (int index_qs2=0; index_qs2 < ppw2->qs2_size; ++index_qs2) {
 
@@ -12599,6 +12692,22 @@ int perturb2_sources (
       sources(ppt2->index_tp2_delta_cdm) = 0.5 * ppw2->delta_cdm;
 
       sprintf(ppt2->tp2_labels[ppt2->index_tp2_delta_cdm], "delta_cdm");
+
+      #pragma omp atomic
+      ++ppt2->count_memorised_sources;
+    
+    }
+    
+
+    // -----------------------------------------------------------------------------
+    // -                              Magnetic field                               -
+    // -----------------------------------------------------------------------------
+    
+    if (ppr2->compute_m[1] && ppt2->has_source_M) {
+
+      sources(ppt2->index_tp2_M) = y[ppw2->pv->index_pt2_M];
+
+      sprintf(ppt2->tp2_labels[ppt2->index_tp2_M], "magnetic");
 
       #pragma omp atomic
       ++ppt2->count_memorised_sources;
@@ -13880,6 +13989,13 @@ int perturb2_save_perturbations (
       condition[i] = (pba->has_ur==_TRUE_) && (v > ((l+2)/2));
     }
   }
+
+
+  /* - Magnetic field */
+  strcpy (label[++i], "magnetic");
+  pointer_tr[i] = y + ppw2->pv->index_pt2_M;
+  pointer_qs[i] = ppw2->pvec_quadsources + ppw2->index_qs2_M;
+  condition[i] = (ppt2->has_source_M) && (ppr2->compute_m[1]) && (v>0);
 
 
   /* - Time derivatives of the neutrino multipoles (careful with RSA or NRA) */
