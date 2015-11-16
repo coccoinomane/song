@@ -1006,6 +1006,51 @@ int input2_init (
  any output k value. Either turn off the k_out_mode or fill the k1_out, k2_out\
  and k3_out parameters");
 
+  /* In the symmetric k-sampling, we apply a transformation to each (k1,k2,k3)
+  triplet; we do the same to the output values, in order to get a match between
+  what is asked by the user with k_out and the wavemodes being evolved in SONG. */
+    
+  if (ppt2->k3_sampling == sym_k3_sampling) {
+    
+    if (!ppt2->k_out_mode) {
+
+      for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
+
+        double KT[4] = {0, ppt2->k1_out[index_k_out], ppt2->k2_out[index_k_out], ppt2->k3_out[index_k_out]};
+        double K[4];
+  
+        class_call (symmetric_sampling_inverse (KT, K, errmsg),
+          errmsg, errmsg);
+
+        ppt2->k1_out[index_k_out] = K[1];
+        ppt2->k2_out[index_k_out] = K[2];
+        ppt2->k3_out[index_k_out] = K[3];
+
+        /* Debug: print the output value before and after */
+        // printf ("KT[1]=%g, KT[2]=%g, KT[3]=%g\n", KT[1], KT[2], KT[3]);
+        // printf ("K [1]=%g, K [2]=%g, K [3]=%g\n", K [1], K [2], K [3]);
+        // printf ("\n");
+
+      }
+    }
+    
+    /* The k_out mode makes SONG compute only the k-values specified in the
+    k1_out, k2_out and k3_out parameters. This might create problems with
+    interpolation if less than 2 output values are requested. */
+    
+    else {
+      
+      class_test (ppt2->k_out_size < 2,
+        errmsg,
+        "to use the sym_sampling and the k_out_mode together, please provide at least\
+ two k-output values, lest the k-interpolation fails");
+      
+      printf ("\nWARNING: using k_out_mode with the symmetric k-sampling yields very unprecise\
+ results unless you choose many output k-values, because the symmetric sampling relies on\
+ interpolation over k\n\n");
+      
+    }
+  }
 
   /* Read values of index_k1, index_k2 and index_k3 for which to write output files.
   If SONG is running in k_out_mode, we ignore these settings, lest there is no k

@@ -1764,18 +1764,23 @@ int perturb2_get_k_lists (
 
     /* Build a 1D array with the output values for k1 and k2 */
     double * k_out;
-    class_alloc (k_out, (2*ppt2->k_out_size+1)*sizeof(double), ppt2->error_message);
+    class_alloc (k_out, (2*ppt2->k_out_size+2)*sizeof(double), ppt2->error_message);
     for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
       k_out[2*index_k_out] = ppt2->k1_out[index_k_out];
-      k_out[2*index_k_out + 1] = ppt2->k2_out[index_k_out];
+      k_out[2*index_k_out+1] = ppt2->k2_out[index_k_out];
     }
     
-    /* Also add the largest between the k3 output values, in order to avoid SONG
-    complaining about k3 being larger than k1 and k2 */
+    /* Also add the largest and smallest between the k3 output values. We won't
+    be producing output for these values, we add them just to avoid SONG
+    complaining about k3 being out of bounds. */
+    double k3_out_min = _HUGE_;
     double k3_out_max = 0;
-    for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out)
-      k3_out_max = MAX (MAX (k3_out_max, ppt2->k3_out[index_k_out]), ppt2->k1_out[index_k_out]);
-    k_out[2*ppt2->k_out_size] = k3_out_max;
+    for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
+      k3_out_min = MIN (MIN (MIN (k3_out_min, ppt2->k3_out[index_k_out]), ppt2->k2_out[index_k_out]), ppt2->k2_out[index_k_out]);
+      k3_out_max = MAX (MAX (MAX (k3_out_max, ppt2->k3_out[index_k_out]), ppt2->k2_out[index_k_out]), ppt2->k2_out[index_k_out]);
+    }
+    k_out[2*ppt2->k_out_size] = k3_out_min;
+    k_out[2*ppt2->k_out_size+1] = k3_out_max;
     
     /* Merge ppt2->k with the k1 and k2 output points, sort the resulting array and
     remove the duplicates in it */
@@ -1783,7 +1788,7 @@ int perturb2_get_k_lists (
                   ppt2->k,
                   ppt2->k_size,
                   k_out,
-                  2*ppt2->k_out_size+1,
+                  2*ppt2->k_out_size+2,
                   &(ppt2->k),
                   &(ppt2->k_size),
                   compare_doubles,
@@ -1816,6 +1821,13 @@ int perturb2_get_k_lists (
       // printf ("k_out=%g[%d] -> k=%g[%d]\n",
       //   k_out[i], i, ppt2->k[index_k], index_k);       
     }
+
+    /* Check that index_k2_out is always smaller or equal than index_k1_out */
+    for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out)
+      class_test (ppt2->index_k2_out[index_k_out] > ppt2->index_k1_out[index_k_out],
+        ppt2->error_message,
+        "found index_k2_out=%d larger than index_k1_out=%d for #%d output",
+        ppt2->index_k2_out[index_k_out], ppt2->index_k1_out[index_k_out], index_k_out);
 
     free (k_out);
 
@@ -1905,10 +1917,6 @@ int perturb2_get_k_lists (
   /* Initialize counter of total k-configurations */
   ppt2->count_k_configurations = 0;
   
-  /* Initialise minimum and maxumum values of k */
-  ppt2->k_min = _HUGE_;
-  ppt2->k_max = 0;
-  
   /* Allocate k1 level */
   int k1_size = ppt2->k_size;
 
@@ -1938,9 +1946,8 @@ int perturb2_get_k_lists (
       double k3_min = fabs(k1 - k2) + fabs(_MIN_K3_DISTANCE_);
       double k3_max = k1 + k2 - fabs(_MIN_K3_DISTANCE_);
 
-      /* ULTRA DIRTY MODIFICATION */
       /* The differential system dies when k1=k2 and k3 is very small. These configurations
-      are irrelevant, so we set a minimum ratio between k1=k2 and k3 */
+      are irrelevant, so we set a minimum ratio between k1=k2 and k3. TODO: remove? */
       k3_min = MAX (k3_min, (k1+k2)/_MIN_K3_RATIO_);
 
       /* We take k3 in the same range as k1 and k2. Comment it out if you prefer a range that
@@ -2027,10 +2034,11 @@ int perturb2_get_k_lists (
       // -                              Symmetric sampling                             -
       // -------------------------------------------------------------------------------
 
-      /* Use for k3 exactly the same sampling as for k1 an k2. In this symmetric 
-      sampling, the three Fourier modes are actuallygk1 Here we use a grid in transformed quantities k1t,k2t and k3t in which the
-      triangular condition is trivial. Therefore we can use the full first quadrant
-      and sample k3 as k1 */
+      /* Use for k3 exactly the same sampling as for k1 an k2. See documentation
+      for sym_k3_sampling in perturbations2.h for more details. Note that the 
+      output produced in this way might be unprecise if the requested k-values
+      are isolated from the remaining k-sampling, because the symmetric sampling
+      relies on interpolation of the quadratic sources over k. */
 
       else if (ppt2->k3_sampling == sym_k3_sampling) {
 
@@ -2040,8 +2048,12 @@ int perturb2_get_k_lists (
         class_alloc (k3_grid, k3_size*sizeof(double), ppt2->error_message);
         
         /* Build the grids */
-        for (int index_k3=0; index_k3 < k3_size; ++index_k3)
+        for (int index_k3=0; index_k3 < ppt2->k_size; ++index_k3)
           k3_grid[index_k3] = ppt2->k[index_k3];
+        
+        /* There is no triangular condition in the symmetric sampling */
+        k3_min = ppt2->k[0];
+        k3_max = ppt2->k[ppt2->k_size-1];
         
       } // end of sym sampling
 
@@ -2281,13 +2293,6 @@ int perturb2_get_k_lists (
       /* Update counter of k-configurations */
       ppt2->count_k_configurations += k3_size;
 
-      /* Set the minimum and maximum k-values ever used in SONG */
-      for (int index_k3=0; index_k3 < k3_size; ++index_k3) {
-        double k3 = k3_grid[index_k3];
-        ppt2->k_min = MIN (MIN (ppt2->k_min, k3), ppt2->k[0]);
-        ppt2->k_max = MAX (MAX (ppt2->k_max, k3), ppt2->k[ppt2->k_size-1]);
-      }
-
       /* Debug - Print out the k3 list for a special configuration */
       // if ((index_k1==9) && (index_k2==5)) {
       //
@@ -2303,6 +2308,64 @@ int perturb2_get_k_lists (
     } // end of for (index_k2)
 
   } // end of for (index_k1)
+
+
+  /* Set the minimum and maximum k-values that will be fed to the differential system.
+  This corresponds to the minimum and maximum k-values ever used in SONG. */
+
+  ppt2->k_min = _HUGE_;
+  ppt2->k_max = 0;  
+
+  double kt_min = _HUGE_;
+  double kt_max = 0;
+
+  for (int index_k1=0; index_k1 < ppt2->k_size; ++index_k1) {
+    
+    double k1 = ppt2->k[index_k1];
+    
+    for (int index_k2=0; index_k2 <= index_k1; ++index_k2) {
+      
+      double k2 = ppt2->k[index_k2];
+
+      for (int index_k3=0; index_k3 < ppt2->k3_size[index_k1][index_k2]; ++index_k3) {
+
+        double k3 = ppt2->k3[index_k1][index_k2][index_k3];
+
+        ppt2->k_min = MIN (MIN (MIN (ppt2->k_min, k3), k2), k1);
+        ppt2->k_max = MAX (MAX (MAX (ppt2->k_max, k3), k2), k1);
+
+        /* In case of symmetric sampling, the differential system evolves a different
+        set of wavemodes. */
+
+        if (ppt2->k3_sampling == sym_k3_sampling) {
+
+          double K[4] = {0, k1, k2, k3};
+          double KT[4];
+
+          class_call (symmetric_sampling (K, KT, ppt2->error_message),
+            ppt2->error_message, ppt2->error_message);
+
+          kt_min = MIN (MIN (MIN (kt_min, KT[3]), KT[2]), KT[1]);
+          kt_max = MAX (MAX (MAX (kt_max, KT[3]), KT[2]), KT[1]);
+
+        }
+      }
+    }
+  }
+
+  /* The symmetric sampling should have the same maximum and minimum k, because of
+  the structure of the transformation. Here we check that this is indeed the case. */
+
+  if (ppt2->k3_sampling == sym_k3_sampling) {
+
+    class_test (fabs(1-kt_min/ppt2->k_min) > _SMALL_,
+      ppt2->error_message,
+      "inconsistency in kt transformation");
+
+    class_test (fabs(1-kt_max/ppt2->k_max) > _SMALL_,
+      ppt2->error_message,
+      "inconsistency in kt transformation");
+  }
 
   class_test ((ppt2->k_min==0) || (ppt2->k_max==0),
     ppt2->error_message,
@@ -5365,18 +5428,41 @@ int perturb2_geometrical_corner (
   double k2 = ppw2->k2 = ppt2->k[index_k2];
   double k  = ppw2->k  = ppt2->k3[index_k1][index_k2][index_k3];
 
-  /* In the symmetric sampling, the index refers to the transformed k while (k1,k2,k) are the actual wavemodes */
+
+  /* In the symmetric sampling, we evolve a transformed triplet (k1t,k2t,kt) for which
+  the triangular condition is trivial, rather than the (k1,k2,k) stored in the k-sampling
+  arrays (ppt2-k and ppt2->k3). We then apply the inverse transformation in the spectra2.c
+  module, when integrating P(k). Note that the index refers to the transformed k while
+  (k1,k2,k) are the actual wavemodes. */
+
   if (ppt2->k3_sampling == sym_k3_sampling) {
+
+    double K[4] = {0, k1, k2, k};
+    double KT[4];
   
-    ppw2->k1 = (k2 + k)/2;
-    ppw2->k2 = (k1 + k)/2;
-    ppw2->k  = (k1 + k2)/2;
+    class_call (symmetric_sampling (K, KT, ppt2->error_message),
+      ppt2->error_message, ppt2->error_message);
   
-    k1 = ppw2->k1;
-    k2 = ppw2->k2;
-    k  = ppw2->k;
+    k1 = ppw2->k1 = KT[1];
+    k2 = ppw2->k2 = KT[2];
+    k  = ppw2->k  = KT[3];
 
   }
+
+
+  /* Uncomment the following lines to swap k1 and k2 in the differential system.
+  The result should not change. This is a good test to debug that the quadratic
+  sources in SONG are symmetrised properly. NOT IMPLEMENTED YET (TODO). */
+  // if (ppt2->swap_k1_and_k2) {
+  //   double temp = ppw2->k1;
+  //   k1 = ppw2->k1 = ppw2->k2;
+  //   k2 = ppw2->k2 = temp;
+  //
+  //   int temp_int = ppw2->index_k1;
+  //   index_k1 = ppw2->index_k1 = ppw2->index_k2;
+  //   index_k2 = ppw2->index_k2 = temp_int;
+  // }
+
 
   /* Compute the angles between the various wavevectors. Here and in the following, we
   assume that \vec{k} is aligned with the polar axis and that \vec{k1} and \vec{k2} lie

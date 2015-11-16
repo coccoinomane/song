@@ -108,9 +108,9 @@ enum sources2_k3_sampling {
                            failure happens quicker because of a specific structure of the kernel, but also for 
                            the simple matter power spectrum you need the symmetric sampling at small k. Note that
                            the symmetric sampling can be considered the Fourier-space version of the (l1,l2,l3)
-                           sampling adopted in Ferguson et al 2009 (http://arxiv.org/abs/0812.3413) for the cubic
+                           sampling adopted in Fergusson et al 2009 (http://arxiv.org/abs/0812.3413) for the cubic
                            interpolation of the bispectrum. */
-
+         
   theta12_k3_sampling      /**< Linear sampling in the angle between k1 and k2 */
 };
 
