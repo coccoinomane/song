@@ -68,6 +68,7 @@ int main(int argc, char **argv) {
   printf("\tpt.has_cl_cmb_temperature2 = %d\n", pt.has_cl_cmb_temperature2);
   printf("\tpt.has_cl_cmb_polarization_e2 = %d\n", pt.has_cl_cmb_polarization_e2);
   printf("\tpt.has_cl_cmb_polarization_b2 = %d\n", pt.has_cl_cmb_polarization_b2);
+  printf("\tpt2.has_pk_magnetic = %d\n", pt2.has_pk_magnetic);
   
   /* Interpolation */
   // printf("* Interpolation options\n");

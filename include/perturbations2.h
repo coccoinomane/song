@@ -223,6 +223,11 @@ struct perturbs2
 
   short has_pk_delta_cdm;        /**< Do we need to compute the power spectrum of the density contrast of the cold dark matter component? */
 
+  short has_pk_magnetic;         /**< Do we need to compute the power spectrum of the magnetic field generated at recombination? 
+                                 For reference, see Fidler, Pettinari & Pitrou 2015. If you are interested in an optimal result
+                                 at early times and large scales, choose the symmetric k-sampling for the sources by setting
+                                 sources2_k3_sampling=sym_sampling, and make the quadsources time sampling finer by decreasing the
+                                 parameter perturb_sampling_stepsize_for_quadsources (0.01 is already good) */
   //@}
   
 
@@ -420,6 +425,9 @@ struct perturbs2
   short has_source_E;          /**< Should we store in ppt2->sources the source function for the CMB E-polarization? */
   short has_source_B;          /**< Should we store in ppt2->sources the source function for the CMB B-polarization? */
   short has_source_delta_cdm;  /**< Should we store in ppt2->sources the density contrast of cold dark matter? */
+  short has_source_M;          /**< Should we store in ppt2->sources the source function for the magnetic field generated
+                               at recombination? Includes only the m=1 dipole. For reference, see Fidler, Pettinari &
+                               Pitrou 2015. */
 
   short has_cmb;               /**< Do we need CMB-related sources at all? (e.g. photon temperature or polarisation) */
   short has_lss;               /**< Do we need sources related to the large scale structure? (e.g. lensing potential) ? */  
@@ -491,6 +499,7 @@ struct perturbs2
   int index_tp2_E;             /**< Beginning of the photon E-mode hierarchy in the ppt2->sources array */
   int index_tp2_B;             /**< Beginning of the photon B-mode hierarchy in the ppt2->sources array */
   int index_tp2_delta_cdm;     /**< Index for the second-order density contrast of cold dark matter in the ppt2->sources array */
+  int index_tp2_M;             /**< Index for the magnetic field source in the ppt2->sources array */
 
   int n_sources_T;           /**< Number of sources to be computed for photon temperature */
   int n_sources_E;           /**< Number of sources to be computed for photon E-polarization */
@@ -1445,6 +1454,9 @@ struct perturb2_workspace
   int index_qs2_monopole_cdm;
   int index_qs2_monopole_ur;
 
+  /* Quadratic sources for the magnetic field */
+  int index_qs2_M;
+
   /* Other useful quadratic sources. */
   int index_qs2_vv_g;    /**< (velocity potential)^2 of photons */
   int index_qs2_vv_ur;   /**< (velocity potential)^2 of neutrinos */
@@ -1723,6 +1735,9 @@ struct perturb2_vector
   int index_pt2_gamma_m2;         /**< Index inside y and dy for the Newtonian gauge tensor potential gamma_[m=2] */
   int index_pt2_gamma_m2_prime;   /**< Index inside y and dy for the time derivative of gamma_[m=2] */
   int index_pt2_eta;              /**< Index inside y and dy for the synchronous gauge metric perturbation eta */
+
+  /* Magnetic fields */
+  int index_pt2_M;                /**< Index inside y and dy for the the magnetic field */
 
   int pt2_size;                   /**< Number of evolved perturbations in the considered time interval, and size of the
                                   perturbation vectors y and dy */
