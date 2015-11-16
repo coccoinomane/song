@@ -31,7 +31,7 @@ int spectra2_init(
 
   /* Check whether we need to compute intrinsic spectra at all */  
 
-  if (!ppt2->has_cmb_spectra) {
+  if (!ppt2->has_cls && !ppt2->has_pks) {
 
     printf_log_if (psp->spectra_verbose, 0,
       "No second-order spectrum requested; spectra2 module skipped.\n");
@@ -50,7 +50,7 @@ int spectra2_init(
   // =                               Angular power spectra                              =
   // ====================================================================================
 
-  if (ppt2->has_cmb_spectra == _TRUE_) {
+  if (ppt2->has_cls) {
 
     class_call (spectra2_cls (
                   ppr, ppr2, pba, pth, ppt, ppt2, pbs,
@@ -65,6 +65,18 @@ int spectra2_init(
   // ==================================================================================
   // =                               Fourier Power Spectra                            =
   // ==================================================================================
+
+
+  if (ppt2->has_pks) {
+
+    class_call (spectra2_pks (
+                  ppr, ppr2, pba, pth, ppt, ppt2, pbs,
+                  pbs2, ptr, ptr2, ppm, ple, pbi, psp),
+      psp->error_message,
+      psp->error_message);
+
+  }
+
 
   /* TEMPORARILY DISABLED */
 
@@ -232,8 +244,15 @@ int spectra2_init(
 
 
 /**
- * Compute the angular power spectrum of the CMB at second-order.
+ * Compute the second-order C_l, that is, the angular power spectrum of the
+ * CMB at second-order, for all the required fields (TT, TE, BB...).
  *
+ * This function computes the statistical average of <a_lm^(2) a_lm^(2)>,
+ * where a_lm^(2) is the second-order multipole decomposition of the
+ * CMB sky. Note that this function does not compute the <a_lm^(1) a_lm^(3)>
+ * contribution to the spectrum, which has the same order of magnitude of
+ * <a_lm^(2) a_lm^(2)>, because SONG cannot compute 3rd-order perturbations.
+ * 
  * The second-order C_l are obtained by solving a 3D integral in Fourier
  * space (k1,k2,k3) and are stored in the psp->cl array.
  */
@@ -670,6 +689,42 @@ int spectra2_cls (
 }
 
 
+
+/**
+ * Compute the second-order P(k), that is, the Fourier power spectrum at second
+ * order, for all the required perturbations.
+ *
+ * For a given perturbation X, this function computes <X(k)^(2) X(k)^(2)>. The
+ * same-order contribution <X(k)^(1) X(k)^(3)> is not computed, because it 
+ * requires the computation of third-order perturbations.
+ * 
+ * The second-order P(k) are obtained by solving a 2D convolution integral in
+ * Fourier space, and are stored in the psp->ln_pk array.
+ */
+
+int spectra2_pks (
+     struct precision * ppr,
+     struct precision2 * ppr2,
+     struct background * pba,
+     struct thermo * pth,
+     struct perturbs * ppt,
+     struct perturbs2 * ppt2,
+     struct bessels * pbs,
+     struct bessels2 * pbs2,
+     struct transfers * ptr,
+     struct transfers2 * ptr2,
+     struct primordial * ppm,
+     struct lensing * ple,
+     struct bispectra * pbi,
+     struct spectra * psp
+     )
+{
+
+
+
+  return _SUCCESS_;
+  
+}
 
 
 // /**

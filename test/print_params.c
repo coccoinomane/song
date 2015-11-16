@@ -48,6 +48,7 @@ int main(int argc, char **argv) {
   /* Flags */
   // printf("* Flags & switches\n");
   printf("\tpt2.has_cls = %d\n", pt2.has_cls);
+  printf("\tpt2.has_pks = %d\n", pt2.has_pks);
   printf("\tpt2.has_cmb_temperature = %d\n", pt2.has_cmb_temperature);
   printf("\tpt2.has_cmb_polarization_e = %d\n", pt2.has_cmb_polarization_e);
   printf("\tpt2.has_cmb_polarization_b = %d\n", pt2.has_cmb_polarization_b);
@@ -64,7 +65,6 @@ int main(int argc, char **argv) {
   printf("\tpt.recombination_only_zeta = %d\n", pt.recombination_only_zeta);
   printf("\tpt2.perturbations2_verbose = %d\n", pt2.perturbations2_verbose);
   printf("\tpt2.has_cmb_bispectra = %d\n", pt2.has_cmb_bispectra);
-  printf("\tpt2.has_cmb_spectra = %d\n", pt2.has_cmb_spectra);
   printf("\tpt.has_cl_cmb_temperature2 = %d\n", pt.has_cl_cmb_temperature2);
   printf("\tpt.has_cl_cmb_polarization_e2 = %d\n", pt.has_cl_cmb_polarization_e2);
   printf("\tpt.has_cl_cmb_polarization_b2 = %d\n", pt.has_cl_cmb_polarization_b2);

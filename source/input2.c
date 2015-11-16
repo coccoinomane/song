@@ -232,36 +232,38 @@ int input2_init (
 
     if ((strstr(string1,"tCl2") != NULL) || (strstr(string1,"TCL2") != NULL)) {
       ppt2->has_perturbations2 = _TRUE_;
-      ppt2->has_cmb_spectra = _TRUE_;
+      ppt2->has_cls = _TRUE_;
       ppt2->has_cmb_temperature = _TRUE_;
     }
     
     if ((strstr(string1,"pCl2") != NULL) || (strstr(string1,"PCL2") != NULL) ||
         (strstr(string1,"eCl2") != NULL) || (strstr(string1,"ECL2") != NULL)) {
       ppt2->has_perturbations2 = _TRUE_;
-      ppt2->has_cmb_spectra = _TRUE_;
+      ppt2->has_cls = _TRUE_;
       ppt2->has_cmb_polarization_e = _TRUE_;
     }
 
     if ((strstr(string1,"bCl2") != NULL) || (strstr(string1,"BCL2") != NULL)) {
       ppt2->has_perturbations2 = _TRUE_;
-      ppt2->has_cmb_spectra = _TRUE_;
+      ppt2->has_cls = _TRUE_;
       ppt2->has_cmb_polarization_b = _TRUE_;
     }
 
     if (((strstr(string1,"delta_cdm_pk") != NULL) || (strstr(string1,"pk_delta_cdm") != NULL) || (strstr(string1,"mPk") != NULL))) {
-      ppt2->has_pk_delta_cdm = _TRUE_;
       ppt2->has_perturbations2 = _TRUE_;
+      ppt2->has_pks = _TRUE_;
+      ppt2->has_pk_delta_cdm = _TRUE_;
     }
 
     if (((strstr(string1,"magnetic_pk") != NULL) || (strstr(string1,"pk_magnetic") != NULL) || (strstr(string1,"magPk") != NULL))) {
-      ppt2->has_pk_magnetic = _TRUE_;
       ppt2->has_perturbations2 = _TRUE_;
+      ppt2->has_pks = _TRUE_;
+      ppt2->has_pk_magnetic = _TRUE_;
     }
 
     if (((strstr(string1,"delta_cdm_bk") != NULL) || (strstr(string1,"bk_delta_cdm") != NULL) || (strstr(string1,"mBisp") != NULL))) {
-      ppt2->has_bk_delta_cdm = _TRUE_;
       ppt2->has_perturbations2 = _TRUE_;
+      ppt2->has_bk_delta_cdm = _TRUE_;
     }
 
     if ((strstr(string1,"stop_at_perturbations1") != NULL) || (strstr(string1,"P1") != NULL)) {
@@ -277,7 +279,7 @@ int input2_init (
     if ((strstr(string1,"stop_at_transfers2") != NULL) || (strstr(string1,"T2") != NULL)) {
       ptr2->stop_at_transfers2 = _TRUE_;
       ppt2->has_perturbations2 = _TRUE_;
-      ppt2->has_cmb_spectra = _TRUE_;
+      ppt2->has_cls = _TRUE_;
     }
 
     if (strstr(string1,"k_out") != NULL) {
@@ -528,16 +530,16 @@ int input2_init (
     ppt2->k3_sampling = smart_k3_sampling;
   }
 
-  if (ppt2->has_cmb_spectra && ppt2->k3_sampling == sym_k3_sampling) {
+  if (ppt2->has_cls && ppt2->k3_sampling == sym_k3_sampling) {
     printf ("\nWARNING: symmetric sampling not supported for second-order C_l; switching to 'smart' sampling\n\n");
     ppt2->k3_sampling = smart_k3_sampling;
   }
 
-  /* DISABLED: Uncomment once you sort out the spectra flags */  
-  //  if (ppt2->has_cmb_spectra_fourier && ppt2->k3_sampling != sym_k3_sampling) {
-  //    printf ("WARNING: you are computing second-order Fourier spectra without a symmetric k3 sampling\
-  // (sources2_k3_sampling=sym); expect the accuracy of the resulting P(k) to decrease for small k\n");
-  //  }
+  if (ppt2->has_pks && ppt2->k3_sampling != sym_k3_sampling) {
+    printf ("\nWARNING: you are computing second-order Fourier spectra without a symmetric k3 sampling,\
+ ie. you didn't set sources2_k3_sampling=sym. Expect the accuracy of the resulting P(k) to decrease for\
+ small k\n\n");
+   }
 
 
   // ====================================================================================
@@ -2114,7 +2116,8 @@ int input2_default_params (
   ppt2->has_only_loss_term = _FALSE_;
   ppt2->has_only_gain_term = _FALSE_;
   
-  ppt2->has_cmb_spectra = _FALSE_;
+  ppt2->has_cls = _FALSE_;
+  ppt2->has_pks = _FALSE_;
   ppt2->has_cmb_bispectra = _FALSE_;
   
   ppt2->stop_at_perturbations2 = _FALSE_;

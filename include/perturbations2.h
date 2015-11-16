@@ -207,12 +207,12 @@ struct perturbs2
 
   short has_perturbations2;      /**< Do we need second-order perturbations at all? */
 
-  short has_cmb_bispectra;       /**< Do we need to compute the second-order bispectrum of the CMB? */
+  short has_cmb_bispectra;       /**< Do we need to compute the second-order bispectrum of the CMB in bispectra2.c? */
 
-  short has_cmb_spectra;         /**< Do we need to compute the second-order spectrum (C_l and Pk) of the CMB? */
+  short has_cls;                 /**< Do we need to compute the second-order C_l of the CMB in spectra2.c? */
 
-  short has_cls;                 /**< Do we need to compute the second-order C_l? */
-
+  short has_pks;                 /**< Do we need to compute the second-order P(k) in spectra2.c? */
+  
   short has_cmb_temperature;     /**< Do we need to compute spectra or bispectra for the CMB temperature? */
 
   short has_cmb_polarization_e;  /**< Do we need to compute spectra or bispectra for the CMB E-modes? */
@@ -429,8 +429,13 @@ struct perturbs2
                                at recombination? Includes only the m=1 dipole. For reference, see Fidler, Pettinari &
                                Pitrou 2015. */
 
-  short has_cmb;               /**< Do we need CMB-related sources at all? (e.g. photon temperature or polarisation) */
-  short has_lss;               /**< Do we need sources related to the large scale structure? (e.g. lensing potential) ? */  
+  short has_cmb;               /**< Do we need CMB-related sources at all? (e.g. photon temperature or polarisation). If
+                               this flag is set, the Fourier space will be sampled with a logarithmic step (for k < k_rec)
+                               and a linear step (for k > k_rec) up to a k_max value determined based on ppt->l_scalar_max. */
+
+  short has_lss;               /**< Do we need sources related to the large scale structure? (e.g. lensing potential). If
+                               this flag is set, the Fourier space will be sampled with a logarithmic step up to the value
+                               in ppt2->k_max_for_pk. Additional points might be added around the BAO scale. */  
 
 
   /* - Collisional sources */

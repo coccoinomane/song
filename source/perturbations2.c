@@ -164,7 +164,8 @@ int perturb2_init (
     ppt->has_perturbations = _FALSE_;
     ppt->has_cls = _FALSE_;
     ppt->has_cmb_bispectra = _FALSE_;
-    ppt2->has_cmb_spectra = _FALSE_;
+    ppt2->has_cls = _FALSE_;
+    ppt2->has_pks = _FALSE_;
     ppt2->has_cmb_bispectra = _FALSE_;
 
     if (ppt2->perturbations2_verbose > 0)
@@ -430,7 +431,8 @@ int perturb2_init (
     ppt->has_perturbations = _FALSE_;
     ppt->has_cls = _FALSE_;
     ppt->has_cmb_bispectra = _FALSE_;
-    ppt2->has_cmb_spectra = _FALSE_;
+    ppt2->has_cls = _FALSE_;
+    ppt2->has_pks = _FALSE_;
     ppt2->has_cmb_bispectra = _FALSE_;
   }
 

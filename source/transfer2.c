@@ -97,7 +97,7 @@ int transfer2_init(
   /* Check whether any spectrum in harmonic space (i.e., any C_l's) is actually requested */
 
   if (!ppt2->has_perturbations2 ||
-     (!ppt2->has_cmb_spectra && !ppt2->has_cmb_bispectra && !ptr2->stop_at_transfers2)) {
+     (!ppt2->has_cls && !ppt2->has_cmb_bispectra && !ptr2->stop_at_transfers2)) {
 
     ptr2->has_cls = _FALSE_;
     if (ptr2->transfer2_verbose > 0)
@@ -613,7 +613,8 @@ int transfer2_init(
   if (ptr2->stop_at_transfers2 == _TRUE_) {
     ppt->has_cls = _FALSE_;
     ppt->has_cmb_bispectra = _FALSE_;
-    ppt2->has_cmb_spectra = _FALSE_;
+    ppt2->has_cls = _FALSE_;
+    ppt2->has_pks = _FALSE_;
     ppt2->has_cmb_bispectra = _FALSE_;
   }
     
