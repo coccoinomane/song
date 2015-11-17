@@ -60,9 +60,11 @@ int main(int argc, char **argv) {
   }
 
   /* Compute the first-order C_l */
-  if (pt.has_cls && compute_cls (&pr,&ba,&th,&pt,&sp,&le,errmsg) == _FAILURE_) {
-    printf("\n\nError in compute_cls \n=>%s\n",errmsg);
-    return _FAILURE_;
+  if (pt.has_cls || pt.has_pks) {
+    if (compute_cls (&pr,&ba,&th,&pt,&sp,&le,errmsg) == _FAILURE_) {
+      printf("\n\nError in compute_cls \n=>%s\n",errmsg);
+      return _FAILURE_;
+    }
   }
 
   /* Compute first and second-order perturbations */

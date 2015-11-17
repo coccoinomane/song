@@ -249,19 +249,30 @@ int input2_init (
       ppt2->has_cmb_polarization_b = _TRUE_;
     }
 
-    if (((strstr(string1,"delta_cdm_pk") != NULL) || (strstr(string1,"pk_delta_cdm") != NULL) || (strstr(string1,"mPk") != NULL))) {
+    if (((strstr(string1,"delta_cdm_pk") != NULL) || /* obsolete */
+         (strstr(string1,"pk_delta_cdm") != NULL) || /* obsolete */
+         (strstr(string1,"delta2_cdm_pk") != NULL) ||
+         (strstr(string1,"pk_delta2_cdm") != NULL) ||
+         (strstr(string1,"mPk2") != NULL))) {
       ppt2->has_perturbations2 = _TRUE_;
       ppt2->has_pks = _TRUE_;
       ppt2->has_pk_delta_cdm = _TRUE_;
     }
 
-    if (((strstr(string1,"magnetic_pk") != NULL) || (strstr(string1,"pk_magnetic") != NULL) || (strstr(string1,"magPk") != NULL))) {
+    if (((strstr(string1,"magnetic_pk") != NULL) ||
+         (strstr(string1,"pk_magnetic") != NULL) ||
+         (strstr(string1,"magPk") != NULL))) {
       ppt2->has_perturbations2 = _TRUE_;
       ppt2->has_pks = _TRUE_;
       ppt2->has_pk_magnetic = _TRUE_;
     }
 
-    if (((strstr(string1,"delta_cdm_bk") != NULL) || (strstr(string1,"bk_delta_cdm") != NULL) || (strstr(string1,"mBisp") != NULL))) {
+    if (((strstr(string1,"delta_cdm_bk") != NULL) || /* obsolete */
+         (strstr(string1,"bk_delta_cdm") != NULL) || /* obsolete */
+         (strstr(string1,"delta2_cdm_bk") != NULL) ||
+         (strstr(string1,"bk_delta2_cdm") != NULL) ||
+         (strstr(string1,"mBisp") != NULL) ||
+         (strstr(string1,"mBisp2") != NULL))) {
       ppt2->has_perturbations2 = _TRUE_;
       ppt2->has_bk_delta_cdm = _TRUE_;
     }

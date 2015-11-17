@@ -14,7 +14,7 @@
   ppt2->sources[index_tp2]\
                [index_k1]\
                [index_k2]\
-               [(INDEX_TAU)*k_pt_size + (INDEX_K_TRIANGULAR)]
+               [(INDEX_TAU)*k3_size + (INDEX_K_TRIANGULAR)]
 
 
 /*************************************************************************************************************/
@@ -77,15 +77,16 @@ extern "C" {
        struct spectra * psp
        );
 
-  int spectra2_integrate_fourier_sym(
+  int spectra2_integrate_fourier (
   			struct precision * ppr,
         struct precision2 * ppr2,
         struct perturbs * ppt,
         struct primordial * ppm,
         struct perturbs2 * ppt2,
         struct spectra * psp
-  			);
-			
+        );
+
+
   int spectra2_integrate_fourier(
   			struct precision * ppr,
         struct precision2 * ppr2,

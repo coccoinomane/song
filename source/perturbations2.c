@@ -1798,7 +1798,7 @@ int perturb2_get_k_lists (
       k_out[2*index_k_out] = ppt2->k1_out[index_k_out];
       k_out[2*index_k_out+1] = ppt2->k2_out[index_k_out];
     }
-    
+
     /* Also add the largest and smallest between the k3 output values. We won't
     be producing output for these values, we add them just to avoid SONG
     complaining about k3 being out of bounds. */
