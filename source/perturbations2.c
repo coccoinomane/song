@@ -443,6 +443,178 @@ int perturb2_init (
 
 
 
+/**
+ * Interpolate the source function in the given k3 value.
+ *
+ * The source function will be interpolated from the array ppt2->sources,
+ * using the interpolation method chosen in ppt2->sources_k3_interpolation.
+ *
+ * TODO: implement spline interpolation.
+ * TODO: add argument to extra sources at all times.
+ */
+
+int perturb2_sources_at_k3 (
+     struct precision2 * ppr2,
+     struct perturbs * ppt,
+     struct perturbs2 * ppt2,
+     int index_tp2, /**< Input: source function type for which to interpolate the source function */
+     int index_k1, /**< Input: k1 value in ppt2->k where to evaluate the source function */
+     int index_k2, /**< Input: k2 value in ppt2->k where to evaluate the source function */
+     double k3, /**< Input: k3 value where to interpolate the source function */
+     int index_tau, /**< Input: time in ppt2->tau_sampling when to evaluate the source function */
+     int extrapolate, /**< Input: if true, extrapolate the source in case k3 is outside the region
+                      computed by SONG for this (k1,k2) pair. If false, use the closest neighbour. */
+     double * source /**< Output: the source function interpolated in k3 */
+     )
+{
+  
+  double k1 = ppt2->k[index_k1];
+  double k2 = ppt2->k[index_k2];
+
+  class_test (k3<fabs(k1-k2) || k3>(k1+k2),
+    ppt2->error_message,
+    "(k1,k2,k3)=(%g,%g,%g) does not satisfy the triangular condition",
+    k1, k2, k3);
+
+  class_test (k3 < ppt2->k_min,
+    ppt2->error_message,
+    "(k1,k2,k3)=(%g,%g,%g), k3 is smaller than k_min=%d", k1, k2, k3, ppt2->k_min);
+
+  class_test (k3 > ppt2->k_max,
+    ppt2->error_message,
+    "(k1,k2,k3)=(%g,%g,%g), k3 is larger than k_max=%d", k1, k2, k3, ppt2->k_max);
+
+  /* Number of nodes for this (k1,k2) pair */
+  int k3_size = ppt2->k3_size[index_k1][index_k2];
+  
+  /* k3 grid for this (k1,k2) pair */
+  double * k3_grid = ppt2->k3[index_k1][index_k2];
+
+  /* Shortcut to access the source function as a function of k3 */
+  #define S(index_k3) ppt2->sources[index_tp2][index_k1][index_k2][index_tau*k3_size+index_k3]
+
+  /* First and last node for this (k1,k2) pair */
+  double k3_min = _HUGE_;
+  double k3_max = 0;
+  if (k3_size > 0) {
+    k3_min = k3_grid[0];
+    k3_max = k3_grid[k3_size-1];
+  }
+
+
+
+  // ====================================================================================
+  // =                                   Special cases                                  =
+  // ====================================================================================
+
+  /* Special case A: if for this (k1,k2) there are no l3 nodes, then return zero
+  and tell the user the sampling was insufficient to interpolate. */
+
+  if (k3_size <= 0) {
+        
+    *source = 0;
+    
+    class_stop (ppt2->error_message, "found k3_size=%d for index_k1=%d, index_k2=%d",
+      k3_size, index_k1, index_k2);
+      
+    return _SUCCESS_;    
+ 
+  }
+
+
+  /* Special case B: if for this (k1,k2) there is only one k3 node, return its value */
+  
+  else if (k3_size == 1) {
+    
+    *source = S(0);
+      
+    return _SUCCESS_;    
+    
+  }
+
+  /* Special case C: if the requested k3 is smaller than the first node, extrapolate
+  backward linearly using the slope of the first two nodes, unless extrapolate==_FALSE,
+  in which case return the value at the first node. */
+
+  else if (k3 < k3_min) {
+
+    if (extrapolate == _FALSE_) {
+
+      *source = S(0);
+
+    }
+    else {
+
+      double slope = (S(1)-S(0)) / (k3_grid[1]-k3_grid[0]);
+      *source = S(0) - (k3_grid[0]-k3) * slope;
+   
+    }
+
+    return _SUCCESS_; 
+    
+  }
+
+  /* Special case D: if the requested k3 is larger than the last node, extrapolate
+  forward linearly using the slope of the last two nodes, unless extrapolate==_FALSE,
+  in which case return the value at the last node. */
+  
+  else if (k3 > k3_max) {
+    
+    if (extrapolate == _FALSE_) {
+    
+      *source = S(k3_size-1);
+
+    }
+    
+    else {
+
+      double slope = (S(k3_size-1)-S(k3_size-2)) / (k3_grid[k3_size-1]-k3_grid[k3_size-2]);
+      *source = S(k3_size-1) + (k3-k3_grid[k3_size-1]) * slope;
+
+    }
+  
+    return _SUCCESS_; 
+        
+  }
+
+
+  // ====================================================================================
+  // =                                   Interpolation                                  =
+  // ====================================================================================
+
+  /* Store the source as a function of k3 in an array */
+  double * sources_array = calloc (k3_size, sizeof(double));
+  for (int index_k3=0; index_k3 < k3_size; ++index_k3)
+    sources_array[index_k3] = S(index_k3);
+
+  /* Interpolate the source function in k3 using CLASS default function */
+  int dump;
+  class_call (array_interpolate_linear (
+                k3_grid,
+                k3_size,
+                sources_array,
+                1,
+                k3,
+                &dump,
+                source,
+                1,
+                ppt2->error_message),
+    ppt2->error_message,
+    ppt2->error_message);
+
+  free (sources_array);
+  #undef S
+  
+  return _SUCCESS_;
+  
+}
+
+
+
+
+
+
+
 
 /**
  * Allocate the k1 level of the array for the second-order line of sight
@@ -2323,7 +2495,7 @@ int perturb2_get_k_lists (
       ppt2->count_k_configurations += k3_size;
 
       /* Debug - Print out the k3 list for a special configuration */
-      // if ((index_k1==9) && (index_k2==5)) {
+      // if ((index_k1==0) && (index_k2==0)) {
       //
       //   fprintf (stderr, "k1[%d]=%.17f, k2[%d]=%.17f, k3_size=%d, k3_min=%.17f, k3_max=%.17f\n",
       //     index_k1, k1, index_k2, k2, k3_size, k3_min, k3_max);

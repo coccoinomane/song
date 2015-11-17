@@ -124,7 +124,7 @@ int main(int argc, char **argv) {
   
   /* Compute the intrinsic C_l */
   if (spectra2_init(&pr,&pr2,&ba,&th,&pt,&pt2,&bs,&bs2,&tr,&tr2,&pm,&le,&bi,&sp) == _FAILURE_) {
-    printf("\n\nError in bispectra2_init \n=>%s\n",bi.error_message);
+    printf("\n\nError in spectra2_init \n=>%s\n",sp.error_message);
     return _FAILURE_;
   }
 

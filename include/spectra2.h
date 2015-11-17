@@ -125,12 +125,6 @@ extern "C" {
         double * interpolated_sources_in_k
         );
 
-  int spectra2_get_k3_size (
-        struct precision * ppr,
-        struct precision2 * ppr2,
-        struct perturbs2 * ppt2,
-        struct spectra * psp
-        );
       
 #ifdef __cplusplus
 }

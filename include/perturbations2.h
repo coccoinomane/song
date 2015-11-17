@@ -1813,6 +1813,19 @@ struct perturb2_parameters_and_workspace {
          struct perturbs2 * ppt2
          );
 
+    int perturb2_sources_at_k3 (
+         struct precision2 * ppr2,
+         struct perturbs * ppt,
+         struct perturbs2 * ppt2,
+         int index_tp2,
+         int index_k1,
+         int index_k2,
+         double k3,
+         int index_tau,
+         int extrapolate,
+         double * source
+         );
+
     int perturb2_free(
          struct precision2 * ppr2,
          struct perturbs2 * ppt2
