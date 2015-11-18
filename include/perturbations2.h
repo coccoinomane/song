@@ -1828,6 +1828,7 @@ struct perturb2_parameters_and_workspace {
          int index_k1,
          int index_k2,
          double k3,
+         int index_k3,
          int index_tau,
          int extrapolate,
          double * source

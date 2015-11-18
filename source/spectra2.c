@@ -1103,7 +1103,7 @@ int spectra2_integrate_fourier (
             regular trapezoidal step */
             else
               step_k2 = (psp->k[index_k2+1] - psp->k[index_k2-1])/2;
-            
+
           }
 
           /* Primordial spectrum of curvature potential phi in k2 */
@@ -1112,6 +1112,7 @@ int spectra2_integrate_fourier (
           /* Loop over time, no integration */
           
           for (int index_tau = 0; index_tau < ppt2->tau_size; ++index_tau) {
+
 
             // ---------------------------------------------------------------------------------
             // -                                Interpolate in k3                              -
@@ -1127,6 +1128,7 @@ int spectra2_integrate_fourier (
                                    index_k1,
                                    index_k2,
                                    k3,
+                                   -1,
                                    index_tau,
                                    _TRUE_,
                                    &source),
