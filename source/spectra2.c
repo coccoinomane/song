@@ -572,7 +572,28 @@ int spectra2_pks (
      struct spectra * psp
      )
 {
+  
+  
+  // ====================================================================================
+  // =                              Store primordial P(k)                               =
+  // ====================================================================================
+  
+  /* Store the primordial power spectrum inside the spectra structure for faster access */
 
+  class_call (spectra_primordial_power_spectrum(
+                pba,
+                ppt,
+                ptr,
+                ppm,
+                psp),
+    psp->error_message,
+    pbi->error_message);
+
+
+
+  // ====================================================================================
+  // =                                  Compute P(k)                                    =
+  // ====================================================================================
 
   class_call (spectra2_integrate_fourier (
                 ppr,
@@ -583,6 +604,8 @@ int spectra2_pks (
                 psp),
     psp->error_message,
     psp->error_message);
+
+
 
 
 //    class_call(spectra2_get_k3_size (
@@ -850,6 +873,9 @@ int spectra2_integrate_fourier (
     // =                                  Cycle over k1                                    =
     // =====================================================================================
 
+    int abort = _FALSE_;
+
+    #pragma omp parallel for schedule(dynamic)
     for (int index_k1 = 0; index_k1 < psp->k_size; ++index_k1) {
 
       double k1 = psp->k[index_k1];
@@ -858,11 +884,10 @@ int spectra2_integrate_fourier (
         printf ("     * computing integral for index_k1=%d of %d, k1=%g\n",
         index_k1, ppt2->k_size, k1);
 
-      /* TODO: should we move this? */
       if (ppr2->load_sources_from_disk || ppr2->store_sources_to_disk)
-        class_call(perturb2_load_sources_from_disk(ppt2, index_k1),
-          ppt2->error_message,
-          psp->error_message);
+        class_call_parallel (perturb2_load_sources_from_disk(ppt2, index_k1),
+                               ppt2->error_message,
+                               psp->error_message);
 
       /* Find stepsize */
       double step_k1;
@@ -870,17 +895,8 @@ int spectra2_integrate_fourier (
       else if (index_k1 == psp->k_size-1) step_k1 = (psp->k[psp->k_size-1] - psp->k[psp->k_size-2])/2;
       else step_k1 = (psp->k[index_k1+1] - psp->k[index_k1-1])/2;
 
-      /* Primordial spectrum k1 */
-      double spectra_k1;
-      class_call (primordial_spectrum_at_k (
-                             ppm,
-                             index_md,
-                             linear,
-                             k1,
-                             &spectra_k1),
-        ppm->error_message,
-        psp->error_message);
-      spectra_k1 = 2*_PI_*_PI_/(k1*k1*k1) * spectra_k1;
+      /* Primordial spectrum of curvature potential phi in k1 */
+      double spectra_k1 = psp->pk_pt[index_k1];
 
 
       // =====================================================================================
@@ -938,7 +954,7 @@ int spectra2_integrate_fourier (
         limits on k2 coincide: k2_min=psp->k[0]=k1 and k2_max=k1=psp->k[0]; in 
         this case, the integration range will vanish rather than being strictly
         positive */
-        class_test (k2_max-k2_min<-ppr->smallest_allowed_variation && k2_size>0,
+        class_test_parallel (k2_max-k2_min<-ppr->smallest_allowed_variation && k2_size>0,
           psp->error_message,
           "Tound negative integration range: k2_max-k2_min=%27.17g",
           k2_max-k2_min);
@@ -954,7 +970,7 @@ int spectra2_integrate_fourier (
           double k2 = psp->k[index_k2];
 
           /* The indexing in this loop ensures that the triangular condition is respected */
-          class_test (k1+k2<k3 || fabs(k1-k2)>k3,
+          class_test_parallel (k1+k2<k3 || fabs(k1-k2)>k3,
             psp->error_message,
             "triangular condition should be respected at this point!");
 
@@ -966,7 +982,7 @@ int spectra2_integrate_fourier (
           /* Find the correct stepsize for k2 based on the triangular inequality */
 
           double step_k2;
-          
+
           int use_chris_step = _FALSE_;
 
           /* Chris's step */
@@ -978,7 +994,6 @@ int spectra2_integrate_fourier (
     				else if (index_k2 == 0) step_k2_trapez = (psp->k[1] - psp->k[0])/2.;
             else if (index_k2 == index_k1) step_k2_trapez = (psp->k[index_k1] - psp->k[index_k1-1])/2.;
             else step_k2_trapez = (psp->k[index_k2+1] - psp->k[index_k2 -1])/2.;
-
 
             /* First region, excluded by triangular equality */
             if (k1 < k3/2) {
@@ -1084,24 +1099,15 @@ int spectra2_integrate_fourier (
             // else if (index_k2 == index_k2_max && index_k2_max == index_k1)  /* Chris */
             //   step_k2 = (psp->k[index_k2_max] - psp->k[index_k2_max-1])/2;
 
-            /* If we are not adjacent from the triangular region, we take the
+            /* If we are not adjacent to the triangular region, we take the
             regular trapezoidal step */
-            else step_k2 = (psp->k[index_k2+1] - psp->k[index_k2-1])/2;
+            else
+              step_k2 = (psp->k[index_k2+1] - psp->k[index_k2-1])/2;
             
           }
 
-          /* Primordial spectrum k2 */
-          double spectra_k2;
-          class_call (primordial_spectrum_at_k (
-                                 ppm,
-                                 index_md,
-                                 linear,
-                                 k2,
-                                 &spectra_k2),
-            ppm->error_message,
-            psp->error_message);
-          spectra_k2 = 2*_PI_*_PI_/(k2*k2*k2) * spectra_k2;
-  
+          /* Primordial spectrum of curvature potential phi in k2 */
+          double spectra_k2 = psp->pk_pt[index_k2];  
 
           /* Loop over time, no integration */
           
@@ -1113,17 +1119,17 @@ int spectra2_integrate_fourier (
 
             double source;
 
-            class_call (perturb2_sources_at_k3 (
-                          ppr2,
-                          ppt,
-                          ppt2,
-                          index_tp2,
-                          index_k1,
-                          index_k2,
-                          k3,
-                          index_tau,
-                          _TRUE_,
-                          &source),
+            class_call_parallel (perturb2_sources_at_k3 (
+                                   ppr2,
+                                   ppt,
+                                   ppt2,
+                                   index_tp2,
+                                   index_k1,
+                                   index_k2,
+                                   k3,
+                                   index_tau,
+                                   _TRUE_,
+                                   &source),
               ppt2->error_message,
               psp->error_message);
 
@@ -1132,8 +1138,7 @@ int spectra2_integrate_fourier (
             // -                               Increment integral                              -
             // ---------------------------------------------------------------------------------
 
-            pk[index_pk][index_tau*psp->k_size + index_k3] +=
-
+            double integrand = 
               // symmetry factor (doing only half plane in k1 k2)
                2 *
               // integration weight
@@ -1158,6 +1163,9 @@ int spectra2_integrate_fourier (
               //*_c_*_c_*_c_* 6.652 * 1.e-29 * 1.e-6 * 1.878 * 1.e-26 / 1.602 / 1.e-19
               ;
 
+            #pragma omp atomic
+            pk[index_pk][index_tau*psp->k_size + index_k3] += integrand;
+
           } // for(index_tau)
 
         } // for(index_k3)
@@ -1165,22 +1173,17 @@ int spectra2_integrate_fourier (
       } // for(index_k2)
 
       if (ppr2->load_sources_from_disk || ppr2->store_sources_to_disk)
-        class_call (perturb2_free_k1_level (ppt2, index_k1),
+        class_call_parallel (perturb2_free_k1_level (ppt2, index_k1),
           ppt2->error_message, ppt2->error_message);
 
-    } // for(index_k1)    
+    #pragma omp flush(abort)
+
+    } // for(index_k1)
+    
+    if (abort == _TRUE_)
+      return _FAILURE_;
 
   } // for(index_pk)
-
-
-  
-  // ====================================================================================
-  // =                                   Interpolate P(k)                               =
-  // ====================================================================================
-
-  /* So far we have computed the second-order power spectra in ppt2->k. CLASS however
-  outputs P(k) in ppt->k. Here we interpolate SONG power spectrum in CLASS output
-  values. */
 
 
 
@@ -1215,7 +1218,17 @@ int spectra2_integrate_fourier (
   free (index_k_triangular_max);
   free (k_triangular_size);
   free (pk);
-    
+  
+  
+  
+  // ====================================================================================
+  // =                                   Interpolate P(k)                               =
+  // ====================================================================================
+
+  /* So far we have computed the second-order power spectra in ppt2->k. CLASS however
+  outputs P(k) in ppt->k. Here we interpolate SONG power spectrum in CLASS output
+  values. */
+
 	return _SUCCESS_;
 	
 }

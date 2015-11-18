@@ -184,6 +184,7 @@ int bispectra2_harmonic (
                   ptr,
                   ptr2,
                   ppm,
+                  psp,
                   pbi,
                   pwb),
       pbi->error_message,
@@ -200,6 +201,7 @@ int bispectra2_harmonic (
                   ptr,
                   ptr2,
                   ppm,
+                  psp,
                   pbi,
                   pwb),
       pbi->error_message,
@@ -307,6 +309,7 @@ int bispectra2_intrinsic_init (
     struct transfers * ptr,
     struct transfers2 * ptr2,
     struct primordial * ppm,
+    struct spectra * psp,
     struct bispectra * pbi,
     struct bispectra_workspace_intrinsic * pwb
     )
@@ -498,6 +501,7 @@ int bispectra2_intrinsic_init (
                         ptr,
                         ptr2,
                         ppm,
+                        psp,
                         pbi,
                         pwb->index_tt2_of_bf[X],
                         index_M3,
@@ -522,6 +526,7 @@ int bispectra2_intrinsic_init (
                           ptr,
                           ptr2,
                           ppm,
+                          psp,
                           pbi,
                           pbi->index_tt_of_bf[Y],
                           pwb),
@@ -572,6 +577,7 @@ int bispectra2_intrinsic_init (
                               ptr,
                               ptr2,
                               ppm,
+                              psp,
                               pbi,
                               pbi->index_tt_of_bf[Z],
                               offset_L1,
@@ -591,6 +597,7 @@ int bispectra2_intrinsic_init (
                               ptr,
                               ptr2,
                               ppm,
+                              psp,
                               pbi,
                               pwb),
                   pbi->error_message,
@@ -612,6 +619,7 @@ int bispectra2_intrinsic_init (
                               ptr,
                               ptr2,
                               ppm,
+                              psp,
                               pbi,
                               index_bt,
                               index_M3,
@@ -816,6 +824,7 @@ int bispectra2_intrinsic_workspace_init (
     struct transfers * ptr,
     struct transfers2 * ptr2,
     struct primordial * ppm,
+    struct spectra * psp,
     struct bispectra * pbi,
     struct bispectra_workspace_intrinsic * pwb
     )
@@ -874,7 +883,7 @@ int bispectra2_intrinsic_workspace_init (
   for (int index_k=0; index_k < pwb->k_smooth_size; ++index_k) {
   
     double k = pwb->k_smooth_grid[index_k];
-    double pk = pbi->pk_pt[index_k];
+    double pk = psp->pk_pt[index_k];
   
     pwb->k_window[index_k] = 1/pow(k,2);
   }
@@ -885,7 +894,7 @@ int bispectra2_intrinsic_workspace_init (
   for (int index_k=0; index_k < ptr->q_size; ++index_k) {
 
     double k = ptr->q[index_k];
-    double pk = pbi->pk[index_k];
+    double pk = psp->pk[index_k];
 
     pwb->k_window_inverse[index_k] = pow(k,2);
   }
@@ -1114,6 +1123,7 @@ int bispectra2_intrinsic_integrate_over_k3 (
     struct transfers * ptr,
     struct transfers2 * ptr2,
     struct primordial * ppm,
+    struct spectra * psp,
     struct bispectra * pbi,
     int index_tt2_k3,
     int index_M3,
@@ -1455,6 +1465,7 @@ int bispectra2_interpolate_over_k2 (
     struct transfers * ptr,
     struct transfers2 * ptr2,
     struct primordial * ppm,
+    struct spectra * psp,
     struct bispectra * pbi,
     int index_r,
     int index_k1,
@@ -1565,7 +1576,7 @@ int bispectra2_interpolate_over_k2 (
 #endif // DEBUG
 
     /* Further convolve with the primordial power spectrum */
-    interpolated_integral[index_k_tr] *= pbi->pk[index_k_tr];
+    interpolated_integral[index_k_tr] *= psp->pk[index_k_tr];
 
     /* Test for nans */
     class_test (isnan(interpolated_integral[index_k_tr]),
@@ -1595,7 +1606,7 @@ int bispectra2_interpolate_over_k2 (
   // 
   //   /* Interpolation after inverse window */  
   //   for (index_k_tr = 0; index_k_tr < k_tr_size; ++index_k_tr)
-  //     fprintf (stderr, "%17.7g %17.7g\n", k_tr[index_k_tr], interpolated_integral[index_k_tr]/pbi->pk[index_k_tr]);
+  //     fprintf (stderr, "%17.7g %17.7g\n", k_tr[index_k_tr], interpolated_integral[index_k_tr]/psp->pk[index_k_tr]);
   // 
   //   fprintf (stderr, "\n\n");
   //   
@@ -1620,6 +1631,7 @@ int bispectra2_intrinsic_integrate_over_k2 (
     struct transfers * ptr,
     struct transfers2 * ptr2,
     struct primordial * ppm,
+    struct spectra * psp,
     struct bispectra * pbi,
     int index_tt_k2,
     struct bispectra_workspace_intrinsic * pwb
@@ -1726,6 +1738,7 @@ int bispectra2_intrinsic_integrate_over_k2 (
                                  ptr,
                                  ptr2,
                                  ppm,
+                                 psp,
                                  pbi,
                                  index_r,
                                  index_k1,
@@ -1766,7 +1779,7 @@ int bispectra2_intrinsic_integrate_over_k2 (
           //         for (index_k2=0; index_k2 < ptr->q_size; ++index_k2)
           //           fprintf (stderr, "%17.7g %17.7g\n",
           //             ptr->q[index_k2],
-          //             pwb->interpolated_integral[thread][index_k2]/pbi->pk[index_k2]);
+          //             pwb->interpolated_integral[thread][index_k2]/psp->pk[index_k2]);
 
           for (int index_l2 = 0; index_l2 < pbi->l_size; ++index_l2) {  
   
@@ -1857,6 +1870,7 @@ int bispectra2_interpolate_over_k1 (
     struct transfers * ptr,
     struct transfers2 * ptr2,
     struct primordial * ppm,
+    struct spectra * psp,
     struct bispectra * pbi,
     int index_r,
     int index_l3,
@@ -1941,7 +1955,7 @@ int bispectra2_interpolate_over_k1 (
 #endif // DEBUG
 
     /* Further convolve with the primordial power spectrum */
-    interpolated_integral[index_k_tr] *= pbi->pk[index_k_tr];
+    interpolated_integral[index_k_tr] *= psp->pk[index_k_tr];
 
     /* Test for nans */
     class_test (isnan(interpolated_integral[index_k_tr]),
@@ -1971,7 +1985,7 @@ int bispectra2_interpolate_over_k1 (
   // 
   //   /* Interpolation after inverse window */  
   //   for (index_k_tr = 0; index_k_tr < k_tr_size; ++index_k_tr)
-  //     fprintf (stderr, "%17.7g %17.7g\n", k_tr[index_k_tr], interpolated_integral[index_k_tr]/pbi->pk[index_k_tr]);
+  //     fprintf (stderr, "%17.7g %17.7g\n", k_tr[index_k_tr], interpolated_integral[index_k_tr]/psp->pk[index_k_tr]);
   // 
   //   fprintf (stderr, "\n\n");
   //   
@@ -2002,6 +2016,7 @@ int bispectra2_intrinsic_integrate_over_k1 (
     struct transfers * ptr,
     struct transfers2 * ptr2,
     struct primordial * ppm,
+    struct spectra * psp,
     struct bispectra * pbi,
     int index_tt_k1,
     int offset_L1,
@@ -2081,7 +2096,7 @@ int bispectra2_intrinsic_integrate_over_k1 (
   /* We parallelize the loop over 'r'. */
   abort = _FALSE_;
   #pragma omp parallel              \
-    shared (ppt,ppt2,pbs,ptr,ptr2,ppm,pbi,pwb,abort)       \
+    shared (ppt,ppt2,pbs,ptr,ptr2,ppm,psp,pbi,pwb,abort)       \
     private (thread)
   {
   
@@ -2137,6 +2152,7 @@ int bispectra2_intrinsic_integrate_over_k1 (
                           ptr,
                           ptr2,
                           ppm,
+                          psp,
                           pbi,
                           index_r,
                           index_l3,
@@ -2300,6 +2316,7 @@ int bispectra2_intrinsic_integrate_over_r(
     struct transfers * ptr,
     struct transfers2 * ptr2,
     struct primordial * ppm,
+    struct spectra * psp,
     struct bispectra * pbi,
     struct bispectra_workspace_intrinsic * pwb
     )
@@ -2356,7 +2373,7 @@ int bispectra2_intrinsic_integrate_over_r(
     
   /* We parallelize the outer loop over 'l3'. */
   int abort = _FALSE_;
-  #pragma omp parallel shared (ppt,ppt2,pbs,ptr,ptr2,ppm,pbi,pwb,abort)
+  #pragma omp parallel shared (ppt,ppt2,pbs,ptr,ptr2,ppm,psp,pbi,pwb,abort)
   {
   
     #pragma omp for schedule (dynamic)
@@ -2463,6 +2480,7 @@ int bispectra2_intrinsic_geometrical_factors (
     struct transfers * ptr,
     struct transfers2 * ptr2,
     struct primordial * ppm,
+    struct spectra * psp,    
     struct bispectra * pbi,
     int index_bt,
     int index_M3,

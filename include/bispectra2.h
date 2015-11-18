@@ -227,6 +227,7 @@ int bispectra2_indices (
       struct transfers * ptr,
       struct transfers2 * ptr2,
       struct primordial * ppm,
+      struct spectra * psp,
       struct bispectra * pbi,
       struct bispectra_workspace_intrinsic * pwb
       );
@@ -243,6 +244,7 @@ int bispectra2_indices (
       struct transfers * ptr,
       struct transfers2 * ptr2,
       struct primordial * ppm,
+      struct spectra * psp,
       struct bispectra * pbi,
       struct bispectra_workspace_intrinsic * pwb
       );
@@ -265,6 +267,7 @@ int bispectra2_indices (
       struct transfers * ptr,
       struct transfers2 * ptr2,
       struct primordial * ppm,
+      struct spectra * psp,
       struct bispectra * pbi,
       int index_tt2_k3,
       int index_M3,
@@ -282,6 +285,7 @@ int bispectra2_indices (
       struct transfers * ptr,
       struct transfers2 * ptr2,
       struct primordial * ppm,
+      struct spectra * psp,
       struct bispectra * pbi,
       int index_r,
       int index_k1,
@@ -302,6 +306,7 @@ int bispectra2_indices (
       struct transfers * ptr,
       struct transfers2 * ptr2,
       struct primordial * ppm,
+      struct spectra * psp,
       struct bispectra * pbi,
       int index_tt_k2,
       struct bispectra_workspace_intrinsic * pwb
@@ -317,6 +322,7 @@ int bispectra2_indices (
       struct transfers * ptr,
       struct transfers2 * ptr2,
       struct primordial * ppm,
+      struct spectra * psp,
       struct bispectra * pbi,
       int index_r,
       int index_l3,
@@ -338,6 +344,7 @@ int bispectra2_indices (
       struct transfers * ptr,
       struct transfers2 * ptr2,
       struct primordial * ppm,
+      struct spectra * psp,
       struct bispectra * pbi,
       int index_tt_k1,
       int offset_L1,
@@ -354,6 +361,7 @@ int bispectra2_indices (
       struct transfers * ptr,
       struct transfers2 * ptr2,
       struct primordial * ppm,
+      struct spectra * psp,
       struct bispectra * pbi,
       struct bispectra_workspace_intrinsic * pwb
       );
@@ -368,6 +376,7 @@ int bispectra2_indices (
       struct transfers * ptr,
       struct transfers2 * ptr2,
       struct primordial * ppm,
+      struct spectra * psp,      
       struct bispectra * pbi,
       int index_bt,
       int index_M3,
