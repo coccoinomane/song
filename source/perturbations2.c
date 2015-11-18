@@ -1395,6 +1395,121 @@ int perturb2_get_lm_lists (
       }
     }
   }
+  
+  
+  // ------------------------------------------------------------------------------------
+  // -                          Type-multipole correspondence                           -
+  // ------------------------------------------------------------------------------------
+  
+  /* Find the correspondence between type indices and (l,m) multipoles. 
+  In the perturbation2 module a source type index (index_tp2) includes both the
+  multipole (l,m) and source type (T, E, B...) information. The lm_arrays we have
+  defined above define a correspondence from the (l,m) multipole and the type index;
+  here, we do the inverse operation by associating to the ppt2->index_tp2_XXX
+  indices their type and multipole indices (l,m). Note that for simple sources
+  like the density of cold dark matter, the start of the hierarchy correspond to
+  the index itself.*/
+
+  class_alloc (ppt2->tp2_to_l, ppt2->tp2_size*sizeof(int), ppt2->error_message);
+  class_alloc (ppt2->tp2_to_index_m, ppt2->tp2_size*sizeof(int), ppt2->error_message);
+  class_alloc (ppt2->tp2_start, ppt2->tp2_size*sizeof(int), ppt2->error_message);
+
+  for (int index_tp = 0; index_tp < ppt2->tp2_size; index_tp++) {
+
+    int l = -1;
+    int index_m = -1;
+    int l_max = -1;
+
+    /* - Photon temperature */
+
+    if (ppt2->has_source_T && index_tp >= ppt2->index_tp2_T && index_tp < ppt2->index_tp2_T+ppt2->n_sources_T) {
+
+      /* Find the position of the first index of the same type as index_tp */
+      ppt2->tp2_start[index_tp] = ppt2->index_tp2_T;
+
+      /* Find the l and m multipoles associated with index_tp */
+      l_max = ppr2->l_max_los_t;
+      int lm_offset = index_tp - ppt2->tp2_start[index_tp];
+      offset2multipole_l_indexm (lm_offset, l_max, ppt2->m, ppt2->m_size, &l, &index_m);
+                                 
+      /* Set the labels of the transfer types */
+      sprintf(ppt2->tp2_labels[index_tp], "T_%d_%d",l,ppt2->m[index_m]);
+
+      /* Some debug */
+      // printf("T, index_tp=%d: lm_offset=%d -> (%d,%d), label=%s, monopole = %d\n",
+      //   index_tp, lm_offset, l, ppt2->m[index_m],
+      //   ppt2->tp2_labels[index_tp], ppt2->tp2_start[index_tp]);
+
+    }
+
+    /* - Photon E-mode polarization */
+
+    else if (ppt2->has_source_E && index_tp >= ppt2->index_tp2_E && index_tp < ppt2->index_tp2_E+ppt2->n_sources_E) {
+
+      ppt2->tp2_start[index_tp] = ppt2->index_tp2_E;
+      l_max = ppr2->l_max_los_p;
+      int lm_offset = index_tp - ppt2->tp2_start[index_tp];
+      offset2multipole_l_indexm (lm_offset, l_max, ppt2->m, ppt2->m_size, &l, &index_m);
+      sprintf(ppt2->tp2_labels[index_tp], "E_%d_%d",l,ppt2->m[index_m]);
+
+      /* Some debug */
+      // printf("E, index_tp=%d: lm_offset=%d -> (%d,%d), label=%s, monopole = %d\n",
+      //   index_tp, lm_offset, l, ppt2->m[index_m],
+      //   ppt2->tp2_labels[index_tp], ppt2->tp2_start[index_tp]);
+
+    }
+
+    /* Photon B-mode polarization */
+
+    else if (ppt2->has_source_B && index_tp >= ppt2->index_tp2_B && index_tp < ppt2->index_tp2_B+ppt2->n_sources_B) {
+      
+      ppt2->tp2_start[index_tp] = ppt2->index_tp2_B;
+      l_max = ppr2->l_max_los_p;
+      int lm_offset = index_tp - ppt2->tp2_start[index_tp];
+      offset2multipole_l_indexm (lm_offset, l_max, ppt2->m, ppt2->m_size, &l, &index_m);
+      sprintf(ppt2->tp2_labels[index_tp], "B_%d_%d",l,ppt2->m[index_m]);
+
+      /* Some debug */
+      // printf("B, index_tp=%d: lm_offset=%d -> (%d,%d), label=%s, monopole = %d\n",
+      //   index_tp, lm_offset, l, ppt2->m[index_m],
+      //   ppt2->tp2_labels[index_tp], ppt2->tp2_start[index_tp]);
+
+    }
+
+    /* - CDM density */
+
+    else if (ppt2->has_source_delta_cdm && index_tp == ppt2->index_tp2_delta_cdm) {
+      
+      ppt2->tp2_start[index_tp] = ppt2->index_tp2_delta_cdm;
+      l = 0;
+      index_m = ppr2->index_m[0];
+
+    }
+
+    /* - Magnetic field */
+
+    else if (ppt2->has_source_M && index_tp == ppt2->index_tp2_M) {
+      
+      ppt2->tp2_start[index_tp] = ppt2->index_tp2_M;
+      l = 1;
+      index_m = ppr2->index_m[1];
+
+    }
+
+
+    /* Check the result */
+    class_test ((l>l_max) || (index_m>=ppt2->m_size) || (l<0) || (index_m<0),
+      ppt2->error_message,
+      "index_tp=%d: result (l,index_m)=(%d,%d) is out of bounds l=[%d,%d], index_m=[%d,%d]\n",
+      index_tp, l, index_m, 0, l_max, 0, ppt2->m_size-1);    
+
+    /* Write the result */
+    ppt2->tp2_to_l[index_tp] = l;
+    ppt2->tp2_to_index_m[index_tp] = index_m;
+
+  } // end of for (index_tp)
+
+
 
 
   // ======================================================================================
@@ -7573,6 +7688,10 @@ int perturb2_free(
 
   if (ppt2->has_perturbations2 == _TRUE_) {
     
+    free (ppt2->tp2_to_l);
+    free (ppt2->tp2_to_index_m);
+    free (ppt2->tp2_start);
+      
     free (ppt2->pf_labels);
     free (ppt2->tp2_labels);
     

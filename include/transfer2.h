@@ -133,10 +133,16 @@ struct transfers2 {
 
   // *** Correspondance between (type,l,m) and index_tt
 
-  int * index_tt2_monopole;      /* index_tt2_monopole[index_tt] is the index in ptr2->transfer of the monopole corresponding to index_tt */
-  int * index_pt2_monopole;      /* index_pt2_monopole[index_tt] is the index in ppt2->sources of the monopole corresponding to index_tt */
-  int * corresponding_index_l;   /* corresponding_index_l[index_tt] is the index in ptr2->l corresponding to index_tt */
-  int * corresponding_index_m;   /* corresponding_index_m[index_tt] is the index in ptr2->m corresponding to index_tt */
+  int * tt2_to_index_l;    /**< Array with the correspondence between ptr2->index_tt2_XXX
+                           index and l multipole index */
+  int * tt2_to_index_m;    /**< Array with the correspondence between ptr2->index_tt2_XXX
+                           index and m multipole index */
+  int * tt2_start;         /**< Array with the correspondence between ptr2->index_tt2_XXX
+                           index and the start of the hierarchy to which the index belongs */
+  int * tp2_start;         /**< Array with the correspondence between ptr2->index_tt2_XXX
+                           index and the start of the hierarchy to which the index belongs 
+                           in the source array */
+
 
   /* 'lm_array[index_l][index_m]' contains the index associated with a given (l,m) couple.
   To extract the (l,m) multipole of the temperature transfer function, do this:

@@ -521,8 +521,8 @@ int transfer2_init(
                                    index_k1,
                                    index_k2,
                                    index_k,
-                                   ptr2->corresponding_index_l[index_tt],
-                                   ptr2->corresponding_index_m[index_tt],
+                                   ptr2->tt2_to_index_l[index_tt],
+                                   ptr2->tt2_to_index_m[index_tt],
                                    index_tt,
                                    ppw[thread]->interpolated_sources_in_time,
                                    ppw[thread]
@@ -811,10 +811,10 @@ int transfer2_free(
     free (ptr2->l);
     free (ptr2->m);
 
-    free (ptr2->corresponding_index_l);
-    free (ptr2->corresponding_index_m);
-    free (ptr2->index_tt2_monopole);
-    free (ptr2->index_pt2_monopole);
+    free (ptr2->tt2_to_index_l);
+    free (ptr2->tt2_to_index_m);
+    free (ptr2->tt2_start);
+    free (ptr2->tp2_start);
   
     for (int index_l=0; index_l<ptr2->l_size; ++index_l)
       free (ptr2->lm_array[index_l]);
@@ -1114,9 +1114,9 @@ int transfer2_get_l_list (
  *
  * - ptr2->lm_array[index_l][index_m], which contains the index associated with a given (l,m) couple
  *   and is used to access the ptr2->transfer array.
- * - ptr2->corresponding_index_l[index_tt2], which gives the index in ptr2->l for the 
+ * - ptr2->tt2_to_index_l[index_tt2], which gives the index in ptr2->l for the 
  *   considered transfer type.
- * - ptr2->corresponding_index_m[index_tt2], which gives the index in ptr2->m for the 
+ * - ptr2->tt2_to_index_m[index_tt2], which gives the index in ptr2->m for the 
  *   considered transfer type.
  */
 int transfer2_get_lm_lists (
@@ -1180,13 +1180,13 @@ int transfer2_get_lm_lists (
 
   /* For a given transfer type index index_tt, these arrays contain the corresponding
   indices in ptr2->l and ptr2->m */
-  class_alloc (ptr2->corresponding_index_l, ptr2->tt2_size*sizeof(int), ptr2->error_message);
-  class_alloc (ptr2->corresponding_index_m, ptr2->tt2_size*sizeof(int), ptr2->error_message);
+  class_alloc (ptr2->tt2_to_index_l, ptr2->tt2_size*sizeof(int), ptr2->error_message);
+  class_alloc (ptr2->tt2_to_index_m, ptr2->tt2_size*sizeof(int), ptr2->error_message);
 
   /* For a given transfer type index index_tt, these arrays contain the indices corresponding
   to the monopole of index_tt in ptr2->transfers and ppt2->sources, respectively. */
-  class_alloc (ptr2->index_tt2_monopole, ptr2->tt2_size*sizeof(int), ptr2->error_message);
-  class_alloc (ptr2->index_pt2_monopole, ptr2->tt2_size*sizeof(int), ptr2->error_message);
+  class_alloc (ptr2->tt2_start, ptr2->tt2_size*sizeof(int), ptr2->error_message);
+  class_alloc (ptr2->tp2_start, ptr2->tt2_size*sizeof(int), ptr2->error_message);
 
   for (int index_tt = 0; index_tt < ptr2->tt2_size; index_tt++) {
     
@@ -1200,11 +1200,11 @@ int transfer2_get_lm_lists (
     && (index_tt >= ptr2->index_tt2_T) && (index_tt < ptr2->index_tt2_T+ptr2->n_transfers)) {
 
       /* Store the position of the temperature monopole in ppt2->sources and ptr2->transfer */
-      ptr2->index_pt2_monopole[index_tt] = ppt2->index_tp2_T;
-      ptr2->index_tt2_monopole[index_tt] = ptr2->index_tt2_T;
+      ptr2->tp2_start[index_tt] = ppt2->index_tp2_T;
+      ptr2->tt2_start[index_tt] = ptr2->index_tt2_T;
 
       /* Find (l,m) associated with index_tt */
-      int lm_offset = index_tt - ptr2->index_tt2_monopole[index_tt];
+      int lm_offset = index_tt - ptr2->tt2_start[index_tt];
       offset2multipole_indexl_indexm (lm_offset, ptr2->l, ptr2->l_size, ptr2->m, ptr2->m_size,
         &index_l, &index_m);
 
@@ -1215,7 +1215,7 @@ int transfer2_get_lm_lists (
       // printf("T, index_tt=%d: lm_offset=%d -> (%d,%d), label=%s, monopole_tr=%d, monopole_pt=%d\n",
       //   index_tt, lm_offset, ptr2->l[index_l], ptr2->m[index_m],
       //   ptr2->tt2_labels[index_tt],
-      //   ptr2->index_tt2_monopole[index_tt], ptr2->index_pt2_monopole[index_tt]);
+      //   ptr2->tt2_start[index_tt], ptr2->tp2_start[index_tt]);
     }
 
 
@@ -1225,11 +1225,11 @@ int transfer2_get_lm_lists (
     && (index_tt >= ptr2->index_tt2_E) && (index_tt < ptr2->index_tt2_E+ptr2->n_transfers)) {
 
       /* Store the position of the E-modes monopole in ppt2->sources and ptr2->transfer */
-      ptr2->index_pt2_monopole[index_tt] = ppt2->index_tp2_E;
-      ptr2->index_tt2_monopole[index_tt] = ptr2->index_tt2_E;
+      ptr2->tp2_start[index_tt] = ppt2->index_tp2_E;
+      ptr2->tt2_start[index_tt] = ptr2->index_tt2_E;
 
       /* Find (l,m) associated with index_tt */
-      int lm_offset = index_tt - ptr2->index_tt2_monopole[index_tt];
+      int lm_offset = index_tt - ptr2->tt2_start[index_tt];
       offset2multipole_indexl_indexm (lm_offset, ptr2->l, ptr2->l_size, ptr2->m, ptr2->m_size,
         &index_l, &index_m);
 
@@ -1240,7 +1240,7 @@ int transfer2_get_lm_lists (
       // printf("E, index_tt=%d: lm_offset=%d -> (%d,%d), label=%s, monopole_tr=%d, monopole_pt=%d\n",
       //   index_tt, lm_offset, ptr2->l[index_l], ptr2->m[index_m],
       //   ptr2->tt2_labels[index_tt],
-      //   ptr2->index_tt2_monopole[index_tt], ptr2->index_pt2_monopole[index_tt]);
+      //   ptr2->tt2_start[index_tt], ptr2->tp2_start[index_tt]);
     }
 
 
@@ -1250,11 +1250,11 @@ int transfer2_get_lm_lists (
     && (index_tt >= ptr2->index_tt2_B) && (index_tt < ptr2->index_tt2_B+ptr2->n_transfers)) {
 
       /* Store the position of the B-modes monopole in ppt2->sources and ptr2->transfer */
-      ptr2->index_pt2_monopole[index_tt] = ppt2->index_tp2_B;
-      ptr2->index_tt2_monopole[index_tt] = ptr2->index_tt2_B;
+      ptr2->tp2_start[index_tt] = ppt2->index_tp2_B;
+      ptr2->tt2_start[index_tt] = ptr2->index_tt2_B;
 
       /* Find (l,m) associated with index_tt */
-      int lm_offset = index_tt - ptr2->index_tt2_monopole[index_tt];
+      int lm_offset = index_tt - ptr2->tt2_start[index_tt];
       offset2multipole_indexl_indexm (lm_offset, ptr2->l, ptr2->l_size, ptr2->m, ptr2->m_size,
         &index_l, &index_m);
 
@@ -1265,7 +1265,7 @@ int transfer2_get_lm_lists (
       // printf("B, index_tt=%d: lm_offset=%d -> (%d,%d), label=%s, monopole_tr=%d, monopole_pt=%d\n",
       //   index_tt, lm_offset, ptr2->l[index_l], ptr2->m[index_m],
       //   ptr2->tt2_labels[index_tt],
-      //   ptr2->index_tt2_monopole[index_tt], ptr2->index_pt2_monopole[index_tt]);
+      //   ptr2->tt2_start[index_tt], ptr2->tp2_start[index_tt]);
     }
 
     /* Check the result */
@@ -1275,8 +1275,8 @@ int transfer2_get_lm_lists (
       index_tt, index_l, index_m, 0, ptr2->l_size-1, 0, ptr2->m_size-1);
 
     /* Write the result */
-    ptr2->corresponding_index_l[index_tt] = index_l;
-    ptr2->corresponding_index_m[index_tt] = index_m;
+    ptr2->tt2_to_index_l[index_tt] = index_l;
+    ptr2->tt2_to_index_m[index_tt] = index_m;
     
   } // end of for(index_tt)
 
@@ -1883,7 +1883,7 @@ int transfer2_compute (
 
 
   /* Determine what we are deasling with: temperature, E-modes or B-modes? */
-  int transfer_type = ptr2->index_tt2_monopole[index_tt];
+  int transfer_type = ptr2->tt2_start[index_tt];
 
 
   // =====================================================================================

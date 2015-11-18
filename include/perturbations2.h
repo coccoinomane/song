@@ -687,6 +687,13 @@ struct perturbs2
   int *** nlm_array;
 
 
+  int * tp2_to_l;         /**< Array with the correspondence between ppt2->index_tp2_XXX
+                          index and l multipole */
+  int * tp2_to_index_m;   /**< Array with the correspondence between ppt2->index_tp2_XXX
+                          index and m index */
+  int * tp2_start;        /**< Array with the correspondence between ppt2->index_tp2_XXX
+                          index and the start of the hierarchy to which the index belongs */
+
   /**
    * Coupling coefficients C and D in harmonic space.
    * 
