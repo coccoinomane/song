@@ -310,11 +310,10 @@ int input2_init (
 
   if ((pbi->has_bispectra == _TRUE_) && (flag1 == _TRUE_)) {
  
-    /* Intrinsic bispectrum. This is induced by second-order effects in the evolution of the cosmological
-    perturbations. */
     if (strstr(string1,"intrinsic") != NULL) {
       ppt2->has_perturbations2 = _TRUE_;
       ppt2->has_cmb_bispectra = _TRUE_;
+      ppt2->rescale_cmb_sources = _TRUE_;
     }
     
   } // end of bispectrum_types parsing
@@ -325,6 +324,11 @@ int input2_init (
   pressure at second-order */
   if (ppt2->has_perturbations2 == _TRUE_)
     pth->compute_cb2_derivatives = _TRUE_;
+
+  /* Uncomment if you want the output functions to output non-rescaled functions */
+  if (ppt2->stop_at_perturbations2 || ptr2->stop_at_transfers2)
+    ppt2->rescale_cmb_sources = _FALSE_;
+
 
 
   // ====================================================================================
@@ -1860,6 +1864,12 @@ int input2_init (
   /* Maximum 'm' that will be computed */
   ppr2->m_max_song = ppr2->m[ppr2->m_size-1];
 
+  /* For m=0, the cmb rescaling to compute the intrinsic bispectrum is equal
+  to unity, so we do not apply it. This is an optimisation that you can comment
+  out in case you want to test the rescaling. */
+  if (ppr2->m_max_song == 0)
+    ppt2->rescale_cmb_sources = _FALSE_;
+
   if (ppt2->has_cmb_polarization_b && ppr2->m_max_song == 0)
     printf ("\nWARNING: will ignore any requested B-mode output. Second-order B-modes vanish\
  for scalar perturbations; to obtain a non-vanishing B-mode result, please include in the\
@@ -1964,25 +1974,6 @@ int input2_init (
   }
   
   
-  // ====================================================================================
-  // =                                 Quadratic sources                               =
-  // ====================================================================================
-
-  /* Do we want to rescale all CMB multipoles with a factor 1/sin(theta_1)^m? The
-  rescaling does not affect the m>0 transfer functions. It is needed to compute the
-  intrinsic bispectrum, so by default it is active. See the header file perturbations2.h
-  for details on the rescaling. */
-  ppt2->rescale_cmb_sources = _TRUE_;
-  
-  /* Uncomment if you want the output functions to output non-rescaled functions */
-  if ((ppt2->stop_at_perturbations2 == _TRUE_) || (ptr2->stop_at_transfers2 == _TRUE_))
-    ppt2->rescale_cmb_sources = _FALSE_;
-
-  /* For m=0, the rescaling is equal to unity, so we do not apply it. This is an
-  optimisation that you can comment out in case you want to test the rescaling. */
-  if (ppr2->m_max_song == 0)
-    ppt2->rescale_cmb_sources = _FALSE_;
-
 
   // ====================================================================================
   // =                              Compute pbs2->xx_max                                =
@@ -2099,9 +2090,7 @@ int input2_default_params (
   ppt2->has_quadratic_collision = _TRUE_;
   ppt2->has_perfect_baryons = _TRUE_;
   ppt2->has_perfect_cdm = _TRUE_;
-  ppt2->rescale_cmb_sources = _TRUE_;
   ppt2->compute_quadsources_derivatives = _FALSE_;
-
   ppt2->rescale_cmb_sources = _FALSE_;
 
   ppt2->has_pure_scattering_in_los = _FALSE_;

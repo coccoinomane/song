@@ -2220,6 +2220,15 @@ struct perturb2_parameters_and_workspace {
             int what_to_interpolate,
             struct perturb2_workspace * ppw2
             );
+            
+    int perturb2_cmb_rescaling (
+            struct perturbs2 * ppt2,
+            double k1,
+            double k2,
+            double k3,
+            int m,
+            double * rescaling
+            );
 
     int perturb2_wavemode_info(
             struct precision * ppr,

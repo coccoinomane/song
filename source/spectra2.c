@@ -385,8 +385,12 @@ int spectra2_cls (
               if (step_k3 == 0)
                 continue;
 
-              /* This counters the rescaling performed for the bispectrum */
-              double scale = pow(sqrt( 1. - pow((k3*k3 + k1*k1 - k2*k2)/2./k3/k1,2)),m);
+              /* Counter the rescaling of the sources, if needed; see documentation for
+              ppt2->rescale_cmb_sources for more details. */
+              double inverse_rescaling = 1;
+              class_call_parallel (perturb2_cmb_rescaling (ppt2,k1,k2,k3,m,&inverse_rescaling),
+                ppt2->error_message, psp->error_message);
+              inverse_rescaling = 1/inverse_rescaling;
 
 
               // =====================================================================================
@@ -395,16 +399,15 @@ int spectra2_cls (
 
               double total_factor =
                   // symmetry factor (doing only half plane in k1 k2)
-                  2.*
+                  2 *
                   // integration weight
-                  k1*k2*k3*
+                  k1 * k2 * k3 *
                   // integration stepsize
-                  step_k1*step_k2*step_k3*
-                  // if the sources were rescaled we have to invert this for the cl spectrum rescaling
-                  // the step_k3 condition makes sure that this is in triangular as the computation of angles fails out of triangular region
-                  (ppt2->rescale_cmb_sources && step_k3 != 0. ? pow(scale,2) : 1. )*
+                  step_k1 * step_k2 * step_k3 *
+                  // if the sources were rescaled, revert the rescaling
+                  inverse_rescaling * 
                   // spectra factors (2l+1) already in transfer def (how does sum over m work? does this need a factor 2 for m neq 0? yes :))
-                  2. /_PI_ /2./_PI_/2./_PI_/2./_PI_ *
+                  2/_PI_ / pow(2*_PI_,3) *
                   // definition of second order perturbation theory
                   // already in transfer definition 1./2./2.*
                   // factor 4 of Delta also already in transfer def
@@ -1109,6 +1112,14 @@ int spectra2_integrate_fourier (
           /* Primordial spectrum of curvature potential phi in k2 */
           double spectra_k2 = psp->pk_pt[index_k2];  
 
+          /* Counter the rescaling of the sources, if needed; see documentation for
+          ppt2->rescale_cmb_sources for more details. */
+          int m = ppr2->m[ppt2->tp2_to_index_m[index_tp2]];
+          double inverse_rescaling = 1;
+          class_call_parallel (perturb2_cmb_rescaling (ppt2,k1,k2,k3,m,&inverse_rescaling),
+            ppt2->error_message, psp->error_message);
+          inverse_rescaling = 1/inverse_rescaling;
+
           /* Loop over time, no integration */
           
           for (int index_tau = 0; index_tau < ppt2->tau_size; ++index_tau) {
@@ -1150,11 +1161,13 @@ int spectra2_integrate_fourier (
               // phi angleintegration
                2 * _PI_ *
               // spectra factors
-               2/2/_PI_/2/_PI_/2/_PI_ *
+               2/ pow(2*_PI_,3) *
               // definition of second order perturbation theory
                1./2./2.*
               // primordial spectra
                spectra_k1 * spectra_k2 *
+              // if the sources were rescaled, revert the rescaling
+               inverse_rescaling * inverse_rescaling *
               // sources
                source * source
               // 6.652 * 1.e-29 is sigma_t in m^2, 1.878 * 1.e-26 is critical density in kg/m^3

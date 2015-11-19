@@ -15612,6 +15612,46 @@ int perturb2_quadratic_sources_at_tau_spline (
 }
 
 
+
+
+
+/**
+ * Compute the rescaling applied to the CMB source function.
+ *
+ * This is given by the sin(theta_1)^(-m) factor. Refer to the documentation
+ * for ppt2->rescale_cmb_sources in perturbations2.h for more details.
+ *
+ * The function returns 1 if the flag ppt->rescale_cmb_sources is not set.
+ *
+ */
+int perturb2_cmb_rescaling (
+        struct perturbs2 * ppt2,
+        double k1, /**< Input: the considered k1 value */
+        double k2, /**< Input: the considered k2 value */
+        double k3, /**< Input: the considered k3 value */
+        int m, /**< Input: the considered azimuthal mode */
+        double * rescaling /**< Output: the rescaling */
+        )
+{
+  
+  *rescaling = 1;
+
+  if (ppt2->rescale_cmb_sources) {
+
+    double cosk1k_sq = pow ((k3*k3 + k1*k1 - k2*k2)/(2*k3*k1), 2);
+
+    double sink1k = sqrt (1 - cosk1k_sq);
+
+    *rescaling = 1/pow(sink1k, m);
+
+  }
+  
+  return _SUCCESS_;
+  
+}
+
+
+
 /**
  * Output to file the source function in binary format.
  *
