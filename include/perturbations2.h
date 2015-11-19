@@ -1073,6 +1073,8 @@ struct perturbs2
 
   int file_verbose; /**< How much information should we include in the perturbations output files? */
 
+  char * file_header; /**< Header of the output files */
+
   /* - k output files */
 
   int k_out_size; /**< Number of (k1,k2,k3) triplets where to output the perturbations (default=0) */
@@ -1102,12 +1104,24 @@ struct perturbs2
                                        of tau at the desired (k1,k2,k3) values; filled in the input2.c module */
   FILE * *k_out_files; /**< ASCII file that will contain the perturbations as a function
                        of tau at the desired (k1,k2,k3) values; filled in the input2.c module */
-  char (*k_out_paths_sources)[_FILENAMESIZE_]; /**< Path of the binary files that will contain the source function as a function
-                                               of (k3,tau) at the desired (k1,k2) values; filled in the input2.c module */
-  FILE * * k_out_files_sources; /**< Binary files that will contain the sources as a function
-                               of (k3,tau) at the desired (k1,k2) values; filled in the input2.c module */
+  char (*k_out_paths_sources_3D)[_FILENAMESIZE_]; /**< Path of the binary files that will contain the source function as a function
+                                                  of (k3,tau) at the desired (k1,k2) values; filled in the input2.c module */
+  FILE * * k_out_files_sources_3D; /**< Binary files that will contain the sources as a function
+                                   of (k3,tau) at the desired (k1,k2) values; filled in the input2.c module */
+  char (**k_out_paths_sources_1D)[_FILENAMESIZE_]; /**< Path of the ASCII files that will contain the source function as a function
+                                                   of k3 at the desired (k1,k2,tau) values; filled in the input2.c module
+                                                   and indexed as [index_k_out][index_tau_out]. */
+  FILE * (**k_out_files_sources_1D); /**< ASCII file that will contain the source function as a function of k3 at the
+                                     desired (k1,k2,tau) values; filled in the input2.c module and indexed as
+                                     [index_k_out][index_tau_out] */
+  char (**k_out_paths_sources_2D)[_FILENAMESIZE_]; /**< Path of the ASCII files that will contain the source function as a function
+                                                   of (k2,k3) at the desired (k1,tau) values; filled in the input2.c module
+                                                   and indexed as [index_k_out][index_tau_out]. */
+  FILE * (**k_out_files_sources_2D); /**< ASCII file that will contain the source function as a function of (k2,k3) at
+                                     the desired (k1,tau) values; filled in the input2.c module and indexed as
+                                     [index_k_out][index_tau_out] */
   int * k_out_data_byte; /**< k_out_data_byte[index_k_tau] is the location in the binary file 
-                         k_out_files_sources[index_k_tau] of the first data block with the elements
+                         k_out_files_sources_3D[index_k_tau] of the first data block with the elements
                          of ppt2->sources. In practice, this tells the functions that want to
                          access the output files where the actual data starts, ignoring the 
                          preceding accessory data (eg. tau grid, k3 grid) */
@@ -1142,10 +1156,12 @@ struct perturbs2
   FILE * (**tau_out_files); /**< ASCII file that will contain the perturbations as a function
                             of k3 at the desired (k1,k2,tau) values; filled in the input2.c module
                             and indexed as [index_k_out][index_tau_out] */
-  char (*tau_out_paths_sources)[_FILENAMESIZE_]; /**< Path of the binary files that will contain the source function as a function
-                                                 of (k1,k2,k3) at the desired tau values; filled in the input2.c module */
+  char (*tau_out_paths_sources)[_FILENAMESIZE_]; /**< Path of the binary files that will contain the source function as a
+                                                 function of (k1,k2,k3) at the desired tau values; filled in the input2.c
+                                                 module. Indexed as [index_tau_out]. */
   FILE * *tau_out_files_sources; /**< Binary files that will contain the sources as a function
-                                 of (k1,k2,k3) at the desired tau values; filled in the input2.c module */
+                                 of (k1,k2,k3) at the desired tau values; filled in the input2.c
+                                 module. Indexed as [index_tau_out]. */
 
   char tau_out_reduction_message[_MAX_INFO_SIZE_]; /**< Message to be printed to the output files when the user asks for a time too large or a redshift too low*/
   
@@ -1639,11 +1655,6 @@ struct perturb2_workspace
                                 index_k_out is that index_k_out_for_tau_out is constant for triplets with
                                 identical values of (k1_out,k2_out), thus allowing SONG to output data to a
                                 single tau_out file for these triplets. */
-  
-  char file_header[3*_MAX_INFO_SIZE_]; /**< Header to be added on top of the output files */  
-
-  
-
 };
 
 
