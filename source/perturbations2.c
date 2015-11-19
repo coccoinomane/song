@@ -2853,7 +2853,7 @@ int perturb2_get_k_lists (
       
       if (ppt2->index_k1_out[first_index_k_out + k_index_out] >= ppt2->k_size) {
 
-        fprintf (ppt2->k_out_files[first_index_k_out + k_index_out],
+        fprintf (ppt2->files_perturbations_tau[first_index_k_out + k_index_out],
           "NOTE: The requested k1_index_out=%d is too large; we set it to the highest possible value: ppt2->k_size-1=%d.\n",
           ppt2->index_k1_out[first_index_k_out + k_index_out], ppt2->k_size-1);
 
@@ -2862,7 +2862,7 @@ int perturb2_get_k_lists (
 
       if (ppt2->index_k2_out[first_index_k_out + k_index_out] >= ppt2->k_size) {
 
-        fprintf (ppt2->k_out_files[first_index_k_out + k_index_out],
+        fprintf (ppt2->files_perturbations_tau[first_index_k_out + k_index_out],
           "NOTE: The requested k2_index_out=%d is too large; we set it to the highest possible value: ppt2->k_size-1=%d.\n",
            ppt2->index_k2_out[first_index_k_out + k_index_out], ppt2->k_size-1);
 
@@ -3198,12 +3198,12 @@ int perturb2_get_k_lists (
               /* Alert the user if k3 is either larger than k3_max or smaller than k3_min, which
               are the limits that SONG would would have imposed on k3 if no output were requested */
               if (k3 < k3_min)
-                fprintf (ppt2->k_out_files[index_k_out],
+                fprintf (ppt2->files_perturbations_tau[index_k_out],
                   "# NOTE: the output value chosen for this file, k3=%.17f, was smaller than k3_min=%.17f (|k1-k2|=%.17f)\n",
                   k3, k3_min, fabs(k1-k2));
 
               if (k3 > k3_max)
-                fprintf (ppt2->k_out_files[index_k_out],
+                fprintf (ppt2->files_perturbations_tau[index_k_out],
                   "# NOTE: the output value chosen for this file, k3=%.17f, was larger than k3_max=%.17f (|k1-k2|=%.17f)\n",
                   k3, k3_max, k1+k2);
 
@@ -3250,7 +3250,7 @@ int perturb2_get_k_lists (
 
               if (ppt2->index_k3_out[index_k_out] >= k3_size) {
 
-                fprintf (ppt2->k_out_files[index_k_out],
+                fprintf (ppt2->files_perturbations_tau[index_k_out],
                   "NOTE: The requested k3_index_out=%d is larger than the size of the k3 grid for the requested\
  index_k1=%d and index_k2=%d; we have set index_k3 to the highest possible value, k3_size-1=%d.\n",
                   ppt2->index_k3_out[index_k_out], index_k1, index_k2, k3_size-1);
@@ -7527,10 +7527,10 @@ int perturb2_solve (
         (index_k2 == ppt2->index_k2_out[ppw2->index_k_out]) &&
         (index_k3 == ppt2->index_k3_out[ppw2->index_k_out])) {
           
-      fclose (ppt2->k_out_files[ppw2->index_k_out]);
+      fclose (ppt2->files_perturbations_tau[ppw2->index_k_out]);
 
       if (ppt2->output_quadratic_sources == _TRUE_)
-        fclose (ppt2->k_out_files_quad[ppw2->index_k_out]);
+        fclose (ppt2->files_perturbations_tau_quad[ppw2->index_k_out]);
         
     }
   }
@@ -8378,13 +8378,13 @@ int perturb2_free(
       free (ppt2->k1_index_out);
       free (ppt2->k2_index_out);
       free (ppt2->k3_index_out);
-      free (ppt2->k_out_paths);
-      free (ppt2->k_out_files);
-      free (ppt2->k_out_paths_sources_3D);
-      free (ppt2->k_out_files_sources_3D);
+      free (ppt2->paths_perturbations_tau);
+      free (ppt2->files_perturbations_tau);
+      free (ppt2->paths_sources_k3tau);
+      free (ppt2->files_sources_k3tau);
       if (ppt2->output_quadratic_sources == _TRUE_) {
-        free (ppt2->k_out_paths_quad);
-        free (ppt2->k_out_files_quad);
+        free (ppt2->paths_perturbations_tau_quad);
+        free (ppt2->files_perturbations_tau_quad);
       }
     }
     
@@ -8397,17 +8397,17 @@ int perturb2_free(
       for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
         free (ppt2->tau_out_paths[index_k_out]);
         free (ppt2->tau_out_files[index_k_out]);
-        free (ppt2->k_out_paths_sources_1D[index_k_out]);
-        free (ppt2->k_out_files_sources_1D[index_k_out]);
-        free (ppt2->k_out_paths_sources_2D[index_k_out]);
-        free (ppt2->k_out_files_sources_2D[index_k_out]);
+        free (ppt2->paths_sources_k3[index_k_out]);
+        free (ppt2->files_sources_k3[index_k_out]);
+        free (ppt2->paths_sources_k2k3[index_k_out]);
+        free (ppt2->files_sources_k2k3[index_k_out]);
       }
       free (ppt2->tau_out_paths);
       free (ppt2->tau_out_files);
-      free (ppt2->k_out_paths_sources_1D);
-      free (ppt2->k_out_files_sources_1D);
-      free (ppt2->k_out_paths_sources_2D);
-      free (ppt2->k_out_files_sources_2D);
+      free (ppt2->paths_sources_k3);
+      free (ppt2->files_sources_k3);
+      free (ppt2->paths_sources_k2k3);
+      free (ppt2->files_sources_k2k3);
       free (ppt2->tau_out_paths_sources);
       free (ppt2->tau_out_files_sources);
     }
@@ -15209,7 +15209,7 @@ int perturb2_save_perturbations (
   if (has_k_out) {
 
     /* Shortcut to the file with the perturbations for this k triplet */
-    FILE * file_tr = ppt2->k_out_files[ppw2->index_k_out];
+    FILE * file_tr = ppt2->files_perturbations_tau[ppw2->index_k_out];
 
     /* Write an information header */
     if (ppw2->n_steps == 1) {
@@ -15244,7 +15244,7 @@ int perturb2_save_perturbations (
     if (ppt2->output_quadratic_sources == _TRUE_) {
 
       /* Shortcut to the file with the quadratic sources for this k triplet */
-      FILE * file_qs = ppt2->k_out_files_quad[ppw2->index_k_out];
+      FILE * file_qs = ppt2->files_perturbations_tau_quad[ppw2->index_k_out];
 
       /* Write an information header */
       if (ppw2->n_steps==1) {
@@ -15668,38 +15668,45 @@ int perturb2_cmb_rescaling (
 
 
 /**
- * Output to file the source function in binary format.
+ * Output to file the source function S_lm(k1,k2,k3,tau).
  *
  * This function is called after SONG has solved the differential system for
  * all (k1,k2,k3) wavemodes, and computed the source function. Its purpose is
  * to copy the source function along with accessory data, from ppt2->sources
  * to appositely created binary files.
  *
- * The output files that will be produced by this function are multi-dimensional
- * binary tables of the source function, contrary to those produced by
- * perturb2_save_perturbations(), which are one-dimensional ASCII tables of
- * the second-order perturbations, and those created by store_sources_to_disk(),
- * which are just a binary dump of ppt2->sources intended for freeing memory.
+ * The output files produced by this function are either binary or ASCII
+ * tables of the source function. They differ from those produced by
+ * perturb2_save_perturbations() in that they contain the source function
+ * (ie. the module output) rather than the second-order perturbations, and
+ * from those created by store_sources_to_disk(), which are just a binary
+ * dump of ppt2->sources intended to free memory.
  *  
- * perturb2_output() produces two kinds of files:
+ * perturb2_output() produces the following files:
  *
- * -# The SOURCE files, each containing the source function S_lm(k1,k2,k3,tau)
- *    for all types (T,E,B,delta_cdm...), multipoles (l,m), times (tau) and k3
- *    wavemodes (k3). One file is produced for each (k1,k2) pair from the lists
- *    k1_out and k2_out. Each file usually weights less than 1 MB; it includes
- *    accessory data (eg. tau and k3 samplings) and a ASCII header file explaining
- *    how to access this information. The purpose of the source files is to inspect
- *    and plot the source function in a quick way, without needing to use SONG. The
- *    source files are progressively named sources_song_kXXX.dat.
+ * - The k3 files containing the sources for fixed (k1,k2,tau) as a 
+ *   function of k3.
  *
- * -# The TRANSFER files, each containing the source function S_lm(k1,k2,k3,tau)
- *    for a fixed conformal time tau (specified via tau_out) or redshift z (specified
- *    via z_out). Each file includes accessory data (eg. k1, k2 and k3 samplings) and
- *    a ASCII header file explaining how to access this information. The purpose of
- *    the transfer files is to inspect and plot the source function in a quick way,
- *    without needing to use SONG. The source files are progressively named
- *    sources_song_tauXXX.dat and sources_song_zXXX.dat
+ * - The k1tau files containing the sources for fixed (k1,tau) as a 
+ *   function of (k2,k3).
  *
+ * - The k3tau files containing the sources for fixed (k1,k2) as a 
+ *   function of (k3,tau).
+ *
+ * - The k1k2k3 files containing the sources at a fixed time tau as
+ *   a function of (k1,k2,k3).
+ *
+ * Each file includes:
+ *
+ * - All source types (T,E,B,delta_cdm,magnetic...).
+ * - All (l,m) multipoles.
+ * - Accessory data like the k and tau samplings and the first-order
+ *   perturbations (binary files only).
+ * - An ASCII header explaining how to access the information stored
+ *   in the file (binary files only).
+ *
+ * The binary files can be read and plotted using the scripts by
+ * Thomas Tram in the Python folder.
  */
 
 int perturb2_output(
@@ -15730,7 +15737,8 @@ int perturb2_output(
   // ====================================================================================
 
   /* Output the source function to a text file as a function of (k2,k3), for the output
-  values in k1_out and tau_out. */
+  values in k1_out and tau_out. Each file will contain all source types (T,E,B,delta_cdm,...)
+  and multipoles (l,m). */
 
   for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
 
@@ -15740,11 +15748,21 @@ int perturb2_output(
     int index_k1 = ppt2->index_k1_out[index_k_out];
     int index_k2 = ppt2->index_k2_out[index_k_out];
 
+    /* Load the source function from disk if needed */
+    if (ppr2->store_sources_to_disk || ppr2->load_sources_from_disk) {
+      class_call (perturb2_allocate_k1_level(ppt2, index_k1),
+        ppt2->error_message,
+        ppt2->error_message);
+      class_call(perturb2_load_sources_from_disk(ppt2, index_k1),
+        ppt2->error_message,
+        ppt2->error_message);
+    }
+
     for (int index_tau_out=0; index_tau_out < ppt2->tau_out_size; ++index_tau_out) {
 
       /* Shortcut to the output file */
-      FILE * file_1D = ppt2->k_out_files_sources_1D[index_k_out][index_tau_out];
-      FILE * file_2D = ppt2->k_out_files_sources_2D[index_k_out][index_tau_out];
+      FILE * file_1D = ppt2->files_sources_k3[index_k_out][index_tau_out];
+      FILE * file_2D = ppt2->files_sources_k2k3[index_k_out][index_tau_out];
 
 
       // ---------------------------------------------------------------------------
@@ -15949,7 +15967,16 @@ int perturb2_output(
 
     } // for tau_out
     
-  } // for k_out
+    /* We are done with the source function */
+    if (ppr2->store_sources_to_disk || ppr2->load_sources_from_disk)
+      class_call (perturb2_free_k1_level(
+                    ppt2,
+                    index_k1),
+        ppt2->error_message,
+        ppt2->error_message);
+    
+  } // for index_k_out
+
 
 
   // ====================================================================================
@@ -15969,7 +15996,7 @@ int perturb2_output(
     double k2 = ppt2->k[index_k2];
 
     /* Load the source function from disk if needed */
-    if (ppr2->store_sources_to_disk == _TRUE_) {
+    if (ppr2->store_sources_to_disk || ppr2->load_sources_from_disk) {
       class_call (perturb2_allocate_k1_level(ppt2, index_k1),
         ppt2->error_message,
         ppt2->error_message);
@@ -15985,8 +16012,8 @@ int perturb2_output(
     /* Open the binary file */
     class_call (binary_init (
                   file,
-                  &(ppt2->k_out_files_sources_3D[index_k_out]),
-                  ppt2->k_out_paths_sources_3D[index_k_out],
+                  &(ppt2->files_sources_k3tau[index_k_out]),
+                  ppt2->paths_sources_k3tau[index_k_out],
                   "w",
                   header_size,
                   ppr->output_single_precision),
@@ -16205,8 +16232,6 @@ int perturb2_output(
       file->error_message,
       ppt2->error_message);
 
-    ppt2->k_out_data_byte[index_k_out] = file->size_bytes;
-
     for (int index_tp2=0; index_tp2 < ppt2->tp2_size; ++index_tp2) {
 
       sprintf (name, "ppt2->sources[index_tp2=%d][index_k1=%d][index_k2=%d]", index_tp2, index_k1, index_k2);
@@ -16243,7 +16268,7 @@ int perturb2_output(
     // -                                Clean up                                 -
     // ---------------------------------------------------------------------------
 
-    if (ppr2->store_sources_to_disk == _TRUE_)
+    if (ppr2->store_sources_to_disk || ppr2->load_sources_from_disk)
       class_call (perturb2_free_k1_level(
                     ppt2,
                     index_k1),
@@ -16493,7 +16518,7 @@ int perturb2_output(
       for (int index_k1=0; index_k1 < ppt2->k_size; ++index_k1) {
         
         /* Load the source function from disk if needed */
-        if (ppr2->store_sources_to_disk == _TRUE_) {
+        if (ppr2->store_sources_to_disk || ppr2->load_sources_from_disk) {
           class_call (perturb2_allocate_k1_level(ppt2, index_k1),
             ppt2->error_message,
             ppt2->error_message);
@@ -16521,7 +16546,7 @@ int perturb2_output(
         } // for k2
         
         /* We are done with the source function */
-        if (ppr2->store_sources_to_disk == _TRUE_)
+        if (ppr2->store_sources_to_disk || ppr2->load_sources_from_disk)
           class_call (perturb2_free_k1_level(
                         ppt2,
                         index_k1),
