@@ -873,7 +873,7 @@ int spectra2_integrate_fourier (
 
 
     // =====================================================================================
-    // =                                  Cycle over k1                                    =
+    // =                                   Sum over k1                                     =
     // =====================================================================================
 
     int abort = _FALSE_;
@@ -915,18 +915,14 @@ int spectra2_integrate_fourier (
         // -                         Determine integration range                          -
         // --------------------------------------------------------------------------------
 
-        /* The lower limit in the k2 integration range is determiend by the smallest
-        element in the sampling of the source function and the smallest value allowed
+        /* The lower limit in the k2 integration range is determined by the smallest
+        k where we computed the source function and by the smallest value allowed
         by the triangular condition. */
-        double k2_min = MAX (psp->k[0], fabs (k1-k3)); /* Guido */
-        // double k2_min = fabs (k1-k3); /* Chris */
+        double k2_min = MAX (psp->k[0], fabs (k1-k3));
 
-        /* Same for the upper limit. We restrict the integration range to those k2 values
-        smaller or equal than k1, because that's the range where the source function are
-        tabulated. To include the other half of the range, we use the fact that the source
-        function is symmetric with respect to k1<->k2, and just add a 2 factor in the final
-        formula. */
-        double k2_max = MIN (k1, k1+k3);
+        /* Similarly, the upper limit is determined by the triangular condition and by
+        the highest k where we computed the source function. */
+        double k2_max = MIN (psp->k[psp->k_size-1], k1+k3);
         
         /* We shall compute the integral by means of a weighted sum over the k2 nodes;
         here we determine which nodes ought to be considered, based on the conditions
@@ -941,7 +937,7 @@ int spectra2_integrate_fourier (
 
         int k2_size = index_k2_max - index_k2_min + 1;
 
-        /* Uncomment to use the precomputed indices */
+        /* Uncomment to use the precomputed indices (same result) */
         // int index_k2_min = index_k_triangular_min[index_k1][index_k3];
         // int index_k2_max = MIN (index_k1, index_k_triangular_max[index_k1][index_k3]);
         // int k2_size = index_k2_max - index_k2_min + 1;
@@ -950,13 +946,7 @@ int spectra2_integrate_fourier (
           "     \\ computing integral for k1=%g[%d], k3=%g[%d]), k2_size=%d\n",
           k1, index_k1, k3, index_k3, k2_size);
 
-        /* Check that the integration range is positive. This must be the case 
-        for all (k1,k3) pairs that survive the upper limit k2<=k1, ie. for those
-        configurations where k1 >= k3/2. (This condition is already implicitly 
-        satisfied if k2_size>0.) Note that for index_k1=0, the upper and lower
-        limits on k2 coincide: k2_min=psp->k[0]=k1 and k2_max=k1=psp->k[0]; in 
-        this case, the integration range will vanish rather than being strictly
-        positive */
+        /* Check that the integration range is positive */
         class_test_parallel (k2_max-k2_min<-ppr->smallest_allowed_variation && k2_size>0,
           psp->error_message,
           "Tound negative integration range: k2_max-k2_min=%27.17g",
@@ -965,7 +955,7 @@ int spectra2_integrate_fourier (
 
 
         // =====================================================================================
-        // =                                  Cycle over k2                                    =
+        // =                                   Sum over k2                                     =
         // =====================================================================================
 
         for (int index_k2 = index_k2_min; index_k2 <= index_k2_max; ++index_k2) {
@@ -979,135 +969,48 @@ int spectra2_integrate_fourier (
 
 
           // --------------------------------------------------------------------------------
-          // -                             Find triangular step                             -
+          // -                               Triangular step                                -
           // --------------------------------------------------------------------------------
 
           /* Find the correct stepsize for k2 based on the triangular inequality */
 
           double step_k2;
 
-          int use_chris_step = _FALSE_;
+          /* If there is only one node in the k2 integration range, we adopt
+          the rectangular integration rule between the lower limit (k2_min)
+          and the upper limit (k2_max). Note that it is possible for index_k1=0
+          that k2_min is larger than k2_max, due to the artificial upper limit
+          on k2, hence the MAX. */
+          if (k2_size == 1)
+            step_k2 = k2_max - k2_min;
 
-          /* Chris's step */
+          /* If we are close to the left border of the triangular regime:
+          We take the regular trapezoidal step (including the 1/2 factor) up
+          to the first node, then we extend the step to the left all the way
+          to the end of triangular region, up to k2_min = k1-k3, without the
+          1/2 factor because this node is the only one covering this extra
+          region. */
+          else if (index_k2 == index_k2_min)
+            step_k2 = (psp->k[index_k2_min+1] - psp->k[index_k2_min])/2 + (psp->k[index_k2_min] - k2_min);
 
-          if (use_chris_step) {
+          /* If we are close to the right border of the triangular regime:
+          We take the regular trapezoidal step (including the 1/2 factor) up
+          to the last node, then we extend the step all the way to the end of
+          triangular region, up to k2_max = MIN(k1,k1+k3), without the 1/2
+          factor because this node is the only one covering this extra
+          region. */
+          else if (index_k2 == index_k2_max)
+            step_k2 = (psp->k[index_k2_max] - psp->k[index_k2_max-1])/2 + (k2_max - psp->k[index_k2_max]);
 
-            double step_k2_trapez;
-    				if (index_k1 == 0) step_k2_trapez = 0.;
-    				else if (index_k2 == 0) step_k2_trapez = (psp->k[1] - psp->k[0])/2.;
-            else if (index_k2 == index_k1) step_k2_trapez = (psp->k[index_k1] - psp->k[index_k1-1])/2.;
-            else step_k2_trapez = (psp->k[index_k2+1] - psp->k[index_k2 -1])/2.;
+          /* If we are not adjacent to the triangular region, we take the
+          regular trapezoidal step */
+          else
+            step_k2 = (psp->k[index_k2+1] - psp->k[index_k2-1])/2;
 
-            /* First region, excluded by triangular equality */
-            if (k1 < k3/2) {
-              step_k2 = 0;
-            }
 
-            /* Second region with growing width starting from k - k1 */
-            else if (k1 < k3) {
-              /* Is k2 next to the boundary? */
-              if (index_k2 < index_k2_min) {
-                step_k2 = 0;
-              }
-              else if (index_k2 == index_k2_min) {
-                /* Step for the first k2 node */
-                if (index_k2 == index_k1) {
-                  /* Case where there is only one valid k2 index. The step assigned
-                  is k2_max - k2_min = k1 - (k3-k1) = 2*k1 - k3. */
-                  step_k2 = (2*k1 - k3) ;
-                }
-                else {
-                  /* Case where there is at least another node in the k2 direction.
-                  We take the regular trapezoidal step (with the 1/2 factor) up to
-                  the first node, then we extend the step all the way to the end of
-                  triangular region, up to k2_min = k3-k1 (without the 1/2 factor
-                  because this part is not double counted). */
-                  double k2_next = psp->k[index_k2+1];
-                  step_k2 = (k2_next - k2)/2 + (k2 - (k3-k1));
-                }
-              }
-              else {
-                step_k2 = step_k2_trapez;
-              }
-            }
-
-            /* Final region with constant width */
-            else {
-              /* This region starts from k1 - k */
-              if (index_k2 < index_k2_min) {
-                step_k2 = 0.;
-              }
-              else if (index_k2 == index_k2_min) {
-                /* Step for the first k2 node */
-                if (index_k2 == index_k1) {
-                  /* Case where there is only one valid k2 index. The step assigned
-                  is k2_max - k2_min = k1 - (k1-k3) = k3. */
-                  step_k2 = k3;
-                }
-                else {
-                  /* Case where there is at least another node in the k2 direction.
-                  We take the regular trapezoidal step (with the 1/2 factor) up to
-                  the first node, then we extend the step all the way to the end of
-                  triangular region, up to k2_min = k1-k3 (without the 1/2 factor
-                  because this part is not double counted). */
-                  double k2_next = psp->k[index_k2+1];
-                  step_k2 = (k2_next-k2)/2 + (k2 - (k1-k3)) ;
-                }
-              }
-              else {
-                step_k2 = step_k2_trapez;
-              }
-            }
-          }
-
-          /* Guido's step */
-
-          else {
-
-            /* Apart from the triangular condition, the k2 integration has two hard limits: a
-            lower limit for k2=psp->k[0] and an upper limit for k2=k1. It follows that when 
-            k1=psp->k[0], the integration range can only include k2=k1. A single point does
-            not contribute to the integral, hence we set the step to zero. Note that we should
-            never enter this block because of the way we compute index_k2_min and index_k2_max
-            above. */
-            if (index_k1 == 0)
-              step_k2 = 0;
-
-            /* If there is only one node in the k2 integration range, we adopt
-            the rectangular integration rule between the lower limit (k2_min)
-            and the upper limit (k2_max). Note that it is possible for index_k1=0
-            that k2_min is larger than k2_max, due to the artificial upper limit
-            on k2, hence the MAX. */
-            else if (k2_size == 1)
-              step_k2 = k2_max - k2_min;
-
-            /* If we are close to the left border of the triangular regime:
-            We take the regular trapezoidal step (including the 1/2 factor) up
-            to the first node, then we extend the step to the left all the way
-            to the end of triangular region, up to k2_min = k1-k3, without the
-            1/2 factor because this node is the only one covering this extra
-            region. */
-            else if (index_k2 == index_k2_min)
-              step_k2 = (psp->k[index_k2_min+1] - psp->k[index_k2_min])/2 + (psp->k[index_k2_min] - k2_min);
-
-            /* If we are close to the right border of the triangular regime:
-            We take the regular trapezoidal step (including the 1/2 factor) up
-            to the last node, then we extend the step all the way to the end of
-            triangular region, up to k2_max = MIN(k1,k1+k3), without the 1/2
-            factor because this node is the only one covering this extra
-            region. */
-            else if (index_k2 == index_k2_max)  /* Guido */
-              step_k2 = (psp->k[index_k2_max] - psp->k[index_k2_max-1])/2 + (k2_max - psp->k[index_k2_max]);
-
-            // else if (index_k2 == index_k2_max && index_k2_max == index_k1)  /* Chris */
-            //   step_k2 = (psp->k[index_k2_max] - psp->k[index_k2_max-1])/2;
-
-            /* If we are not adjacent to the triangular region, we take the
-            regular trapezoidal step */
-            else
-              step_k2 = (psp->k[index_k2+1] - psp->k[index_k2-1])/2;
-
-          }
+          // --------------------------------------------------------------------------------
+          // -                                   Factors                                    -
+          // --------------------------------------------------------------------------------
 
           /* Primordial spectrum of curvature potential phi in k2 */
           double spectra_k2 = psp->pk_pt[index_k2];  
@@ -1120,8 +1023,12 @@ int spectra2_integrate_fourier (
             ppt2->error_message, psp->error_message);
           inverse_rescaling = 1/inverse_rescaling;
 
-          /* Loop over time, no integration */
+
           
+          // =====================================================================================
+          // =                                 Cycle over time                                   =
+          // =====================================================================================
+
           for (int index_tau = 0; index_tau < ppt2->tau_size; ++index_tau) {
 
 
@@ -1152,8 +1059,6 @@ int spectra2_integrate_fourier (
             // ---------------------------------------------------------------------------------
 
             double integrand = 
-              // symmetry factor (doing only half plane in k1 k2)
-               2 *
               // integration weight
                k1*k2/k3 *
               // integration stepsize
@@ -1161,7 +1066,7 @@ int spectra2_integrate_fourier (
               // phi angleintegration
                2 * _PI_ *
               // spectra factors
-               2/ pow(2*_PI_,3) *
+               2 / pow(2*_PI_,3) *
               // definition of second order perturbation theory
                1./2./2.*
               // primordial spectra
