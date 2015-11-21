@@ -730,547 +730,582 @@ int perturb2_sources_at_k3 (
  */
 
 int perturb2_sources_at_k2k3 (
-     struct precision2 * ppr2,
-     struct perturbs * ppt,
-     struct perturbs2 * ppt2,
-     int index_tp2, /**< Input: source function type for which to interpolate the source function */
-     int index_k1, /**< Input: k1 value in ppt2->k where to evaluate the source function */
-     double k2, /**< Input: k2 value where to interpolate the source function */
-     double k3, /**< Input: k3 value where to interpolate the source function */
-     int index_tau, /**< Input: time in ppt2->tau_sampling when to evaluate the source function */
-     int extrapolate, /**< Input: if true, ues linear extrapolation for the k3 direction when needed;
-                      if false, use the closest neighbour. */
-     double * source /**< Output: the source function interpolated in (k2,k3) */
-     )
+      struct precision2 * ppr2,
+      struct perturbs * ppt,
+      struct perturbs2 * ppt2,
+      int index_tp2, /**< Input: source function type for which to interpolate the source function */
+      int index_k1, /**< Input: k1 value in ppt2->k where to evaluate the source function */
+      double k2, /**< Input: k2 value where to interpolate the source function */
+      double k3, /**< Input: k3 value where to interpolate the source function */
+      int index_k2, /**< Input: index pointing to the requested k2 value in ppt2->k; if negative,
+                    use interpolation in k2 instead. */
+      int index_tau, /**< Input: time in ppt2->tau_sampling when to evaluate the source function */
+      int extrapolate, /**< Input: if true, ues linear extrapolation for the k3 direction when needed;
+                       if false, use the closest neighbour. */
+      double * source /**< Output: the source function interpolated in (k2,k3) */
+      )
 {
 
-  // int k1 = ppt2->k[index_k1];
-  //
-  // class_test ((k3<fabs(k1-k2)) || (k3>(k1+k2)),
+  int k1 = ppt2->k[index_k1];
+
+  class_test (k3<fabs(k1-k2) || k3>(k1+k2),
+    ppt2->error_message,
+    "(k1,k2,k3)=(%g,%g,%g) does not satisfy the triangular condition",
+    k1, k2, k3);
+
+  class_test (k2 < ppt2->k[0],
+    ppt2->error_message,
+    "(k1,k2,k3)=(%g,%g,%g), k2 is smaller than ppt2->k[0]=%g", k1, k2, k3, ppt2->k[0]);
+
+  class_test (k3 > ppt2->k[ppt2->k_size-1],
+    ppt2->error_message,
+    "(k1,k2,k3)=(%g,%g,%g), k2 is larger than k_max=%d", k1, k2, k3, ppt2->k[ppt2->k_size-1]);
+
+
+  /* Before even considering interpolation, check whether index_k2 is a valid index. If this
+  is the case, then interpolate only along k3 */
+
+  if (index_k2 >= 0) {
+
+    class_call (perturb2_sources_at_k3 (
+                  ppr2,
+                  ppt,
+                  ppt2,
+                  index_tp2,
+                  index_k1,
+                  index_k2,
+                  k3,
+                  -1,
+                  index_tau,
+                  extrapolate,
+                  source),
+      ppt2->error_message,
+      ppt2->error_message);
+
+    return _SUCCESS_;
+
+  }
+
+
+  // ====================================================================================
+  // =                              What strategy to use?                               =
+  // ====================================================================================
+
+  /* We define four types of interpolation strategies: rectangular, triangular,
+  left node and right node. Refer to the documentation below for details. */
+  enum {RECTANGULAR, TRIANGULAR, LEFT_NODE, RIGHT_NODE} interpolation;
+
+  /* Index in ppt2->k preceding k2 */
+  
+  int index_k2_left;
+  
+  class_call (find_by_bisection (
+                ppt2->k,
+                ppt2->k_size,
+                k2,
+                &index_k2_left,
+                ppt2->error_message),
+    ppt2->error_message,
+    ppt2->error_message);
+    
+  // int index_k2_left = ppt2->k_size;
+  // while (index_k2_left>=0 && ppt2->k[index_k2_left] > k2)
+  //   --index_k2_left;
+  // class_test (index_k2_left < 0,
   //   ppt2->error_message,
-  //   "(k1,k2,k3)=(%g,%g,%g) does not satisfy the triangular condition",
-  //   k1, k2, k3);
-  //
-  // class_test (k2 < ppt2->k[0],
-  //   ppt2->error_message,
-  //   "(k1,k2,k3)=(%g,%g,%g), k2 is smakker than k_min=%g", k1, k2, k3, ppt2->k[0]);
-  //
-  // class_test (k2 > ppt2->k[ppt2->k_size-1],
-  //   ppt2->error_message,
-  //   "(k1,k2,k3)=(%g,%g,%g), k2 is karger than k_max=%g", k1, k2, k3, ppt2->k_max);
-  //
-  //
-  // /* Before even considering interpolation, check whether k2 is a node. If this is
-  // the case, then interpolate only along k3 */
-  //
-  // if (ptr->index_l[l2] > 0) {
-  //
-  //   class_call (bispectra_at_l3_linear (
-  //                 ptr,
-  //                 pbi,
-  //                 index_bt,
-  //                 index_l1, ptr->index_l[l2], l3,
-  //                 X, Y, Z,
-  //                 extrapolate,
-  //                 bispectrum,
-  //                 bispectrum_unlensed),
-  //     pbi->error_message,
-  //     pbi->error_message);
-  //
-  //   return _SUCCESS_;
-  //
-  // }
-  //
-  //
-  // // // ====================================================================================
-  // // // =                              What strategy to use?                               =
-  // // // ====================================================================================
-  // //
-  // // /* We define four types of interpolation strategies: rectangular, triangular,
-  // // left node and right node. Refer to the documentation below for details. */
-  // // enum {RECTANGULAR, TRIANGULAR, LEFT_NODE, RIGHT_NODE} interpolation;
-  // //
-  // // /* Index in pbi->l preceding l2 */
-  // // int index_l2_left = ptr->index_l_left[l2];
-  // // int l2_left = pbi->l[index_l2_left];
-  // //
-  // // /* Index in pbi->l following l2. This index cannot exceed the size of pbi->l because
-  // // we made sure that l2 is strictly smaller than pbi->l_max */
-  // // int index_l2_right = index_l2_left + 1;
-  // // class_test (index_l2_right >= pbi->l_size,
-  // //   pbi->error_message,
-  // //   "could not bracket l2");
-  // // int l2_right = pbi->l[index_l2_right];
-  // //
-  // // /* Determine triangular limits for l2_left and l2_right */
-  // // int l2_min = MAX (abs(l1-l3), 2);
-  // // int l2_max = MIN (l1+l3, pbi->l_max);
-  // //
-  // // /* Variables needed by the triangular method */
-  // // int l3_left, l3_right;
-  // //
-  // // /* Debug: print l2 values and limits */
-  // // // printf ("l1=%d,l2=%d,l3=%d,l2_left=%d,l2_right=%d,l2_min=%d,l2_max=%d\n",
-  // // //   l1,l2,l3,l2_left,l2_right,l2_min,l2_max);
-  // // // fflush (stdout);
-  // //
-  // //
-  // // // -------------------------------------------------------------------------------
-  // // // -                                 Rectangular?                                -
-  // // // -------------------------------------------------------------------------------
-  // //
-  // // /* Are the left and right l2 nodes usable for interpolating in l3? A node is
-  // // usable if its l2 value satisfy the triangular inequality with l1 and l3. If
-  // // both the left and right nodes are usable, it means that (l2,l3) is far from
-  // // the triangular limit and can be interpolated linearly along l2. The diagonal
-  // // limits set by the triangular condition are problematic for this kind of
-  // // interpolation, and are better dealt with the triangular interpolation, below. .*/
-  // //
-  // // short left_is_usable = (l2_left >= l2_min);
-  // // short right_is_usable = (l2_right <= l2_max);
-  // //
-  // // if (left_is_usable && right_is_usable) {
-  // //
-  // //   interpolation = RECTANGULAR;
-  // //
-  // // }
-  // //
-  // //
-  // // // -------------------------------------------------------------------------------
-  // // // -                                  Triangular?                                -
-  // // // -------------------------------------------------------------------------------
-  // //
-  // // /* If interpolation along l2 is not possible, let's see if we can interpolate
-  // // diagonally. The (l2,l3) dominion is a triangle filled with lines parallel to
-  // // the triangular border. In the triangular method, we interpolate along these
-  // // lines. This kind of interpolation is efficient where the rectangular interpolation
-  // // fails (dealing with the diagonal limits set by the triangular condition), and it
-  // // fails where the rectangular interpolation is ideal (dealing with the hard limit
-  // // on l2 and l3 set by l_min=2 and l_max=pbi->l_max). The best scenario
-  // // for the triangular interpolation is a very small l1, so that the (l2,l3) domain
-  // // is mostly diagonal. The worst scenario is for l1~l_max, where the shape of the
-  // // (l2,l3) domain is basically a right triangle. */
-  // //
-  // // else {
-  // //
-  // //   /* Determine whether the requested point is in the upper or lower
-  // //   part of the (l2,l3) triangle */
-  // //
-  // //   int offset_from_top = (l1+l2) - l3;
-  // //   int offset_from_bottom = l3 - abs(l1-l2);
-  // //
-  // //   /* If the point is in the upper part of the triangle, interpolate its
-  // //   value along the direction parallel to the upper side of the triangle */
-  // //   if (offset_from_top < offset_from_bottom) {
-  // //
-  // //     /* If l1 is equal to the upper limit in multipole space, then the whole upper
-  // //     part of the triangle is not accessible, so how can (l1,l2,l3) be there? */
-  // //     class_test (l1==pbi->l_max,
-  // //       pbi->error_message,
-  // //       "(l1=%d, l2=%d, l3=%d) cannot be in the upper triangle!", l1, l2, l3);
-  // //
-  // //     l3_left = (l1+l2_left) - offset_from_top;
-  // //     l3_right = (l1+l2_right) - offset_from_top;
-  // //   }
-  // //
-  // //   /* If the point is in the lower part of the triangle, interpolate its
-  // //   value along the direction parallel to the lower side of the triangle */
-  // //   else {
-  // //     l3_left = abs(l1-l2_left) + offset_from_bottom;
-  // //     l3_right = abs(l1-l2_right) + offset_from_bottom;
-  // //   }
-  // //
-  // //   class_test (!is_triangular_int (l1, l2_left, l3_left),
-  // //     pbi->error_message,
-  // //     "l1=%d, l2_left=%d, l3_left=%d not triangular", l1, l2_left, l3_left);
-  // //
-  // //   class_test (!is_triangular_int (l1, l2_right, l3_right),
-  // //     pbi->error_message,
-  // //     "l1=%d, l2_right=%d, l3_right=%d not triangular", l1, l2_right, l3_right);
-  // //
-  // //
-  // //   /* It is now safe to use triangular interpolation */
-  // //
-  // //   interpolation = TRIANGULAR;
-  // //
-  // //
-  // //   // -------------------------------------------------------------------------------
-  // //   // -                                 Squeezed?                                   -
-  // //   // -------------------------------------------------------------------------------
-  // //
-  // //   /* The squeezed corner with l1~l2 is problematic. There, a small step in l3
-  // //   (say from 4 to 2) can result in abrupt changes in the bispectrum, especially
-  // //   for those bispectra peaked on squeezed configurations, like the local and
-  // //   CMB-lensing bispectra. This is not much of a problem for the interpolation along
-  // //   l3 (ie. the bispectra_at_l3_linear() function), because our l sampling has a logarithmic
-  // //   leg that ensures that the small values (2,3,4,5...) are densely sampled.
-  // //
-  // //   The problem is for the l2 interpolation when using the triangular method. In
-  // //   fact, the diagonal method which interpolates along the diagonal border of
-  // //   the triangular region; but this is a direction along which the bispectrum varies
-  // //   quickly because it goes straight towards the ultra squeezed pole with l1=l2 and
-  // //   l3=2. If l1 and l2 are larger than ~ 100, the sampling along this diagonal
-  // //   direction is sparse, usually with a linear step of ~25. As a result, a mildy
-  // //   squeezed configuration (say l1=300, l2=250, l3=50) could be interpolated using
-  // //   another mildy squeezed node (say l1=300, l2=220, l3=70) and the ultra squeezed pole
-  // //   (l1=300, l2=300, l3=2). For a bispectrum peaked on squeezed configurations, the
-  // //   latter node would dominate and make the interpolated bispectrum in (l2,l3) much
-  // //   larger than what it really is.
-  // //
-  // //   Note that using the rectangular interpolation to solve this issue is not possible,
-  // //   because, these squeezed configurations are at the limit of the triangular
-  // //   condition (eg. l1=l2=1000, l3=10).
-  // //
-  // //   To recap, the triangular method interpolates in a given (l2,l3) point using nodes
-  // //   with different values of l3. This is a problem when the interpolated function
-  // //   varies a lot with l3, that is, for squeezed configurations where l3 is small and
-  // //   l1~l2.
-  // //
-  // //   To solve this problem, we assign to those (l2,l3) points close to a squeezed
-  // //   node the value at the squeezed node with the same l3; that is, we assign
-  // //   b(l2,l3) = b(l2_left,l3) if the squeezed node is the left one, and
-  // //   b(l2,l3) = b(l2_right, l3) if the squeezed node is the right one. In this way
-  // //   we avoid using the fastest varying direction, l3. We lose in accuracy because
-  // //   we use only one point rather than two, but this loss is more than balanced
-  // //   by avoiding varying the l3 direction. */
-  // //
-  // //   /* Determine whether we are dealing with a squeezed node */
-  // //   double squeezed_limit = 5;
-  // //   short left_is_squeezed = (l2_left/(double)l3_left > squeezed_limit);
-  // //   short right_is_squeezed = (l2_right/(double)l3_right > squeezed_limit);
-  // //
-  // //   /* If one of the nodes is a squeezed configuration with small l3, we use it
-  // //   for interpolating the bispectrum rather than using the triangular method.
-  // //   An exception is when neither the left nor the right l2 values satisfy the
-  // //   triangular condition with l3, in which case the diagonal interpolation is
-  // //   the only option even if it is not very accurate */
-  // //
-  // //   if (left_is_usable && left_is_squeezed)
-  // //     interpolation = LEFT_NODE;
-  // //
-  // //   else if (right_is_usable && right_is_squeezed)
-  // //     interpolation = RIGHT_NODE;
-  // //
-  // // }
-  // //
-  // //
-  // //
-  // // // ====================================================================================
-  // // // =                             Rectangular interpolation                            =
-  // // // ====================================================================================
-  // //
-  // // /* If (l2,l3) is an internal point, interpolate along l2 */
-  // //
-  // // if (interpolation == RECTANGULAR) {
-  // //
-  // //   /* If the l3-value of either the left or the right node is outside the triangular
-  // //   region, adjust it so that it fits. This should not happen because we made sure
-  // //   that we enter here only if both the left and right nodes are usable; we include
-  // //   this modifications for debug purposes. TODO: Ideally, if l3_left is changed, then
-  // //   also l3_right should be changed, because otherwise the line between l3_left and
-  // //   l3_right won't pass through l3. We should therefore define two l3 values rather
-  // //   than one. */
-  // //
-  // //   int l3_rectangular = l3;
-  // //
-  // //   int l3_left_min = MAX (abs(l2_left - l1), 2);
-  // //   int l3_left_max = MIN (l2_left+l1, pbi->l_max);
-  // //
-  // //   int l3_right_min = MAX (abs(l2_right - l1), 2);
-  // //   int l3_right_max = MIN (l2_right+l1, pbi->l_max);
-  // //
-  // //   l3_rectangular = MAX (l3_rectangular, MAX (l3_left_min, l3_right_min));
-  // //   l3_rectangular = MIN (l3_rectangular, MIN (l3_left_max, l3_right_max));
-  // //
-  // //   /* Extract bispectrum in l2_left and l2_right */
-  // //   double b_left, b_right;
-  // //   double b_left_unlensed, b_right_unlensed;
-  // //
-  // //   class_call (bispectra_at_l3_linear (
-  // //                 ptr,
-  // //                 pbi,
-  // //                 index_bt,
-  // //                 index_l1, index_l2_left, l3_rectangular,
-  // //                 X, Y, Z,
-  // //                 extrapolate,
-  // //                 &b_left,
-  // //                 &b_left_unlensed),
-  // //     pbi->error_message,
-  // //     pbi->error_message);
-  // //
-  // //   class_call (bispectra_at_l3_linear (
-  // //                 ptr,
-  // //                 pbi,
-  // //                 index_bt,
-  // //                 index_l1, index_l2_right, l3_rectangular,
-  // //                 X, Y, Z,
-  // //                 extrapolate,
-  // //                 &b_right,
-  // //                 &b_right_unlensed),
-  // //     pbi->error_message,
-  // //     pbi->error_message);
-  // //
-  // //   /* Interpolate along the l2 direction */
-  // //   double a = (l2_right - l2)/(double)(l2_right - l2_left);
-  // //   *bispectrum = a*b_left + (1-a)*b_right;
-  // //
-  // //   if ((bispectrum_unlensed != NULL) && (pbi->lens_me[index_bt] == _TRUE_))
-  // //     *bispectrum_unlensed = a*b_left_unlensed + (1-a)*b_right_unlensed;
-  // //
-  // // } // if (RECTANGULAR)
-  // //
-  // //
-  // // // ====================================================================================
-  // // // =                              Triangular interpolation                            =
-  // // // ====================================================================================
-  // //
-  // // /* If (l2,l3) is close to the triangular limit and is not too squeezed,
-  // // interpolate along the diagonal border of the triangular region. The
-  // // advantage of this interpolation is that any point can be interpolated,
-  // // even if it is right on the triangular border or if has no usable nodes at
-  // // all. */
-  // //
-  // // else if (interpolation == TRIANGULAR) {
-  // //
-  // //   /* If the l3-value of either the left or the right node is smaller than l_min or
-  // //   larger than l_max, adjust it so that it fits. This might happen because the
-  // //   diagonal interpolation is not compatible with lines parallel to the l2 and l3
-  // //   axes, such as those corresponding to the l_min and l_max limits. The worst
-  // //   situation is for very large l1, where the (l2,l3) domain is basically a right
-  // //   triangle. In these cases, we just interpolate using the closest node that is in
-  // //   the limits. TODO: Ideally, if l3_left is changed, then also l3_right should be
-  // //   changed, because otherwise the line between l3_left and l3_right won't pass
-  // //   through l3.  */
-  // //
-  // //   l3_left = MAX (MIN (l3_left, pbi->l_max), 2);
-  // //   l3_right = MAX (MIN (l3_right, pbi->l_max), 2);
-  // //
-  // //
-  // //   // -------------------------------------------------------------------------------
-  // //   // -                            Bispectrum at the nodes                          -
-  // //   // -------------------------------------------------------------------------------
-  // //
-  // //   double b_left, b_left_unlensed;
-  // //
-  // //   class_call (bispectra_at_l3_linear (
-  // //                 ptr,
-  // //                 pbi,
-  // //                 index_bt,
-  // //                 index_l1, index_l2_left, l3_left,
-  // //                 X, Y, Z,
-  // //                 extrapolate,
-  // //                 &b_left,
-  // //                 &b_left_unlensed),
-  // //     pbi->error_message,
-  // //     pbi->error_message);
-  // //
-  // //   double b_right, b_right_unlensed;
-  // //
-  // //   class_call (bispectra_at_l3_linear (
-  // //                 ptr,
-  // //                 pbi,
-  // //                 index_bt,
-  // //                 index_l1, index_l2_right, l3_right,
-  // //                 X, Y, Z,
-  // //                 extrapolate,
-  // //                 &b_right,
-  // //                 &b_right_unlensed),
-  // //     pbi->error_message,
-  // //     pbi->error_message);
-  // //
-  // //
-  // //   // -------------------------------------------------------------------------------
-  // //   // -                                Interpolate                                  -
-  // //   // -------------------------------------------------------------------------------
-  // //
-  // //   /* Distance squared between left and right nodes */
-  // //   double h_squared = (l2_right-l2_left)*(l2_right-l2_left) + (l3_right-l3_left)*(l3_right-l3_left);
-  // //
-  // //   /* Distance squared between point and right node */
-  // //   double d_squared = (l2_right-l2)*(l2_right-l2) + (l3_right-l3)*(l3_right-l3);
-  // //
-  // //   /* Proximity factor */
-  // //   double a = sqrt( d_squared/h_squared );
-  // //
-  // //   /* Linear interpolation */
-  // //   *bispectrum = a*b_left + (1-a)*b_right;
-  // //
-  // //   if ((bispectrum_unlensed != NULL) && (pbi->lens_me[index_bt] == _TRUE_))
-  // //     *bispectrum_unlensed = a*b_left_unlensed + (1-a)*b_right_unlensed;
-  // //
-  // //   /* Debug: print l2 values and limits */
-  // //   // if (l1==10 && l2==15) {
-  // //   //
-  // //   //   printf ("l1=%d,l2=%d,l3=%d,l2_left=%d,l2_right=%d,l2_min=%d,l2_max=%d\n",
-  // //   //     l1,l2,l3,l2_left,l2_right,l2_min,l2_max);
-  // //   //
-  // //   //   printf ("\tl3_left = %d\n", l3_left);
-  // //   //   printf ("\tl3_right = %d\n", l3_right);
-  // //   //   printf ("\tb_left = %g\n", b_left);
-  // //   //   printf ("\tb_right = %g\n", b_right);
-  // //   //   printf ("\ta = %g\n", a);
-  // //   // }
-  // //
-  // // } // if (TRIANGULAR)
-  // //
-  // //
-  // // // ====================================================================================
-  // // // =                        Closest neighbour interpolation                           =
-  // // // ====================================================================================
-  // //
-  // // /* Interpolate using either of the left or right node. The advantage of this
-  // // approach is that it can be used even if a point cannot be bracketed by two valid
-  // // nodes. */
-  // //
-  // // else if (interpolation == LEFT_NODE) {
-  // //
-  // //   /* By default, we just use the previous node, ie. l2_left. If the user asked for
-  // //   extrapolation, we try to use backward extrapolation, that is, we use the two previous
-  // //   nodes (ie. the left node and the node at its left) and extrapolate forward to l2. We
-  // //   do so only if the node with the smallest l2 satisfies the triangular condition. */
-  // //
-  // //   short backward_extrapolation = (
-  // //     (extrapolate) && /* user asked for extrapolation */
-  // //     ((index_l2_left-1) > 0) && /* left node is not the first one */
-  // //     (pbi->l[index_l2_left-1] > l2_min)); /* node with the smallest l2 satisfies triangular condition */
-  // //
-  // //   if (!backward_extrapolation) {
-  // //
-  // //     class_call (bispectra_at_l3_linear (
-  // //                   ptr,
-  // //                   pbi,
-  // //                   index_bt,
-  // //                   index_l1, index_l2_left, l3,
-  // //                   X, Y, Z,
-  // //                   extrapolate,
-  // //                   bispectrum,
-  // //                   bispectrum_unlensed),
-  // //       pbi->error_message,
-  // //       pbi->error_message);
-  // //
-  // //   }
-  // //
-  // //   else {
-  // //
-  // //     /* First l2 node that is smaller than l2 */
-  // //     int l2_last = l2_left;
-  // //     double b_last, b_last_unlensed;
-  // //
-  // //     class_call (bispectra_at_l3_linear (
-  // //                   ptr,
-  // //                   pbi,
-  // //                   index_bt,
-  // //                   index_l1, index_l2_left, l3,
-  // //                   X, Y, Z,
-  // //                   extrapolate,
-  // //                   &b_last,
-  // //                   &b_last_unlensed),
-  // //       pbi->error_message,
-  // //       pbi->error_message);
-  // //
-  // //     /* Second l2 node that is smaller than l2 */
-  // //     int l2_penultimate = pbi->l[index_l2_left-1];
-  // //     double b_penultimate, b_penultimate_unlensed;
-  // //
-  // //     class_call (bispectra_at_l3_linear (
-  // //                   ptr,
-  // //                   pbi,
-  // //                   index_bt,
-  // //                   index_l1, index_l2_left-1, l3,
-  // //                   X, Y, Z,
-  // //                   extrapolate,
-  // //                   &b_penultimate,
-  // //                   &b_penultimate_unlensed),
-  // //       pbi->error_message,
-  // //       pbi->error_message);
-  // //
-  // //     double slope = (b_last-b_penultimate)/(double)(l2_last-l2_penultimate);
-  // //     *bispectrum = b_last + (l2-l2_last) * slope;
-  // //
-  // //     if ((bispectrum_unlensed != NULL) && (pbi->lens_me[index_bt] == _TRUE_)) {
-  // //       double slope = (b_last_unlensed-b_penultimate_unlensed)/(double)(l2_last-l2_penultimate);
-  // //       *bispectrum_unlensed = b_last_unlensed + (l2-l2_last) * slope;
-  // //     }
-  // //
-  // //   } // if backward extrapolation
-  // //
-  // // } // if (LEFT_NODE)
-  // //
-  // // else if (interpolation == RIGHT_NODE) {
-  // //
-  // //   /* By default, we just use the next node, ie. l2_right. If the user asked for
-  // //   extrapolation, we try to use forward extrapolation, that is, we use the next two
-  // //   nodes (ie. the right node and the node at its right) and extrapolate back to l2.
-  // //   We do so only if the node with the largest l2 satisfies the triangular condition. */
-  // //
-  // //   short forward_extrapolation =
-  // //     (extrapolate) && /* user asked for forward extrapolation */
-  // //     ((index_l2_right+1) < pbi->l_size) && /* right node is not the last one */
-  // //     (pbi->l[index_l2_right+1] < l2_max); /* node with the largest l2 satisfies triangular condition */
-  // //
-  // //   if (!forward_extrapolation) {
-  // //
-  // //     class_call (bispectra_at_l3_linear (
-  // //                   ptr,
-  // //                   pbi,
-  // //                   index_bt,
-  // //                   index_l1, index_l2_right, l3,
-  // //                   X, Y, Z,
-  // //                   extrapolate,
-  // //                   bispectrum,
-  // //                   bispectrum_unlensed),
-  // //       pbi->error_message,
-  // //       pbi->error_message);
-  // //
-  // //   }
-  // //
-  // //   else {
-  // //
-  // //     /* First l2 node that is larger than l2 */
-  // //     int l2_first = l2_right;
-  // //     double b_first, b_first_unlensed;
-  // //
-  // //     class_call (bispectra_at_l3_linear (
-  // //                   ptr,
-  // //                   pbi,
-  // //                   index_bt,
-  // //                   index_l1, index_l2_right, l3,
-  // //                   X, Y, Z,
-  // //                   extrapolate,
-  // //                   &b_first,
-  // //                   &b_first_unlensed),
-  // //       pbi->error_message,
-  // //       pbi->error_message);
-  // //
-  // //     /* Second l2 node that is larger than l2 */
-  // //     int l2_second = pbi->l[index_l2_right+1];
-  // //     double b_second, b_second_unlensed;
-  // //
-  // //     class_call (bispectra_at_l3_linear (
-  // //                   ptr,
-  // //                   pbi,
-  // //                   index_bt,
-  // //                   index_l1, index_l2_right+1, l3,
-  // //                   X, Y, Z,
-  // //                   extrapolate,
-  // //                   &b_second,
-  // //                   &b_second_unlensed),
-  // //       pbi->error_message,
-  // //       pbi->error_message);
-  // //
-  // //     double slope = (b_second-b_first)/(double)(l2_second-l2_first);
-  // //     *bispectrum = b_first - (l2_first-l2) * slope;
-  // //
-  // //     if ((bispectrum_unlensed != NULL) && (pbi->lens_me[index_bt] == _TRUE_)) {
-  // //       double slope = (b_second_unlensed-b_first_unlensed)/(double)(l2_second-l2_first);
-  // //       *bispectrum_unlensed = b_first_unlensed - (l2_first-l2) * slope;
-  // //     }
-  // //
-  // //   } // if forward extrapolation
-  // //
-  // // } // if (RIGHT_NODE)
-  //
-  // return _SUCCESS_;
+  //   "could not bracket k2 on the left");
+
+  int k2_left = ppt2->k[index_k2_left];
+
+  /* Index in ppt2->k following k2. This index cannot exceed the size of ppt2->k
+  because we made sure that k2 is strictly smaller than the last element of ppt2->k */
+  int index_k2_right = index_k2_left + 1;
+  class_test (index_k2_right >= ppt2->k_size,
+    ppt2->error_message,
+    "could not bracket k2 on the right");
+  int k2_right = ppt2->k[index_k2_right];
+
+  /* Determine triangular limits for k2_left and k2_right */
+  int k2_min = MAX (fabs(k1-k3), ppt2->k[0]);
+  int k2_max = MIN (k1+k3, ppt2->k[ppt2->k_size-1]);
+
+  /* Variables needed by the triangular method */
+  int k3_left, k3_right;
+
+  /* Debug: print k2 values and limits */
+  // printf ("k1=%g,k2=%g,k3=%g,k2_left=%g,k2_right=%g,k2_min=%g,k2_max=%g\n",
+  //   k1,k2,k3,k2_left,k2_right,k2_min,k2_max);
+  // fflush (stdout);
+
+
+  // -------------------------------------------------------------------------------
+  // -                                 Rectangular?                                -
+  // -------------------------------------------------------------------------------
+
+  /* Are the left and right k2 nodes usable for interpolating in k3? A node is
+  usable if its k2 value satisfy the triangular inequality with k1 and k3. If
+  both the left and right nodes are usable, it means that (k2,k3) is far from
+  the triangular limit and can be interpolated linearly along k2. The diagonal
+  limits set by the triangular condition are problematic for this kind of
+  interpolation, and are better dealt with the triangular interpolation, below. .*/
+
+  short left_is_usable = (k2_left >= k2_min);
+  short right_is_usable = (k2_right <= k2_max);
+
+  if (left_is_usable && right_is_usable) {
+
+    interpolation = RECTANGULAR;
+
+  }
+
+
+  // -------------------------------------------------------------------------------
+  // -                                  Triangular?                                -
+  // -------------------------------------------------------------------------------
+
+  /* If interpolation along k2 is not possible, let's see if we can interpolate
+  diagonally. The (k2,k3) dominion is a triangle filled with lines parallel to
+  the triangular border. In the triangular method, we interpolate along these
+  lines. This kind of interpolation is efficient where the rectangular interpolation
+  fails (dealing with the diagonal limits set by the triangular condition), and it
+  fails where the rectangular interpolation is ideal (dealing with the hard limit
+  on k2 and k3 set by k_min=ppt2->k[0] and k_max=ppt2->k[size-1]). The best scenario
+  for the triangular interpolation is a very small k1, so that the (k2,k3) domain
+  is mostly diagonal. The worst scenario is for k1~k_max, where the shape of the
+  (jhmn ,k3) domain is basically a right triangle. */
+
+  else {
+
+    /* Determine whether the requested point is in the upper or lower
+    part of the (k2,k3) triangle */
+
+    int offset_from_top = (k1+k2) - k3;
+    int offset_from_bottom = k3 - fabs(k1-k2);
+
+    /* If the point is in the upper part of the triangle, interpolate its
+    value along the direction parallel to the upper side of the triangle */
+    if (offset_from_top < offset_from_bottom) {
+
+      /* If k1 is equal to the upper limit in k space, then the whole upper
+      part of the triangle is not accessible, so how can (k1,k2,k3) be there? */
+      class_test (k1==ppt2->k[ppt2->k_size-1],
+        ppt2->error_message,
+        "(k1=%g, k2=%g, k3=%g) cannot be in the upper triangle!", k1, k2, k3);
+
+      k3_left = (k1+k2_left) - offset_from_top;
+      k3_right = (k1+k2_right) - offset_from_top;
+    }
+
+    /* If the point is in the lower part of the triangle, interpolate its
+    value along the direction parallel to the lower side of the triangle */
+    else {
+      k3_left = fabs(k1-k2_left) + offset_from_bottom;
+      k3_right = fabs(k1-k2_right) + offset_from_bottom;
+    }
+
+    class_test (!is_triangular_double (k1, k2_left, k3_left),
+      ppt2->error_message,
+      "k1=%g, k2_left=%g, k3_left=%g not triangular", k1, k2_left, k3_left);
+
+    class_test (!is_triangular_int (k1, k2_right, k3_right),
+      ppt2->error_message,
+      "k1=%g, k2_right=%g, k3_right=%g not triangular", k1, k2_right, k3_right);
+
+
+    /* It is now safe to use triangular interpolation */
+
+    interpolation = TRIANGULAR;
+
+
+    // -------------------------------------------------------------------------------
+    // -                                 Squeezed?                                   -
+    // -------------------------------------------------------------------------------
+
+    /* The squeezed corner with k1~k2 is problematic. There, a small step in k3
+    can result in abrupt changes in the source function, especially for those
+    peaked on squeezed configurations. This is not much of a problem for the
+    interpolation along k3 (ie. the perturbs2_sources_at_k3() function), because
+    our k sampling has a logarithmic leg that ensures that the small k values are
+    densely sampled.
+
+    The problem is for the k2 interpolation when using the triangular method. In
+    fact, the diagonal method which interpolates along the diagonal border of
+    the triangular region; but this is a direction along which the function varies
+    quickly because it goes straight towards the ultra squeezed pole with k1=k2 and
+    k3=ppt2->k[0]. If k1 and k2 are much larger than ppt2->k[0], the sampling along
+    this diagonal direction is sparse. As a result, a mildy squeezed configuration
+    (say k1=0.1, k2=0.09, k3=0.02) could be interpolated using another mildy squeezed
+    node (say k1=0.1, k2=0.85, k3=0.025) and the ultra squeezed pole (k1=0.1, k2=0.1,
+    k3=0.0001). For a function peaked on squeezed configurations, the latter node
+    would dominate and make the interpolated value in (k2,k3) much larger in absolute
+    value than what it really is.
+
+    Note that using the rectangular interpolation to solve this issue is not possible,
+    because, these squeezed configurations are at the limit of the triangular
+    condition.
+
+    To recap, the triangular method interpolates in a given (k2,k3) point using nodes
+    with different values of k3. This is a problem when the interpolated function
+    varies a lot with k3, that is, for squeezed configurations where k3 is small and
+    k1~k2.
+
+    To solve this problem, we assign to those (k2,k3) points close to a squeezed
+    node the value at the squeezed node with the same k3; that is, we assign
+    S(k2,k3) = S(k2_left,k3) if the squeezed node is the left one, and
+    S(k2,k3) = S(k2_right, k3) if the squeezed node is the right one. In this way
+    we avoid using the fastest varying direction, k3. We lose in accuracy because
+    we use only one point rather than two, but this loss is more than balanced
+    by avoiding varying the k3 direction. */
+
+    /* Determine whether we are dealing with a squeezed node */
+    double squeezed_limit = 5;
+    short left_is_squeezed = (k2_left/(double)k3_left > squeezed_limit);
+    short right_is_squeezed = (k2_right/(double)k3_right > squeezed_limit);
+
+    /* If one of the nodes is a squeezed configuration with small k3, we use it
+    for interpolating the function rather than using the triangular method.
+    An exception is when neither the left nor the right k2 values satisfy the
+    triangular condition with k3, in which case the diagonal interpolation is
+    the only option even if it is not very accurate */
+
+    if (left_is_usable && left_is_squeezed)
+      interpolation = LEFT_NODE;
+
+    else if (right_is_usable && right_is_squeezed)
+      interpolation = RIGHT_NODE;
+
+  }
+
+
+
+  // ====================================================================================
+  // =                             Rectangular interpolation                            =
+  // ====================================================================================
+
+  /* If (k2,k3) is an internal point, interpolate along k2 */
+
+  if (interpolation == RECTANGULAR) {
+
+    /* If the k3-value of either the left or the right node is outside the triangular
+    region, adjust it so that it fits. This should not happen because we made sure
+    that we enter here only if both the left and right nodes are usable; we include
+    this modifications for debug purposes. TODO: Ideally, if k3_left is changed, then
+    also k3_right should be changed, because otherwise the line between k3_left and
+    k3_right won't pass through k3. We should therefore define two k3 values rather
+    than one. */
+
+    int k3_rectangular = k3;
+
+    int k3_left_min = MAX (fabs(k2_left - k1), 2);
+    int k3_left_max = MIN (k2_left+k1, ppt2->k[ppt2->k_size-1]);
+
+    int k3_right_min = MAX (fabs(k2_right - k1), 2);
+    int k3_right_max = MIN (k2_right+k1, ppt2->k[ppt2->k_size-1]);
+
+    k3_rectangular = MAX (k3_rectangular, MAX (k3_left_min, k3_right_min));
+    k3_rectangular = MIN (k3_rectangular, MIN (k3_left_max, k3_right_max));
+
+    /* Extract source function in k2_left and k2_right */
+    double S_left, S_right;
+
+    class_call (perturb2_sources_at_k3 (
+                  ppr2,
+                  ppt,
+                  ppt2,
+                  index_tp2,
+                  index_k1,
+                  index_k2_left,
+                  k3_rectangular,
+                  -1,
+                  index_tau,
+                  extrapolate,
+                  &S_left),
+      ppt2->error_message,
+      ppt2->error_message);
+
+    class_call (perturb2_sources_at_k3 (
+                  ppr2,
+                  ppt,
+                  ppt2,
+                  index_tp2,
+                  index_k1,
+                  index_k2_right,
+                  k3_rectangular,
+                  -1,
+                  index_tau,
+                  extrapolate,
+                  &S_right),
+      ppt2->error_message,
+      ppt2->error_message);
+
+    /* Interpolate along the k2 direction */
+    double a = (k2_right - k2)/(double)(k2_right - k2_left);
+    *source = a*S_left + (1-a)*S_right;
+
+  } // if (RECTANGULAR)
+
+
+  // ====================================================================================
+  // =                              Triangular interpolation                            =
+  // ====================================================================================
+
+  /* If (k2,k3) is close to the triangular limit and is not too squeezed,
+  interpolate along the diagonal border of the triangular region. The
+  advantage of this interpolation is that any point can be interpolated,
+  even if it is right on the triangular border or if has no usable nodes at
+  all. */
+
+  else if (interpolation == TRIANGULAR) {
+
+    /* If the k3-value of either the left or the right node is smaller than k_min
+    or larger than k_max, adjust it so that it fits. This might happen because the
+    diagonal interpolation is not compatible with lines orthogonal to the k2 and k3
+    directions, such as those corresponding to the k_min and k_max limits. The worst
+    situation is for very large k1, where the (k2,k3) domain is basically a right
+    triangle. In these cases, we just interpolate using the closest node that is in
+    the limits. TODO: Ideally, if k3_left is changed, then also k3_right should be
+    changed, because otherwise the line between k3_left and k3_right won't pass
+    through k3.  */
+
+    k3_left = MAX (MIN (k3_left, ppt2->k[ppt2->k_size-1]), 2);
+    k3_right = MAX (MIN (k3_right, ppt2->k[ppt2->k_size-1]), 2);
+
+
+    // -------------------------------------------------------------------------------
+    // -                            Bispectrum at the nodes                          -
+    // -------------------------------------------------------------------------------
+
+    double S_left, S_right;
+
+    class_call (perturb2_sources_at_k3 (
+                  ppr2,
+                  ppt,
+                  ppt2,
+                  index_tp2,
+                  index_k1,
+                  index_k2_left,
+                  k3_left,
+                  -1,
+                  index_tau,
+                  extrapolate,
+                  &S_left),
+      ppt2->error_message,
+      ppt2->error_message);
+
+    class_call (perturb2_sources_at_k3 (
+                  ppr2,
+                  ppt,
+                  ppt2,
+                  index_tp2,
+                  index_k1,
+                  index_k2_right,
+                  k3_right,
+                  -1,
+                  index_tau,
+                  extrapolate,
+                  &S_right),
+      ppt2->error_message,
+      ppt2->error_message);
+
+
+
+    // -------------------------------------------------------------------------------
+    // -                                Interpolate                                  -
+    // -------------------------------------------------------------------------------
+
+    /* Distance squared between left and right nodes */
+    double h_squared = (k2_right-k2_left)*(k2_right-k2_left) + (k3_right-k3_left)*(k3_right-k3_left);
+
+    /* Distance squared between point and right node */
+    double d_squared = (k2_right-k2)*(k2_right-k2) + (k3_right-k3)*(k3_right-k3);
+
+    /* Proximity factor */
+    double a = sqrt( d_squared/h_squared );
+
+    /* Linear interpolation */
+    *source = a*S_left + (1-a)*S_right;
+
+    /* Debug: print k2 values and limits */
+    // if (k1==0.1 && k2==0.15) {
+    //
+    //   printf ("k1=%g,k2=%g,k3=%g,k2_left=%g,k2_right=%g,k2_min=%g,k2_max=%g\n",
+    //     k1,k2,k3,k2_left,k2_right,k2_min,k2_max);
+    //
+    //   printf ("\tk3_left = %g\n", k3_left);
+    //   printf ("\tk3_right = %g\n", k3_right);
+    //   printf ("\tS_left = %g\n", S_left);
+    //   printf ("\tS_right = %g\n", S_right);
+    //   printf ("\ta = %g\n", a);
+    // }
+
+  } // if (TRIANGULAR)
+
+
+  // ====================================================================================
+  // =                        Closest neighbour interpolation                           =
+  // ====================================================================================
+
+  /* Interpolate using either of the left or right node. The advantage of this
+  approach is that it can be used even if a point cannot be bracketed by two valid
+  nodes. */
+
+  else if (interpolation == LEFT_NODE) {
+
+    /* By default, we just use the previous node, ie. k2_left. If the user asked for
+    extrapolation, we try to use backward extrapolation, that is, we use the two previous
+    nodes (ie. the left node and the node at its left) and extrapolate forward to k2. We
+    do so only if the node with the smallest k2 satisfies the triangular condition. */
+
+    short backward_extrapolation = (
+      (extrapolate) && /* user asked for extrapolation */
+      ((index_k2_left-1) > 0) && /* left node is not the first one */
+      (ppt2->k[index_k2_left-1] > ppt2->k[0])); /* node with the smallest k2 satisfies triangular condition */
+
+    if (!backward_extrapolation) {
+
+      class_call (perturb2_sources_at_k3 (
+                    ppr2,
+                    ppt,
+                    ppt2,
+                    index_tp2,
+                    index_k1,
+                    index_k2_left,
+                    k3,
+                    -1,
+                    index_tau,
+                    extrapolate,
+                    source),
+        ppt2->error_message,
+        ppt2->error_message);
+
+    }
+
+    else {
+
+      /* First k2 node that is smaller than k2 */
+      int k2_last = k2_left;
+      double S_last;
+
+      class_call (perturb2_sources_at_k3 (
+                    ppr2,
+                    ppt,
+                    ppt2,
+                    index_tp2,
+                    index_k1,
+                    index_k2_left,
+                    k3,
+                    -1,
+                    index_tau,
+                    extrapolate,
+                    &S_last),
+        ppt2->error_message,
+        ppt2->error_message);
+
+      /* Second k2 node that is smaller than k2 */
+      int k2_penultimate = ppt2->k[index_k2_left-1];
+      double S_penultimate;
+
+      class_call (perturb2_sources_at_k3 (
+                    ppr2,
+                    ppt,
+                    ppt2,
+                    index_tp2,
+                    index_k1,
+                    index_k2_left-1,
+                    k3,
+                    -1,
+                    index_tau,
+                    extrapolate,
+                    &S_penultimate),
+        ppt2->error_message,
+        ppt2->error_message);
+
+      double slope = (S_last-S_penultimate)/(double)(k2_last-k2_penultimate);
+      *source = S_last + (k2-k2_last) * slope;
+
+    } // if backward extrapolation
+
+  } // if (LEFT_NODE)
+
+  else if (interpolation == RIGHT_NODE) {
+
+    /* By default, we just use the next node, ie. k2_right. If the user asked for
+    extrapolation, we try to use forward extrapolation, that is, we use the next two
+    nodes (ie. the right node and the node at its right) and extrapolate back to k2.
+    We do so only if the node with the largest k2 satisfies the triangular condition. */
+
+    short forward_extrapolation =
+      (extrapolate) && /* user asked for forward extrapolation */
+      ((index_k2_right+1) < ppt2->k_size) && /* right node is not the last one */
+      (ppt2->k[index_k2_right+1] < ppt2->k[ppt2->k_size-1]); /* node with the largest k2 satisfies triangular condition */
+
+    if (!forward_extrapolation) {
+
+      class_call (perturb2_sources_at_k3 (
+                    ppr2,
+                    ppt,
+                    ppt2,
+                    index_tp2,
+                    index_k1,
+                    index_k2_right,
+                    k3,
+                    -1,
+                    index_tau,
+                    extrapolate,
+                    source),
+        ppt2->error_message,
+        ppt2->error_message);
+
+    }
+
+    else {
+
+      /* First k2 node that is larger than k2 */
+      int k2_first = k2_right;
+      double S_first;
+
+      class_call (perturb2_sources_at_k3 (
+                    ppr2,
+                    ppt,
+                    ppt2,
+                    index_tp2,
+                    index_k1,
+                    index_k2_right,
+                    k3,
+                    -1,
+                    index_tau,
+                    extrapolate,
+                    &S_first),
+        ppt2->error_message,
+        ppt2->error_message);
+
+      /* Second k2 node that is larger than k2 */
+      int k2_second = ppt2->k[index_k2_right+1];
+      double S_second;
+
+      class_call (perturb2_sources_at_k3 (
+                    ppr2,
+                    ppt,
+                    ppt2,
+                    index_tp2,
+                    index_k1,
+                    index_k2_right+1,
+                    k3,
+                    -1,
+                    index_tau,
+                    extrapolate,
+                    &S_second),
+        ppt2->error_message,
+        ppt2->error_message);
+
+      double slope = (S_second-S_first)/(double)(k2_second-k2_first);
+      *source = S_first - (k2_first-k2) * slope;
+
+    } // if forward extrapolation
+
+  } // if (RIGHT_NODE)
+
+  return _SUCCESS_;
 
 }
 
@@ -2882,15 +2917,15 @@ int perturb2_get_k_lists (
 
 
   /* Debug - Print out the k-list */
-  // printf ("# ~~~ k-sampling for k1 and k2 (size=%d) ~~~\n", ppt2->k_size);
-  // for (int index_k=0; index_k < ppt2->k_size; ++index_k) {
-  //   printf ("%17d %17.7g", index_k, ppt2->k[index_k]);
-  //   for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
-  //     if (index_k==ppt2->index_k1_out[index_k_out]) printf ("\t(triplet #%d, k1) ", index_k_out);
-  //     if (index_k==ppt2->index_k2_out[index_k_out]) printf ("\t(triplet #%d, k2) ", index_k_out);
-  //   }
-  //   printf ("\n");
-  // }
+  printf ("# ~~~ k-sampling for k1 and k2 (size=%d) ~~~\n", ppt2->k_size);
+  for (int index_k=0; index_k < ppt2->k_size; ++index_k) {
+    printf ("%17d %17.7g", index_k, ppt2->k[index_k]);
+    for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
+      if (index_k==ppt2->index_k1_out[index_k_out]) printf ("\t(triplet #%d, k1) ", index_k_out);
+      if (index_k==ppt2->index_k2_out[index_k_out]) printf ("\t(triplet #%d, k2) ", index_k_out);
+    }
+    printf ("\n");
+  }
   
   /* Check that the minimum and maximum values of ppt2->k are different. This
   test might fire if the user set a custom time sampling with two equal k-values */
