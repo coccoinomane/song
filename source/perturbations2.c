@@ -379,15 +379,9 @@ int perturb2_init (
   // =                              Produce output files                                =
   // ====================================================================================
 
-  /* Create output files containing the source function. Two types of binary files
-  will be created: the SOURCE files, with the source function tabulated as a function 
-  of (k3,tau), for fixed values of k1 and k2; and the TRANSFER files, with the source
-  function tabulated as a function of (k1,k2,k3), for fixed values of time tau.
-  Note that the output files that will be produced by this function are multi-dimensional
-  binary tables of the source function, while those produced by perturb2_save_perturbations()
-  were one-dimensional ASCII tables of the second-order perturbations. */
+  /* Create output files containing the source function */
   
-  if ((ppt2->k_out_size > 0) || (ppt2->tau_out_size > 0)) {
+  if (ppt2->k_out_size > 0 || ppt2->tau_out_size > 0) {
 
     class_call_parallel (perturb2_output (
                            ppr,
@@ -2917,15 +2911,15 @@ int perturb2_get_k_lists (
 
 
   /* Debug - Print out the k-list */
-  printf ("# ~~~ k-sampling for k1 and k2 (size=%d) ~~~\n", ppt2->k_size);
-  for (int index_k=0; index_k < ppt2->k_size; ++index_k) {
-    printf ("%17d %17.7g", index_k, ppt2->k[index_k]);
-    for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
-      if (index_k==ppt2->index_k1_out[index_k_out]) printf ("\t(triplet #%d, k1) ", index_k_out);
-      if (index_k==ppt2->index_k2_out[index_k_out]) printf ("\t(triplet #%d, k2) ", index_k_out);
-    }
-    printf ("\n");
-  }
+  // printf ("# ~~~ k-sampling for k1 and k2 (size=%d) ~~~\n", ppt2->k_size);
+  // for (int index_k=0; index_k < ppt2->k_size; ++index_k) {
+  //   printf ("%17d %17.7g", index_k, ppt2->k[index_k]);
+  //   for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
+  //     if (index_k==ppt2->index_k1_out[index_k_out]) printf ("\t(triplet #%d, k1) ", index_k_out);
+  //     if (index_k==ppt2->index_k2_out[index_k_out]) printf ("\t(triplet #%d, k2) ", index_k_out);
+  //   }
+  //   printf ("\n");
+  // }
   
   /* Check that the minimum and maximum values of ppt2->k are different. This
   test might fire if the user set a custom time sampling with two equal k-values */
@@ -15702,13 +15696,18 @@ int perturb2_cmb_rescaling (
 
 
 
+
 /**
  * Output to file the source function S_lm(k1,k2,k3,tau).
  *
  * This function is called after SONG has solved the differential system for
  * all (k1,k2,k3) wavemodes, and computed the source function. Its purpose is
  * to copy the source function along with accessory data, from ppt2->sources
- * to appositely created binary files.
+ * to appositely created files.
+ * 
+ * The output files will be generated only for the Fourier and time values
+ * specified by the user with the (k1_out, k2_out, k3_out) and tau_out/z_out
+ * parameters.
  *
  * The output files produced by this function are either binary or ASCII
  * tables of the source function. They differ from those produced by
@@ -15719,16 +15718,16 @@ int perturb2_cmb_rescaling (
  *  
  * perturb2_output() produces the following files:
  *
- * - The k3 files containing the sources for fixed (k1,k2,tau) as a 
+ * - The k3 text files containing the sources for fixed (k1,k2,tau) as a 
  *   function of k3.
  *
- * - The k1tau files containing the sources for fixed (k1,tau) as a 
+ * - The k2k3 text files containing the sources for fixed (k1,tau) as a 
  *   function of (k2,k3).
  *
- * - The k3tau files containing the sources for fixed (k1,k2) as a 
+ * - The k3tau binary files containing the sources for fixed (k1,k2) as a 
  *   function of (k3,tau).
  *
- * - The k1k2k3 files containing the sources at a fixed time tau as
+ * - The k1k2k3 binary files containing the sources at a fixed time tau as
  *   a function of (k1,k2,k3).
  *
  * Each file includes:
@@ -15741,10 +15740,86 @@ int perturb2_cmb_rescaling (
  *   in the file (binary files only).
  *
  * The binary files can be read and plotted using the scripts by
- * Thomas Tram in the Python folder.
+ * Thomas Tram in the python folder.
  */
 
-int perturb2_output(
+int perturb2_output (
+        struct precision * ppr,
+        struct precision2 * ppr2,
+        struct background * pba,
+        struct perturbs * ppt,
+        struct perturbs2 * ppt2
+        )
+{
+
+  if (ppt2->perturbations2_verbose > 0)
+    printf (" -> computing output files for the sources\n");
+  
+
+  // ====================================================================================
+  // =                            Output in (k2,k3) and k3                              =
+  // ====================================================================================
+
+  class_call (perturb2_output_k2k3 (
+                ppr,
+                ppr2,
+                pba,
+                ppt,
+                ppt2),
+     ppt2->error_message,
+     ppt2->error_message);
+
+
+
+  // ====================================================================================
+  // =                              Output in (k3,tau)                                  =
+  // ====================================================================================
+
+  class_call (perturb2_output_k3tau (
+                ppr,
+                ppr2,
+                pba,
+                ppt,
+                ppt2),
+     ppt2->error_message,
+     ppt2->error_message);
+
+
+
+  // ====================================================================================
+  // =                             Output in (k1,k2,k3)                                 =
+  // ====================================================================================
+
+  class_call (perturb2_output_k1k2k3 (
+                ppr,
+                ppr2,
+                pba,
+                ppt,
+                ppt2),
+     ppt2->error_message,
+     ppt2->error_message);
+
+  
+  return _SUCCESS_;
+  
+}
+
+
+
+/**
+ * Create two kinds of output text files: one for the source function as a
+ * function of (k2,k3) for the output values in k1_out and tau_out, and one
+ * for the source funciton as a function of k3 for the output values in
+ * (k1_out,k2_out) and tau_out.
+ *
+ * The k2k3 output files are suitable to be plotted with gnuplot using the
+ * splot function. To produce contour plots and, in general, nicer plots,
+ * use the option 'set pm3d'.
+ * 
+ * See documentation of perturb2_output() for further details.
+ */
+
+int perturb2_output_k2k3 (
         struct precision * ppr,
         struct precision2 * ppr2,
         struct background * pba,
@@ -15753,28 +15828,6 @@ int perturb2_output(
         )
 {
   
-  if (ppt2->perturbations2_verbose > 0)
-    printf (" -> computing output files for the sources\n");
-
-  /* Binary files produced by this function will have a human-readable ASCII
-  header. It will include information on the cosmological parameters and on the
-  perturbations, plus a binary map useful to understand how to access the data
-  in the binary file. */
-  int header_size = 
-    _MAX_INFO_SIZE_ + /* For background information */
-    _MAX_INFO_SIZE_ + /* For perturbations information */
-    _MAX_INFO_SIZE_ + /* For other information */
-    _MAX_INFO_SIZE_ + _MAX_HEADER_LINE_LENGTH_*ppt2->tp2_size; /* For binary map */
-  
-
-  // ====================================================================================
-  // =                           Output sources in (k2,k3)                              =
-  // ====================================================================================
-
-  /* Output the source function to a text file as a function of (k2,k3), for the output
-  values in k1_out and tau_out. Each file will contain all source types (T,E,B,delta_cdm,...)
-  and multipoles (l,m). */
-
   for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
 
     /* k1 value and index of this output file */
@@ -16011,16 +16064,43 @@ int perturb2_output(
         ppt2->error_message);
     
   } // for index_k_out
+  
+  return _SUCCESS_;
+  
+}
 
 
 
-  // ====================================================================================
-  // =                            Output sources in (k3,tau)                            =
-  // ====================================================================================
 
-  /* Save the source function to disk only for specific pairs of (k1,k2). Each binary
-  file will contain all source types (T,E,B,delta_cdm,...) and multipoles (l,m)
-  tabulated a function of tau and k3 */
+/**
+ * Output to binary file the source function as a function of (k3,tau), for the
+ * output values in k1_out and k2_out.
+ *
+ * The binary files can be read and plotted using the scripts by Thomas Tram in
+ * the python folder.
+ *
+ * See documentation of perturb2_output() for further details.
+ */
+
+int perturb2_output_k3tau (
+        struct precision * ppr,
+        struct precision2 * ppr2,
+        struct background * pba,
+        struct perturbs * ppt,
+        struct perturbs2 * ppt2
+        )
+{
+
+  /* Binary files produced by this function will have a human-readable ASCII
+  header. It will include information on the cosmological parameters and on the
+  perturbations, plus a binary map useful to understand how to access the data
+  in the binary file. */
+  int header_size = 
+    _MAX_INFO_SIZE_ + /* For background information */
+    _MAX_INFO_SIZE_ + /* For perturbations information */
+    _MAX_INFO_SIZE_ + /* For other information */
+    _MAX_INFO_SIZE_ + _MAX_HEADER_LINE_LENGTH_*ppt2->tp2_size; /* For binary map */
+
 
   for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
   
@@ -16318,15 +16398,42 @@ int perturb2_output(
 
   } // for index_k_out
 
+  return _SUCCESS_;
+
+}
 
 
-  // ====================================================================================
-  // =                          Output sources in (k1,k2,k3)                            =
-  // ====================================================================================
 
-  /* Save the source function to disk for the conformal times specified in tau_out and
-  for the redshifts specified in z_out. Each binary file will contain all source types
-  (T,E,B,delta_cdm,...) and multipoles (l,m) tabulated a function of (k1,k2,k3) */
+
+/**
+ * Output to binary file the source function as a function of (k1,k2,k3), for the
+ * output values in tau_out.
+ *
+ * The binary files can be read and plotted using the scripts by Thomas Tram in
+ * the python folder.
+ *
+ * See documentation of perturb2_output() for further details.
+ */
+
+int perturb2_output_k1k2k3 (
+        struct precision * ppr,
+        struct precision2 * ppr2,
+        struct background * pba,
+        struct perturbs * ppt,
+        struct perturbs2 * ppt2
+        )
+{
+
+  /* Binary files produced by this function will have a human-readable ASCII
+  header. It will include information on the cosmological parameters and on the
+  perturbations, plus a binary map useful to understand how to access the data
+  in the binary file. */
+  int header_size = 
+    _MAX_INFO_SIZE_ + /* For background information */
+    _MAX_INFO_SIZE_ + /* For perturbations information */
+    _MAX_INFO_SIZE_ + /* For other information */
+    _MAX_INFO_SIZE_ + _MAX_HEADER_LINE_LENGTH_*ppt2->tp2_size; /* For binary map */
+  
 
   for (int index_tau_out=0; index_tau_out < ppt2->tau_out_size; ++index_tau_out) {
 
@@ -16614,10 +16721,10 @@ int perturb2_output(
 
   } // for index_tau_out
 
-  
   return _SUCCESS_;
-  
+
 }
+
   
 
 /**

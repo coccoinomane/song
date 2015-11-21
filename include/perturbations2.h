@@ -2268,6 +2268,30 @@ struct perturb2_parameters_and_workspace {
             struct perturbs2 * ppt2
             );
 
+    int perturb2_output_k2k3(
+            struct precision * ppr,
+            struct precision2 * ppr2,
+            struct background * pba,
+            struct perturbs * ppt,
+            struct perturbs2 * ppt2
+            );
+
+    int perturb2_output_k3tau(
+            struct precision * ppr,
+            struct precision2 * ppr2,
+            struct background * pba,
+            struct perturbs * ppt,
+            struct perturbs2 * ppt2
+            );
+
+    int perturb2_output_k1k2k3(
+            struct precision * ppr,
+            struct precision2 * ppr2,
+            struct background * pba,
+            struct perturbs * ppt,
+            struct perturbs2 * ppt2
+            );
+
     int perturb2_store_sources_to_disk(
             struct perturbs2 * ppt2,
             int index_k1
