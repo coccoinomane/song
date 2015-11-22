@@ -11,8 +11,8 @@ sources2_k_sampling = smart
 
 ## Settings for about 10% precision
 k_min_tau0_song = 0.1
-k_max_for_pk = 0.05
-k_per_decade_for_pk_song = 10
+k_max_for_pk = 0.01
+k_per_decade_for_pk_song = 5
 k_per_decade_for_bao_song = 5
 k_bao_center = 3
 k_bao_width = 4

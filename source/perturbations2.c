@@ -692,35 +692,41 @@ int perturb2_sources_at_k3 (
 
 
 /**
- * Interpolate the reduced bispectrum in (l2,l3) for a l1 multipole belonging to
- * SONG l-sampling, using bilinear interpolation.
+ * Interpolate the source function S_lm(k1,k2,k3,tau) in (k2,k3) with
+ * k1 belonging to SONG's k-sampling, using bilinear interpolation.
  *
  * Depending on the requested point, we adopt three different kinds of
  * interpolations:
  *
- * - For points that are well into the triangular borders (eg. l1=200, l2=200,
- *   l3=100), we use a bilinear interpolation along the l2 and l3 directions
+ * - For points that are well into the triangular borders (eg. k1=0.1,
+ *   k2=0.07, k3=0.08), we interpolate along the k2 and k3 directions
  *   (RECTANGULAR interpolation).
  *
  * - For points that are close to the triangular border or right onto it
- *   (eg. l1=200, l2=300, l3=100), we use a linear interpolation along the
+ *   (eg. k1=0.1, k2=0.07, k3=0.03), we use a linear interpolation along the
  *   l3 direction and a linear interpolation along the direction parallel
  *   to the border of the triangular region (TRIANGULAR interpolation).
  *
- * - For squeezed configurations where l3 is much smaller than the other
- *   two multipoles (eg. l1=200, l2=195, l3=3), we use a linear interpolation
- *   along the l3 direction and, for the l2 direction, either a closest 
- *   neighbour interpolation (extrapolate == 0) or linear extrapolation
- *   (extrapolate == 1). This mode is never used if l1<=l2<=l3, ie.
- *   in the computation of the Fisher matrix.
+ * - (DISABLED) For squeezed configurations where k3 is much smaller than the
+ *   other two multipoles (eg. k1=0.1, k2=0.1, k3=0.0001), we use a linear 
+ *   interpolation along the l3 direction and, for the l2 direction, either a
+ *   closest neighbour interpolation (extrapolate == 0) or linear extrapolation
+ *   (extrapolate == 1). This mode is never used if k1<=k2<=k3.
  *
- * Ideally, we would interpolate using the two closest nodes in (l2,l3)
+ * Ideally, we would interpolate using the two closest nodes in (k2,k3)
  * space. Searching for these two nodes takes time however; our algorithm
  * relies on searching first on the horizontal & vertical lines, and then,
  * if nothing is found, on the diagonal lines. This makes sense because
- * the (l2,l3) domain is determined by horizontal & verical lines (the 
- * l_min and l_max limits on harmonic space) and by diagonal lines (the
- * triangular condition on (l1,l2,l3)), and it is also faster.
+ * the (k2,k3) domain is determined by horizontal & verical lines (the 
+ * k_min and k_max limits of the sources sampling ppt2->k) and by diagonal
+ * lines (the triangular condition on (k1,k2,k3)), and it is also faster.
+ *
+ * TODO: The algorithm could be improved by considering interpolating along
+ * the direction perpendicular to the triangular border as well, which is
+ * actually parallel to a triangular border itself. For example, the line
+ * perpendicular to the line dividing the lower and upper triangles. This
+ * would help in those cases where a node satisfying the triangular
+ * condition cannot be found along the diagonal we use now.
  */
 
 int perturb2_sources_at_k2k3 (
@@ -740,7 +746,7 @@ int perturb2_sources_at_k2k3 (
       )
 {
 
-  int k1 = ppt2->k[index_k1];
+  double k1 = ppt2->k[index_k1];
 
   class_test (k3<fabs(k1-k2) || k3>(k1+k2),
     ppt2->error_message,
@@ -751,7 +757,7 @@ int perturb2_sources_at_k2k3 (
     ppt2->error_message,
     "(k1,k2,k3)=(%g,%g,%g), k2 is smaller than ppt2->k[0]=%g", k1, k2, k3, ppt2->k[0]);
 
-  class_test (k3 > ppt2->k[ppt2->k_size-1],
+  class_test (k2 > ppt2->k[ppt2->k_size-1],
     ppt2->error_message,
     "(k1,k2,k3)=(%g,%g,%g), k2 is larger than k_max=%d", k1, k2, k3, ppt2->k[ppt2->k_size-1]);
 
@@ -760,6 +766,10 @@ int perturb2_sources_at_k2k3 (
   is the case, then interpolate only along k3 */
 
   if (index_k2 >= 0) {
+
+    class_test (k2 != ppt2->k[index_k2],
+      ppt2->error_message,
+      "inconsistent input");
 
     class_call (perturb2_sources_at_k3 (
                   ppr2,
@@ -779,6 +789,7 @@ int perturb2_sources_at_k2k3 (
     return _SUCCESS_;
 
   }
+
 
 
   // ====================================================================================
@@ -801,15 +812,8 @@ int perturb2_sources_at_k2k3 (
                 ppt2->error_message),
     ppt2->error_message,
     ppt2->error_message);
-    
-  // int index_k2_left = ppt2->k_size;
-  // while (index_k2_left>=0 && ppt2->k[index_k2_left] > k2)
-  //   --index_k2_left;
-  // class_test (index_k2_left < 0,
-  //   ppt2->error_message,
-  //   "could not bracket k2 on the left");
 
-  int k2_left = ppt2->k[index_k2_left];
+  double k2_left = ppt2->k[index_k2_left];
 
   /* Index in ppt2->k following k2. This index cannot exceed the size of ppt2->k
   because we made sure that k2 is strictly smaller than the last element of ppt2->k */
@@ -817,19 +821,14 @@ int perturb2_sources_at_k2k3 (
   class_test (index_k2_right >= ppt2->k_size,
     ppt2->error_message,
     "could not bracket k2 on the right");
-  int k2_right = ppt2->k[index_k2_right];
+  double k2_right = ppt2->k[index_k2_right];
 
   /* Determine triangular limits for k2_left and k2_right */
-  int k2_min = MAX (fabs(k1-k3), ppt2->k[0]);
-  int k2_max = MIN (k1+k3, ppt2->k[ppt2->k_size-1]);
+  double k2_min = MAX (fabs(k1-k3), ppt2->k[0]);
+  double k2_max = MIN (k1+k3, ppt2->k[ppt2->k_size-1]);
 
   /* Variables needed by the triangular method */
-  int k3_left, k3_right;
-
-  /* Debug: print k2 values and limits */
-  // printf ("k1=%g,k2=%g,k3=%g,k2_left=%g,k2_right=%g,k2_min=%g,k2_max=%g\n",
-  //   k1,k2,k3,k2_left,k2_right,k2_min,k2_max);
-  // fflush (stdout);
+  double k3_left, k3_right;
 
 
   // -------------------------------------------------------------------------------
@@ -873,8 +872,8 @@ int perturb2_sources_at_k2k3 (
     /* Determine whether the requested point is in the upper or lower
     part of the (k2,k3) triangle */
 
-    int offset_from_top = (k1+k2) - k3;
-    int offset_from_bottom = k3 - fabs(k1-k2);
+    double offset_from_top = (k1+k2) - k3;
+    double offset_from_bottom = k3 - fabs(k1-k2);
 
     /* If the point is in the upper part of the triangle, interpolate its
     value along the direction parallel to the upper side of the triangle */
@@ -897,64 +896,47 @@ int perturb2_sources_at_k2k3 (
       k3_right = fabs(k1-k2_right) + offset_from_bottom;
     }
 
-    class_test (!is_triangular_double (k1, k2_left, k3_left),
+    /* If the left node is very distant from k2, it is possible that
+    it does not have a k3 value that intersects the diagonal passing
+    through (k2,k3). In other words, the triangular condition cannot
+    be met because the node is too far. In these (rare) cases, we assume
+    for the function the value of the closest node to the right */
+    if (!is_triangular_double (k1, k2_left, k3_left)) {
+
+      interpolation = RIGHT_NODE;
+
+    }
+
+    /* It is now safe to use the triangular interpolation */
+    else {
+      
+      interpolation = TRIANGULAR;
+      
+    }
+
+    /* Check that the right node satisfies the triangular condition.
+    Will we ever enter here? The right node should always satisfy
+    the triangular condition, because as we increase k2 the triangle 
+    never shrinks... */
+    class_test (!is_triangular_double (k1, k2_right, k3_right),
       ppt2->error_message,
-      "k1=%g, k2_left=%g, k3_left=%g not triangular", k1, k2_left, k3_left);
+      "(%g,%g,%g): k1=%g, k2_right=%g, k3_right=%g not triangular",
+        k1, k2, k3, k1, k2_right, k3_right);
 
-    class_test (!is_triangular_int (k1, k2_right, k3_right),
-      ppt2->error_message,
-      "k1=%g, k2_right=%g, k3_right=%g not triangular", k1, k2_right, k3_right);
-
-
-    /* It is now safe to use triangular interpolation */
-
-    interpolation = TRIANGULAR;
 
 
     // -------------------------------------------------------------------------------
     // -                                 Squeezed?                                   -
     // -------------------------------------------------------------------------------
 
-    /* The squeezed corner with k1~k2 is problematic. There, a small step in k3
-    can result in abrupt changes in the source function, especially for those
-    peaked on squeezed configurations. This is not much of a problem for the
-    interpolation along k3 (ie. the perturbs2_sources_at_k3() function), because
-    our k sampling has a logarithmic leg that ensures that the small k values are
-    densely sampled.
-
-    The problem is for the k2 interpolation when using the triangular method. In
-    fact, the diagonal method which interpolates along the diagonal border of
-    the triangular region; but this is a direction along which the function varies
-    quickly because it goes straight towards the ultra squeezed pole with k1=k2 and
-    k3=ppt2->k[0]. If k1 and k2 are much larger than ppt2->k[0], the sampling along
-    this diagonal direction is sparse. As a result, a mildy squeezed configuration
-    (say k1=0.1, k2=0.09, k3=0.02) could be interpolated using another mildy squeezed
-    node (say k1=0.1, k2=0.85, k3=0.025) and the ultra squeezed pole (k1=0.1, k2=0.1,
-    k3=0.0001). For a function peaked on squeezed configurations, the latter node
-    would dominate and make the interpolated value in (k2,k3) much larger in absolute
-    value than what it really is.
-
-    Note that using the rectangular interpolation to solve this issue is not possible,
-    because, these squeezed configurations are at the limit of the triangular
-    condition.
-
-    To recap, the triangular method interpolates in a given (k2,k3) point using nodes
-    with different values of k3. This is a problem when the interpolated function
-    varies a lot with k3, that is, for squeezed configurations where k3 is small and
-    k1~k2.
-
-    To solve this problem, we assign to those (k2,k3) points close to a squeezed
-    node the value at the squeezed node with the same k3; that is, we assign
-    S(k2,k3) = S(k2_left,k3) if the squeezed node is the left one, and
-    S(k2,k3) = S(k2_right, k3) if the squeezed node is the right one. In this way
-    we avoid using the fastest varying direction, k3. We lose in accuracy because
-    we use only one point rather than two, but this loss is more than balanced
-    by avoiding varying the k3 direction. */
+    /* The squeezed configurations with k1~k2 are problematic, because as k3 gets
+    smaller, the source function blows. See documentation inside
+    bispectra_at_l2l3_linear() for more details. */
 
     /* Determine whether we are dealing with a squeezed node */
     double squeezed_limit = 5;
-    short left_is_squeezed = (k2_left/(double)k3_left > squeezed_limit);
-    short right_is_squeezed = (k2_right/(double)k3_right > squeezed_limit);
+    short left_is_squeezed = (k2_left/k3_left > squeezed_limit);
+    short right_is_squeezed = (k2_right/k3_right > squeezed_limit);
 
     /* If one of the nodes is a squeezed configuration with small k3, we use it
     for interpolating the function rather than using the triangular method.
@@ -988,13 +970,13 @@ int perturb2_sources_at_k2k3 (
     k3_right won't pass through k3. We should therefore define two k3 values rather
     than one. */
 
-    int k3_rectangular = k3;
+    double k3_rectangular = k3;
 
-    int k3_left_min = MAX (fabs(k2_left - k1), 2);
-    int k3_left_max = MIN (k2_left+k1, ppt2->k[ppt2->k_size-1]);
+    double k3_left_min = MAX (fabs(k2_left - k1), ppt2->k[0]);
+    double k3_left_max = MIN (k2_left+k1, ppt2->k[ppt2->k_size-1]);
 
-    int k3_right_min = MAX (fabs(k2_right - k1), 2);
-    int k3_right_max = MIN (k2_right+k1, ppt2->k[ppt2->k_size-1]);
+    double k3_right_min = MAX (fabs(k2_right - k1), ppt2->k[0]);
+    double k3_right_max = MIN (k2_right+k1, ppt2->k[ppt2->k_size-1]);
 
     k3_rectangular = MAX (k3_rectangular, MAX (k3_left_min, k3_right_min));
     k3_rectangular = MIN (k3_rectangular, MIN (k3_left_max, k3_right_max));
@@ -1033,7 +1015,7 @@ int perturb2_sources_at_k2k3 (
       ppt2->error_message);
 
     /* Interpolate along the k2 direction */
-    double a = (k2_right - k2)/(double)(k2_right - k2_left);
+    double a = (k2_right - k2)/(k2_right - k2_left);
     *source = a*S_left + (1-a)*S_right;
 
   } // if (RECTANGULAR)
@@ -1061,8 +1043,8 @@ int perturb2_sources_at_k2k3 (
     changed, because otherwise the line between k3_left and k3_right won't pass
     through k3.  */
 
-    k3_left = MAX (MIN (k3_left, ppt2->k[ppt2->k_size-1]), 2);
-    k3_right = MAX (MIN (k3_right, ppt2->k[ppt2->k_size-1]), 2);
+    k3_left = MAX (MIN (k3_left, ppt2->k[ppt2->k_size-1]), ppt2->k[0]);
+    k3_right = MAX (MIN (k3_right, ppt2->k[ppt2->k_size-1]), ppt2->k[0]);
 
 
     // -------------------------------------------------------------------------------
@@ -1153,7 +1135,7 @@ int perturb2_sources_at_k2k3 (
     short backward_extrapolation = (
       (extrapolate) && /* user asked for extrapolation */
       ((index_k2_left-1) > 0) && /* left node is not the first one */
-      (ppt2->k[index_k2_left-1] > ppt2->k[0])); /* node with the smallest k2 satisfies triangular condition */
+      (ppt2->k[index_k2_left-1] >= k2_min)); /* node with the smallest k2 satisfies triangular condition */
 
     if (!backward_extrapolation) {
 
@@ -1177,7 +1159,7 @@ int perturb2_sources_at_k2k3 (
     else {
 
       /* First k2 node that is smaller than k2 */
-      int k2_last = k2_left;
+      double k2_last = k2_left;
       double S_last;
 
       class_call (perturb2_sources_at_k3 (
@@ -1196,7 +1178,7 @@ int perturb2_sources_at_k2k3 (
         ppt2->error_message);
 
       /* Second k2 node that is smaller than k2 */
-      int k2_penultimate = ppt2->k[index_k2_left-1];
+      double k2_penultimate = ppt2->k[index_k2_left-1];
       double S_penultimate;
 
       class_call (perturb2_sources_at_k3 (
@@ -1214,7 +1196,7 @@ int perturb2_sources_at_k2k3 (
         ppt2->error_message,
         ppt2->error_message);
 
-      double slope = (S_last-S_penultimate)/(double)(k2_last-k2_penultimate);
+      double slope = (S_last-S_penultimate)/(k2_last-k2_penultimate);
       *source = S_last + (k2-k2_last) * slope;
 
     } // if backward extrapolation
@@ -1231,7 +1213,7 @@ int perturb2_sources_at_k2k3 (
     short forward_extrapolation =
       (extrapolate) && /* user asked for forward extrapolation */
       ((index_k2_right+1) < ppt2->k_size) && /* right node is not the last one */
-      (ppt2->k[index_k2_right+1] < ppt2->k[ppt2->k_size-1]); /* node with the largest k2 satisfies triangular condition */
+      (ppt2->k[index_k2_right+1] <= k2_max); /* node with the largest k2 satisfies triangular condition */
 
     if (!forward_extrapolation) {
 
@@ -1255,7 +1237,7 @@ int perturb2_sources_at_k2k3 (
     else {
 
       /* First k2 node that is larger than k2 */
-      int k2_first = k2_right;
+      double k2_first = k2_right;
       double S_first;
 
       class_call (perturb2_sources_at_k3 (
@@ -1274,7 +1256,7 @@ int perturb2_sources_at_k2k3 (
         ppt2->error_message);
 
       /* Second k2 node that is larger than k2 */
-      int k2_second = ppt2->k[index_k2_right+1];
+      double k2_second = ppt2->k[index_k2_right+1];
       double S_second;
 
       class_call (perturb2_sources_at_k3 (
@@ -1292,7 +1274,7 @@ int perturb2_sources_at_k2k3 (
         ppt2->error_message,
         ppt2->error_message);
 
-      double slope = (S_second-S_first)/(double)(k2_second-k2_first);
+      double slope = (S_second-S_first)/(k2_second-k2_first);
       *source = S_first - (k2_first-k2) * slope;
 
     } // if forward extrapolation
@@ -15918,7 +15900,7 @@ int perturb2_output_k2k3 (
 
 
           // -------------------------------------------------------------------------------
-          // -                              Extract bispectra                              -
+          // -                           Extract source function                           -
           // -------------------------------------------------------------------------------
 
           /* We are going to print all (k2,k3) configurations even though we computed the
@@ -15933,7 +15915,7 @@ int perturb2_output_k2k3 (
                           ppr2,
                           ppt,
                           ppt2,
-                          source_function[index_tp2],
+                          index_tp2,
                           index_k1,
                           index_k2,
                           k3,
@@ -16025,7 +16007,7 @@ int perturb2_output_k2k3 (
             /* Write row with labels and append information on k2 to the header */
             int n_columns_1D = 1;
             if (n_rows_1D++ == 0) {
-              fprintf (file_1D, "%sk3 spans %d values from %d to %d\n",
+              fprintf (file_1D, "%sk3 spans %d values from %g to %g\n",
                 _COMMENT_, k3_size, ppt2->k3[index_k1][index_k2][0], ppt2->k3[index_k1][index_k2][k3_size-1]);
               for (int i=1; i < n_max_columns; ++i) /* skip the first (k2) column */
                 if (condition[i])
@@ -16051,7 +16033,254 @@ int perturb2_output_k2k3 (
       } // for k2
 
       /* Close the files */
+      fclose (file_1D);
       fclose (file_2D);
+
+
+
+      // ====================================================================================
+      // =                               Debug interpolation                                =
+      // ====================================================================================
+
+      int output_interpolated_sources = _TRUE_;
+      int extrapolate = _TRUE_;
+
+      /* Output the 1D and 2D files, but this time interpolating in k2 and k3 */
+      
+      if (output_interpolated_sources == _TRUE_) {
+
+
+        // -------------------------------------------------------------------------------
+        // -                                 Open files                                  -
+        // -------------------------------------------------------------------------------
+        
+        char * path_1D_interpolated;
+        char * path_2D_interpolated;
+
+        class_call (replace_string (
+                      ppt2->paths_sources_k3[index_k_out][index_tau_out],
+                      ".txt",
+                      "_interpolated.txt",
+                      &path_1D_interpolated,
+                      ppt2->error_message),
+          ppt2->error_message,
+          ppt2->error_message);
+
+        class_call (replace_string (
+                      ppt2->paths_sources_k2k3[index_k_out][index_tau_out],
+                      ".txt",
+                      "_interpolated.txt",
+                      &path_2D_interpolated,
+                      ppt2->error_message),
+          ppt2->error_message,
+          ppt2->error_message);
+
+
+        FILE * file_1D_interpolated;
+        FILE * file_2D_interpolated;
+
+        class_open(file_1D_interpolated, path_1D_interpolated, "w", ppt2->error_message);
+        class_open(file_2D_interpolated, path_2D_interpolated, "w", ppt2->error_message);
+
+        fprintf (file_1D_interpolated, "%sSame as %s but using interpolation over k3\n",
+          _COMMENT_, ppt2->paths_sources_k3[index_k_out][index_tau_out]);
+        fprintf (file_2D_interpolated, "%sSame as %s but using interpolation over k2 and k3\n",
+          _COMMENT_, ppt2->paths_sources_k2k3[index_k_out][index_tau_out]);
+
+        /* Choose sampling for k2 */        
+
+        double k2_min = ppt2->k[0];
+        double k2_max = ppt2->k[ppt2->k_size-1];
+        int k2_interp_size = 20 * ppt2->k_size;
+        double * k2_interp = calloc (k2_interp_size, sizeof (double));
+        log_space (k2_interp, k2_min, k2_max, k2_interp_size);
+
+        /* Uncomment to use for k2 the regular sampling. If you also want not to
+        use interpolation at all, make sure that perturb2_sources_at_k2k3() is
+        called with index_k2 instead of -1. */
+        // k2_interp = ppt2->k;
+        // k2_interp_size = ppt2->k_size;
+
+        fprintf (file_2D_interpolated, "%sk2 spans %d values from %g to %g (%d nodes)\n",
+          _COMMENT_, k2_interp_size, k2_min, k2_max, ppt2->k_size);
+
+        /* Make sure that the interpolated k2 sampling includes the current k2 output point */
+        
+        class_call (add_point_double (
+                      &k2_interp,
+                      &k2_interp_size,
+                      ppt2->k2_out[index_k_out],
+                      compare_doubles,
+                      ppt2->error_message
+                      ),
+          ppt2->error_message,
+          ppt2->error_message);
+
+        int n_rows_1D = 0;
+        int n_rows_2D = 0;
+
+        for (int index_k2=0; index_k2 < k2_interp_size; ++index_k2) {
+
+          double k2 = k2_interp[index_k2];
+          
+          /* Choose sampling for k3 */        
+
+          double k3_min = MAX (ppt2->k[0], fabs(k1-k2));
+          double k3_max = MIN (ppt2->k[ppt2->k_size-1], k1+k2);
+          int k3_interp_size = MAX (100 * (k3_max-k3_min)/(ppt2->k_max - ppt2->k_min),10);
+          double * k3_interp = calloc (k3_interp_size, sizeof (double));
+          lin_space (k3_interp, k3_min, k3_max, k3_interp_size);
+
+          /* Debug: print k2 and k3 sampling for the interpolaton */
+          // printf ("k2 = %g\n", k2);
+          // for (int index_k3=0; index_k3 < k3_interp_size; ++index_k3) {
+          //   double k3 = k3_interp[index_k3];
+          //   printf ("   %d) k3 = %g\n", index_k3, k3);
+          // }
+          // printf ("\n");
+
+          for (int index_k3=0; index_k3 < k3_interp_size; ++index_k3) {
+
+            double k3 = k3_interp[index_k3];
+
+
+            // -------------------------------------------------------------------------------
+            // -                        Interpolate source function                          -
+            // -------------------------------------------------------------------------------
+
+            double * source_function = calloc (ppt2->tp2_size, sizeof(double));
+
+            for (int index_tp2=0; index_tp2 < ppt2->tp2_size; ++index_tp2) {
+
+              class_call (perturb2_sources_at_k2k3 (
+                            ppr2,
+                            ppt,
+                            ppt2,
+                            index_tp2,
+                            index_k1,
+                            k2,
+                            k3,
+                            // index_k2,
+                            -1,
+                            index_tau,
+                            _TRUE_,
+                            &source_function[index_tp2]),
+                ppt2->error_message,
+                ppt2->error_message);
+
+            }
+
+
+            // -------------------------------------------------------------------------------
+            // -                                   Build row                                 -
+            // -------------------------------------------------------------------------------
+
+            /* Arrays containing all the information on the columns to be printed, labels included */
+            char (*label)[_MAX_LENGTH_LABEL_] = calloc (_MAX_NUM_COLUMNS_*_MAX_LENGTH_LABEL_, sizeof(char));
+            double * value = calloc (_MAX_NUM_COLUMNS_, sizeof(double));
+            short * condition = calloc (_MAX_NUM_COLUMNS_, sizeof(short));
+
+            /* Initialise column arrays */
+            for (int i=0; i < _MAX_NUM_COLUMNS_; ++i)
+              condition[i] = _TRUE_;
+
+            /* Initialise column counter  */
+            int i = -1;
+
+            /* Fourier mode k2 (won't be printed on the 1D file) */
+            strcpy (label[++i], "k2");
+            value[i] = k2;
+
+            /* Fourier mode k3 */
+            strcpy (label[++i], "k3");
+            value[i] = k3;
+
+            /* All source function types */
+            for (int index_tp2=0; index_tp2 < ppt2->tp2_size; ++index_tp2) {
+
+              sprintf (label[++i], "%s", ppt2->tp2_labels[index_tp2]);
+              value[i] = source_function[index_tp2];
+              
+            }
+
+
+            // -------------------------------------------------------------------------------
+            // -                             Print row to 2D file                             -
+            // -------------------------------------------------------------------------------
+
+            /* Maximum number of columns that will be written */
+            int n_max_columns = i+1;
+            class_test (n_max_columns > _MAX_NUM_COLUMNS_,
+              ppt2->error_message,
+              "too many columns; raise _MAX_NUM_COLUMNS_ to at least %d",
+              _MAX_NUM_COLUMNS_);
+
+            /* Choose how label & values should be formatted */
+            char format_label[64] = "%18s(%02d) ";
+            char format_value[64] = "%22.11g ";
+
+            /* Write row with labels */
+            int n_columns_2D = 1;
+            if (n_rows_2D++ == 0) {
+              for (int i=0; i < n_max_columns; ++i)
+                if (condition[i])
+                  fprintf (file_2D_interpolated, format_label, label[i], n_columns_2D++);
+              fprintf (file_2D_interpolated, "\n");
+            }
+
+            /* Write row with data to file */
+            for (int i=0; i < n_max_columns; ++i)
+              if (condition[i])
+                fprintf (file_2D_interpolated, format_value, value[i]);
+            fprintf (file_2D_interpolated, "\n");
+
+            /* Include a blank line at the beginning of each new k2; this allows to use the
+            'set pm3d' option in gnuplot */
+            if (index_k3 == k3_interp_size-1)
+              fprintf (file_2D_interpolated, "\n");
+
+
+            // -------------------------------------------------------------------------------
+            // -                             Print row to 1D file                             -
+            // -------------------------------------------------------------------------------
+
+            if (k2 == ppt2->k2_out[index_k_out]) {
+
+              /* Write row with labels and append information on k2 to the header */
+              int n_columns_1D = 1;
+              if (n_rows_1D++ == 0) {
+                fprintf (file_1D_interpolated, "%sk3 spans %d values from %g to %g\n",
+                  _COMMENT_, k3_interp_size, k3_min, k3_max);
+                for (int i=1; i < n_max_columns; ++i) /* skip the first (k2) column */
+                  if (condition[i])
+                    fprintf (file_1D_interpolated, format_label, label[i], n_columns_1D++);
+                fprintf (file_1D_interpolated, "\n");
+              }
+
+              /* Write row with data to file */
+              for (int i=1; i < n_max_columns; ++i)  /* skip the first (k2) column */
+                if (condition[i])
+                  fprintf (file_1D_interpolated, format_value, value[i]);
+              fprintf (file_1D_interpolated, "\n");
+
+            }
+
+            free (source_function);
+            free (label);
+            free (value);
+            free (condition);
+
+          } // for k3
+
+        } // for k2
+
+        /* Close the file */
+        free (path_1D_interpolated);
+        free (path_2D_interpolated);
+        fclose (file_1D_interpolated);
+        fclose (file_2D_interpolated);
+
+      } // if output_interpolated_sources
 
     } // for tau_out
     
