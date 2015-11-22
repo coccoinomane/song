@@ -1030,9 +1030,9 @@ int input2_init (
  any output k value. Either turn off the k_out_mode or fill the k1_out, k2_out\
  and k3_out parameters");
 
-  /* In the symmetric k-sampling, we apply a transformation to each (k1,k2,k3)
-  triplet; we do the same to the output values, in order to get a match between
-  what is asked by the user with k_out and the wavemodes being evolved in SONG. */
+  /* If the symmetric k-sampling is active, the ppt2->k array contains the transformed
+  variables (k1t,k2t,k3t) instead of the actual wavemodes (k1,k2,k3). We apply the same
+  transformation to the output values. */
     
   if (ppt2->k3_sampling == sym_k3_sampling) {
     
@@ -1040,19 +1040,19 @@ int input2_init (
 
       for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
 
-        double KT[4] = {0, ppt2->k1_out[index_k_out], ppt2->k2_out[index_k_out], ppt2->k3_out[index_k_out]};
-        double K[4];
+        double K[4] = {0, ppt2->k1_out[index_k_out], ppt2->k2_out[index_k_out], ppt2->k3_out[index_k_out]};
+        double KT[4];
   
-        class_call (symmetric_sampling_inverse (KT, K, errmsg),
+        class_call (symmetric_sampling (K, KT, errmsg),
           errmsg, errmsg);
 
-        ppt2->k1_out[index_k_out] = K[1];
-        ppt2->k2_out[index_k_out] = K[2];
-        ppt2->k3_out[index_k_out] = K[3];
+        ppt2->k1_out[index_k_out] = KT[1];
+        ppt2->k2_out[index_k_out] = KT[2];
+        ppt2->k3_out[index_k_out] = KT[3];
 
         /* Debug: print the output value before and after */
-        // printf ("KT[1]=%g, KT[2]=%g, KT[3]=%g\n", KT[1], KT[2], KT[3]);
         // printf ("K [1]=%g, K [2]=%g, K [3]=%g\n", K [1], K [2], K [3]);
+        // printf ("KT[1]=%g, KT[2]=%g, KT[3]=%g\n", KT[1], KT[2], KT[3]);
         // printf ("\n");
 
       }

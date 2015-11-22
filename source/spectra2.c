@@ -1035,7 +1035,8 @@ int spectra2_integrate_fourier (
                                    k3,
                                    -1,
                                    index_tau,
-                                   _TRUE_,
+                                   _TRUE_, /* extrapolate in some cases */
+                                   _TRUE_, /* give us the vanilla sources */
                                    &source),
               ppt2->error_message,
               psp->error_message);
@@ -1058,8 +1059,6 @@ int spectra2_integrate_fourier (
                1./2./2.*
               // primordial spectra
                spectra_k1 * spectra_k2 *
-              // if the sources were rescaled, revert the rescaling
-               inverse_rescaling * inverse_rescaling *
               // sources
                source * source
               // 6.652 * 1.e-29 is sigma_t in m^2, 1.878 * 1.e-26 is critical density in kg/m^3

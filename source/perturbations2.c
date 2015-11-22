@@ -467,8 +467,10 @@ int perturb2_sources_at_k3 (
       int index_k3, /**< Input: index pointing to the requested k3 value in ppt2->k3[index_k1][index_k2]; 
                     if negative, use interpolation in k3 instead. */
       int index_tau, /**< Input: time in ppt2->tau_sampling when to evaluate the source function */
-      int extrapolate, /**< Input: if true, extrapolate the source in case k3 is outside the region
+      short extrapolate, /**< Input: if true, extrapolate the source in case k3 is outside the region
                        computed by SONG for this (k1,k2) pair. If false, use the closest neighbour. */
+      short vanilla, /**< Input: if true, strip the source function of any factors we might have
+                     artificially added; most notably the cmb rescaling (see ppt2->rescale_cmb_sources) */
       double * source /**< Output: the source function interpolated in k3 */
       )
 {
@@ -693,14 +695,14 @@ int perturb2_sources_at_k3 (
   /* Counter the rescaling of the sources, if needed; see documentation for
   ppt2->rescale_cmb_sources for more details. */
   
-  if (ppt2->rescale_cmb_sources) {
+  if (vanilla && ppt2->rescale_cmb_sources) {
   
     int m = ppr2->m[ppt2->tp2_to_index_m[index_tp2]];
 
     double rescaling = 1;
 
-    class_call_parallel (perturb2_cmb_rescaling (ppt2,k1,k2,k3,m,&rescaling),
-      ppt2->error_message, psp->error_message);
+    class_call (perturb2_cmb_rescaling (ppt2,k1,k2,k3,m,&rescaling),
+      ppt2->error_message, ppt2->error_message);
 
     *source /= rescaling;
     
@@ -710,6 +712,172 @@ int perturb2_sources_at_k3 (
   
   return _SUCCESS_;
   
+}
+
+
+
+/**
+ * Interpolate the source function S_lm(k1,k2,k3,tau) in (k1,k2,k3)
+ * using trilinear interpolation.
+ *
+ * This function performs a simple linear interpolation along the k1 
+ * direction by calling perturb2_sources_at_k2k3() twice.
+ */
+
+int perturb2_sources_at_k1k2k3 (
+      struct precision2 * ppr2,
+      struct perturbs * ppt,
+      struct perturbs2 * ppt2,
+      int index_tp2, /**< Input: source function type for which to interpolate the source function */
+      double k1, /**< Input: k1 value where to interpolate the source function */
+      double k2, /**< Input: k2 value where to interpolate the source function */
+      double k3, /**< Input: k3 value where to interpolate the source function */
+      int index_k1, /**< Input: index pointing to the requested k1 value in ppt2->k; if negative,
+                    use interpolation in k1 instead. */
+      int index_tau, /**< Input: time in ppt2->tau_sampling when to evaluate the source function */
+      short extrapolate, /**< Input: if true, ues linear extrapolation for the k3 direction when needed;
+                        if false, use the closest neighbour. */
+      short vanilla, /**< Input: if true, strip the source function of any factors we might have
+                     artificially added; most notably the cmb rescaling (see ppt2->rescale_cmb_sources) */
+      double * source /**< Output: the source function interpolated in (k2,k3) */
+      )
+{
+
+#ifdef DEBUG
+  class_test (k3<fabs(k1-k2) || k3>(k1+k2),
+    ppt2->error_message,
+    "(k1,k2,k3)=(%g,%g,%g) does not satisfy the triangular condition",
+    k1, k2, k3);
+    
+  class_test (k1 < ppt2->k[0],
+    ppt2->error_message,
+    "(k1,k2,k3)=(%g,%g,%g), k1 is smaller than ppt2->k[0]=%g", k1, k2, k3, ppt2->k[0]);
+
+  class_test (k1 > ppt2->k[ppt2->k_size-1],
+    ppt2->error_message,
+    "(k1,k2,k3)=(%g,%g,%g), k1 is larger than ppt2->k[ppt2->k_size-1]=%d", k1, k2, k3, ppt2->k[ppt2->k_size-1]);
+#endif // DEBUG
+
+
+  // ====================================================================================
+  // =                                 Special cases                                    =
+  // ====================================================================================
+
+  /* Before even considering interpolation, check whether index_k1 is a valid index. If this
+  is the case, then interpolate only along k2 and k3 */
+
+  if (index_k1 >= 0) {
+
+    class_test (index_k1 >= ppt2->k_size,
+      ppt2->error_message,
+      "index_k1=%d too large, stop to prevent seg fault", index_k1);
+
+    class_test (k1 != ppt2->k[index_k1],
+      ppt2->error_message,
+      "inconsistent input");
+
+    class_call (perturb2_sources_at_k2k3 (
+                  ppr2,
+                  ppt,
+                  ppt2,
+                  index_tp2,
+                  index_k1,
+                  k2,
+                  k3,
+                  -1,
+                  index_tau,
+                  extrapolate,
+                  vanilla,
+                  source),
+      ppt2->error_message,
+      ppt2->error_message);
+
+    return _SUCCESS_;
+
+  }
+
+
+  // ====================================================================================
+  // =                                 Table look-up                                    =
+  // ====================================================================================
+
+  /* Index in ppt2->k preceding k1 */
+
+  int index_k1_left;
+  
+  class_call (find_by_bisection (
+                ppt2->k,
+                ppt2->k_size,
+                k1,
+                &index_k1_left,
+                ppt2->error_message),
+    ppt2->error_message,
+    ppt2->error_message);
+
+  double k1_left = ppt2->k[index_k1_left];
+
+  /* Index in ppt2->k following k1. This index cannot exceed the size of ppt2->k
+  because we made sure that k1 is strictly smaller than the last element of ppt2->k */
+
+  int index_k1_right = index_k1_left + 1;
+
+  class_test (index_k1_right >= ppt2->k_size,
+    ppt2->error_message,
+    "could not bracket k1 on the right");
+
+  double k1_right = ppt2->k[index_k1_right];
+
+
+  // ====================================================================================
+  // =                                   Interpolation                                  =
+  // ====================================================================================
+
+  /* Find function value at left node */
+  
+  double S_left;
+
+  class_call (perturb2_sources_at_k2k3 (
+                ppr2,
+                ppt,
+                ppt2,
+                index_tp2,
+                index_k1_left,
+                k2,
+                k3,
+                -1,
+                index_tau,
+                extrapolate,
+                vanilla,
+                &S_left),
+    ppt2->error_message,
+    ppt2->error_message);
+      
+
+  /* Find function value at right node */
+
+  double S_right;
+
+  class_call (perturb2_sources_at_k2k3 (
+                ppr2,
+                ppt,
+                ppt2,
+                index_tp2,
+                index_k1_right,
+                k2,
+                k3,
+                -1,
+                index_tau,
+                extrapolate,
+                vanilla,
+                &S_right),
+    ppt2->error_message,
+    ppt2->error_message);
+
+  double a = (k1_right - k1)/(k1_right - k1_left);
+  *source = a*S_left + (1-a)*S_right;
+
+  return _SUCCESS_;
+
 }
 
 
@@ -764,8 +932,10 @@ int perturb2_sources_at_k2k3 (
       int index_k2, /**< Input: index pointing to the requested k2 value in ppt2->k; if negative,
                     use interpolation in k2 instead. */
       int index_tau, /**< Input: time in ppt2->tau_sampling when to evaluate the source function */
-      int extrapolate, /**< Input: if true, ues linear extrapolation for the k3 direction when needed;
-                       if false, use the closest neighbour. */
+      short extrapolate, /**< Input: if true, ues linear extrapolation for the k3 direction when needed;
+                        if false, use the closest neighbour. */
+      short vanilla, /**< Input: if true, strip the source function of any factors we might have
+                     artificially added; most notably the cmb rescaling (see ppt2->rescale_cmb_sources) */
       double * source /**< Output: the source function interpolated in (k2,k3) */
       )
 {
@@ -783,13 +953,17 @@ int perturb2_sources_at_k2k3 (
 
   class_test (k2 > ppt2->k[ppt2->k_size-1],
     ppt2->error_message,
-    "(k1,k2,k3)=(%g,%g,%g), k2 is larger than k_max=%d", k1, k2, k3, ppt2->k[ppt2->k_size-1]);
+    "(k1,k2,k3)=(%g,%g,%g), k2 is larger than ppt2->k[ppt2->k_size-1]=%d", k1, k2, k3, ppt2->k[ppt2->k_size-1]);
 
 
   /* Before even considering interpolation, check whether index_k2 is a valid index. If this
   is the case, then interpolate only along k3 */
 
   if (index_k2 >= 0) {
+
+    class_test (index_k2 >= ppt2->k_size,
+      ppt2->error_message,
+      "index_k2=%d too large, stop to prevent seg fault", index_k2);
 
     class_test (k2 != ppt2->k[index_k2],
       ppt2->error_message,
@@ -806,6 +980,7 @@ int perturb2_sources_at_k2k3 (
                   -1,
                   index_tau,
                   extrapolate,
+                  vanilla,
                   source),
       ppt2->error_message,
       ppt2->error_message);
@@ -1019,6 +1194,7 @@ int perturb2_sources_at_k2k3 (
                   -1,
                   index_tau,
                   extrapolate,
+                  vanilla,
                   &S_left),
       ppt2->error_message,
       ppt2->error_message);
@@ -1034,6 +1210,7 @@ int perturb2_sources_at_k2k3 (
                   -1,
                   index_tau,
                   extrapolate,
+                  vanilla,
                   &S_right),
       ppt2->error_message,
       ppt2->error_message);
@@ -1088,6 +1265,7 @@ int perturb2_sources_at_k2k3 (
                   -1,
                   index_tau,
                   extrapolate,
+                  vanilla,
                   &S_left),
       ppt2->error_message,
       ppt2->error_message);
@@ -1103,6 +1281,7 @@ int perturb2_sources_at_k2k3 (
                   -1,
                   index_tau,
                   extrapolate,
+                  vanilla,
                   &S_right),
       ppt2->error_message,
       ppt2->error_message);
@@ -1174,6 +1353,7 @@ int perturb2_sources_at_k2k3 (
                     -1,
                     index_tau,
                     extrapolate,
+                    vanilla,
                     source),
         ppt2->error_message,
         ppt2->error_message);
@@ -1197,6 +1377,7 @@ int perturb2_sources_at_k2k3 (
                     -1,
                     index_tau,
                     extrapolate,
+                    vanilla,
                     &S_last),
         ppt2->error_message,
         ppt2->error_message);
@@ -1216,6 +1397,7 @@ int perturb2_sources_at_k2k3 (
                     -1,
                     index_tau,
                     extrapolate,
+                    vanilla,
                     &S_penultimate),
         ppt2->error_message,
         ppt2->error_message);
@@ -1252,6 +1434,7 @@ int perturb2_sources_at_k2k3 (
                     -1,
                     index_tau,
                     extrapolate,
+                    vanilla,
                     source),
         ppt2->error_message,
         ppt2->error_message);
@@ -1275,6 +1458,7 @@ int perturb2_sources_at_k2k3 (
                     -1,
                     index_tau,
                     extrapolate,
+                    vanilla,
                     &S_first),
         ppt2->error_message,
         ppt2->error_message);
@@ -1294,6 +1478,7 @@ int perturb2_sources_at_k2k3 (
                     -1,
                     index_tau,
                     extrapolate,
+                    vanilla,
                     &S_second),
         ppt2->error_message,
         ppt2->error_message);
@@ -3375,14 +3560,14 @@ int perturb2_get_k_lists (
 
         if (ppt2->k3_sampling == sym_k3_sampling) {
 
-          double K[4] = {0, k1, k2, k3};
-          double KT[4];
+          double KT[4] = {0, k1, k2, k3};
+          double K[4];
 
-          class_call (symmetric_sampling (K, KT, ppt2->error_message),
+          class_call (symmetric_sampling_inverse (KT, K, ppt2->error_message),
             ppt2->error_message, ppt2->error_message);
 
-          kt_min = MIN (MIN (MIN (kt_min, KT[3]), KT[2]), KT[1]);
-          kt_max = MAX (MAX (MAX (kt_max, KT[3]), KT[2]), KT[1]);
+          kt_min = MIN (MIN (MIN (kt_min, K[3]), K[2]), K[1]);
+          kt_max = MAX (MAX (MAX (kt_max, K[3]), K[2]), K[1]);
 
         }
       }
@@ -6476,23 +6661,25 @@ int perturb2_geometrical_corner (
   double k  = ppw2->k  = ppt2->k3[index_k1][index_k2][index_k3];
 
 
-  /* In the symmetric sampling, we evolve a transformed triplet (k1t,k2t,kt) for which
-  the triangular condition is trivial, rather than the (k1,k2,k) stored in the k-sampling
-  arrays (ppt2-k and ppt2->k3). We then apply the inverse transformation in the spectra2.c
-  module, when integrating P(k). Note that the index refers to the transformed k while
-  (k1,k2,k) are the actual wavemodes. */
+  /* In the symmetric sampling, we choose the (k1,k2,k3) triplets to evolve
+  so that the limits of the triangular condition are always well sampled,
+  by means of a coordinate transformation in Fourier space. See documentation
+  for sym_k3_sampling for more details. */
 
   if (ppt2->k3_sampling == sym_k3_sampling) {
 
-    double K[4] = {0, k1, k2, k};
-    double KT[4];
+    /* We treat the k-values in ppt2->k and ppt2->k3 as the transformed variables
+    (k1t,k2t,k3t). By appling the inverse transformation, we obtain the actual
+    wavemode (k1,k2,k3) that will be evolved . */
+    double KT[4] = {0, k1, k2, k};
+    double K[4];
   
-    class_call (symmetric_sampling (K, KT, ppt2->error_message),
+    class_call (symmetric_sampling_inverse (KT, K, ppt2->error_message),
       ppt2->error_message, ppt2->error_message);
   
-    k1 = ppw2->k1 = KT[1];
-    k2 = ppw2->k2 = KT[2];
-    k  = ppw2->k  = KT[3];
+    k1 = ppw2->k1 = K[1];
+    k2 = ppw2->k2 = K[2];
+    k  = ppw2->k  = K[3];
 
   }
 
@@ -15946,6 +16133,7 @@ int perturb2_output_k2k3 (
                           index_k3,
                           index_tau,
                           _TRUE_,
+                          _TRUE_,
                           &source_function[index_tp2]),
               ppt2->error_message,
               ppt2->error_message);
@@ -16187,7 +16375,8 @@ int perturb2_output_k2k3 (
                             // index_k2,
                             -1,
                             index_tau,
-                            _TRUE_,
+                            _TRUE_, /* extrapolate in some cases */
+                            _TRUE_, /* give us the vanilla sources */
                             &source_function[index_tp2]),
                 ppt2->error_message,
                 ppt2->error_message);
