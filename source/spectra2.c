@@ -882,6 +882,9 @@ int spectra2_integrate_fourier (
     for (int index_k1 = 0; index_k1 < psp->k_size; ++index_k1) {
 
       double k1 = psp->k[index_k1];
+
+      /* Primordial spectrum of the curvature potential phi in k1 */
+      double spectra_k1 = psp->pk_pt[index_k1];
       
       if (psp->spectra_verbose > 1)
         printf ("     * computing integral for index_k1=%d of %d, k1=%g\n",
@@ -898,8 +901,6 @@ int spectra2_integrate_fourier (
       else if (index_k1 == psp->k_size-1) step_k1 = (psp->k[psp->k_size-1] - psp->k[psp->k_size-2])/2;
       else step_k1 = (psp->k[index_k1+1] - psp->k[index_k1-1])/2;
 
-      /* Primordial spectrum of curvature potential phi in k1 */
-      double spectra_k1 = psp->pk_pt[index_k1];
 
 
       // =====================================================================================
@@ -961,6 +962,9 @@ int spectra2_integrate_fourier (
         for (int index_k2 = index_k2_min; index_k2 <= index_k2_max; ++index_k2) {
 
           double k2 = psp->k[index_k2];
+          
+          /* Primordial spectrum of the curvature potential phi in k2 */
+          double spectra_k2 = psp->pk_pt[index_k2];
 
           /* The indexing in this loop ensures that the triangular condition is respected */
           class_test_parallel (k1+k2<k3 || fabs(k1-k2)>k3,
@@ -1006,23 +1010,6 @@ int spectra2_integrate_fourier (
           regular trapezoidal step */
           else
             step_k2 = (psp->k[index_k2+1] - psp->k[index_k2-1])/2;
-
-
-          // --------------------------------------------------------------------------------
-          // -                                   Factors                                    -
-          // --------------------------------------------------------------------------------
-
-          /* Primordial spectrum of curvature potential phi in k2 */
-          double spectra_k2 = psp->pk_pt[index_k2];  
-
-          /* Counter the rescaling of the sources, if needed; see documentation for
-          ppt2->rescale_cmb_sources for more details. */
-          int m = ppr2->m[ppt2->tp2_to_index_m[index_tp2]];
-          double inverse_rescaling = 1;
-          class_call_parallel (perturb2_cmb_rescaling (ppt2,k1,k2,k3,m,&inverse_rescaling),
-            ppt2->error_message, psp->error_message);
-          inverse_rescaling = 1/inverse_rescaling;
-
 
           
           // =====================================================================================

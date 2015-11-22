@@ -443,10 +443,14 @@ int perturb2_init (
  * The source function will be interpolated from the array ppt2->sources,
  * using the interpolation method chosen in ppt2->sources_k3_interpolation.
  *
- * Note that this function computes the source for index_k2 > index_k1 using
- * the symmetry of the transfer functions:
+ * To return the modes with index_k2 > index_k1, the function relies on the 
+ * symmetry of the transfer functions:
  * 
  *   T(k2,k1,k3) = (-1)^m T(k1,k2,k3) .
+ *
+ * This function will automatically remove the effect of the source rescaling 
+ * (ppt2->rescale_cmb_sources) and of the symmetric sampling (sym_k3_sampling),
+ * if present.
  * 
  * TODO: implement spline interpolation.
  * TODO: add argument to extra sources at all times.
@@ -681,6 +685,26 @@ int perturb2_sources_at_k3 (
 
   }
   
+
+  // ====================================================================================
+  // =                             Remove source rescaling                              =
+  // ====================================================================================
+
+  /* Counter the rescaling of the sources, if needed; see documentation for
+  ppt2->rescale_cmb_sources for more details. */
+  
+  if (ppt2->rescale_cmb_sources) {
+  
+    int m = ppr2->m[ppt2->tp2_to_index_m[index_tp2]];
+
+    double rescaling = 1;
+
+    class_call_parallel (perturb2_cmb_rescaling (ppt2,k1,k2,k3,m,&rescaling),
+      ppt2->error_message, psp->error_message);
+
+    *source /= rescaling;
+    
+  }
 
   #undef S
   
