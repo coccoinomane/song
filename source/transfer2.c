@@ -1339,10 +1339,6 @@ int transfer2_get_k3_size (
       )
 {
 
-  class_test (index_k2 > index_k1,
-    ptr2->error_message,
-    "stop to avoid segmentation fault, as we always require k1 >= k2.");
-
 
   // ====================================================================================
   // =                               Determine k3 limits                                =
@@ -1674,10 +1670,15 @@ int transfer2_get_k3_list (
  should never happen. This can happen for a race condition.",
     k3[k_tr_size-1], k_max_tr);
 
+  /* Check that the number of k3 points matches the precomputed one */
+  class_test (index_k_tr != k_tr_size,
+    ptr2->error_message,
+    "mismatch between k3 grid sizes: index_k_tr-1=%d, k_tr_size=%d",
+    index_k_tr-1, k_tr_size);
 
   /* Debug - Print the k3 list */
-  // int index_k1_debug = 0;
-  // int index_k2_debug = 0;
+  // int index_k1_debug = index_k1;
+  // int index_k2_debug = index_k2;
   //
   // if ((index_k1==index_k1_debug) && (index_k2==index_k2_debug)) {
   //
@@ -1685,7 +1686,8 @@ int transfer2_get_k3_list (
   //     index_k1, index_k2, ppt2->k[index_k1], ppt2->k[index_k2], ptr2->k_size_k1k2[index_k1][index_k2]);
   //
   //   int first_k_phys = ptr2->k_physical_start_k1k2[index_k1][index_k2];
-  //   int last_k_phys = ptr2->k_physical_start_k1k2[index_k1][index_k2] + ptr2->k_physical_size_k1k2[index_k1][index_k2] - 1;
+  //   int last_k_phys = ptr2->k_physical_start_k1k2[index_k1][index_k2]
+  //     + ptr2->k_physical_size_k1k2[index_k1][index_k2] - 1;
   //
   //   fprintf (stderr, "# ~~~~  K-SAMPLING OF SOURCES (k1=%g, k2=%g, %d k's in [%g,%g], of which used: %d) ~~~~~\n",
   //     ppt2->k[index_k1], ppt2->k[index_k2], k_pt_size, k_min_pt, k_max_pt, *last_used_index_pt);
@@ -1784,14 +1786,14 @@ int transfer2_get_k3_sizes (
     double k1 = ppt2->k[index_k1];
   
     /* Allocate k2 level of arrays */
-    int k2_size = index_k1 + 1;
+    int k2_size = ppt2->k_size;
     class_alloc(ptr2->k_size_k1k2[index_k1], k2_size*sizeof(int), ptr2->error_message);
     class_alloc(ptr2->k_physical_start_k1k2[index_k1], k2_size*sizeof(int), ptr2->error_message);
     class_alloc(ptr2->k_physical_size_k1k2[index_k1], k2_size*sizeof(int), ptr2->error_message);
     class_alloc(ptr2->k_min_k1k2[index_k1], k2_size*sizeof(double), ptr2->error_message);
     class_alloc(ptr2->k_max_k1k2[index_k1], k2_size*sizeof(double), ptr2->error_message);
   
-    for(int index_k2=0; index_k2<=index_k1; ++index_k2) {
+    for(int index_k2=0; index_k2<k2_size; ++index_k2) {
   
       double k2 = ppt2->k[index_k2];
 

@@ -60,6 +60,16 @@ int spectra2_init(
   psp->k_size = ppt2->k_size;
   psp->k = ppt2->k;
 
+  /* Store the primordial power spectrum inside the spectra structure for faster access */
+
+  class_call (spectra_primordial_power_spectrum (
+                pba,
+                ppt,
+                ptr,
+                ppm,
+                psp),
+    psp->error_message,
+    psp->error_message);
 
 
 
@@ -132,6 +142,11 @@ int spectra2_cls (
      )
 {
 
+  /* Symmetric sampling not supported for C_l computation */
+  class_test (ppt2->k3_sampling == sym_k3_sampling,
+    psp->error_message,
+    "Second-order C_l cannot be computed with symmetric sampling");
+
   /* SONG supports only scalar perturbations at first order */
   int index_md = ppt->index_md_scalars;
 
@@ -151,12 +166,6 @@ int spectra2_cls (
   psp->l_size_song = ptr2->l_size;
   psp->l_song = ptr2->l;
 
-
-  /* TEMPORARILY DISABLED */  
-  // if ((ppt2->k3_sampling == sym_k3_sampling))
-  //   printf("Angular power spectra can only be computed in standart k3 sampling. Change sampling strategy\n");
-    
-
   for (int index_ct=0; index_ct < psp->ct_size; ++index_ct) {
 
     if (psp->cl_type[index_ct] != second_order)
@@ -170,17 +179,13 @@ int spectra2_cls (
     
 
     // ====================================================================================
-    // =                                Sum over M, cycle L                               =
+    // =                                   Cycle over L                                   =
     // ====================================================================================
 
     #pragma omp parallel for schedule (dynamic)
     for (int index_l=0; index_l<psp->l_size_song; ++index_l) {
 
       int l = psp->l_song[index_l];
-
-      /* Generate grid for k3 integration. We do it inside the l-loop
-      to avoid race conditions */
-      double * k3_grid = malloc (ptr2->k3_size_max*sizeof(double));
 
       /* Initialise spectrum */
       double * result = &psp->cl[index_md][index_l * psp->ct_size + index_ct];
@@ -189,10 +194,18 @@ int spectra2_cls (
       /* Array to store the various m contributions */
       double result_m[ppr2->m_size];
 
+
+      // ====================================================================================
+      // =                                    Sum over m                                    =
+      // ====================================================================================
+
       /* Loop over m */
       for (int index_M=0; index_M < ppr2->m_size; ++index_M) {
 
         int m = ptr2->m[index_M];
+        
+        if (m > l)
+          continue;
         
         result_m[index_M] = 0;
         
@@ -208,23 +221,19 @@ int spectra2_cls (
         if (psp->has_t2t2 && index_ct==psp->index_ct_t2t2) {
           index_tt_1 = ptr2->index_tt2_T + lm_cls(index_l, index_M);
           index_tt_2 = ptr2->index_tt2_T + lm_cls(index_l, index_M);
-          // printf ("l=%3d[%3d], m=%d[%d]: index_tt = %d\n", l, index_l, m, index_M, index_tt_1);
         }
         else if (psp->has_e2e2 && index_ct==psp->index_ct_e2e2) { 
           index_tt_1 = ptr2->index_tt2_E + lm_cls(index_l, index_M);
           index_tt_2 = ptr2->index_tt2_E + lm_cls(index_l, index_M);
-          // printf ("l=%3d[%3d], m=%d[%d]: index_tt = %d\n", l, index_l, m, index_M, index_tt_1);
         }
         else if (psp->has_t2e2 && index_ct==psp->index_ct_t2e2) { 
           index_tt_1 = ptr2->index_tt2_T + lm_cls(index_l, index_M);
           index_tt_2 = ptr2->index_tt2_E + lm_cls(index_l, index_M);
-          // printf ("l=%3d[%3d], m=%d[%d]: index_tt_1 = %d, index_tt_2 = %d\n", l, index_l, m, index_M, index_tt_1, index_tt_2);
         }
         else if (psp->has_b2b2 && index_ct==psp->index_ct_b2b2) {
           if (m==0) continue; /* scalars do not contribute to b_modes */
           index_tt_1 = ptr2->index_tt2_B + lm_cls(index_l, index_M);
           index_tt_2 = ptr2->index_tt2_B + lm_cls(index_l, index_M);
-          // printf ("l=%3d[%3d], m=%d[%d]: index_tt = %d\n", l, index_l, m, index_M, index_tt_1);
         }
         else {
           sprintf (psp->error_message, "could not find transfer type for requested cl");
@@ -253,73 +262,67 @@ int spectra2_cls (
         }
 
 
-
         // =====================================================================================
-        // =                                Integrate over k1,k2,k3                            =
+        // =                                    Sum over k1                                    =
         // =====================================================================================
 
         for (int index_k1 = 0; index_k1 < psp->k_size; ++index_k1) {
 
-          /* Find stepsize */
+          double k1 = psp->k[index_k1];
 
+          /* Primordial spectrum of the curvature potential phi in k1 */
+          double spectra_k1 = psp->pk_pt[index_k1];
+
+          /* Find stepsize */
           double step_k1;
           if (index_k1 == 0) step_k1 = (psp->k[1] - psp->k[0])/2;
           else if (index_k1 == psp->k_size-1) step_k1 = (psp->k[psp->k_size-1] - psp->k[psp->k_size-2])/2;
           else step_k1 = (psp->k[index_k1+1] - psp->k[index_k1-1])/2;
 
-          double k1 = psp->k[index_k1];
 
-          /* Primordial spectrum k1 */
+          // =====================================================================================
+          // =                                    Sum over k2                                    =
+          // =====================================================================================
 
-          double spectra_k1;
-          class_call_parallel (primordial_spectrum_at_k (
-                                 ppm,
-                                 index_md,
-                                 linear,
-                                 k1,
-                                 &spectra_k1),
-            ppm->error_message,
-            psp->error_message);
-          spectra_k1 = 2*_PI_*_PI_/(k1*k1*k1) * spectra_k1;
+          for (int index_k2 = 0; index_k2 < psp->k_size; ++index_k2) {
 
-          /* Loop over k2 */
+            double k2 = psp->k[index_k2];
 
-          for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
+            /* Primordial spectrum of the curvature potential phi in k2 */
+            double spectra_k2 = psp->pk_pt[index_k2];
+
+            /* Pointer to the second-order transfer functions as a function of k3. The MIN 
+            and MAX are required because in SONG we compute only the configurations with
+            index_k1 >= index_k2. Switching the two indices introduces a (-1)^m factor;
+            since we switch them twice, the factor can be ignored. */
+            double * transfer_1 = ptr2->transfer[index_tt_1][MAX(index_k1,index_k2)][MIN(index_k1,index_k2)];
+            double * transfer_2 = ptr2->transfer[index_tt_2][MAX(index_k1,index_k2)][MIN(index_k1,index_k2)];
 
             /* Print some info */
             printf_log_if (psp->spectra_verbose, 2,
               "     \\ computing integral for (k1,k2) = (%.3g,%.3g)\n",
               psp->k[index_k1], psp->k[index_k2]);
 
-
             /* Find stepsize */
-
             double step_k2;
-            if (index_k1 == 0) step_k2 = 0;
-            else if (index_k2 == 0) step_k2 = (psp->k[1] - psp->k[0])/2;
-            else if (index_k2 == index_k1) step_k2 = (psp->k[index_k1] - psp->k[index_k1-1])/2;
+            if (index_k2 == 0) step_k2 = (psp->k[1] - psp->k[0])/2;
+            else if (index_k2 == psp->k_size-1) step_k2 = (psp->k[psp->k_size-1] - psp->k[psp->k_size-2])/2;
             else step_k2 = (psp->k[index_k2+1] - psp->k[index_k2-1])/2;
 
-            double k2 = psp->k[index_k2];
 
+            // --------------------------------------------------------------------------------
+            // -                                 Get k3 grid                                  -
+            // --------------------------------------------------------------------------------
 
-            /* Primordial spectrum k2 */
+            /* Extract the k3 grid where we computed the second-order transfer functions
+            in the transfer2.c module. This grid might include points that do not satisfy
+            the triangular condition; for the C_l computation we exclude them. */
 
-            double spectra_k2;
-            class_call_parallel (primordial_spectrum_at_k (
-                                   ppm,
-                                   index_md,
-                                   linear,
-                                   k2,
-                                   &spectra_k2),
-              ppm->error_message,
-              psp->error_message);
-            spectra_k2 = 2*_PI_*_PI_/(k2*k2*k2) * spectra_k2;
-
-
-            /* Integration grid in k3 */
+            int k3_size_full = ptr2->k_size_k1k2[index_k1][index_k2];
+            double * k3_grid = calloc (k3_size_full, sizeof(double));
 
             int dump;
+
             class_call_parallel (transfer2_get_k3_list (
                                    ppr,
                                    ppr2,
@@ -330,60 +333,55 @@ int spectra2_cls (
                                    index_k1,
                                    index_k2,
                                    k3_grid,
-                                   &dump
-                                   ),
+                                   &dump),
               ptr2->error_message,
               psp->error_message);
 
-            int k3_size = ptr2->k_size_k1k2[index_k1][index_k2];
 
-            class_test_parallel (k3_size < 2,
+            /* Find weights for the k3 direction. They require extra care because of
+            the triangular condition. */
+
+            double * step_k3 = calloc (k3_size_full, sizeof(double));
+            int index_k3_min; /* First index in grid with nonzero weight */
+            int index_k3_max; /* Last index in grid with nonzero weight */
+
+            class_call_parallel (trapezoidal_weights (
+                                   k3_grid,
+                                   k3_size_full,
+                                   fabs(k1-k2),
+                                   k1+k2,
+                                   step_k3,
+                                   &index_k3_min,
+                                   &index_k3_max,
+                                   psp->error_message),
               psp->error_message,
-              "integration grid has less than two elements, cannot use trapezoidal integration");
+              psp->error_message);
+              
+            class_test_parallel (
+              index_k3_min != ptr2->k_physical_start_k1k2[index_k1][index_k2] ||
+              index_k3_max != index_k3_min + ptr2->k_physical_size_k1k2[index_k1][index_k2] - 1,
+              psp->error_message,
+              "inconsistent computation of triangular condition");
+
+            int k3_size = index_k3_max - index_k3_min + 1;
+            
+            class_test_parallel (k3_size <= 0,
+              psp->error_message,
+              "integration grid with zero elements? Hmmm...");
 
 
-            /* Define the pointer to the second-order transfer functions as a function of k3.
-            Note that this transfer function has already been rescaled according to eq. 6.26
-            of http://arxiv.org/abs/1405.2280 in the perturbations.c module.  */
+            // =====================================================================================
+            // =                                    Sum over k3                                    =
+            // =====================================================================================
 
-            double * transfer_1 = ptr2->transfer[index_tt_1][index_k1][index_k2];
-            double * transfer_2 = ptr2->transfer[index_tt_2][index_k1][index_k2];
-
-            int triangular_first = 0;
-            int triangular_last = 0;
-
-            /* Final integration over k3 */
-
-            for (int index_k3 = 0; index_k3 < k3_size; ++index_k3) {
+            for (int index_k3 = index_k3_min; index_k3 <= index_k3_max; ++index_k3) {
 
               double k3 = k3_grid[index_k3];
 
-              /* Find stepsize including the triangular condition edge */
-
-              double step_k3;
-              if (index_k3 == 0) step_k3 = (k3_grid[1] - k3_grid[0])/2.;
-              else if (index_k3 == k3_size -1) step_k3 = (k3_grid[k3_size-1] - k3_grid[k3_size -2])/2.;
-              else step_k3 = (k3_grid[index_k3+1] - k3_grid[index_k3 -1])/2.;
-
-              /* Triangular condition */
-
-              if ( k3 < k1-k2 ||  k3 > k1+k2) { // out of triangular region
-                step_k3 = 0.;
-              }
-              if ( k3 >= k1-k2 && triangular_first == 0 && index_k3 < k3_size-1 ) { //first point
-                triangular_first = 1;
-                step_k3 = (k3_grid[index_k3+1]-k3)/2. + k3 - (k1-k2);
-              }
-              if ( k3_grid[index_k3+1] > k1+k2 && triangular_last == 0 && index_k3 > 0) {
-                //last point, note that this may not be found if the last point is bigger than kmax,
-                // however in that case no special treatment for the last point is needed.
-                triangular_last = 1;
-                step_k3 = (k3 - k3_grid[index_k3-1])/2. + (k1+k2) - k3;
-              }
-              
-              /* If we are in the extrapolated range, skip this k3 */
-              if (step_k3 == 0)
-                continue;
+              /* The indexing in this loop ensures that the triangular condition is respected */
+              class_test_parallel (k1+k2<k3 || fabs(k1-k2)>k3,
+                psp->error_message,
+                "triangular condition should be respected at this point!");
 
               /* Counter the rescaling of the sources, if needed; see documentation for
               ppt2->rescale_cmb_sources for more details. */
@@ -393,30 +391,31 @@ int spectra2_cls (
               inverse_rescaling = 1/inverse_rescaling;
 
 
-              // =====================================================================================
-              // =                                Add up contributions                               =
-              // =====================================================================================
+              // --------------------------------------------------------------------------------
+              // -                             Add up contributions                             -
+              // --------------------------------------------------------------------------------
 
               double total_factor =
-                  // symmetry factor (doing only half plane in k1 k2)
-                  2 *
                   // integration weight
-                  k1 * k2 * k3 *
+                   k1 * k2 * k3 *
                   // integration stepsize
-                  step_k1 * step_k2 * step_k3 *
+                   step_k1 * step_k2 * step_k3[index_k3] *
                   // if the sources were rescaled, revert the rescaling
-                  inverse_rescaling * 
-                  // spectra factors (2l+1) already in transfer def (how does sum over m work? does this need a factor 2 for m neq 0? yes :))
-                  2/_PI_ / pow(2*_PI_,3) *
+                   inverse_rescaling * inverse_rescaling *
+                  // spectra factors (2l+1) already in transfer def (sum over m has factor 2 for m neq 0)
+                   2/_PI_ / pow(2*_PI_,3) *
                   // definition of second order perturbation theory
                   // already in transfer definition 1./2./2.*
                   // factor 4 of Delta also already in transfer def
                   // primordial spectra
-                  spectra_k1 * spectra_k2;
+                   spectra_k1 * spectra_k2;
 
               double integrand = total_factor * transfer_1[index_k3] * transfer_2[index_k3];
 
+              #pragma omp atomic
               *result += integrand;
+
+              #pragma omp atomic
               result_m[index_M] += integrand;
 
               /* Debug: print the integrand function */
@@ -424,6 +423,10 @@ int spectra2_cls (
               //   printf ("integrand = %g, result =%g\n", integrand, *result);
 
             } // loop k3
+            
+            free (k3_grid);
+            free (step_k3);
+
           } // loop k2
         } // loop k1
 
@@ -451,8 +454,6 @@ int spectra2_cls (
 
       } // sum over M
     
-      free (k3_grid);
-      
       #pragma omp flush(abort)
       
     } // loop over l
@@ -484,7 +485,7 @@ int spectra2_cls (
     if (psp->cl_type[index_ct] != second_order)
       continue;
 
-    /* Make sure that the interpolating the C_l for l>l_max_song yields zer0 */
+    /* Make sure that the interpolating the C_l for l>l_max_song yields zero */
     psp->l_max_ct[index_md][index_ct] = psp->l_song[psp->l_size_song-1];
 
     /* Make sure that the C_l and their derivatives vanish for l > l_max */
@@ -540,6 +541,42 @@ int spectra2_cls (
   //
   // }
   
+  
+  // ====================================================================================
+  // =                            Output C_l at the nodes                               =
+  // ====================================================================================
+
+  /* In the output.c module, the C_l will be output in all multipoles from l=2 to
+  l=l_max, using interpolation. Here we output the C_l at the nodes without 
+  interpolation. */
+
+  FILE * output_file = stderr;
+  
+  /* Print labels */
+  fprintf (output_file, "%22s ", "L");
+  for (int index_ct=0; index_ct < psp->ct_size; ++index_ct) {
+    if (psp->cl_type[index_ct] != second_order) continue;
+    fprintf (output_file, "%22s ", psp->ct_labels[index_ct]);
+    char buffer[1024];
+    sprintf (buffer, "%s_%s", psp->ct_labels[index_ct], "camb");
+    fprintf (output_file, "%22s ", buffer);
+  }
+  fprintf (output_file, "\n");
+
+  /* Print data */
+  for (int index_l=0; index_l<psp->l_size[index_md]; ++index_l) {
+    int l = psp->l_song[index_l];
+    fprintf (output_file, "%22d ", l);
+    for (int index_ct=0; index_ct < psp->ct_size; ++index_ct) {
+      if (psp->cl_type[index_ct] != second_order) continue;
+      double cl = psp->cl[index_md][index_l*psp->ct_size + index_ct];
+      fprintf (output_file, "%22.10g ", cl);
+      double factor = l*(l+1)/(2*_PI_)*pow(pba->T_cmb*1e6,2);
+      fprintf (output_file, "%22.10g ", factor*cl);
+    }
+    fprintf (output_file, "\n");
+  }    
+
   return _SUCCESS_;
   
 }
@@ -577,23 +614,6 @@ int spectra2_pks (
 {
   
   
-  // ====================================================================================
-  // =                              Store primordial P(k)                               =
-  // ====================================================================================
-  
-  /* Store the primordial power spectrum inside the spectra structure for faster access */
-
-  class_call (spectra_primordial_power_spectrum(
-                pba,
-                ppt,
-                ptr,
-                ppm,
-                psp),
-    psp->error_message,
-    pbi->error_message);
-
-
-
   // ====================================================================================
   // =                                  Compute P(k)                                    =
   // ====================================================================================
@@ -773,7 +793,7 @@ int spectra2_pks (
 
 
 int spectra2_integrate_fourier (
-			struct precision * ppr,
+      struct precision * ppr,
       struct precision2 * ppr2,
       struct perturbs * ppt,
       struct primordial * ppm,
@@ -869,37 +889,38 @@ int spectra2_integrate_fourier (
         // -                         Determine integration range                          -
         // --------------------------------------------------------------------------------
 
-        /* The lower limit in the k2 integration range is determined by the smallest
-        k where we computed the source function and by the smallest value allowed
-        by the triangular condition. */
+        /* The lower and upper limit in the k2 integration are determined by the
+        triangular condition and by the sampling in k of the source function */
         double k2_min = MAX (psp->k[0], fabs (k1-k3));
-
-        /* Similarly, the upper limit is determined by the triangular condition and by
-        the highest k where we computed the source function. */
         double k2_max = MIN (psp->k[psp->k_size-1], k1+k3);
-        
-        /* We shall compute the integral by means of a weighted sum over the k2 nodes;
-        here we determine which nodes ought to be considered, based on the conditions
-        imposed above on k2_min and k2_max */
-        int index_k2_min = 0;
-        while (psp->k[index_k2_min] < k2_min && index_k2_min < psp->k_size-1)
-          ++index_k2_min;
 
-        int index_k2_max = psp->k_size-1;
-        while (psp->k[index_k2_max] > k2_max && index_k2_max > 0)
-          --index_k2_max;
+        /* Find weights for the k2 direction. They require extra care because of
+        the triangular condition. */
+        double * step_k2 = calloc (psp->k_size, sizeof(double));
+        int index_k2_min; /* First index in grid with nonzero weight */
+        int index_k2_max; /* Last index in grid with nonzero weight */
+
+        class_call_parallel (trapezoidal_weights (
+                               psp->k,
+                               psp->k_size,
+                               k2_min,
+                               k2_max,
+                               step_k2,
+                               &index_k2_min,
+                               &index_k2_max,
+                               psp->error_message),
+          psp->error_message,
+          psp->error_message);
 
         int k2_size = index_k2_max - index_k2_min + 1;
-
+        
         printf_log_if (psp->spectra_verbose, 2,
           "     \\ computing integral for k1=%g[%d], k3=%g[%d]), k2_size=%d\n",
           k1, index_k1, k3, index_k3, k2_size);
 
-        /* Check that the integration range is positive */
-        class_test_parallel (k2_max-k2_min<-ppr->smallest_allowed_variation && k2_size>0,
+        class_test_parallel (k2_size <= 0,
           psp->error_message,
-          "Tound negative integration range: k2_max-k2_min=%27.17g",
-          k2_max-k2_min);
+          "integration grid with zero elements? Hmmm...");
 
 
 
@@ -918,46 +939,6 @@ int spectra2_integrate_fourier (
           class_test_parallel (k1+k2<k3 || fabs(k1-k2)>k3,
             psp->error_message,
             "triangular condition should be respected at this point!");
-
-
-          // --------------------------------------------------------------------------------
-          // -                               Triangular step                                -
-          // --------------------------------------------------------------------------------
-
-          /* Find the correct stepsize for k2 based on the triangular inequality */
-
-          double step_k2;
-
-          /* If there is only one node in the k2 integration range, we adopt
-          the rectangular integration rule between the lower limit (k2_min)
-          and the upper limit (k2_max). Note that it is possible for index_k1=0
-          that k2_min is larger than k2_max, due to the artificial upper limit
-          on k2, hence the MAX. */
-          if (k2_size == 1)
-            step_k2 = k2_max - k2_min;
-
-          /* If we are close to the left border of the triangular regime:
-          We take the regular trapezoidal step (including the 1/2 factor) up
-          to the first node, then we extend the step to the left all the way
-          to the end of triangular region, up to k2_min = k1-k3, without the
-          1/2 factor because this node is the only one covering this extra
-          region. */
-          else if (index_k2 == index_k2_min)
-            step_k2 = (psp->k[index_k2_min+1] - psp->k[index_k2_min])/2 + (psp->k[index_k2_min] - k2_min);
-
-          /* If we are close to the right border of the triangular regime:
-          We take the regular trapezoidal step (including the 1/2 factor) up
-          to the last node, then we extend the step all the way to the end of
-          triangular region, up to k2_max = MIN(k1,k1+k3), without the 1/2
-          factor because this node is the only one covering this extra
-          region. */
-          else if (index_k2 == index_k2_max)
-            step_k2 = (psp->k[index_k2_max] - psp->k[index_k2_max-1])/2 + (k2_max - psp->k[index_k2_max]);
-
-          /* If we are not adjacent to the triangular region, we take the
-          regular trapezoidal step */
-          else
-            step_k2 = (psp->k[index_k2+1] - psp->k[index_k2-1])/2;
 
           
           // =====================================================================================
@@ -998,7 +979,7 @@ int spectra2_integrate_fourier (
               // integration weight
                k1*k2/k3 *
               // integration stepsize
-               step_k1 * step_k2 *
+               step_k1 * step_k2[index_k2] *
               // phi angleintegration
                2 * _PI_ *
               // spectra factors
@@ -1022,9 +1003,11 @@ int spectra2_integrate_fourier (
 
           } // for(index_tau)
 
-        } // for(index_k3)
+        } // for(index_k2)
 
-      } // for(index_k2)
+        free (step_k2);
+
+      } // for(index_k3)
 
       if (ppr2->load_sources_from_disk || ppr2->store_sources_to_disk)
         class_call_parallel (perturb2_free_k1_level (ppt2, index_k1),
@@ -1080,10 +1063,9 @@ int spectra2_integrate_fourier (
   outputs P(k) in ppt->k. Here we interpolate SONG power spectrum in CLASS output
   values. */
 
-	return _SUCCESS_;
-	
+  return _SUCCESS_;
+  
 }
-
 
 
 

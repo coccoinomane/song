@@ -351,7 +351,7 @@ int main (int argc, char **argv) {
 
   int index_print = 1; /* Running index used to number the columns */
   fprintf (stderr, "%25s(%03d) ", "k",index_print++); /* label of x axis */
-  fprintf (stderr, "%10s(%03d) ", tr2.tt2_labels[index_tt], index_print++); /* transfers labels */
+  fprintf (stderr, "%20s(%03d) ", tr2.tt2_labels[index_tt], index_print++); /* transfers labels */
   fprintf(stderr, "\n");
     
   for (int index_k = 0; index_k < k_size; ++index_k) {
@@ -363,7 +363,7 @@ int main (int argc, char **argv) {
                               [index_k2]
                               [index_k];
     
-    fprintf (stderr, "%+15e ", var);
+    fprintf (stderr, "%+25.12e ", var);
   
     fprintf (stderr, "\n");
   

@@ -115,6 +115,11 @@ int bispectra2_indices (
     )
 {
 
+  /* Symmetric sampling not supported for intrinsic bispectrum computation */
+  class_test (ppt2->k3_sampling == sym_k3_sampling,
+    pbi->error_message,
+    "Second-order bispectra cannot be computed with symmetric sampling");
+
   /* For |m|>0, it is not possible to obtain the reduced form of the intrinsic bispectrum
   (see comment for 'has_reduced_bispectrum' in bispectra.h) */
   if (pbi->has_intrinsic == _TRUE_)
