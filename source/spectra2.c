@@ -772,8 +772,6 @@ int spectra2_pks (
 
 
 
-
-
 int spectra2_integrate_fourier (
 			struct precision * ppr,
       struct precision2 * ppr2,
@@ -798,51 +796,6 @@ int spectra2_integrate_fourier (
   /* Result vector; note that we compute the power spectra in psp->k */
   double (*pk)[psp->k_size*ppt2->tau_size];
   class_calloc (pk, psp->pk_size*psp->k_size*ppt2->tau_size, sizeof (double), psp->error_message);
-
-
-  // ====================================================================================
-  // =                             Find triangular region                               =
-  // ====================================================================================
-
-  int (*index_k_triangular_min)[psp->k_size] = calloc (psp->k_size*psp->k_size, sizeof(int));
-  int (*index_k_triangular_max)[psp->k_size] = calloc (psp->k_size*psp->k_size, sizeof(int));
-  int (*k_triangular_size)[psp->k_size] = calloc (psp->k_size*psp->k_size, sizeof(int));
-
-  for (int index_k1=0; index_k1 < psp->k_size; ++index_k1) {
-
-    double k1 = psp->k[index_k1];
-
-    for (int index_k2=0; index_k2 < psp->k_size; ++index_k2) {
-
-      double k2 = psp->k[index_k2];
-
-      /* Limits imposed on k3 by the triangular condition */
-      double k_min = fabs(k1-k2);
-      double k_max = k1+k2;
-
-      /* Find the index corresponding to k_min inside psp->k */
-      int index_k_min = 0;
-      while (psp->k[index_k_min] < k_min && index_k_min < psp->k_size-1)
-        ++index_k_min;
-
-      /* Find the index corresponding to k_max inside psp->k */
-      int index_k_max = psp->k_size-1;
-      while (psp->k[index_k_max] > k_max && index_k_max > 0)
-        --index_k_max;    
-
-      index_k_triangular_min[index_k1][index_k2] = index_k_min;
-      index_k_triangular_max[index_k1][index_k2] = index_k_max;
-      k_triangular_size[index_k1][index_k2] = index_k_max - index_k_min + 1;
-
-      /* Each (k1,k2) pair will have at least one node in its range, given by
-      the largest between k1 and k2 */
-      class_test ( k_triangular_size[index_k1][index_k2] < 0,
-        psp->error_message,
-        "k1=%g[%d], k2=%g[%d], found index_k_min=%d, index_k_max=%d\n",
-        k1, index_k1, k2, index_k2, index_k_min, index_k_max);
-
-    } // for(index_k2)
-  } // for(index_k1)
 
 
 
@@ -937,11 +890,6 @@ int spectra2_integrate_fourier (
           --index_k2_max;
 
         int k2_size = index_k2_max - index_k2_min + 1;
-
-        /* Uncomment to use the precomputed indices (same result) */
-        // int index_k2_min = index_k_triangular_min[index_k1][index_k3];
-        // int index_k2_max = MIN (index_k1, index_k_triangular_max[index_k1][index_k3]);
-        // int k2_size = index_k2_max - index_k2_min + 1;
 
         printf_log_if (psp->spectra_verbose, 2,
           "     \\ computing integral for k1=%g[%d], k3=%g[%d]), k2_size=%d\n",
@@ -1120,9 +1068,6 @@ int spectra2_integrate_fourier (
     fprintf (output_file, "\n");
   }
     
-  free (index_k_triangular_min);
-  free (index_k_triangular_max);
-  free (k_triangular_size);
   free (pk);
   
   
