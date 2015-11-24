@@ -330,13 +330,10 @@ int main (int argc, char **argv) {
   // =                                    Load from disk                                =
   // ====================================================================================
   
-  /* Load the transfer functions if we stored them to disk previously, either during a separate
-  run or during this run. */
-  if (pr2.load_transfers || pr2.store_transfers) {
-    if (transfer2_load(&pt2, &tr2, index_tt) == _FAILURE_) {
-      printf("\n\nError in transfer2_load \n=>%s\n", tr2.error_message);
-      return _FAILURE_;
-    }
+  /* Load the transfer functions if needed */
+  if (transfer2_load(&pt2, &tr2, index_tt) == _FAILURE_) {
+    printf("\n\nError in transfer2_load \n=>%s\n", tr2.error_message);
+    return _FAILURE_;
   }
   
 

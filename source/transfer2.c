@@ -318,26 +318,29 @@ int transfer2_init(
       printf ("     * computing transfer functions today for index_k1=%d of %d, k1=%g\n",
         index_k1, ppt2->k_size, ppt2->k[index_k1]);
 
+    /* Allocate the remaining levels of ptr2->transfer */
+    class_call(transfer2_allocate_k1_level(ppt2, ptr2, index_k1),
+      ptr2->error_message,
+      ptr2->error_message);
+
 
     // -----------------------------------------------------------------------------
     // -                            Load sources from disk                         -
     // -----------------------------------------------------------------------------
     
-    /* Allocate the remaining levels of ptr2->transfer */
-    class_call(transfer2_allocate_k1_level(ppt2, ptr2, index_k1),
-      ptr2->error_message, ptr2->error_message);
-
     /* Load sources from disk if needed */
     class_call(perturb2_load(ppt2, index_k1),
         ppt2->error_message,
         ptr2->error_message);
           
-    /* We only need to consider those k2's that are equal to or larger than k1,
+
+    /* We only need to consider those k2 that are equal to or larger than k1,
     as the quadratic sources were symmetrised in the perturbation2.c module */
     for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
 
       if (ptr2->transfer2_verbose > 2)
         printf(" -> computing transfer function for (k1,k2) = (%.3g,%.3g)\n", ppt2->k[index_k1], ppt2->k[index_k2]);
+
 
       // -----------------------------------------------------------------------------
       // -                        Interpolate sources in k3                          -
@@ -417,7 +420,7 @@ int transfer2_init(
           ptr2->error_message,
           ptr2->error_message);
       
-      } // end of for (index_tp)
+      } // for (index_tp)
 
                     
       /* Beginning of parallel region */
@@ -486,7 +489,7 @@ int transfer2_init(
               ptr2->error_message,
               ptr2->error_message);
       
-          } // end of for (index_tp)
+          } // for (index_tp)
 
           
           // ----------------------------------------------------------------------------
@@ -519,13 +522,13 @@ int transfer2_init(
               ptr2->error_message,
               ptr2->error_message);
 
-          } // end of for(index_tt)
+          } // for(index_tt)
 
           #pragma omp flush(abort)
 
-        } // end of for(index_k) 
+        } // for(index_k) 
 
-      } if (abort == _TRUE_) return _FAILURE_; /* end of parallel region */
+      } if (abort) return _FAILURE_; /* end of parallel region */
 
       /* Free the memory for the interpolated sources */
       for (int index_tp=0; index_tp<ppt2->tp2_size; ++index_tp) {
@@ -533,19 +536,16 @@ int transfer2_init(
         free(interpolated_sources_in_k[index_tp]);
       }
 
-    } // end of for(index_k2)
+    } // for(index_k2)
 
-    /* Free the memory associated with the line-of-sight sources for the considered k1.
-    We won't need them anymore because the different k1 modes are independent. Note that
-    this memory was either allocate at the beginning of the k1 loop, in this module, or
-    at the beginning of the k1 loop in perturb2_init(). */
+    /* Free the memory associated with the source function for the considered k1.
+    We won't need them anymore because the different k1 modes are independent. */
     class_call (perturb2_free_k1_level (ppt2, index_k1),
       ppt2->error_message, ppt2->error_message);
 
-
-    /* Save all transfer functions for the given k1, and free the memory associated with them.
-    The next time we'll need them, we shall load them from disk.  */
-    if (ppr2->store_transfers == _TRUE_) {
+    /* Save all transfer functions for the given k1, and free the memory associated with
+    them. The next time we'll need them, we shall load them from disk.  */
+    if (ppr2->store_transfers) {
       
       class_call (transfer2_store (ppt2, ptr2, index_k1),
           ptr2->error_message,
@@ -555,10 +555,20 @@ int transfer2_init(
         ptr2->error_message, ptr2->error_message);
     }
 
-  } // end of for(index_k1)
+  } // for(index_k1)
+
+  /* Mark the transfer functions as ready to be used */
+  for (int index_tt=0; index_tt < ptr2->tt2_size; ++index_tt)
+    ptr2->transfers_available[index_tt] = _TRUE_;
+
+
+
+  // ====================================================================================
+  // =                                  Clean & exit                                    =
+  // ====================================================================================
 
   free (sources_k_spline);
-  free (interpolated_sources_in_k);
+  free (interpolated_sources_in_k);  
   
   #pragma omp parallel shared(ppw) private(thread)
   {
@@ -583,23 +593,18 @@ int transfer2_init(
     
   free(ppw);
   
-  /* We are finished filling the transfer function files, so close them */
-  if (ppr2->store_transfers == _TRUE_)
-    for (int index_tt = 0; index_tt < ptr2->tt2_size; index_tt++)
-      fclose (ptr2->storage_files[index_tt]);
-
   if (ptr2->transfer2_verbose > 1)
     printf (" -> filled ptr2->transfer with %ld values (%g MB)\n",
       ptr2->count_memorised_transfers, ptr2->count_memorised_transfers/1e6*8);
   
   /* Check that the number of filled values corresponds to the number of allocated space */
-  if (ppr2->load_transfers == _FALSE_)
+  if (ppr2->load_transfers)
     class_test (ptr2->count_allocated_transfers != ptr2->count_memorised_transfers,
       ptr2->error_message,
       "there is a mismatch between allocated (%ld) and used (%ld) space!", ptr2->count_allocated_transfers, ptr2->count_memorised_transfers);
-  
-  /* Do not evaluate the subsequent modules if ppt2->has_transfers2_only == _TRUE_ */
-  if (ptr2->stop_at_transfers2 == _TRUE_) {
+
+  /* Do not evaluate the subsequent modules if ppt2->has_transfers2_only is true */
+  if (ptr2->stop_at_transfers2) {
     ppt->has_cls = _FALSE_;
     ppt->has_cmb_bispectra = _FALSE_;
     ppt2->has_cls = _FALSE_;
@@ -629,6 +634,10 @@ int transfer2_allocate_type_level(
      int index_tt
      )
 {
+
+  /* Allocate memory only if needed */
+  if (ptr2->transfers_allocated[index_tt])
+    return _SUCCESS_;
 
   long int count=0;
   int k1_size = ppt2->k_size;
@@ -667,8 +676,8 @@ int transfer2_allocate_type_level(
       ptr2->count_allocated_transfers += ptr2->k_size_k1k2[index_k1][index_k2];
       count += ptr2->k_size_k1k2[index_k1][index_k2];
 
-    } // end of for(index_k2)
-  } // end of for(index_k1)
+    } // for(index_k2)
+  } // for(index_k1)
   
   /* Print some debug information on memory consumption */
   if (ptr2->transfer2_verbose > 2) {
@@ -676,49 +685,62 @@ int transfer2_allocate_type_level(
       count*sizeof(double)/1e6, count, index_tt, ptr2->count_allocated_transfers*sizeof(double)/1e6);
   }
 
+  /* We succesfully allocated the k1 level of ppt2->sources */
+  ptr2->transfers_allocated[index_tt] = _TRUE_;
+
   return _SUCCESS_;
 
 }
 
 
+
 /**
- * Load the transfer functions from disk for a given transfer type.
+ * Load the source function T^X_lm(k1,k2,k3) from disk for a given (X,l,m) value.
  *
- * The transfer functions will be read from the file given in ptr2->storage_paths[index_type]
- * and stored in the array ptr2->transfer[index_type].
- *
- * The type level of ptr2->transfer is automatically allocated inside this function via the
- * function transfer2_allocate_type_level().
- *
- * This function is used in the bispectra2.c module and in the print_transfers2.c file.
+ * See the documentation in perturbations2.h (\ref StorageFiles) for more
+ * details.
  */
+
 int transfer2_load(
-        struct perturbs2 * ppt2,
-        struct transfers2 * ptr2,
-        int index_tt
-        )
+      struct perturbs2 * ppt2,
+      struct transfers2 * ptr2,
+      int index_tt
+      )
 {
 
-  /* Allocate memory to keep the transfer functions */
-  class_call (transfer2_allocate_type_level(ppt2, ptr2, index_tt),
-    ptr2->error_message, ptr2->error_message);
+  /* Load only if needed */
+  if (ptr2->transfers_available[index_tt])
+    return _SUCCESS_;
 
-  /* Print some debug */
+  /* Print some info */
   if (ptr2->transfer2_verbose > 2)
     printf("     * transfer2_load: reading results for index_tt=%d from '%s' ...",
       index_tt, ptr2->storage_paths[index_tt]);
   
+  /* Complain if there is no file to load */
+  struct stat st;
+  class_test (stat (ptr2->storage_paths[index_tt], &st) != 0,
+		ptr2->error_message,
+		"cannot load transfer functions for index_tt=%d, file '%s' does not exist",
+    index_tt, ptr2->storage_paths[index_tt]);
+
+  /* Make space */
+  class_call (transfer2_allocate_type_level(ppt2, ptr2, index_tt),
+    ptr2->error_message,
+    ptr2->error_message);
+
   /* Open file for reading */
-  class_open (ptr2->storage_files[index_tt], ptr2->storage_paths[index_tt], "rb", ptr2->error_message);
+  class_open (ptr2->storage_files[index_tt],
+    ptr2->storage_paths[index_tt],
+    "rb", ptr2->error_message);
   
-  /* Two loops follow to read the file */
-  for (int index_k1 = 0; index_k1 < ppt2->k_size; ++index_k1) {
-  
+  /* Read from file */
+  for (int index_k1 = 0; index_k1 < ppt2->k_size; ++index_k1) {  
     for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
   
       int n_to_read = ptr2->k_size_k1k2[index_k1][index_k2];
   
-      /* Debug */
+      /* Debug: print some info */
       // printf ("reading %d entries for index_tt=%d, index_k1=%d, index_k2=%d\n",
       //   n_to_read, index_tt, index_k1, index_k2);
   
@@ -738,24 +760,28 @@ int transfer2_load(
       #pragma omp atomic
       ptr2->count_memorised_transfers += ptr2->k_size_k1k2[index_k1][index_k2];
   
-    } // end of for(index_k2)
-    
-  } // end of for(index_k1)
+    } 
+  }
   
   /* Close file */
-  fclose(ptr2->storage_files[index_tt]);
-
-  if (ptr2->transfer2_verbose > 2)
-    printf ("Done.\n");
+  fclose (ptr2->storage_files[index_tt]);
+  
+  /* Transfers are now ready to use */
+  ptr2->transfers_available[index_tt] = _TRUE_;
 
   return _SUCCESS_; 
   
 }
 
 
+
+
+
+
 /**
  * Free all the memory space allocated by transfer2_init().
  */ 
+
 int transfer2_free(
       struct precision2 * ppr2,
       struct perturbs2 * ppt2,
@@ -769,20 +795,17 @@ int transfer2_free(
   
     int k1_size = ppt2->k_size;
 
-    /* Free the k1 level of ptr2->transfer only if we are neither loading nor storing the transfers to disk.
-    The memory management in those two cases is handled separately via the transfer_store and transfer_load
-    functions  */
-    if ((ppr2->store_transfers==_FALSE_) && (ppr2->load_transfers==_FALSE_)) {
-      for (int index_k1 = 0; index_k1 < k1_size; ++index_k1)
-        if (ptr2->has_allocated_transfers[index_k1] == _TRUE_)
-          class_call(transfer2_free_k1_level(ppt2, ptr2, index_k1), ptr2->error_message, ptr2->error_message);
-      for (int index_tt = 0; index_tt < ptr2->tt2_size; ++index_tt)
-        free (ptr2->transfer[index_tt]);
+    for (int index_tt = 0; index_tt < ptr2->tt2_size; ++index_tt) {
+
+      class_call (transfer2_free_type_level(ppt2, ptr2, index_tt),
+          ptr2->error_message,
+          ptr2->error_message);
+
     }
 
     free (ptr2->transfer);
-
-    free (ptr2->has_allocated_transfers);
+    free (ptr2->transfers_allocated);
+    free (ptr2->transfers_available);
 
     for(int index_k1=0; index_k1<ppt2->k_size; ++index_k1) {
       free (ptr2->k_size_k1k2[index_k1]);
@@ -810,9 +833,7 @@ int transfer2_free(
     free (ptr2->lm_array);
 
     /* Free file arrays */
-    if ((ppr2->store_transfers == _TRUE_) || (ppr2->load_transfers == _TRUE_)) {
-
-      // fclose(ptr2->transfers_status_file);
+    if (ppr2->store_transfers || ppr2->load_transfers) {
 
       for(int index_tt=0; index_tt<ptr2->tt2_size; ++index_tt)
         free (ptr2->storage_paths[index_tt]);
@@ -1017,10 +1038,11 @@ int transfer2_indices_of_transfers(
       k1_size * sizeof(double **),
       ptr2->error_message);
   
-  } // end of for(index_type)
+  }
   
-  /* Allocate and initialize the logical array that keeps track of the memory state of ptr2->transfers */
-  class_calloc(ptr2->has_allocated_transfers, ppt2->k_size, sizeof(short), ptr2->error_message);
+  /* Allocate and initialize the logical arrays keeping track of the state of ptr2->transfer */
+  class_calloc(ptr2->transfers_allocated, ptr2->tt2_size, sizeof(short), ptr2->error_message);
+  class_calloc(ptr2->transfers_available, ptr2->tt2_size, sizeof(short), ptr2->error_message);
 
 
 
@@ -1041,8 +1063,14 @@ int transfer2_indices_of_transfers(
       /* The name of each transfers file will have the tt index in it */
       class_alloc (ptr2->storage_paths[index_tt], _FILENAMESIZE_*sizeof(char), ptr2->error_message);
       sprintf (ptr2->storage_paths[index_tt], "%s/transfers_%03d.dat", ptr2->storage_dir, index_tt);
-      if (ppr2->store_transfers == _TRUE_)
-        class_open (ptr2->storage_files[index_tt], ptr2->storage_paths[index_tt], "wb", ptr2->error_message);
+
+      /* Uncomment to open the transfer storage files immediately, rather than in the store
+      function. This might be an improvement in speed, becuase in this way we would avoid
+      opening and closing all the transfer storage files for each k1 value. */
+      // if (ppr2->store_transfers)
+      //   class_open (ptr2->storage_files[index_tt],
+      //     ptr2->storage_paths[index_tt],
+      //     "wb", ptr2->error_message);
       
     }
 
@@ -2904,20 +2932,15 @@ int transfer2_interpolate_sources_in_time (
 
 
 /**
- * Save the transfer functions to disk for a given k1 index.
- * 
- * The transfer functions are stored to disk in as many files as the number
- * of transfer types (index_tt2). This function will append to each of these files
- * the transfer functions relative to the considered index_k1.
+ * Save the transfer function T^X_lm(k1,k2,k3) to disk for a given k1 value.
  *
- * The path of the files is stored in ptr2->storage_paths[index_tt2],
- * while their file reference is in ptr2->storage_files[index_tt2]. All files
- * must be already open for writing.
+ * This function will write on as many files as the number of transfer types
+ * (ptr2->tt2_size) the transfer function value in k1.
  *
- * This function will not free memory; if you are concerned about memory consumption
- * you will have to free it manually with transfer2_free_k1_level().
- * 
+ * See the documentation in perturbations2.h (\ref StorageFiles) for more
+ * details.
  */
+
 int transfer2_store(
         struct perturbs2 * ppt2,
         struct transfers2 * ptr2,
@@ -2928,27 +2951,48 @@ int transfer2_store(
   /* Print some info */
   if (ptr2->transfer2_verbose > 1)
     printf("     \\ writing transfer function for index_k1=%d ...\n", index_k1);
-          
-  for (int index_tt = 0; index_tt < ptr2->tt2_size; index_tt++) {
-    
-    /* Print some info */
-    if (ptr2->transfer2_verbose > 3)
-      printf("     * writing transfer function for (index_tt,index_k1)=(%d,%d) on '%s' ...\n",
-        index_tt, index_k1, ptr2->storage_paths[index_tt]);
 
-    for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
+  /* Since the next block will write on many files, we enclose it in a 
+  critical openmp directive so that it is executed serially */
   
-      /* Write a chunk with all the k-values for this set of (type,k1,k2) */
-      fwrite(
-            ptr2->transfer[index_tt][index_k1][index_k2],
-            sizeof(double),
-            ptr2->k_size_k1k2[index_k1][index_k2],
-            ptr2->storage_files[index_tt]
-            );
+  int abort = _FALSE_;
 
-    } // end of for(index_k2)
+  #pragma omp critical
+  {
 
-  } // end of for(index_tt)
+    for (int index_tt = 0; index_tt < ptr2->tt2_size; index_tt++) {
+    
+      /* Open file */
+      class_open_parallel (ptr2->storage_files[index_tt],
+        ptr2->storage_paths[index_tt],
+        "ab", ptr2->error_message);
+    
+      /* Print some info */
+      if (ptr2->transfer2_verbose > 3)
+        printf("     * writing transfer function for (index_tt,index_k1)=(%d,%d) on '%s' ...\n",
+          index_tt, index_k1, ptr2->storage_paths[index_tt]);
+
+      for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
+  
+        /* Write a chunk with all the k-values for this set of (type,k1,k2) */
+        fwrite(
+              ptr2->transfer[index_tt][index_k1][index_k2],
+              sizeof(double),
+              ptr2->k_size_k1k2[index_k1][index_k2],
+              ptr2->storage_files[index_tt]
+              );
+
+      }
+
+      /* Close file */
+      fclose (ptr2->storage_files[index_tt]);
+    
+    }
+    
+  } // parallel region
+
+  if (abort)
+    return _FAILURE_;
 
   return _SUCCESS_; 
   
@@ -2971,12 +3015,6 @@ int transfer2_allocate_k1_level(
      int index_k1
      )
 {
-
-  /* Issue an error if ptr2->transfers[index_k1] has already been allocated */
-  class_test (ptr2->has_allocated_transfers[index_k1] == _TRUE_,
-    ptr2->error_message,
-    "the index_k1=%d level of ptr2->transfers is already allocated, stop to prevent error",
-    index_k1);
 
   long int count=0;
 
@@ -3016,9 +3054,6 @@ int transfer2_allocate_k1_level(
       count*sizeof(double)/1e6, count, index_k1, ptr2->count_allocated_transfers*sizeof(double)/1e6);
   }
 
-  /* We succesfully allocated the k1 level of ptr2->transfer */
-  ptr2->has_allocated_transfers[index_k1] = _TRUE_;
-
   return _SUCCESS_;
 
 }
@@ -3034,18 +3069,23 @@ int transfer2_free_type_level(
      )
 {
 
-  int k1_size = ppt2->k_size;
-  
-  for (int index_k1=0; index_k1<k1_size; ++index_k1) {
+  /* Free memory only if needed */
+  if (!ptr2->transfers_allocated[index_tt])
+    return _SUCCESS_;
 
-    for (int index_k2=0; index_k2<=index_k1; ++index_k2)
+  for (int index_k1=0; index_k1 < ppt2->k_size; ++index_k1) {
+
+    for (int index_k2=0; index_k2 <= index_k1; ++index_k2)
       free(ptr2->transfer[index_tt][index_k1][index_k2]);
 
     free(ptr2->transfer[index_tt][index_k1]);
-  
+
   }
   
   free(ptr2->transfer[index_tt]);
+
+  ptr2->transfers_allocated[index_tt] = _FALSE_;
+  ptr2->transfers_available[index_tt] = _FALSE_;
 
   return _SUCCESS_;
 
@@ -3065,11 +3105,6 @@ int transfer2_free_k1_level(
      )
 {
 
-  /* Issue an error if ptr2->transfers[index_k1] has already been freed */
-  class_test (ptr2->has_allocated_transfers[index_k1] == _FALSE_,
-    ptr2->error_message,
-    "the index_k1=%d level of ptr2->transfers is already free, stop to prevent error", index_k1);
-
   int k1_size = ppt2->k_size;
 
   long int count = 0;
@@ -3087,9 +3122,6 @@ int transfer2_free_k1_level(
   if (ptr2->transfer2_verbose > 2)
     printf("     * freed ~ %.2f MB from ptr2->transfer (%ld doubles) for index_k1=%d\n",
       count*sizeof(double)/1e6, count, index_k1);
-
-  /* We succesfully freed the k1 level of ptr2->transfer */
-  ptr2->has_allocated_transfers[index_k1] = _FALSE_;
 
   return _SUCCESS_;
 

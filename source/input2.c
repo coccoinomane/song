@@ -1359,23 +1359,23 @@ int input2_init (
     class_calloc (ppt2->index_tau_out, tau_out_total_size, sizeof(int), errmsg);
     class_calloc (ppt2->tau_out_was_reduced, tau_out_total_size, sizeof(int), errmsg);
 
-    class_alloc (ppt2->tau_out_paths, k_out_total_size*sizeof(char*), errmsg);
-    class_alloc (ppt2->tau_out_files, k_out_total_size*sizeof(FILE**), errmsg);
+    class_alloc (ppt2->paths_perturbations_k3, k_out_total_size*sizeof(char*), errmsg);
+    class_alloc (ppt2->files_perturbations_k3, k_out_total_size*sizeof(FILE**), errmsg);
     class_alloc (ppt2->paths_sources_k3, k_out_total_size*sizeof(char*), errmsg);
     class_alloc (ppt2->files_sources_k3, k_out_total_size*sizeof(FILE**), errmsg);
     class_alloc (ppt2->paths_sources_k2k3, k_out_total_size*sizeof(char*), errmsg);
     class_alloc (ppt2->files_sources_k2k3, k_out_total_size*sizeof(FILE**), errmsg);
     for (int index_k=0; index_k < k_out_total_size; ++index_k) {
-      class_alloc (ppt2->tau_out_paths[index_k], tau_out_total_size*_FILENAMESIZE_*sizeof(char), errmsg);
-      class_alloc (ppt2->tau_out_files[index_k], tau_out_total_size*sizeof(FILE*), errmsg);
+      class_alloc (ppt2->paths_perturbations_k3[index_k], tau_out_total_size*_FILENAMESIZE_*sizeof(char), errmsg);
+      class_alloc (ppt2->files_perturbations_k3[index_k], tau_out_total_size*sizeof(FILE*), errmsg);
       class_alloc (ppt2->paths_sources_k3[index_k], tau_out_total_size*_FILENAMESIZE_*sizeof(char), errmsg);
       class_alloc (ppt2->files_sources_k3[index_k], tau_out_total_size*sizeof(FILE*), errmsg);
       class_alloc (ppt2->paths_sources_k2k3[index_k], tau_out_total_size*_FILENAMESIZE_*sizeof(char), errmsg);
       class_alloc (ppt2->files_sources_k2k3[index_k], tau_out_total_size*sizeof(FILE*), errmsg);
     }
 
-    class_calloc (ppt2->tau_out_paths_sources, tau_out_total_size*_FILENAMESIZE_, sizeof(char), errmsg);
-    class_calloc (ppt2->tau_out_files_sources, tau_out_total_size, sizeof(FILE *), errmsg);
+    class_calloc (ppt2->paths_perturbations_k3_sources, tau_out_total_size*_FILENAMESIZE_, sizeof(char), errmsg);
+    class_calloc (ppt2->files_perturbations_k3_sources, tau_out_total_size, sizeof(FILE *), errmsg);
 
 
     /* Create and open output files for the desired tau values */
@@ -1385,15 +1385,15 @@ int input2_init (
       for (int index_k_out=0; index_k_out < k_out_total_size; ++index_k_out) {
 
         /* Build perturbations ASCII filenames */
-        sprintf (ppt2->tau_out_paths[index_k_out][index_tau_out],
+        sprintf (ppt2->paths_perturbations_k3[index_k_out][index_tau_out],
           "%s/perturbations_song_k3_k%03d_tau%03d.txt",
           pop->root,
           index_k_out,
           index_tau_out);
 
         /* Open perturbations ASCII files */
-        class_open(ppt2->tau_out_files[index_k_out][index_tau_out],
-          ppt2->tau_out_paths[index_k_out][index_tau_out],
+        class_open(ppt2->files_perturbations_k3[index_k_out][index_tau_out],
+          ppt2->paths_perturbations_k3[index_k_out][index_tau_out],
           "w",
           errmsg);
 
@@ -1426,7 +1426,7 @@ int input2_init (
       }
 
       /* Build binary filenames */
-      sprintf (ppt2->tau_out_paths_sources[index_tau_out],
+      sprintf (ppt2->paths_perturbations_k3_sources[index_tau_out],
         "%s/sources_song_k1k2k3_tau%03d.dat",
         pop->root,
         index_tau_out);
@@ -1440,15 +1440,15 @@ int input2_init (
       for (int index_k_out=0; index_k_out < k_out_total_size; ++index_k_out) {
 
         /* Build perturbations ASCII filenames */
-        sprintf (ppt2->tau_out_paths[index_k_out][ppt2->tau_out_size+index_z_out],
+        sprintf (ppt2->paths_perturbations_k3[index_k_out][ppt2->tau_out_size+index_z_out],
           "%s/perturbations_song_k3_k%03d_z%03d.txt",
           pop->root,
           index_k_out,
           index_z_out);
 
         /* Open perturbations ASCII files */
-        class_open(ppt2->tau_out_files[index_k_out][ppt2->tau_out_size+index_z_out],
-          ppt2->tau_out_paths[index_k_out][ppt2->tau_out_size+index_z_out],
+        class_open(ppt2->files_perturbations_k3[index_k_out][ppt2->tau_out_size+index_z_out],
+          ppt2->paths_perturbations_k3[index_k_out][ppt2->tau_out_size+index_z_out],
           "w",
           errmsg);
 
@@ -1481,7 +1481,7 @@ int input2_init (
       }
 
       /* Build binary filenames */
-      sprintf (ppt2->tau_out_paths_sources[ppt2->tau_out_size+index_z_out],
+      sprintf (ppt2->paths_perturbations_k3_sources[ppt2->tau_out_size+index_z_out],
         "%s/sources_song_k1k2k3_z%03d.dat",
         pop->root,
         index_z_out);

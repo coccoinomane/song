@@ -99,6 +99,15 @@ struct transfers2 {
 
   double **** transfer; 
   
+  short * transfers_available;  /**< If transfers_available[index_tt] is true, then
+                                ptr2->transfer[index_tt] has been filled and is ready
+                                for use */
+
+  short * transfers_allocated;  /**< If transfers_allocated[index_tt] is true, then
+                                ptr2->transfer[index_tt] is fully allocated and can
+                                be used to store the transfer function. */
+
+  
   int index_tt2_T;              /* Index for transfer type = temperature */
   int index_tt2_E;              /* Index for transfer type = E-polarization */
   int index_tt2_B;              /* Index for transfer type = B-polarization */

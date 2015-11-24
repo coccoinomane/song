@@ -417,7 +417,7 @@ struct perturbs2
                               ppt2->sources[index_k1] has been filled with the source
                               function in k1=ppt2->k[index_k1] and is ready for use */
 
-  short * sources_allocated;  /**< If sources_allocated[index_k1]==_TRUE_, then
+  short * sources_allocated;  /**< If sources_allocated[index_k1] is true, then
                               ppt2->sources[index_k1] is fully allocated and can
                               be used to store the source function in k1. */
 
@@ -1198,18 +1198,18 @@ struct perturbs2
                   with size z_out_size; filled in input2.c */
   int * index_tau_out; /**< index_tau_out[index_tau_output] is the index in ppt2->tau_sampling corresponding to
                        tau=tau_out[index_tau_output]; filled in perturbations2.c */
-  char (**tau_out_paths)[_FILENAMESIZE_]; /**< Path of the ASCII files that will contain the perturbations as a function
-                                          of k3 at the desired (k1,k2,tau) values; filled in the input2.c module and
-                                          indexed as [index_k_out][index_tau_out]. */
-  FILE * (**tau_out_files); /**< ASCII file that will contain the perturbations as a function
-                            of k3 at the desired (k1,k2,tau) values; filled in the input2.c module
-                            and indexed as [index_k_out][index_tau_out] */
-  char (*tau_out_paths_sources)[_FILENAMESIZE_]; /**< Path of the binary files that will contain the source function as a
-                                                 function of (k1,k2,k3) at the desired tau values; filled in the input2.c
-                                                 module. Indexed as [index_tau_out]. */
-  FILE * *tau_out_files_sources; /**< Binary files that will contain the sources as a function
-                                 of (k1,k2,k3) at the desired tau values; filled in the input2.c
-                                 module. Indexed as [index_tau_out]. */
+  char (**paths_perturbations_k3)[_FILENAMESIZE_]; /**< Path of the ASCII files that will contain the perturbations as a function
+                                                   of k3 at the desired (k1,k2,tau) values; filled in the input2.c module and
+                                                   indexed as [index_k_out][index_tau_out]. */
+  FILE * (**files_perturbations_k3); /**< ASCII file that will contain the perturbations as a function
+                                     of k3 at the desired (k1,k2,tau) values; filled in the input2.c module
+                                     and indexed as [index_k_out][index_tau_out] */
+  char (*paths_perturbations_k3_sources)[_FILENAMESIZE_]; /**< Path of the binary files that will contain the source function as a
+                                                          function of (k1,k2,k3) at the desired tau values; filled in the input2.c
+                                                          module. Indexed as [index_tau_out]. */
+  FILE * *files_perturbations_k3_sources; /**< Binary files that will contain the sources as a function
+                                          of (k1,k2,k3) at the desired tau values; filled in the input2.c
+                                          module. Indexed as [index_tau_out]. */
 
   char tau_out_reduction_message[_MAX_INFO_SIZE_]; /**< Message to be printed to the output files when the user asks for a time too large or a redshift too low*/
   

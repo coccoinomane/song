@@ -358,7 +358,15 @@ int perturb2_init (
 
     #pragma omp flush(abort)
     
-  } if (abort == _TRUE_) return _FAILURE_; // for k1
+  } // for k1
+  
+  if (abort) 
+    return _FAILURE_;
+
+  /* Close output ASCII files */
+  for (int index_tau_out=0; index_tau_out < ppt2->tau_out_size; ++index_tau_out)
+    for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out)
+      fclose (ppt2->files_perturbations_k3[index_k_out][index_tau_out]);
 
 
   /* Check that the number of filled values corresponds to the number of allocated space */
@@ -409,17 +417,12 @@ int perturb2_init (
       ppt2->error_message,
       ppt2->error_message);
     
-  } if (abort == _TRUE_) return _FAILURE_; /* end of parallel region */
+  } if (abort) return _FAILURE_;
 
   free(pppw2);
 
-  /* Close output ASCII files (tau_out files) */
-    for (int index_tau_out=0; index_tau_out < ppt2->tau_out_size; ++index_tau_out)
-      for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out)
-        fclose (ppt2->tau_out_files[index_k_out][index_tau_out]);
-
-  /* Do not evaluate the subsequent modules if ppt2->stop_at_perturbations2 == _TRUE_ */
-  if (ppt2->stop_at_perturbations2 == _TRUE_) {
+  /* Do not evaluate the subsequent modules if ppt2->stop_at_perturbations2 is true */
+  if (ppt2->stop_at_perturbations2) {
     ppt->has_perturbations = _FALSE_;
     ppt->has_cls = _FALSE_;
     ppt->has_cmb_bispectra = _FALSE_;
@@ -430,7 +433,7 @@ int perturb2_init (
 
   return _SUCCESS_;
        
-} // end of perturb2_init
+} // perturb2_init
 
 
 
@@ -1558,6 +1561,9 @@ int perturb2_allocate_k1_level(
 
 /**
  * Load the source function S_lm(k1,k2,k3,tau) from disk for a given k1 value.
+ *
+ * See the documentation in perturbations2.h (\ref StorageFiles) for more
+ * details.
  */
 
 int perturb2_load(
@@ -1566,13 +1572,14 @@ int perturb2_load(
       )
 {
 
-  if (ppt2->perturbations2_verbose > 2)
-    printf("     * reading line-of-sight source for index_k1=%d from '%s' ... \n",
-      index_k1, ppt2->storage_paths[index_k1]);
-
   /* Load only if needed */
   if (ppt2->sources_available[index_k1])
     return _SUCCESS_;
+
+  /* Print some info */
+  if (ppt2->perturbations2_verbose > 2)
+    printf("     * reading line-of-sight source for index_k1=%d from '%s' ... \n",
+      index_k1, ppt2->storage_paths[index_k1]);
 
   /* Complain if there is no file to load */
   struct stat st;
@@ -1582,10 +1589,9 @@ int perturb2_load(
     index_k1, ppt2->storage_paths[index_k1]);
 
   /* Make space */
-  if (!ppt2->sources_allocated[index_k1])
-    class_call (perturb2_allocate_k1_level(ppt2, index_k1),
-      ppt2->error_message,
-      ppt2->error_message);
+  class_call (perturb2_allocate_k1_level(ppt2, index_k1),
+    ppt2->error_message,
+    ppt2->error_message);
 
   /* Open file for reading */
   class_open (ppt2->storage_files[index_k1],
@@ -4168,7 +4174,7 @@ int perturb2_timesampling_for_sources (
     if (ppt2->z_out[index_z] < 0) {
 
       for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out)
-        fprintf (ppt2->tau_out_files[index_k_out][ppt2->tau_out_size+index_z],
+        fprintf (ppt2->files_perturbations_k3[index_k_out][ppt2->tau_out_size+index_z],
           "# NOTE: z_out was negative for this file, so we set it to z=0\n");
 
       ppt2->z_out[index_z] = 0;
@@ -8617,21 +8623,21 @@ int perturb2_free(
       free (ppt2->tau_out_was_reduced);
 
       for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
-        free (ppt2->tau_out_paths[index_k_out]);
-        free (ppt2->tau_out_files[index_k_out]);
+        free (ppt2->paths_perturbations_k3[index_k_out]);
+        free (ppt2->files_perturbations_k3[index_k_out]);
         free (ppt2->paths_sources_k3[index_k_out]);
         free (ppt2->files_sources_k3[index_k_out]);
         free (ppt2->paths_sources_k2k3[index_k_out]);
         free (ppt2->files_sources_k2k3[index_k_out]);
       }
-      free (ppt2->tau_out_paths);
-      free (ppt2->tau_out_files);
+      free (ppt2->paths_perturbations_k3);
+      free (ppt2->files_perturbations_k3);
       free (ppt2->paths_sources_k3);
       free (ppt2->files_sources_k3);
       free (ppt2->paths_sources_k2k3);
       free (ppt2->files_sources_k2k3);
-      free (ppt2->tau_out_paths_sources);
-      free (ppt2->tau_out_files_sources);
+      free (ppt2->paths_perturbations_k3_sources);
+      free (ppt2->files_perturbations_k3_sources);
     }
     
     int k1_size = ppt2->k_size;
@@ -15498,7 +15504,7 @@ int perturb2_save_perturbations (
   else if (has_tau_out) {
 
     /* Shortcut to the file with the perturbations for this output time */
-    FILE * file_tr = ppt2->tau_out_files[ppw2->index_k_out_for_tau_out][index_tau_out];
+    FILE * file_tr = ppt2->files_perturbations_k3[ppw2->index_k_out_for_tau_out][index_tau_out];
 
     /* Write an information header */
     if (ppw2->index_k3 == 0) {
@@ -16867,8 +16873,8 @@ int perturb2_output_k1k2k3 (
     /* Open the output file for this output time value */
     class_call (binary_init (
                   file,
-                  &(ppt2->tau_out_files_sources[index_tau_out]),
-                  ppt2->tau_out_paths_sources[index_tau_out],
+                  &(ppt2->files_perturbations_k3_sources[index_tau_out]),
+                  ppt2->paths_perturbations_k3_sources[index_tau_out],
                   "w",
                   header_size,
                   ppr->output_single_precision),
@@ -17146,7 +17152,10 @@ int perturb2_output_k1k2k3 (
   
 
 /**
- * Save the source function to disk for a given k1 value.
+ * Save the source function S^X_lm(k1,k2,k3,tau) to disk for a given k1 value.
+ *
+ * See the documentation in perturbations2.h (\ref StorageFiles) for more
+ * details.
  */
 
 int perturb2_store(
