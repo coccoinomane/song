@@ -82,10 +82,10 @@ int bispectra2_init (
   // =                              Save bispectra to disk                              =
   // ====================================================================================
   
-  if (ppr->store_bispectra_to_disk == _TRUE_)
+  if (ppr->store_bispectra == _TRUE_)
     for (int index_bt = 0; index_bt < pbi->bt_size; ++index_bt)
       if (pbi->bispectrum_type[index_bt] == intrinsic_bispectrum)
-        class_call (bispectra_store_to_disk (
+        class_call (bispectra_store (
                       pbi,
                       index_bt),
           pbi->error_message,
@@ -162,7 +162,7 @@ int bispectra2_harmonic (
 
   /* If the user requested to load the bispectra from disk, then stop the execution
   of this function here */
-  if (ppr->load_bispectra_from_disk == _TRUE_) {
+  if (ppr->load_bispectra == _TRUE_) {
     return _SUCCESS_;
   }
 
@@ -1224,8 +1224,8 @@ int bispectra2_intrinsic_integrate_over_k3 (
       "error in the indexing of pbs2->l1. Is the pbs2->extend_l1_using_m parameter true?");
 
     /* Load the transfer functions from disk */
-    if ((ppr2->load_transfers_from_disk == _TRUE_) || (ppr2->store_transfers_to_disk == _TRUE_)) {
-      class_call (transfer2_load_transfers_from_disk (
+    if ((ppr2->load_transfers == _TRUE_) || (ppr2->store_transfers == _TRUE_)) {
+      class_call (transfer2_load (
                     ppt2,
                     ptr2,
                     index_tt2_k3 + ptr2->lm_array[index_l3][index_M3]),
@@ -1426,8 +1426,8 @@ int bispectra2_intrinsic_integrate_over_k3 (
 
   
     /* Free the memory associated with the second order transfer function for this (l,m) */
-    if ((ppr2->load_transfers_from_disk == _TRUE_)
-      || (ppr2->store_transfers_to_disk == _TRUE_)) {
+    if ((ppr2->load_transfers == _TRUE_)
+      || (ppr2->store_transfers == _TRUE_)) {
       class_call (transfer2_free_type_level (
                     ppt2,
                     ptr2,

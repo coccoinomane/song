@@ -413,8 +413,14 @@ struct perturbs2
    */
   double **** sources;
   
-  short * has_allocated_sources;  /**< If has_allocated_sources[index_k1]==_TRUE_,
-                                  then ppt2->sources[index_k1] is fully allocated */
+  short * sources_available;  /**< If sources_available[index_k1] is true, then
+                              ppt2->sources[index_k1] has been filled with the source
+                              function in k1=ppt2->k[index_k1] and is ready for use */
+
+  short * sources_allocated;  /**< If sources_allocated[index_k1]==_TRUE_, then
+                              ppt2->sources[index_k1] is fully allocated and can
+                              be used to store the source function in k1. */
+
 
   /**
    * Flags for internal use in the perturbations2.c module.
@@ -1025,49 +1031,96 @@ struct perturbs2
   // -                                 Disk storage                                     -
   // ------------------------------------------------------------------------------------
 
-  char sources_dir[_FILENAMESIZE_]; /**< Directory containing the line-of-sight sources. If it already exists,
-                                    and ppr2->load_sources_from_disk==_TRUE_, the sources will be read from this
+  /** @defgroup StorageFiles
+   * Parameters related to the creation of storage files.
+   * 
+   * The storage files have two purposes: to save memory space at the expense
+   * of disk space, and to precompute data for quick access. They can be used 
+   * also to inspect and plot SONG's products, but for this purpose we recommend
+   * using the output files instead (\ref OutputFiles).
+   *
+   * The following quantities can be stored to storage files:
+   *
+   * - The source function S^X_lm(k1,k2,k3,tau) from ppt2->sources.
+   * - The transfer function T^X_lm(k1,k2,k3) from ptr2->transfer.
+   * - The CMB bispectrum b^XYZ(l1,l2,l3) from pbi->bispectra.
+   *
+   * The storage files are created as soon as the quantity has been
+   * computed. The memory allocated in the quantity is then immediately freed. To
+   * access the quantity again, one must use its corresponding load function.
+   *
+   * For the source function:
+   * - The files are created only if ppr2->store_sources is set, and are placed
+   *   in the directory ppt2->storage_dir.
+   * - One file is created for each value of k1 inside ppt2->k.
+   * - Files are created with perturb2_store() and loaded with perturb2_load().
+   * - The file names are in ppt2->storage_paths[index_k1], the file streams
+   *   in ppt2->storage_files[index_k1].
+   *
+   * For the transfer function:
+   * - The files are created only if ppr2->store_transfers is set, and are placed
+   *   in the directory ptr2->storage_dir.
+   * - One file is created for each (X,l,m) triplet, that is, for each index_tt2.
+   * - Files are created with transfer2_store() and loaded with transfer2_load().
+   * - The file names are in ptr2->storage_paths[index_tr2], the file streams
+   *   in ptr2->storage_files[index_tr2].
+   *
+   * For the source function:
+   * - The files are created only if ppr->store_bispectra is set, and are placed
+   *   in the directory pbi->storage_dir.
+   * - One file is created for each bispectrum type (local, equilateral, intrinsic...).
+   * - Files are created with bispectra_store() and loaded with bispectra_load().
+   * - The file names are in pbi->storage_paths[index_bt], the file streams
+   *   in pbi->storage_files[index_bt].
+   *
+   * The content of the storage files can be inspected and plotted using the print
+   * functions:
+   * - print_sources2.c for the source function,
+   * - print_transfers2.c for the transfer function,
+   * - print_bispectra.c for the bispectra.
+   *
+   */
+  //@{
+
+  char storage_dir[_FILENAMESIZE_]; /**< Directory containing the source function. If it already exists,
+                                    and ppr2->load_sources==_TRUE_, the sources will be read from this
                                     folder into the array ppt2->sources. If it does not exist, and
-                                    ppr2->store_sources_to_disk==_TRUE_, the sources will be first computed and then
+                                    ppr2->store_sources==_TRUE_, the sources will be first computed and then
                                     written to this folder from the array ppt2->sources. Either way, the directory contains
                                     one binary file for each value of k1, for a total of ppt2->k_size files. The file
-                                    corresponding to index_k1 is located at ppt2->sources_paths[index_k1]; its stream
-                                    is in ppt2->sources_files[index_k1]. */
+                                    corresponding to index_k1 is located at ppt2->storage_paths[index_k1]; its stream
+                                    is in ppt2->storage_files[index_k1]. */
 
-  char ** sources_paths; /**< sources_paths[index_k1] is the path to the file with the line-of-sight sources
-                         for k1=ppt2->k[index_k1]. Used only if ppr2->store_sources_to_disk==_TRUE_ or
-                         ppr2->load_sources_from_disk==_TRUE_. */
+  char ** storage_paths; /**< storage_paths[index_k1] is the path to the file with the line-of-sight sources
+                         for k1=ppt2->k[index_k1]. Used only if ppr2->store_sources==_TRUE_ or
+                         ppr2->load_sources==_TRUE_. */
 
-  FILE ** sources_files; /**< sources_paths[index_k1] is the pointer to the file with the line-of-sight sources
-                         for k1=ppt2->k[index_k1]. Used only if ppr2->store_sources_to_disk==_TRUE_ or
-                         ppr2->load_sources_from_disk==_TRUE_. */
+  FILE ** storage_files; /**< storage_paths[index_k1] is the pointer to the file with the line-of-sight sources
+                         for k1=ppt2->k[index_k1]. Used only if ppr2->store_sources==_TRUE_ or
+                         ppr2->load_sources==_TRUE_. */
 
-  FILE * sources_status_file;                 /**< NOT IMPLEMENTED YET */
-  char sources_status_path[_FILENAMESIZE_];   /**< NOT IMPLEMENTED YET */
+
+  //@}
+
 
 
   // ------------------------------------------------------------------------------------
-  // -                               Debug parameters                                   -
+  // -                                 Output files                                     -
   // ------------------------------------------------------------------------------------
 
-  ErrorMsg error_message;             /**< String where to write error messages */
-  short perturbations2_verbose;       /**< Flag regulating the amount of information sent to standard output (none if set to zero) */
-
-  long int count_allocated_sources;   /**< Number of allocated entries in ppt2->sources */
-  long int count_memorised_sources;   /**< Number of used entries of ppt2->sources */
-  
-  long int count_k_configurations;    /**< Number of k-modes for which we shall solve the differential system */
-
-  short stop_at_perturbations1;    /**< If _TRUE_, SONG will stop execution after having run the perturbations.c 
-                                      module. Useful to debug the first-order transfer functions at recombination. */
-  short stop_at_perturbations2;    /**< If _TRUE_, SONG will stop execution after having run the perturbations2.c
-                                      module. Useful to debug the second-order transfer functions at recombination. */
-
-  short compute_quadsources_derivatives; /**< Should we compute the first, third and fourth derivatives of the quadratic
-                                         sources? Useful for debugging the RSA approximation. */
-
-  /**
-   * Parameters related to the creation of output files
+  /** @defgroup OutputFiles
+   * Parameters related to the creation of output files.
+   *
+   * SONG produces various files with the second-order perturbations and source
+   * functions. How much output is produced is controlled via the parameters
+   * k1_out, k2_out, k3_out, tau_out and z_out parameters.
+   * 
+   * Refer to the documentation of perturb2_save_perturbations() and
+   * perturb2_output() for more details on the output files.
+   *
+   * Note that SONG produces another kind of files called the storage files. The
+   * storage files are meant to use less memory rather than to output results; refer
+   * to the documentation in perturbations2.h for more details (\ref StorageFiles).
    */
   //@{
 
@@ -1175,6 +1228,28 @@ struct perturbs2
   short k_out_mode;
 
   //@}
+
+
+
+  // ------------------------------------------------------------------------------------
+  // -                               Debug parameters                                   -
+  // ------------------------------------------------------------------------------------
+
+  ErrorMsg error_message;             /**< String where to write error messages */
+  short perturbations2_verbose;       /**< Flag regulating the amount of information sent to standard output (none if set to zero) */
+
+  long int count_allocated_sources;   /**< Number of allocated entries in ppt2->sources */
+  long int count_memorised_sources;   /**< Number of used entries of ppt2->sources */
+  
+  long int count_k_configurations;    /**< Number of k-modes for which we shall solve the differential system */
+
+  short stop_at_perturbations1;    /**< If _TRUE_, SONG will stop execution after having run the perturbations.c 
+                                      module. Useful to debug the first-order transfer functions at recombination. */
+  short stop_at_perturbations2;    /**< If _TRUE_, SONG will stop execution after having run the perturbations2.c
+                                      module. Useful to debug the second-order transfer functions at recombination. */
+
+  short compute_quadsources_derivatives; /**< Should we compute the first, third and fourth derivatives of the quadratic
+                                         sources? Useful for debugging the RSA approximation. */
 
 
 };
@@ -2308,7 +2383,7 @@ struct perturb2_parameters_and_workspace {
             struct perturbs2 * ppt2
             );
 
-    int perturb2_store_sources_to_disk(
+    int perturb2_store(
             struct perturbs2 * ppt2,
             int index_k1
             );
@@ -2322,7 +2397,7 @@ struct perturb2_parameters_and_workspace {
             FILE * output_stream
             );
 
-    int perturb2_load_sources_from_disk(
+    int perturb2_load(
             struct perturbs2 * ppt2,
             int index_k1
             );

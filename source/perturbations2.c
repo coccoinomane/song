@@ -27,9 +27,9 @@
  *    thermodynamics_init()
  * -# perturb2_free() to free all the memory associated to the module.
  * 
- * If the user specified 'store_sources_to_disk=yes', the module will save the 
+ * If the user specified 'store_sources=yes', the module will save the 
  * line-of-sight sources to disk after computing them, and then free the associated 
- * memory. To reload them from disk, use perturb2_load_sources_from_disk().
+ * memory. To reload them from disk, use perturb2_load().
  * To free again the memory associated to the sources, call
  * perturb2_free_k1_level().
  *
@@ -196,7 +196,7 @@ int perturb2_init (
   If the user requested to load the line of sight sources from disk, we can stop the execution of
   this module now without regrets. */
 
-  if (ppr2->load_sources_from_disk == _TRUE_) {
+  if (ppr2->load_sources) {
         
     if (ppt2->perturbations2_verbose > 0)
       printf(" -> leaving perturbs2 module; line-of-sight sources will be read from disk\n");
@@ -333,6 +333,9 @@ int perturb2_init (
 
     } // for k2
 
+    /* At this point all source for the k1=ppt2->k[index_k1] wavemode have
+    been saved into the ppt2->sources array */
+    ppt2->sources_available[index_k1] = _TRUE_;
 
     /* Dump to file the source function for the considered value of index_k1 and
     free the associated memory, if requested. The next time we'll need the source
@@ -341,18 +344,13 @@ int perturb2_init (
     produced by perturb2_save_perturbations() and the text files produced by
     produced by perturb2_output(), whose purpose is to plot and inspect the
     perturbations and the source function, respectively. */
+    if (ppr2->store_sources) {
 
-    if (ppr2->store_sources_to_disk == _TRUE_) {
-
-      class_call_parallel (perturb2_store_sources_to_disk (
-                             ppt2,
-                             index_k1),
+      class_call_parallel (perturb2_store (ppt2, index_k1),
          ppt2->error_message,
          ppt2->error_message);
 
-      class_call_parallel (perturb2_free_k1_level(
-                    ppt2,
-                    index_k1),
+      class_call_parallel (perturb2_free_k1_level(ppt2, index_k1),
         ppt2->error_message, 
         ppt2->error_message);
 
@@ -364,7 +362,7 @@ int perturb2_init (
 
 
   /* Check that the number of filled values corresponds to the number of allocated space */
-  if (ppr2->load_sources_from_disk == _FALSE_)
+  if (!ppr2->load_sources)
     class_test (ppt2->count_allocated_sources != ppt2->count_memorised_sources,
       ppt2->error_message,
       "there is a mismatch between allocated (%ld) and used (%ld) space!",
@@ -1502,15 +1500,8 @@ int perturb2_sources_at_k2k3 (
 
 
 /**
- * Allocate the k1 level of the array for the second-order line of sight
- * sources (ppt2->sources).
- *
- * This function makes space for the line of sight sources functions; it is
- * called before loading them from disk in perturb2_load_sources_from_disk().
- * It can only be called after 
- * - perturb2_indices_of_perturbs()
- * - perturb2_timesampling_for_sources()
- * - perturb2_get_k_lists().
+ * Allocate the k1 level of ppt2->sources, the array containing the second-order
+ * source function.
  */
 
 int perturb2_allocate_k1_level(
@@ -1519,18 +1510,16 @@ int perturb2_allocate_k1_level(
      )
 {
 
-  /* Issue an error if ppt2->sources[index_k1] has already been allocated */
-  class_test (ppt2->has_allocated_sources[index_k1] == _TRUE_,
-    ppt2->error_message,
-    "the index_k1=%d level of ppt2->sources is already allocated, stop to prevent error",
-    index_k1);
+  /* Allocate memory only if needed */
+  if (ppt2->sources_allocated[index_k1])
+    return _SUCCESS_;
 
   long int count=0;
   
   for (int index_type = 0; index_type < ppt2->tp2_size; index_type++) {
 
-    /* Allocate k2 level.  Note that the size of this level is smaller than ppt2->k_size,
-    and depends on k1.  The reason is that we shall solve the system only for those k2's
+    /* Allocate k2 level. Note that the size of this level is smaller than ppt2->k_size,
+    and depends on k1. The reason is that we shall solve the system only for those k2's
     that are smaller than k1 (our equations are symmetrised wrt to k1<->k2) */
 
     class_alloc (
@@ -1560,7 +1549,7 @@ int perturb2_allocate_k1_level(
       count*sizeof(double)/1e6, count, index_k1, ppt2->count_allocated_sources*sizeof(double)/1e6);
 
   /* We succesfully allocated the k1 level of ppt2->sources */
-  ppt2->has_allocated_sources[index_k1] = _TRUE_;
+  ppt2->sources_allocated[index_k1] = _TRUE_;
 
   return _SUCCESS_;
 
@@ -1568,32 +1557,44 @@ int perturb2_allocate_k1_level(
 
 
 /**
- * Load the line of sight sources from disk for a given k1 value.
- *
- * The sources will be read from the file given in ppt2->sources_paths[index_k1] and stored
- * in the array ppt2->sources. Before running this function, make sure to allocate the
- * corresponding k1 level of ppt2->sources using perturb2_allocate_k1_level().
- *
- * This function is used in the transfer2.c module.
+ * Load the source function S_lm(k1,k2,k3,tau) from disk for a given k1 value.
  */
 
-int perturb2_load_sources_from_disk(
-        struct perturbs2 * ppt2,
-        int index_k1
-        )
+int perturb2_load(
+      struct perturbs2 * ppt2,
+      int index_k1
+      )
 {
 
   if (ppt2->perturbations2_verbose > 2)
     printf("     * reading line-of-sight source for index_k1=%d from '%s' ... \n",
-      index_k1, ppt2->sources_paths[index_k1]);
+      index_k1, ppt2->storage_paths[index_k1]);
+
+  /* Load only if needed */
+  if (ppt2->sources_available[index_k1])
+    return _SUCCESS_;
+
+  /* Complain if there is no file to load */
+  struct stat st;
+  class_test (stat (ppt2->storage_paths[index_k1], &st) != 0,
+		ppt2->error_message,
+		"cannot load sources for index_k1=%d, file '%s' does not exist",
+    index_k1, ppt2->storage_paths[index_k1]);
+
+  /* Make space */
+  if (!ppt2->sources_allocated[index_k1])
+    class_call (perturb2_allocate_k1_level(ppt2, index_k1),
+      ppt2->error_message,
+      ppt2->error_message);
 
   /* Open file for reading */
-  class_open (ppt2->sources_files[index_k1],
-    ppt2->sources_paths[index_k1],
+  class_open (ppt2->storage_files[index_k1],
+    ppt2->storage_paths[index_k1],
     "rb", ppt2->error_message);
 
+  /* Read from file */
   for (int index_tp2 = 0; index_tp2 < ppt2->tp2_size; ++index_tp2) {
-  
+
     for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
 
       class_call (perturb2_load_sources_k3_tau(
@@ -1601,8 +1602,8 @@ int perturb2_load_sources_from_disk(
                     index_tp2,
                     index_k1,
                     index_k2,
-                    ppt2->sources_paths[index_k1],
-                    ppt2->sources_files[index_k1]),
+                    ppt2->storage_paths[index_k1],
+                    ppt2->storage_files[index_k1]),
         ppt2->error_message,
         ppt2->error_message);
 
@@ -1611,11 +1612,13 @@ int perturb2_load_sources_from_disk(
       ppt2->count_memorised_sources += ppt2->tau_size*ppt2->k3_size[index_k1][index_k2];
 
     }
-    
   }
   
   /* Close file */
-  fclose(ppt2->sources_files[index_k1]);
+  fclose(ppt2->storage_files[index_k1]);
+  
+  /* Sources are now ready to use */
+  ppt2->sources_available[index_k1] = _TRUE_;
   
   return _SUCCESS_; 
   
@@ -1632,13 +1635,13 @@ int perturb2_load_sources_from_disk(
  */
 
 int perturb2_load_sources_k3_tau(
-        struct perturbs2 * ppt2,
-        int index_tp2,
-        int index_k1,
-        int index_k2,
-        char * filepath,
-        FILE * input_stream
-        )
+      struct perturbs2 * ppt2,
+      int index_tp2,
+      int index_k1,
+      int index_k2,
+      char * filepath,
+      FILE * input_stream
+      )
 {
    
   int k3_size = ppt2->k3_size[index_k1][index_k2];
@@ -1666,29 +1669,28 @@ int perturb2_load_sources_k3_tau(
  * Free the k1 level of the sources array ppt2->sources.
  */
 int perturb2_free_k1_level(
-     struct perturbs2 * ppt2,
-     int index_k1
-     )
+      struct perturbs2 * ppt2,
+      int index_k1
+      )
 {
 
-  /* Issue an error if ppt2->sources[index_k1] has already been freed */
-  class_test (ppt2->has_allocated_sources[index_k1] == _FALSE_,
-    ppt2->error_message,
-    "the index_k1=%d level of ppt2->sources is already free, stop to prevent error", index_k1);
+  /* Free memory only if needed */
+  if (!ppt2->sources_allocated[index_k1])
+    return _SUCCESS_;
 
   int k1_size = ppt2->k_size;
 
   for (int index_type = 0; index_type < ppt2->tp2_size; index_type++) {
+
     for (int index_k2 = 0; index_k2 <= index_k1; index_k2++)
         free(ppt2->sources[index_type][index_k1][index_k2]);
   
     free(ppt2->sources[index_type][index_k1]);
   
-  } // end of for (index_type)
+  }
 
-
-  /* We succesfully freed the k1 level of ppt2->sources */
-  ppt2->has_allocated_sources[index_k1] = _FALSE_;
+  ppt2->sources_allocated[index_k1] = _FALSE_;
+  ppt2->sources_available[index_k1] = _FALSE_;
 
   return _SUCCESS_;
 
@@ -2103,30 +2105,30 @@ int perturb2_indices_of_perturbs(
 
 
   // ================================================================================
-  // =                          Create sources directory                            =
+  // =                                  Storage                                     =
   // ================================================================================
   
+  /* Create filenames to store the source functions */
 
-  /* Create the files to store the source functions in */
-  if ((ppr2->store_sources_to_disk == _TRUE_) || (ppr2->load_sources_from_disk == _TRUE_)) {
+  if (ppr2->store_sources || ppr2->load_sources) {
     
     /* We are going to store the sources in n=k_size files, one for each requested k1 */
-    class_alloc (ppt2->sources_files, ppt2->k_size*sizeof(FILE *), ppt2->error_message);
-    class_alloc (ppt2->sources_paths, ppt2->k_size*sizeof(char *), ppt2->error_message);
+    class_alloc (ppt2->storage_files, ppt2->k_size*sizeof(FILE *), ppt2->error_message);
+    class_alloc (ppt2->storage_paths, ppt2->k_size*sizeof(char *), ppt2->error_message);
 
     for (int index_k1=0; index_k1<ppt2->k_size; ++index_k1) {
       
       /* The name of each sources file will have the k1 index in it */
-      class_alloc (ppt2->sources_paths[index_k1], _FILENAMESIZE_*sizeof(char), ppt2->error_message);
-      sprintf (ppt2->sources_paths[index_k1], "%s/sources_%03d.dat", ppt2->sources_dir, index_k1);
+      class_alloc (ppt2->storage_paths[index_k1], _FILENAMESIZE_*sizeof(char), ppt2->error_message);
+      sprintf (ppt2->storage_paths[index_k1], "%s/sources_%03d.dat", ppt2->storage_dir, index_k1);
       
     } // end of loop on index_k1
     
-    if (ppr2->store_sources_to_disk == _TRUE_)
+    if (ppr2->store_sources)
       if (ppt2->perturbations2_verbose > 2)
         printf ("     * will create %d files to store the sources\n", ppt2->k_size);
     
-  } // end of if(ppr2->store_sources_to_disk)
+  }
 
 
 
@@ -4287,8 +4289,9 @@ int perturb2_timesampling_for_sources (
   for (int index_type = 0; index_type < ppt2->tp2_size; index_type++)
     class_alloc (ppt2->sources[index_type], ppt2->k_size * sizeof(double **), ppt2->error_message);
   
-  /* Allocate and initialize the logical array that keeps track of the memory state of ppt2->sources */
-  class_calloc (ppt2->has_allocated_sources, ppt2->k_size, sizeof(short), ppt2->error_message);
+  /* Allocate and initialize the logical arrays keeping track of the state of ppt2->sources */
+  class_calloc (ppt2->sources_allocated, ppt2->k_size, sizeof(short), ppt2->error_message);
+  class_calloc (ppt2->sources_available, ppt2->k_size, sizeof(short), ppt2->error_message);
 
 
 
@@ -8633,19 +8636,12 @@ int perturb2_free(
     
     int k1_size = ppt2->k_size;
 
-    /* Free the k1 level only if we are neither loading nor storing the sources to disk.  The memory
-    management in those two cases is handled separately, so that the sources are freed as soon
-    as they are not needed anymore via the source_load and sources_store functions. */
-    if ((ppr2->store_sources_to_disk==_FALSE_) && (ppr2->load_sources_from_disk==_FALSE_)) {
-      for (int index_k1 = 0; index_k1 < k1_size; ++index_k1) {
+    for (int index_k1 = 0; index_k1 < k1_size; ++index_k1)
+      class_call (perturb2_free_k1_level(ppt2, index_k1),
+        ppt2->error_message, ppt2->error_message);
 
-        /* If the transfer2 module was loaded, ppt2->sources had already been freed  */
-        if (ppt2->has_allocated_sources[index_k1] == _TRUE_)
-          class_call(perturb2_free_k1_level(ppt2, index_k1), ppt2->error_message, ppt2->error_message); 
-      }
-    }
-
-    free (ppt2->has_allocated_sources);
+    free (ppt2->sources_allocated);
+    free (ppt2->sources_available);
 
     for (int index_type = 0; index_type < ppt2->tp2_size; index_type++)
       free(ppt2->sources[index_type]);
@@ -8734,15 +8730,13 @@ int perturb2_free(
     free(ppt2->m);
 
     /* Free file arrays */
-    if ((ppr2->store_sources_to_disk == _TRUE_) || (ppr2->load_sources_from_disk == _TRUE_)) {
-    
-      // fclose(ppt2->sources_status_file);
+    if (ppr2->store_sources || ppr2->load_sources) {
     
       for (int index_k1=0; index_k1<ppt2->k_size; ++index_k1)
-        free (ppt2->sources_paths[index_k1]);
+        free (ppt2->storage_paths[index_k1]);
     
-      free (ppt2->sources_files);
-      free (ppt2->sources_paths);
+      free (ppt2->storage_files);
+      free (ppt2->storage_paths);
     
     }
 
@@ -15903,7 +15897,7 @@ int perturb2_cmb_rescaling (
  * tables of the source function. They differ from those produced by
  * perturb2_save_perturbations() in that they contain the source function
  * (ie. the module output) rather than the second-order perturbations, and
- * from those created by store_sources_to_disk(), which are just a binary
+ * from those created by store_sources(), which are just a binary
  * dump of ppt2->sources intended to free memory.
  *  
  * perturb2_output() produces the following files:
@@ -16027,14 +16021,9 @@ int perturb2_output_k2k3 (
     int index_k2 = ppt2->index_k2_out[index_k_out];
 
     /* Load the source function from disk if needed */
-    if (ppr2->store_sources_to_disk || ppr2->load_sources_from_disk) {
-      class_call (perturb2_allocate_k1_level(ppt2, index_k1),
-        ppt2->error_message,
-        ppt2->error_message);
-      class_call(perturb2_load_sources_from_disk(ppt2, index_k1),
-        ppt2->error_message,
-        ppt2->error_message);
-    }
+    class_call(perturb2_load(ppt2, index_k1),
+      ppt2->error_message,
+      ppt2->error_message);
 
     for (int index_tau_out=0; index_tau_out < ppt2->tau_out_size; ++index_tau_out) {
 
@@ -16495,7 +16484,7 @@ int perturb2_output_k2k3 (
     } // for tau_out
     
     /* We are done with the source function */
-    if (ppr2->store_sources_to_disk || ppr2->load_sources_from_disk)
+    if (ppr2->store_sources || ppr2->load_sources)
       class_call (perturb2_free_k1_level(
                     ppt2,
                     index_k1),
@@ -16550,14 +16539,9 @@ int perturb2_output_k3tau (
     double k2 = ppt2->k[index_k2];
 
     /* Load the source function from disk if needed */
-    if (ppr2->store_sources_to_disk || ppr2->load_sources_from_disk) {
-      class_call (perturb2_allocate_k1_level(ppt2, index_k1),
-        ppt2->error_message,
-        ppt2->error_message);
-      class_call(perturb2_load_sources_from_disk(ppt2, index_k1),
-        ppt2->error_message,
-        ppt2->error_message);
-    }
+    class_call(perturb2_load(ppt2, index_k1),
+      ppt2->error_message,
+      ppt2->error_message);
 
     /* Define a new binary file structure */
     struct binary_file * file;
@@ -16822,7 +16806,7 @@ int perturb2_output_k3tau (
     // -                                Clean up                                 -
     // ---------------------------------------------------------------------------
 
-    if (ppr2->store_sources_to_disk || ppr2->load_sources_from_disk)
+    if (ppr2->store_sources || ppr2->load_sources)
       class_call (perturb2_free_k1_level(
                     ppt2,
                     index_k1),
@@ -17099,14 +17083,9 @@ int perturb2_output_k1k2k3 (
       for (int index_k1=0; index_k1 < ppt2->k_size; ++index_k1) {
         
         /* Load the source function from disk if needed */
-        if (ppr2->store_sources_to_disk || ppr2->load_sources_from_disk) {
-          class_call (perturb2_allocate_k1_level(ppt2, index_k1),
-            ppt2->error_message,
-            ppt2->error_message);
-          class_call(perturb2_load_sources_from_disk(ppt2, index_k1),
-            ppt2->error_message,
-            ppt2->error_message);
-        }
+        class_call(perturb2_load(ppt2, index_k1),
+          ppt2->error_message,
+          ppt2->error_message);
         
         for (int index_k2=0; index_k2 <= index_k1; ++index_k2) {
 
@@ -17127,7 +17106,7 @@ int perturb2_output_k1k2k3 (
         } // for k2
         
         /* We are done with the source function */
-        if (ppr2->store_sources_to_disk || ppr2->load_sources_from_disk)
+        if (ppr2->store_sources || ppr2->load_sources)
           class_call (perturb2_free_k1_level(
                         ppt2,
                         index_k1),
@@ -17167,41 +17146,29 @@ int perturb2_output_k1k2k3 (
   
 
 /**
- * Save the source function to disk for a given k1 index.
- * 
- * The STORAGE files contain each the source function S_lm(k1,k2,k3,tau)
- * for a fixed k1. With respect to the source files, the storage files also
- * include the k2 dimension, but they lack accessory data. Their purpose is
- * to save memory space at the expense of disk space, and to run SONG very
- * quickly by precomputing the source function. The source function in k1
- * is freed as soon as the binary files is produced. When the source function
- * will be needed again, like in the transfer2.c module, it will be loaded
- * back into ppt2->sources from disk using perturb2_load_sources_from_disk().
- * To inspect and plot the data in the storage files, you need to use
- * print_sources2.c. The files are created only if ppr2->store_sources_to_disk
- * is true, are placed in the run directory, and are progressively named
- * sources_XXX.dat
- *
- * The source function is stored to disk in as many files as the number
- * of k1 values (index_k1). This function appends to one such file the
- * source function in ppt2->sources for the input value of index_k1.
- *
- * The path of the files is stored in ppt2->sources_paths[index_k1], while
- * their file reference is in ppt2->sources_files[index_k1].
+ * Save the source function to disk for a given k1 value.
  */
 
-int perturb2_store_sources_to_disk(
-        struct perturbs2 * ppt2,
-        int index_k1
-        )
+int perturb2_store(
+      struct perturbs2 * ppt2,
+      int index_k1
+      )
 {
 
   if (ppt2->perturbations2_verbose > 1)
     printf("     \\ writing sources for index_k1=%d ...\n", index_k1);
 
+  class_test (!ppt2->sources_allocated[index_k1],
+    ppt2->error_message,
+    "cannot store sources if they are not even allocated");
+
+  class_test (!ppt2->sources_available[index_k1],
+    ppt2->error_message,
+    "cannot store sources if they are not available");
+
   /* Open file for writing */
-  class_open (ppt2->sources_files[index_k1],
-    ppt2->sources_paths[index_k1],
+  class_open (ppt2->storage_files[index_k1],
+    ppt2->storage_paths[index_k1],
     "wb", ppt2->error_message);
 
   /* For each type and k2, write the (k3, tau) level to file */
@@ -17214,8 +17181,8 @@ int perturb2_store_sources_to_disk(
                     index_tp2,
                     index_k1,
                     index_k2,
-                    ppt2->sources_paths[index_k1],
-                    ppt2->sources_files[index_k1]),
+                    ppt2->storage_paths[index_k1],
+                    ppt2->storage_files[index_k1]),
         ppt2->error_message,
         ppt2->error_message);
         
@@ -17223,10 +17190,7 @@ int perturb2_store_sources_to_disk(
   }
 
   /* Close file */
-  fclose(ppt2->sources_files[index_k1]);
-
-  /* Write information on the status file */
-  // class_open (ppt2->sources_status_file, ppt2->sources_status_path, "a+", ppt2->error_message);
+  fclose(ppt2->storage_files[index_k1]);
 
   return _SUCCESS_;
 

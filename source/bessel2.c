@@ -87,7 +87,7 @@ int bessel2_init(
 
   /* Do we need to compute the 2nd-order projection functions? */
   if ((pbs->l_max==0) || ((ppt2->has_cls==_FALSE_) && (ppt2->has_cmb_bispectra==_FALSE_))
-    || ((ppr2->load_transfers_from_disk==_TRUE_) && (ppr->load_bispectra_from_disk==_TRUE_))) {
+    || ((ppr2->load_transfers==_TRUE_) && (ppr->load_bispectra==_TRUE_))) {
 
     if (pbs2->bessels2_verbose > 0)
       printf("Second-order Bessel module skipped.\n");
@@ -172,7 +172,7 @@ int bessel2_init(
 
   pbs2->J_size = index_J;
 
-  if ((pbs2->bessels2_verbose > 0) && (ppr2->load_transfers_from_disk == _FALSE_))
+  if ((pbs2->bessels2_verbose > 0) && (ppr2->load_transfers == _FALSE_))
     printf(" -> will compute size_J=%d projection functions\n", pbs2->J_size);
 
 
@@ -228,7 +228,7 @@ int bessel2_init(
 
   /* The projection functions are needed only to compute the transfer functions. If the
   latter are loaded from disk, there is no need for the former */
-  if (ppr2->load_transfers_from_disk == _TRUE_) {
+  if (ppr2->load_transfers == _TRUE_) {
     if (pbs2->bessels2_verbose > 0)
       printf (" -> No second-order projection functions needed.\n");
 
@@ -740,7 +740,7 @@ int bessel2_free(
     )
 {
 
-  if (ppr2->load_transfers_from_disk == _FALSE_) {
+  if (ppr2->load_transfers == _FALSE_) {
 
     for (int index_J = 0; index_J < pbs2->J_size; ++index_J) {
   

@@ -205,10 +205,10 @@ struct precision2
   // ====================================================================================
 
   ErrorMsg error_message;         /**< Zone for writing error messages */
-  short store_transfers_to_disk;  /**< Should we store the transfer functions to disk? */
-  short load_transfers_from_disk; /**< Should we load the transfer functions from disk? */
-  short store_sources_to_disk;    /**< Should we store the source functions to disk? */
-  short load_sources_from_disk;   /**< Should we load the source functions from disk? */
+  short store_transfers;  /**< Should we store the transfer functions to disk? */
+  short load_transfers; /**< Should we load the transfer functions from disk? */
+  short store_sources;    /**< Should we store the source functions to disk? */
+  short load_sources;   /**< Should we load the source functions from disk? */
   short old_run; /**< set to _TRUE_ if the run was stored with a version of SONG smaller than 1.0 */
 
 };  /* end of struct precision2 declaration */

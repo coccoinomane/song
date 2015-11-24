@@ -332,9 +332,9 @@ int main (int argc, char **argv) {
   
   /* Load the transfer functions if we stored them to disk previously, either during a separate
   run or during this run. */
-  if (pr2.load_transfers_from_disk || pr2.store_transfers_to_disk) {
-    if (transfer2_load_transfers_from_disk(&pt2, &tr2, index_tt) == _FAILURE_) {
-      printf("\n\nError in transfer2_load_transfers_from_disk \n=>%s\n", tr2.error_message);
+  if (pr2.load_transfers || pr2.store_transfers) {
+    if (transfer2_load(&pt2, &tr2, index_tt) == _FAILURE_) {
+      printf("\n\nError in transfer2_load \n=>%s\n", tr2.error_message);
       return _FAILURE_;
     }
   }
@@ -372,7 +372,7 @@ int main (int argc, char **argv) {
   // ==================================================================================
   
   /* Free the memory associated with the line-of-sight transfers for the considered k1 */
-  if ( (pr2.load_transfers_from_disk == _TRUE_) || (pr2.store_transfers_to_disk == _TRUE_) ) {
+  if ( (pr2.load_transfers == _TRUE_) || (pr2.store_transfers == _TRUE_) ) {
     if (transfer2_free_type_level(&pt2, &tr2, index_tt) == _FAILURE_) {
       printf("\n\nError in transfer2_free_type_level \n=>%s\n",tr2.error_message);
       return _FAILURE_;    

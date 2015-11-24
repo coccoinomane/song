@@ -243,9 +243,9 @@ int spectra2_cls (
 
         /* Load transfer functions if needed */
 
-        if (ppr2->load_transfers_from_disk || ppr2->store_transfers_to_disk) {
+        if (ppr2->load_transfers || ppr2->store_transfers) {
 
-          class_call_parallel (transfer2_load_transfers_from_disk (
+          class_call_parallel (transfer2_load (
                                  ppt2,
                                  ptr2,
                                  index_tt_1),
@@ -253,7 +253,7 @@ int spectra2_cls (
             psp->error_message);
 
           if (index_tt_2 != index_tt_1)
-            class_call_parallel (transfer2_load_transfers_from_disk (
+            class_call_parallel (transfer2_load (
                                    ppt2,
                                    ptr2,
                                    index_tt_2),
@@ -438,7 +438,7 @@ int spectra2_cls (
           } // loop k2
         } // loop k1
 
-        if (ppr2->load_transfers_from_disk || ppr2->store_transfers_to_disk) {
+        if (ppr2->load_transfers || ppr2->store_transfers) {
 
           class_call_parallel (transfer2_free_type_level (
                                  ppt2,
@@ -871,10 +871,10 @@ int spectra2_integrate_fourier (
         printf ("     * computing integral for index_k1=%d of %d, k1=%g\n",
         index_k1, ppt2->k_size, k1);
 
-      if (ppr2->load_sources_from_disk || ppr2->store_sources_to_disk)
-        class_call_parallel (perturb2_load_sources_from_disk(ppt2, index_k1),
-                               ppt2->error_message,
-                               psp->error_message);
+      /* Load source function if needed */
+      class_call_parallel (perturb2_load(ppt2, index_k1),
+                             ppt2->error_message,
+                             psp->error_message);
 
       /* Find stepsize */
       double step_k1;
@@ -1017,7 +1017,7 @@ int spectra2_integrate_fourier (
 
       } // for(index_k3)
 
-      if (ppr2->load_sources_from_disk || ppr2->store_sources_to_disk)
+      if (ppr2->load_sources || ppr2->store_sources)
         class_call_parallel (perturb2_free_k1_level (ppt2, index_k1),
           ppt2->error_message, ppt2->error_message);
 
@@ -1103,8 +1103,8 @@ int spectra2_integrate_fourier_sym(
 //         index_k1, psp->k_size, psp->k[index_k1]);
 //
 //     // load sources
-//     if ((ppr2->load_sources_from_disk == _TRUE_) || (ppr2->store_sources_to_disk == _TRUE_))
-//           class_call(perturb2_load_sources_from_disk(ppt2, index_k1),
+//     if ((ppr2->load_sources == _TRUE_) || (ppr2->store_sources == _TRUE_))
+//           class_call(perturb2_load(ppt2, index_k1),
 //             ppt2->error_message,
 //             psp->error_message);
 //

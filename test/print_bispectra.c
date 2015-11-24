@@ -479,9 +479,9 @@ int main(int argc, char **argv) {
   are quick to compute on the fly. */
   if ((bi.bispectrum_type[index_bt] == non_separable_bispectrum)
    || (bi.bispectrum_type[index_bt] == intrinsic_bispectrum)) {
-    if ((pr.load_bispectra_from_disk==_TRUE_) || (pr.store_bispectra_to_disk==_TRUE_)) {
-      if (bispectra_load_from_disk(&bi, index_bt) == _FAILURE_) {
-        printf("\n\nError in bispectra_load_from_disk \n=>%s\n", bi.error_message);
+    if ((pr.load_bispectra==_TRUE_) || (pr.store_bispectra==_TRUE_)) {
+      if (bispectra_load(&bi, index_bt) == _FAILURE_) {
+        printf("\n\nError in bispectra_load \n=>%s\n", bi.error_message);
         return _FAILURE_;
       }
     }

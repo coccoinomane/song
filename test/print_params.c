@@ -291,12 +291,12 @@ int main(int argc, char **argv) {
   // printf("\tpr.append_date_to_run = %d\n", pr.append_date_to_run);
   // printf("\tpr.run_dir = %s\n", pr.run_dir);
   // printf("\tpr.data_dir = %s\n", pr.data_dir);
-  // printf("\tpr2.store_sources_to_disk = %d\n", pr2.store_sources_to_disk);
-  // printf("\tpt2.sources_dir = %s\n", pt2.sources_dir);
-  // printf("\tpr2.store_transfers_to_disk = %d\n", pr2.store_transfers_to_disk);
-  // printf("\ttr2.transfers_dir = %s\n", tr2.transfers_dir);
-  // printf("\tpr.store_bispectra_to_disk = %d\n", pr.store_bispectra_to_disk);
-  // printf("\tbi.bispectra_dir = %s\n", bi.bispectra_dir);
+  // printf("\tpr2.store_sources = %d\n", pr2.store_sources);
+  // printf("\tpt2.storage_dir = %s\n", pt2.storage_dir);
+  // printf("\tpr2.store_transfers = %d\n", pr2.store_transfers);
+  // printf("\ttr2.storage_dir = %s\n", tr2.storage_dir);
+  // printf("\tpr.store_bispectra = %d\n", pr.store_bispectra);
+  // printf("\tbi.storage_dir = %s\n", bi.storage_dir);
 
   /* Approximations parameters */
   // printf("* Parameters related to the approximations adopted at second-order\n");

@@ -227,24 +227,13 @@ int main(int argc, char **argv) {
   // =                           Load sources from disk                       =
   // ==========================================================================
   
-  /* Load sources from disk if they were previously stored.  This can be true either because we are loading
-  them from a precomputed run, or because we stored them in this run. */
-  if ( (pr2.load_sources_from_disk == _TRUE_) || (pr2.store_sources_to_disk == _TRUE_) ) {
-    if (perturb2_allocate_k1_level(&pt2, index_k1) == _FAILURE_) {
-      printf("\n\nError in perturb2_allocate_k1_level \n=>%s\n", pt2.error_message);
-      return _FAILURE_;
-    }
-    if (perturb2_load_sources_from_disk(&pt2, index_k1) == _FAILURE_) {
-      printf("\n\nError in perturb2_load_sources_from_disk \n=>%s\n", pt2.error_message);
-      return _FAILURE_;
-    }
-  }
-  else if (pr.load_run == _TRUE_) {
-    printf("Error: you are trying to load the sources from a run that has not them.\n");
+  /* Load sources from disk if needed */
+  if (perturb2_load(&pt2, index_k1) == _FAILURE_) {
+    printf("\n\nError in perturb2_load \n=>%s\n", pt2.error_message);
     return _FAILURE_;
   }
-  
-  
+
+
   // ===================================================================
   // =                           Print debug info                      =
   // ===================================================================
@@ -559,7 +548,7 @@ int main(int argc, char **argv) {
   // ================================================
   
   /* Free the memory associated with the line-of-sight sources for the considered k1 */
-  if ((pr2.load_sources_from_disk == _TRUE_) || (pr2.store_sources_to_disk == _TRUE_)) {
+  if ((pr2.load_sources == _TRUE_) || (pr2.store_sources == _TRUE_)) {
     if (perturb2_free_k1_level(&pt2, index_k1) == _FAILURE_) {
       printf("\n\nError in perturb2_free_k1_level \n=>%s\n",pt2.error_message);
       return _FAILURE_;    
