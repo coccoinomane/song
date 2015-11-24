@@ -418,9 +418,17 @@ int spectra2_cls (
               #pragma omp atomic
               result_m[index_M] += integrand;
 
-              /* Debug: print the integrand function */
-              // if (l==2 && m==0)
-              //   printf ("integrand = %g, result =%g\n", integrand, *result);
+              /* Debug: print the integrand function */              
+              // int i1=47, i2=61;
+              //
+              // if (index_k1==i1 && index_k2==i2 && l==51)
+              //   printf ("%10d %16g %16g %16g %16g\n", l, k3, transfer_1[index_k3], integrand, *result);
+              //
+              // if (index_k1==i1 && index_k2==i2 && l==63)
+              //   printf ("%10d %16g %16g %16g %16g\n", l, k3, transfer_1[index_k3], integrand, *result);
+              //
+              // if (index_k1==i1 && index_k2==i2 && l==78)
+              //   printf ("%10d %16g %16g %16g %16g\n", l, k3, transfer_1[index_k3], integrand, *result);
 
             } // loop k3
             

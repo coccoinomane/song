@@ -293,7 +293,7 @@ int input2_init (
 
     if (strstr(string1,"k_out") != NULL) {
       ppt2->k_out_mode = _TRUE_;
-      ppt2->stop_at_perturbations2 = _TRUE_;
+      ptr2->stop_at_transfers2 = _TRUE_;
       ppt2->has_perturbations2 = _TRUE_;
     }
     

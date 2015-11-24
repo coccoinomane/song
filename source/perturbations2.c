@@ -1582,7 +1582,7 @@ int perturb2_load_sources_from_disk(
         int index_k1
         )
 {
-   
+
   if (ppt2->perturbations2_verbose > 2)
     printf("     * reading line-of-sight source for index_k1=%d from '%s' ... \n",
       index_k1, ppt2->sources_paths[index_k1]);
@@ -3386,12 +3386,9 @@ int perturb2_get_k_lists (
 
       if (ppt2->k_out_size > 0) {
 
-        /* If SONG is running in k_out_mode, we ignore the k3 grid computed above and
-        start over. If an output time or redshift is requested, we do keep the k3 grid,
-        lest the output files have only one entry. */
-
-        if ((ppt2->k_out_mode == _TRUE_) && ((ppt2->tau_out_size+ppt2->z_out_size) <= 0))
-          k3_size = 0;
+        /* Uncomment to include in the k3 grid only the points specified in k3_out */
+        // if (ppt2->k_out_mode && (ppt2->tau_out_size+ppt2->z_out_size <= 0))
+        //   k3_size = 0;
 
         /* Add the output values to the k3 sampling. These values are contained in
         ppt2->k3_out and satisfy the triangular condition.  */

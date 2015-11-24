@@ -297,7 +297,7 @@ int main (int argc, char **argv) {
     tr2.l[index_l], tr2.m[index_m], k1, k2, index_tt);
 
   /* Print information to stderr */
-  fprintf(stderr, "# k1 = %g, k2 = %g, k3_size = %d, l_size = %d\n",
+  fprintf(stderr, "# k1 = %.17g, k2 = %.17g, k3_size = %d, l_size = %d\n",
     k1, k2, k_size, tr2.l_size);
     
   fprintf(stderr, "# Time-sampling of quadsources with %d points from tau=%g to %g\n",
@@ -332,15 +332,11 @@ int main (int argc, char **argv) {
   
   /* Load the transfer functions if we stored them to disk previously, either during a separate
   run or during this run. */
-  if ( (pr2.load_transfers_from_disk == _TRUE_) || (pr2.store_transfers_to_disk == _TRUE_) ) {
+  if (pr2.load_transfers_from_disk || pr2.store_transfers_to_disk) {
     if (transfer2_load_transfers_from_disk(&pt2, &tr2, index_tt) == _FAILURE_) {
       printf("\n\nError in transfer2_load_transfers_from_disk \n=>%s\n", tr2.error_message);
       return _FAILURE_;
     }
-  }
-  else if (pr.load_run == _TRUE_) {
-    printf("Error: you are trying to load the transfers from a run that has not them.\n");
-    return _FAILURE_;
   }
   
 
