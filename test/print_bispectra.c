@@ -474,12 +474,12 @@ int main(int argc, char **argv) {
   // =                           Load bispectra from disk                            =
   // =================================================================================
   
-  /* Load bispectrum from disk, if it was not already computed. Note that we load
-  the bispectrum only if it is a non-separable bispectrum, since all other bispectra
-  are quick to compute on the fly. */
-  if ((bi.bispectrum_type[index_bt] == non_separable_bispectrum)
-   || (bi.bispectrum_type[index_bt] == intrinsic_bispectrum)) {
-    if ((pr.load_bispectra==_TRUE_) || (pr.store_bispectra==_TRUE_)) {
+  /* Load bispectrum from disk, if needed */
+  for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt) {
+
+    if (bi.bispectrum_type[index_bt] == non_separable_bispectrum || 
+        bi.bispectrum_type[index_bt] == intrinsic_bispectrum) {
+
       if (bispectra_load(&bi, index_bt) == _FAILURE_) {
         printf("\n\nError in bispectra_load \n=>%s\n", bi.error_message);
         return _FAILURE_;
@@ -958,27 +958,27 @@ int main(int argc, char **argv) {
         double redshift_correction = +4/8. * quadratic_correction; 
 
         /* Add or subtract quadratic corrections to the intrinsic bispectrum */
-        if ((bi.has_intrinsic==_TRUE_) && (bi.bispectrum_type[index_bt]==intrinsic_bispectrum)) {
+        if (bi.has_intrinsic && bi.bispectrum_type[index_bt]==intrinsic_bispectrum) {
                 
           /* Include the quadratic contributions to the bispectrum, unless the user specifically
           asked for no quadratic sources. In this cales we assume that the user wanted to run
           SONG as a first-order code */
-          if (pt2.has_quadratic_sources == _TRUE_) {
+          if (pt2.has_quadratic_sources) {
 
             /* Compute which intrinsic bispectrum is which based on whether the quadratic corrections
             where added in the bispectra module. For details on the differences betweeen different
             intrinsic bispectra, refer to the file documentation above. */
-            if (bi.add_quadratic_correction == _TRUE_) {
+            if (bi.add_quadratic_correction) {
               bolometric_T = bisp;
               brightness_T = bolometric_T - temperature_correction;
-              if (pt2.use_delta_tilde_in_los == _TRUE_)
+              if (pt2.use_delta_tilde_in_los)
                 delta_tilde_T = brightness_T - redshift_correction;
               else
                 delta_tilde_T = brightness_T;
             }
             else {
               delta_tilde_T = bisp;
-              if (pt2.use_delta_tilde_in_los == _TRUE_)
+              if (pt2.use_delta_tilde_in_los)
                 brightness_T = delta_tilde_T + redshift_correction;
               else
                 brightness_T = delta_tilde_T;

@@ -1693,13 +1693,6 @@ int input2_init (
     }
   }
 
-  /* Create/open the status file. The 'a+' mode means that if the file does not exist it will be created,
-  but if it exist it won't be erased (append mode) */
-  // if (ppr2->store_sources == _TRUE_) {
-  //   sprintf(ppt2->sources_status_path, "%s/sources_status_file.txt", ppr->data_dir);
-  //   class_open(ppt2->sources_status_file, ppt2->sources_status_path, "a+", errmsg);
-  // }
-
   class_test ((ppr2->store_sources == _TRUE_) && (ppr2->load_sources == _TRUE_),
     errmsg,
     "cannot load and save sources at the same time!");

@@ -42,14 +42,20 @@ int bispectra2_init (
 {
 
   /* Check whether we need to compute intrinsic spectra at all */  
-  if ((ppt2->has_cmb_bispectra == _FALSE_)   /* Have we computed the needed 2nd-order perturbations? */
-     || (pbi->has_bispectra == _FALSE_)      /* Did we load the 1st-order bispectrum module? */
-     || (pbi->n[intrinsic_bispectrum]<1)) {  /* Did we request at least a second-order bispectrum? */
+  if (!ppt2->has_cmb_bispectra ||      /* Have we computed the needed 2nd-order perturbations? */
+      !pbi->has_bispectra ||           /* Did we run the first-order bispectrum module? */
+      pbi->n[intrinsic_bispectrum]<1)  /* Did we request at least one second-order bispectrum? */
+  {  
 
     if (pbi->bispectra_verbose > 0)
       printf("No intrinsic bispectra requested. Second-order bispectra module skipped.\n");
 
     return _SUCCESS_;
+  }
+  else if (pbi->bispectra_verbose > 0) {
+
+      printf ("Computing second-order bispectra.\n");
+
   }
   
 
@@ -58,77 +64,69 @@ int bispectra2_init (
   // =                                    Preparations                                   =
   // =====================================================================================
 
-  /* Initialize those indices & arrays in the bispectra structure which are
-  specific to the second-order bispectra but were not already initialised
-  in bispectra_indices */
+  /* Symmetric sampling not supported for intrinsic bispectrum computation */
 
-  class_call (bispectra2_indices (ppr,ppr2,pba,ppt,ppt2,pbs,pbs2,ptr,ptr2,ppm,psp,pbi),
+  class_test (ppt2->k3_sampling == sym_k3_sampling,
     pbi->error_message,
-    pbi->error_message);
+    "Second-order bispectra cannot be computed with symmetric sampling");
 
+
+  /* For |m|>0, it is not possible to obtain the reduced form of the intrinsic
+  bispectrum (see comment for has_reduced_bispectrum in bispectra.h) */
+
+  if (pbi->has_intrinsic == _TRUE_)
+    if (ppr2->m_max_song > 0)
+        pbi->has_reduced_bispectrum[pbi->index_bt_intrinsic] = _FALSE_;
+
+
+  /* If the user requested to load the bispectra from disk, skip the computation
+  of the intrinsic bispectrum and jump to the end of the function */
+
+  if (ppr->load_bispectra) {
+        
+    if (pbi->bispectra_verbose > 0)
+      printf(" -> skipping computation, second-order bispectra will be read from disk\n");
+
+    goto output_and_exit;
+
+  }
 
 
   // =====================================================================================
   // =                                 Compute bispectra                                 =
   // =====================================================================================
 
-  class_call (bispectra2_harmonic (ppr,ppr2,pba,pth,ppt,ppt2,pbs,pbs2,ptr,ptr2,ppm,psp,pbi),
+  class_call (bispectra2_harmonic (
+                ppr,ppr2,pba,pth,
+                ppt,ppt2,pbs,pbs2,
+                ptr,ptr2,ppm,psp,
+                pbi),
     pbi->error_message,
     pbi->error_message);
 
 
 
-  // ====================================================================================
-  // =                              Save bispectra to disk                              =
-  // ====================================================================================
-  
-  if (ppr->store_bispectra == _TRUE_)
-    for (int index_bt = 0; index_bt < pbi->bt_size; ++index_bt)
-      if (pbi->bispectrum_type[index_bt] == intrinsic_bispectrum)
-        class_call (bispectra_store (
-                      pbi,
-                      index_bt),
-          pbi->error_message,
-          pbi->error_message);
+  output_and_exit:
 
+  // =====================================================================================
+  // =                                  Produce output                                   =
+  // =====================================================================================
 
-  return _SUCCESS_;
+  /* Create output files containing the bispectra */
 
-}
-
-
-
-
-int bispectra2_indices (
-    struct precision * ppr,
-    struct precision2 * ppr2,
-    struct background * pba,
-    struct perturbs * ppt,
-    struct perturbs2 * ppt2,
-    struct bessels * pbs,
-    struct bessels2 * pbs2,
-    struct transfers * ptr,
-    struct transfers2 * ptr2,
-    struct primordial * ppm,
-    struct spectra * psp,
-    struct bispectra * pbi
-    )
-{
-
-  /* Symmetric sampling not supported for intrinsic bispectrum computation */
-  class_test (ppt2->k3_sampling == sym_k3_sampling,
+  class_call (bispectra_output (
+                ppr,pba,pth,ppt,
+                pbs,ptr,ppm,psp,
+                ple,pbi),
     pbi->error_message,
-    "Second-order bispectra cannot be computed with symmetric sampling");
+    pbi->error_message);
 
-  /* For |m|>0, it is not possible to obtain the reduced form of the intrinsic bispectrum
-  (see comment for 'has_reduced_bispectrum' in bispectra.h) */
-  if (pbi->has_intrinsic == _TRUE_)
-    if (ppr2->m_max_song > 0)
-        pbi->has_reduced_bispectrum[pbi->index_bt_intrinsic] = _FALSE_;
 
   return _SUCCESS_;
 
 }
+
+
 
 
 /**
@@ -160,13 +158,6 @@ int bispectra2_harmonic (
 {
 
 
-  /* If the user requested to load the bispectra from disk, then stop the execution
-  of this function here */
-  if (ppr->load_bispectra == _TRUE_) {
-    return _SUCCESS_;
-  }
-
-
   // ================================================================================
   // =                          Compute intrinsic bispectra                         =
   // ================================================================================
@@ -178,46 +169,25 @@ int bispectra2_harmonic (
 
     /* Allocate arrays inside the integration workspace */
     class_call (bispectra2_intrinsic_workspace_init(
-                  ppr,
-                  ppr2,
-                  pba,
-                  pth,
-                  ppt,
-                  ppt2,
-                  pbs,
-                  pbs2,
-                  ptr,
-                  ptr2,
-                  ppm,
-                  psp,
-                  pbi,
-                  pwb),
+                  ppr, ppr2, pba, pth,
+                  ppt, ppt2, pbs, pbs2,
+                  ptr, ptr2, ppm, psp,
+                  pbi, pwb),
       pbi->error_message,
       pbi->error_message);
 
     /* Perform the bispectrum integration */
     class_call (bispectra2_intrinsic_init(
-                  ppr,
-                  ppr2,
-                  ppt,
-                  ppt2,
-                  pbs,
-                  pbs2,
-                  ptr,
-                  ptr2,
-                  ppm,
-                  psp,
-                  pbi,
-                  pwb),
+                  ppr, ppr2, ppt, ppt2,
+                  pbs, pbs2, ptr, ptr2,
+                  ppm, psp, pbi, pwb),
       pbi->error_message,
       pbi->error_message);
   
     /* Free the 'pwb' workspace */
     class_call (bispectra2_intrinsic_workspace_free(
-                  ppt2,
-                  ptr2,
-                  pbi,
-                  pwb),
+                  ppt2, ptr2,
+                  pbi, pwb),
       pbi->error_message,
       pbi->error_message);
   
@@ -233,31 +203,35 @@ int bispectra2_harmonic (
   the brightness temperature to the bolometric one (Sec. 3.2 of
   http://arxiv.org/abs/1401.3296), and absorb the redshift term of Boltzmann equation
   (Sec. 3.1 of http://arxiv.org/abs/1401.3296). */
-  class_call (bispectra2_add_quadratic_corrections (ppr,ppr2,pba,ppt,ppt2,pbs,pbs2,ptr,ptr2,ppm,psp,pbi),
+
+  class_call (bispectra2_add_quadratic_corrections (
+                ppr,ppr2,pba,ppt,
+                ppt2,pbs,pbs2,ptr,
+                ptr2,ppm,psp,pbi),
     pbi->error_message,
     pbi->error_message);
 
+
   /* Check that we correctly filled the bispectra array */
-  class_test (pbi->count_allocated_for_bispectra != pbi->count_memorised_for_bispectra,
+  class_test (pbi->count_allocated_bispectra != pbi->count_memorised_bispectra,
     pbi->error_message,
     "there is a mismatch between allocated (%ld) and used (%ld) space!",
-    pbi->count_allocated_for_bispectra, pbi->count_memorised_for_bispectra);
+    pbi->count_allocated_bispectra, pbi->count_memorised_bispectra);
 
   /* Print information on memory usage */
   if (pbi->bispectra_verbose > 1)
     printf(" -> memorised ~ %.3g MB (%ld doubles) in the bispectra array\n",
-      pbi->count_memorised_for_bispectra*sizeof(double)/1e6, pbi->count_memorised_for_bispectra);
+      pbi->count_memorised_bispectra*sizeof(double)/1e6, pbi->count_memorised_bispectra);
 
-  
-  
+
+
   // ================================================================================
   // =                                 Check for nans                               =
   // ================================================================================
 
-  for (int index_bt = 0; index_bt < pbi->bt_size; ++index_bt) {
+  for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt) {
 
-    /* We have not computed the intrinsic bispectra yet, so we skip them */
-    if (pbi->bispectrum_type[index_bt] != intrinsic_bispectrum)
+    if (!pbi->bispectra_available[index_bt])
       continue;
 
     for (int X = 0; X < pbi->bf_size; ++X) {
@@ -294,6 +268,27 @@ int bispectra2_harmonic (
       } // end of for(Y)
     } // end of for(Z)
   } // end of for(index_bt)  
+
+  
+
+  // ====================================================================================
+  // =                              Save bispectra to disk                              =
+  // ====================================================================================
+
+  /* Save the intrinsic bispectra to disk if requested */
+
+  if (ppr->store_bispectra) {
+
+    for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt)
+      if (pbi->bispectrum_type[index_bt] == intrinsic_bispectrum)
+        class_call (bispectra_store (
+                      pbi,
+                      index_bt),
+          pbi->error_message,
+          pbi->error_message);
+
+  }
+
   
   return _SUCCESS_;
 
@@ -423,7 +418,7 @@ int bispectra2_intrinsic_init (
   // =====================================================================================
 
   /* Loop over the various intrinsic bispectra (so far, only one type) */
-  for (int index_bt = 0; index_bt < pbi->bt_size; ++index_bt) {
+  for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt) {
 
     /* Skip the bispectrum if it not of the non-separable type */
     if (pbi->bispectrum_type[index_bt] != intrinsic_bispectrum)
@@ -745,8 +740,8 @@ int bispectra2_intrinsic_init (
     the bispectrum crosses the zero many times. */
     class_test_permissive ((wrong_counter/(double)all_counter)>0.15,
       pbi->error_message,
-      "l1<->l2 symmetry violated: n_configurations=%d, non_negligible=%d,wrong=%d, \
-wrong/non_negl=%g, <diff> of matches=%g, <diff> of wrongs=%g\n",
+      "l1<->l2 symmetry violated: n_configurations=%d, non_negligible=%d,wrong=%d,\
+ wrong/non_negl=%g, <diff> of matches=%g, <diff> of wrongs=%g\n",
       all_counter, non_negligible_counter, wrong_counter, wrong_counter/(double)non_negligible_counter,
       incremental_diff_correct/(double)correct_counter, incremental_diff_wrong/(double)wrong_counter);
   
@@ -795,7 +790,7 @@ wrong/non_negl=%g, <diff> of matches=%g, <diff> of wrongs=%g\n",
 
                 /* Update the counter */
                 #pragma omp atomic
-                pbi->count_memorised_for_bispectra++;
+                pbi->count_memorised_bispectra++;
 
               } // end of for(Z)
             } // end of for(Y)
@@ -804,6 +799,9 @@ wrong/non_negl=%g, <diff> of matches=%g, <diff> of wrongs=%g\n",
         } // end of for(index_l3)
       } // end of for(index_l2)
     } // end of for(index_l1)
+
+    /* The intrinsic bispectrum is now ready */
+    pbi->bispectra_available[index_bt] = _TRUE_;
 
   } // end of loop on index_bt
   
@@ -1224,14 +1222,12 @@ int bispectra2_intrinsic_integrate_over_k3 (
       "error in the indexing of pbs2->l1. Is the pbs2->extend_l1_using_m parameter true?");
 
     /* Load the transfer functions from disk */
-    if ((ppr2->load_transfers == _TRUE_) || (ppr2->store_transfers == _TRUE_)) {
-      class_call (transfer2_load (
-                    ppt2,
-                    ptr2,
-                    index_tt2_k3 + ptr2->lm_array[index_l3][index_M3]),
-        ptr2->error_message,
-        pbi->error_message);
-    }
+    class_call (transfer2_load (
+                  ppt2,
+                  ptr2,
+                  index_tt2_k3 + ptr2->lm_array[index_l3][index_M3]),
+      ptr2->error_message,
+      pbi->error_message);
   
     if (pbi->bispectra_verbose > 2)
       printf("     * computing the k3 integral for l3=%d, index_l3=%d, L3=%d, index_L3=%d\n",
@@ -1426,8 +1422,7 @@ int bispectra2_intrinsic_integrate_over_k3 (
 
   
     /* Free the memory associated with the second order transfer function for this (l,m) */
-    if ((ppr2->load_transfers == _TRUE_)
-      || (ppr2->store_transfers == _TRUE_)) {
+    if (ppr2->load_transfers || ppr2->store_transfers) {
       class_call (transfer2_free_type_level (
                     ppt2,
                     ptr2,
@@ -1436,7 +1431,7 @@ int bispectra2_intrinsic_integrate_over_k3 (
         pbi->error_message);
     }
   
-  } // end of for(index_l3);
+  } // for(index_l3);
     
   if (pbi->bispectra_verbose > 2)
     printf("     * memorised ~ %.3g MB (%ld doubles) for the k3-integral array (<k3_size>=%g)\n",
@@ -1453,7 +1448,7 @@ int bispectra2_intrinsic_integrate_over_k3 (
 
   return _SUCCESS_; 
   
-} // end of bispectra2_intrinsic_integrate_over_k3
+} // bispectra2_intrinsic_integrate_over_k3
   
 
 
@@ -3076,7 +3071,7 @@ int bispectra2_add_quadratic_corrections (
   if (pbi->bispectra_verbose > 0)
     printf (" -> adding temperature & redshift corrections to the intrinsic bispectrum\n");
   
-  for (int index_bt = 0; index_bt < pbi->bt_size; ++index_bt) {
+  for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt) {
 
     if (pbi->bispectrum_type[index_bt] != intrinsic_bispectrum)
       continue;

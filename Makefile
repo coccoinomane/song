@@ -2,7 +2,7 @@
 # Created by Guido Walter Pettinari on 2010.
 
 # =========================================================================
-# =                         Compilers and flags                           =
+# =                     Adapt here to your platform                       =
 # =========================================================================
 
 # Your C compiler and library tool
@@ -23,6 +23,7 @@ CFLAGS   += -DDEBUG
 # Header files and libraries
 INCLUDES = -I../include -I../$(CLASS_DIR)/include
 LDFLAGS  = -fopenmp -lm
+
 
 
 # =========================================================================
@@ -51,6 +52,31 @@ CFLAGS += -DWITH_SONG2 # support for SONG features requiring a second-order comp
 
 # Pass to the code CLASS location
 CFLAGS += -D__CLASSDIR__='"$(CLASS_DIR)"'
+
+
+
+# =========================================================================
+# =                          OS specific flags                            =
+# =========================================================================
+
+# Flags for the default compiler in Ubuntu/Linux
+OS := $(shell uname | grep Linux)
+ifneq ($(OS),)
+CFLAGS   += -D_XOPEN_SOURCE
+endif
+
+# Flags for the default compiler in Mac Os X, clang. Note that clang
+# does not support openmp, so SONG will be much slower. If you want
+# to run SONG in a parallel way, download gcc from Macports, Homebrew
+# or http://hpc.sourceforge.net/.
+CLANG = $(shell $(CC) --version | grep clang)
+ifneq ($(strip $(CLANG)),)
+OPTFLAG := $(subst -O4, -O3, $(OPTFLAG))
+OMPFLAG := $(subst -fopenmp, -openmp, $(OMPFLAG))
+LDFLAG += -Wl,-stack_size,0x400000000
+endif
+
+
 
 
 # =========================================================================

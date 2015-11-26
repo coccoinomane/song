@@ -1032,7 +1032,7 @@ struct perturbs2
   // ------------------------------------------------------------------------------------
 
   /** @defgroup StorageFiles
-   * Parameters related to the creation of storage files.
+   * Parameters related to the reading and writing of storage files.
    * 
    * The storage files have two purposes: to save memory space at the expense
    * of disk space, and to precompute data for quick access. They can be used 
@@ -1082,23 +1082,20 @@ struct perturbs2
    */
   //@{
 
-  char storage_dir[_FILENAMESIZE_]; /**< Directory containing the source function. If it already exists,
-                                    and ppr2->load_sources==_TRUE_, the sources will be read from this
-                                    folder into the array ppt2->sources. If it does not exist, and
-                                    ppr2->store_sources==_TRUE_, the sources will be first computed and then
-                                    written to this folder from the array ppt2->sources. Either way, the directory contains
-                                    one binary file for each value of k1, for a total of ppt2->k_size files. The file
-                                    corresponding to index_k1 is located at ppt2->storage_paths[index_k1]; its stream
-                                    is in ppt2->storage_files[index_k1]. */
+  char storage_dir[_FILENAMESIZE_]; /**< Directory containing the source function storage files. If it already
+                                    exists, and load_sources is true, the sources will be read from this folder
+                                    to the array ppt2->sources. If it does not exist, and store_sources is true,
+                                    the sources will be first computed and then written to this folder. Either way,
+                                    the directory contains one binary file for each value of k1, for a total of
+                                    k_size files. */
 
-  char ** storage_paths; /**< storage_paths[index_k1] is the path to the file with the line-of-sight sources
-                         for k1=ppt2->k[index_k1]. Used only if ppr2->store_sources==_TRUE_ or
-                         ppr2->load_sources==_TRUE_. */
+  char ** storage_paths; /**< storage_paths[index_k1] is the path to the file with the source function
+                         in k1=ppt2->k[index_k1]. Used only if either of the flags store_sources or
+                         load_sources are true. */
 
-  FILE ** storage_files; /**< storage_paths[index_k1] is the pointer to the file with the line-of-sight sources
-                         for k1=ppt2->k[index_k1]. Used only if ppr2->store_sources==_TRUE_ or
-                         ppr2->load_sources==_TRUE_. */
-
+  FILE ** storage_files; /**< storage_files[index_k1] is the pointer to the file with the source function
+                         in k1=ppt2->k[index_k1]. Used only if either of the flags store_sources or
+                         load_sources are true. */
 
   //@}
 
@@ -2400,15 +2397,6 @@ struct perturb2_parameters_and_workspace {
     int perturb2_load(
             struct perturbs2 * ppt2,
             int index_k1
-            );
-
-    int perturb2_load_sources_k3_tau(
-            struct perturbs2 * ppt2,
-            int index_tp2,
-            int index_k1,
-            int index_k2,
-            char * filepath,
-            FILE * input_stream
             );
 
     int perturb2_allocate_k1_level(

@@ -192,27 +192,16 @@ int perturb2_init (
   }
 
 
-  /* Apart from ppt2->sources, all the arrays needed by the subsequent modules have been filled.
-  If the user requested to load the line of sight sources from disk, we can stop the execution of
-  this module now without regrets. */
+  /* Apart from ppt2->sources, all the arrays needed by the subsequent modules have
+  been filled. If the user requested to load the source function from disk, we can
+  skip the computation of the sources without regrets. */
 
   if (ppr2->load_sources) {
         
     if (ppt2->perturbations2_verbose > 0)
-      printf(" -> leaving perturbs2 module; line-of-sight sources will be read from disk\n");
+      printf(" -> skipping computation, source function will be read from disk\n");
 
-    /* Uncomment to produce the sources output files again */
-    // if ((ppt2->k_out_size > 0) || (ppt2->tau_out_size > 0))
-    //   class_call_parallel (perturb2_output (
-    //                          ppr,
-    //                          ppr2,
-    //                          pba,
-    //                          ppt,
-    //                          ppt2),
-    //      ppt2->error_message,
-    //      ppt2->error_message);
-
-    return _SUCCESS_;
+    goto output_and_exit;
 
   }
 
@@ -277,8 +266,11 @@ int perturb2_init (
       ppt2->error_message,
       ppt2->error_message);
     
-  } if (abort == _TRUE_) return _FAILURE_; // end of parallel region
+  } // end of parallel region
   
+  if (abort)
+    return _FAILURE_; 
+
   
 
   // ====================================================================================
@@ -380,32 +372,6 @@ int perturb2_init (
     printf(" -> filled ppt2->sources with %ld values\n", ppt2->count_memorised_sources);
     
 
-
-  // ====================================================================================
-  // =                              Produce output files                                =
-  // ====================================================================================
-
-  /* Create output files containing the source function */
-  
-  if (ppt2->k_out_size > 0 || ppt2->tau_out_size > 0) {
-
-    class_call_parallel (perturb2_output (
-                           ppr,
-                           ppr2,
-                           pba,
-                           ppt,
-                           ppt2),
-       ppt2->error_message,
-       ppt2->error_message);
-
-  }
-
-
-
-  // ====================================================================================
-  // =                                  Clean & exit                                    =
-  // ====================================================================================
-
   /* Free the workspaces */
   #pragma omp parallel shared(pppw2,pba,ppt2,abort) private(thread)
   {
@@ -420,6 +386,27 @@ int perturb2_init (
   } if (abort) return _FAILURE_;
 
   free(pppw2);
+
+
+  // ====================================================================================
+  // =                              Produce output files                                =
+  // ====================================================================================
+
+  output_and_exit:
+
+  /* Create output files containing the source function */  
+  if (ppt2->k_out_size > 0 || ppt2->tau_out_size > 0) {
+
+    class_call_parallel (perturb2_output (
+                           ppr,
+                           ppr2,
+                           pba,
+                           ppt,
+                           ppt2),
+       ppt2->error_message,
+       ppt2->error_message);
+
+  }
 
   /* Do not evaluate the subsequent modules if ppt2->stop_at_perturbations2 is true */
   if (ppt2->stop_at_perturbations2) {
@@ -480,6 +467,10 @@ int perturb2_sources_at_k3 (
   // =                                      Checks                                      =
   // ====================================================================================
   
+  class_test (!ppt2->sources_available[index_k1],
+    ppt2->error_message,
+    "source function not available! maybe you should load it from disk?");
+  
 #ifdef DEBUG
   class_test (index_k1<0 || index_k1 >= ppt2->k_size,
     ppt2->error_message,
@@ -525,6 +516,10 @@ int perturb2_sources_at_k3 (
   
   if (index_k2 > index_k1) {
     
+    class_test (!ppt2->sources_available[index_k2],
+      ppt2->error_message,
+      "source function for index_k2 not available! maybe you should load it from disk?");
+
     int temp = index_k1;
     index_k1 = index_k2;
     index_k2 = temp;
@@ -1566,7 +1561,7 @@ int perturb2_allocate_k1_level(
  * details.
  */
 
-int perturb2_load(
+int perturb2_load (
       struct perturbs2 * ppt2,
       int index_k1
       )
@@ -1603,15 +1598,20 @@ int perturb2_load(
 
     for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
 
-      class_call (perturb2_load_sources_k3_tau(
-                    ppt2,
-                    index_tp2,
-                    index_k1,
-                    index_k2,
-                    ppt2->storage_paths[index_k1],
-                    ppt2->storage_files[index_k1]),
+      int k3_size = ppt2->k3_size[index_k1][index_k2];
+
+      int n_to_read = ppt2->tau_size*k3_size;
+
+      int n_read = fread(
+                     ppt2->sources[index_tp2][index_k1][index_k2],
+                     sizeof(double),
+                     n_to_read,
+                     ppt2->storage_files[index_k1]);
+
+      class_test(n_read != n_to_read,
         ppt2->error_message,
-        ppt2->error_message);
+        "Error reading from %s; read %d entries but expected %d",
+        ppt2->storage_paths[index_k1], n_read, n_to_read);
 
       /* Update the counter for the values stored in ppt2->sources */
       #pragma omp atomic
@@ -1630,44 +1630,6 @@ int perturb2_load(
   
 }
 
-
-
-/**
- * Load from disk a portion of the source function and store it ppt2->sources.
- *
- * This function will load the k3 and tau levels of the source function from disk
- * into ppt2->sources, for fixed indices of type (index_tp2), k1 (index_k1) and
- * k2 (index_k2).
- */
-
-int perturb2_load_sources_k3_tau(
-      struct perturbs2 * ppt2,
-      int index_tp2,
-      int index_k1,
-      int index_k2,
-      char * filepath,
-      FILE * input_stream
-      )
-{
-   
-  int k3_size = ppt2->k3_size[index_k1][index_k2];
-
-  int n_to_read = ppt2->tau_size*k3_size;
-
-  int n_read = fread(
-                 ppt2->sources[index_tp2][index_k1][index_k2],
-                 sizeof(double),
-                 n_to_read,
-                 input_stream);
- 
-  class_test(n_read != n_to_read,
-    ppt2->error_message,
-    "Error reading from %s; read %d entries but expected %d",
-    filepath, n_read, n_to_read);
-
-  return _SUCCESS_; 
-  
-}
 
 
 
@@ -16027,7 +15989,7 @@ int perturb2_output_k2k3 (
     int index_k2 = ppt2->index_k2_out[index_k_out];
 
     /* Load the source function from disk if needed */
-    class_call(perturb2_load(ppt2, index_k1),
+    class_call (perturb2_load (ppt2, index_k1),
       ppt2->error_message,
       ppt2->error_message);
 
@@ -16096,6 +16058,13 @@ int perturb2_output_k2k3 (
 
         double k2 = ppt2->k[index_k2];
         int k3_size = ppt2->k3_size[index_k1][index_k2];
+
+        /* If k2>k1, we need also the sources in k2 */
+        if (index_k2 > index_k1)
+          class_call (perturb2_load (ppt2, index_k2),
+            ppt2->error_message,
+            ppt2->error_message);
+
 
         for (int index_k3=0; index_k3 < k3_size; ++index_k3) {
 
@@ -16477,6 +16446,13 @@ int perturb2_output_k2k3 (
 
           } // for k3
 
+          if (index_k2>index_k1 && (ppr2->store_sources || ppr2->load_sources))
+            class_call (perturb2_free_k1_level(
+                          ppt2,
+                          index_k1),
+              ppt2->error_message,
+              ppt2->error_message);
+
         } // for k2
 
         /* Close the file */
@@ -16545,7 +16521,7 @@ int perturb2_output_k3tau (
     double k2 = ppt2->k[index_k2];
 
     /* Load the source function from disk if needed */
-    class_call(perturb2_load(ppt2, index_k1),
+    class_call (perturb2_load (ppt2, index_k1),
       ppt2->error_message,
       ppt2->error_message);
 

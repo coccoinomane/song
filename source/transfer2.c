@@ -144,16 +144,17 @@ int transfer2_init(
     ptr2->error_message);
 
 
-  /* Apart from ptr2->transfer, all the arrays needed by the subsequent modules have been filled.
-  If the user requested to load the transfer functions from disk, we can stop the execution of
-  this module now without regrets. */
+  /* Apart from ptr2->transfer, all the arrays needed by the subsequent modules have been
+  filled. If the user requested to load the transfer functions from disk, we can skip the
+  computation of the transfer functions without regrets. */
 
-  if (ppr2->load_transfers == _TRUE_) {
+  if (ppr2->load_transfers) {
     
     if (ptr2->transfer2_verbose > 0)
-      printf(" -> leaving transfer2 module; transfer functions will be read from disk\n");
+      printf(" -> skipping computation, transfer functions will be read from disk\n");
     
-    return _SUCCESS_;
+    goto output_and_exit;
+    
   }
 
 
@@ -553,13 +554,15 @@ int transfer2_init(
 
       class_call (transfer2_free_k1_level (ppt2, ptr2, index_k1),
         ptr2->error_message, ptr2->error_message);
+
     }
 
   } // for(index_k1)
 
-  /* Mark the transfer functions as ready to be used */
-  for (int index_tt=0; index_tt < ptr2->tt2_size; ++index_tt)
-    ptr2->transfers_available[index_tt] = _TRUE_;
+  /* The transfer functions as ready to be used */
+  if (!ppr2->store_transfers)
+    for (int index_tt=0; index_tt < ptr2->tt2_size; ++index_tt)
+      ptr2->transfers_available[index_tt] = _TRUE_;
 
 
 
@@ -603,6 +606,9 @@ int transfer2_init(
       ptr2->error_message,
       "there is a mismatch between allocated (%ld) and used (%ld) space!", ptr2->count_allocated_transfers, ptr2->count_memorised_transfers);
 
+
+  output_and_exit:
+
   /* Do not evaluate the subsequent modules if ppt2->has_transfers2_only is true */
   if (ptr2->stop_at_transfers2) {
     ppt->has_cls = _FALSE_;
@@ -617,17 +623,10 @@ int transfer2_init(
 
 
 /**
- * Allocate all levels beyond the transfer-type level of the transfer functions array.
- *
- * Allocate the transfer type (tt) level of the array that will contain the second-order
- * transfer functions: ptr2->transfer[index_tt][index_k1][index_k2][index_k].
- *
- * This function makes space for the transfer functions; it is called before loading
- * them from disk in transfer2_load(). It relies on values that are
- * computed by transfer2_indices_of_perturbs() and transfer2_get_k3_sizes(), so make
- * sure to call them beforehand.
- *
+ * Allocate the type (index_tt) level of ptr2->transfer, the array containing the second-order
+ * transfer functions.
  */
+
 int transfer2_allocate_type_level(
      struct perturbs2 * ppt2,
      struct transfers2 * ptr2,

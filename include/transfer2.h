@@ -198,27 +198,27 @@ struct transfers2 {
   // =                                 Disk storage                                     =
   // ====================================================================================
 
-  char storage_dir[_FILENAMESIZE_];  /**< Directory containing the transfer functions. If it already exists,
-                                       and ppr2->load_transfers==_TRUE_, the transfer functions will
-                                       be read from this folder into the array ptr2->transfer. If it does not exist, and
-                                       ppr2->store_transfers==_TRUE_, the transfer functions will be first computed and then
-                                       written to this folder from the array ptr2->transfer. Either way, the directory contains
-                                       one binary file for each transfer type, for a total of ptr2->tt2_size files. The file
-                                       corresponding to index_tt2 is located at ptr2->storage_paths[index_tt2]; its stream
-                                       is in ptr2->storage_files[index_tt2]. */
+  /** @ingroup StorageFiles
+   * Parameters related to the reading and writing of storage files.
+   *
+   * Refer to the documentation in perturbations2.h (\ref StorageFiles) for details.
+   */
+  //@{
+  char storage_dir[_FILENAMESIZE_]; /**< Directory containing the transfer function storage files. If it already
+                                    exists, and load_transfers is true, the transfers will be read from this folder
+                                    to the array ptr2->transfer. If it does not exist, and store_transfers is true,
+                                    the transfers will be first computed and then written to this folder. Either way,
+                                    the directory contains one binary file for transfer type, for a total of
+                                    tt2_size files. */
 
+  char ** storage_paths; /**< storage_paths[index_tt2] is the path to the file with the transfer function
+                         of type index_tt2. Used only if either of the flags store_transfers or
+                         load_transfers are true. */
 
-  char ** storage_paths; /**< storage_paths[index_tt2] is the path to the file with the transfer functions
-                           for the transfer type indexed by index_tt2. Used only if ppr2->store_transfers==_TRUE_ or
-                           ppr2->load_transfers==_TRUE_. */
-
-  FILE ** storage_files; /**< storage_files[index_tt2] is the pointer to the file with the transfer functions
-                           for the transfer type indexed by index_tt2. Used only if ppr2->store_transfers==_TRUE_ or
-                           ppr2->load_transfers==_TRUE_. */
-
-  FILE * transfers_status_file;                      /**< NOT IMPLEMENTED YET */
-  char transfers_status_path[_FILENAMESIZE_];        /**< NOT IMPLEMENTED YET */
-
+  FILE ** storage_files; /**< storage_files[index_tt2] is the pointer to the file with the transfer function
+                         of type index_tt2. Used only if either of the flags store_transfers or
+                         load_transfers are true. */
+  //@}
 
 
   // ==================================================================================

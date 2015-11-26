@@ -243,23 +243,19 @@ int spectra2_cls (
 
         /* Load transfer functions if needed */
 
-        if (ppr2->load_transfers || ppr2->store_transfers) {
+        class_call_parallel (transfer2_load (
+                               ppt2,
+                               ptr2,
+                               index_tt_1),
+          ptr2->error_message,
+          psp->error_message);
 
-          class_call_parallel (transfer2_load (
-                                 ppt2,
-                                 ptr2,
-                                 index_tt_1),
-            ptr2->error_message,
-            psp->error_message);
-
-          if (index_tt_2 != index_tt_1)
-            class_call_parallel (transfer2_load (
-                                   ppt2,
-                                   ptr2,
-                                   index_tt_2),
-              ptr2->error_message,
-              psp->error_message);
-        }
+        class_call_parallel (transfer2_load (
+                               ppt2,
+                               ptr2,
+                               index_tt_2),
+          ptr2->error_message,
+          psp->error_message);
 
 
         // =====================================================================================
