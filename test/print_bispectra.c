@@ -476,14 +476,9 @@ int main(int argc, char **argv) {
   
   /* Load bispectrum from disk, if needed */
   for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt) {
-
-    if (bi.bispectrum_type[index_bt] == non_separable_bispectrum || 
-        bi.bispectrum_type[index_bt] == intrinsic_bispectrum) {
-
-      if (bispectra_load(&bi, index_bt) == _FAILURE_) {
-        printf("\n\nError in bispectra_load \n=>%s\n", bi.error_message);
-        return _FAILURE_;
-      }
+    if (bispectra_load(&pr, &bi, index_bt) == _FAILURE_) {
+      printf("\n\nError in bispectra_load \n=>%s\n", bi.error_message);
+      return _FAILURE_;
     }
   }
 

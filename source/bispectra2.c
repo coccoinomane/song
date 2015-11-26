@@ -282,6 +282,7 @@ int bispectra2_harmonic (
     for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt)
       if (pbi->bispectrum_type[index_bt] == intrinsic_bispectrum)
         class_call (bispectra_store (
+                      ppr,
                       pbi,
                       index_bt),
           pbi->error_message,
@@ -1223,6 +1224,7 @@ int bispectra2_intrinsic_integrate_over_k3 (
 
     /* Load the transfer functions from disk */
     class_call (transfer2_load (
+                  ppr2,
                   ppt2,
                   ptr2,
                   index_tt2_k3 + ptr2->lm_array[index_l3][index_M3]),

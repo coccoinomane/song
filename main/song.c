@@ -160,11 +160,9 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
-  if (pt.has_cls == _TRUE_) {
-    if (spectra_free(&sp) == _FAILURE_) {
-      printf("\n\nError in spectra_free \n=>%s\n",sp.error_message);
-      return _FAILURE_;
-    }
+  if (pt.has_cls && spectra_free(&sp) == _FAILURE_) {
+    printf("\n\nError in spectra_free \n=>%s\n",sp.error_message);
+    return _FAILURE_;
   }
 
   if (transfer2_free(&pr2,&pt2,&tr2) == _FAILURE_) {

@@ -338,7 +338,7 @@ int perturb2_init (
     perturbations and the source function, respectively. */
     if (ppr2->store_sources) {
 
-      class_call_parallel (perturb2_store (ppt2, index_k1),
+      class_call_parallel (perturb2_store (ppr2, ppt2, index_k1),
          ppt2->error_message,
          ppt2->error_message);
 
@@ -1562,6 +1562,7 @@ int perturb2_allocate_k1_level(
  */
 
 int perturb2_load (
+      struct precision2 * ppr2,
       struct perturbs2 * ppt2,
       int index_k1
       )
@@ -1570,6 +1571,11 @@ int perturb2_load (
   /* Load only if needed */
   if (ppt2->sources_available[index_k1])
     return _SUCCESS_;
+
+  /* If needed, it must be on disk */
+  class_test (!(ppr2->store_sources || ppr2->load_sources),
+    ppt2->error_message,
+    "shouldn't be here");
 
   /* Print some info */
   if (ppt2->perturbations2_verbose > 2)
@@ -15989,7 +15995,7 @@ int perturb2_output_k2k3 (
     int index_k2 = ppt2->index_k2_out[index_k_out];
 
     /* Load the source function from disk if needed */
-    class_call (perturb2_load (ppt2, index_k1),
+    class_call (perturb2_load (ppr2, ppt2, index_k1),
       ppt2->error_message,
       ppt2->error_message);
 
@@ -16061,7 +16067,7 @@ int perturb2_output_k2k3 (
 
         /* If k2>k1, we need also the sources in k2 */
         if (index_k2 > index_k1)
-          class_call (perturb2_load (ppt2, index_k2),
+          class_call (perturb2_load (ppr2, ppt2, index_k2),
             ppt2->error_message,
             ppt2->error_message);
 
@@ -16521,7 +16527,7 @@ int perturb2_output_k3tau (
     double k2 = ppt2->k[index_k2];
 
     /* Load the source function from disk if needed */
-    class_call (perturb2_load (ppt2, index_k1),
+    class_call (perturb2_load (ppr2, ppt2, index_k1),
       ppt2->error_message,
       ppt2->error_message);
 
@@ -17065,7 +17071,7 @@ int perturb2_output_k1k2k3 (
       for (int index_k1=0; index_k1 < ppt2->k_size; ++index_k1) {
         
         /* Load the source function from disk if needed */
-        class_call(perturb2_load(ppt2, index_k1),
+        class_call (perturb2_load (ppr2, ppt2, index_k1),
           ppt2->error_message,
           ppt2->error_message);
         
@@ -17134,11 +17140,16 @@ int perturb2_output_k1k2k3 (
  * details.
  */
 
-int perturb2_store(
+int perturb2_store (
+      struct precision2 * ppr2,
       struct perturbs2 * ppt2,
       int index_k1
       )
 {
+
+  class_test (!ppr2->store_sources,
+    ppt2->error_message,
+    "shouldn't be here");
 
   if (ppt2->perturbations2_verbose > 1)
     printf("     \\ writing sources for index_k1=%d ...\n", index_k1);
@@ -17161,15 +17172,15 @@ int perturb2_store(
 
     for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
 
-      class_call (perturb2_store_sources_k3_tau(
-                    ppt2,
-                    index_tp2,
-                    index_k1,
-                    index_k2,
-                    ppt2->storage_paths[index_k1],
-                    ppt2->storage_files[index_k1]),
-        ppt2->error_message,
-        ppt2->error_message);
+      int k3_size = ppt2->k3_size[index_k1][index_k2];
+
+      if (k3_size > 0)
+        fwrite(
+          ppt2->sources[index_tp2][index_k1][index_k2],
+          sizeof(double),
+          ppt2->tau_size*k3_size,
+          ppt2->storage_files[index_k1]
+          );
         
     }
   }
@@ -17182,36 +17193,6 @@ int perturb2_store(
 }
 
 
-/**
- * Save to disk a portion of the source function in ppt2->sources.
- *
- * This function will save the k3 and tau levels of ppt2->sources for fixed
- * indices of type (index_tp2), k1 (index_k1) and k2 (index_k2).
- */
-
-int perturb2_store_sources_k3_tau(
-        struct perturbs2 * ppt2,
-        int index_tp2,
-        int index_k1,
-        int index_k2,
-        char * filepath,
-        FILE * output_stream
-        )
-{
-
-  int k3_size = ppt2->k3_size[index_k1][index_k2];
-
-  if (k3_size > 0)
-    fwrite(
-      ppt2->sources[index_tp2][index_k1][index_k2],
-      sizeof(double),
-      ppt2->tau_size*k3_size,
-      output_stream
-      );
-
-  return _SUCCESS_; 
-  
-}
 
 #undef sources
 

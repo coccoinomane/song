@@ -2381,23 +2381,16 @@ struct perturb2_parameters_and_workspace {
             );
 
     int perturb2_store(
-            struct perturbs2 * ppt2,
-            int index_k1
-            );
-
-    int perturb2_store_sources_k3_tau(
-            struct perturbs2 * ppt2,
-            int index_tp2,
-            int index_k1,
-            int index_k2,
-            char * filepath,
-            FILE * output_stream
-            );
+          struct precision2 * ppr2,
+          struct perturbs2 * ppt2,
+          int index_k1
+          );
 
     int perturb2_load(
-            struct perturbs2 * ppt2,
-            int index_k1
-            );
+          struct precision2 * ppr2,
+          struct perturbs2 * ppt2,
+          int index_k1
+          );
 
     int perturb2_allocate_k1_level(
          struct perturbs2 * ppt2,

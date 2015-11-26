@@ -228,7 +228,7 @@ int main(int argc, char **argv) {
   // ==========================================================================
   
   /* Load sources from disk if needed */
-  if (perturb2_load(&pt2, index_k1) == _FAILURE_) {
+  if (perturb2_load (&pr2, &pt2, index_k1) == _FAILURE_) {
     printf("\n\nError in perturb2_load \n=>%s\n", pt2.error_message);
     return _FAILURE_;
   }

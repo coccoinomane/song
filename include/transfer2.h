@@ -519,16 +519,18 @@ extern "C" {
 
 
   int transfer2_store(
-          struct perturbs2 * ppt2,
-          struct transfers2 * ptr2,
-          int index_k1
-          );
+        struct precision2 * ppr2,
+        struct perturbs2 * ppt2,
+        struct transfers2 * ptr2,
+        int index_k1
+        );
 
   int transfer2_load(
-          struct perturbs2 * ppt2,
-          struct transfers2 * ptr2,
-          int index_tt
-          );
+        struct precision2 * ppr2,
+        struct perturbs2 * ppt2,
+        struct transfers2 * ptr2,
+        int index_tt
+        );
 
 
   int transfer2_allocate_type_level(

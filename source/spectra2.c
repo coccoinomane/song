@@ -241,21 +241,31 @@ int spectra2_cls (
         }
 
 
-        /* Load transfer functions if needed */
+for (int index_tt=0; index_tt < ptr2->tt2_size; ++index_tt) {
+  printf ("%20s[%d]: allocated=%d, available=%d\n", ptr2->tt2_labels[index_tt], index_tt,
+    ptr2->transfers_available[index_tt], ptr2->transfers_allocated[index_tt]);
+}
 
+        /* Load transfer functions if needed */
+printf ("index_tt_1 = %d\n", index_tt_1);
+// ptr2->transfers_available[index_tt_1] = _FALSE_;
+// ptr2->transfers_allocated[index_tt_1] = _FALSE_;
         class_call_parallel (transfer2_load (
+                               ppr2,
                                ppt2,
                                ptr2,
                                index_tt_1),
           ptr2->error_message,
           psp->error_message);
 
-        class_call_parallel (transfer2_load (
-                               ppt2,
-                               ptr2,
-                               index_tt_2),
-          ptr2->error_message,
-          psp->error_message);
+        if (index_tt_1 != index_tt_2)
+          class_call_parallel (transfer2_load (
+                                 ppr2,
+                                 ppt2,
+                                 ptr2,
+                                 index_tt_2),
+            ptr2->error_message,
+            psp->error_message);
 
 
         // =====================================================================================
@@ -291,8 +301,13 @@ int spectra2_cls (
             and MAX are required because in SONG we compute only the configurations with
             index_k1 >= index_k2. Switching the two indices introduces a (-1)^m factor;
             since we switch them twice, the factor can be ignored. */
-            double * transfer_1 = ptr2->transfer[index_tt_1][MAX(index_k1,index_k2)][MIN(index_k1,index_k2)];
-            double * transfer_2 = ptr2->transfer[index_tt_2][MAX(index_k1,index_k2)][MIN(index_k1,index_k2)];
+            double * transfer_1, * transfer_2;
+
+            if (ptr2->transfers_available[index_tt_1])
+              transfer_1 = ptr2->transfer[index_tt_1][MAX(index_k1,index_k2)][MIN(index_k1,index_k2)];
+
+            if (ptr2->transfers_available[index_tt_2])
+              transfer_2 = ptr2->transfer[index_tt_2][MAX(index_k1,index_k2)][MIN(index_k1,index_k2)];
 
             /* Print some info */
             printf_log_if (psp->spectra_verbose, 2,
@@ -338,26 +353,39 @@ int spectra2_cls (
             the triangular condition. */
 
             double * step_k3 = calloc (k3_size_full, sizeof(double));
+            double k3_min = fabs(k1 - k2);
+            double k3_max = k1 + k2;
             int index_k3_min; /* First index in grid with nonzero weight */
             int index_k3_max; /* Last index in grid with nonzero weight */
+
+            /* Make sure that we do not step into the extrapolation region */
+            if (ppr->bispectra_k3_extrapolation != no_k3_extrapolation) {
+              k3_min += fabs(_MIN_K3_DISTANCE_);
+              k3_min = MAX (k3_min, (k1+k2)/_MIN_K3_RATIO_);
+              k3_max = k1 + k2 - fabs(_MIN_K3_DISTANCE_);
+            }
 
             class_call_parallel (trapezoidal_weights (
                                    k3_grid,
                                    k3_size_full,
-                                   fabs(k1-k2),
-                                   k1+k2,
+                                   k3_min,
+                                   k3_max,
                                    step_k3,
                                    &index_k3_min,
                                    &index_k3_max,
                                    psp->error_message),
               psp->error_message,
               psp->error_message);
+            
               
             class_test_parallel (
               index_k3_min != ptr2->k_physical_start_k1k2[index_k1][index_k2] ||
               index_k3_max != index_k3_min + ptr2->k_physical_size_k1k2[index_k1][index_k2] - 1,
               psp->error_message,
-              "inconsistent computation of triangular condition");
+              "(%d,%d): inconsistent triangular condition: %d!=%d and %d!=%d",
+              index_k1, index_k2,
+              index_k3_min, ptr2->k_physical_start_k1k2[index_k1][index_k2],
+              index_k3_max, index_k3_min + ptr2->k_physical_size_k1k2[index_k1][index_k2] - 1);
 
             int k3_size = index_k3_max - index_k3_min + 1;
             
@@ -868,7 +896,7 @@ int spectra2_integrate_fourier (
         index_k1, ppt2->k_size, k1);
 
       /* Load source function if needed */
-      class_call_parallel (perturb2_load(ppt2, index_k1),
+      class_call_parallel (perturb2_load (ppr2, ppt2, index_k1),
                              ppt2->error_message,
                              psp->error_message);
 
@@ -1100,7 +1128,7 @@ int spectra2_integrate_fourier_sym(
 //
 //     // load sources
 //     if ((ppr2->load_sources == _TRUE_) || (ppr2->store_sources == _TRUE_))
-//           class_call(perturb2_load(ppt2, index_k1),
+//           class_call(perturb2_load(ppr2, ppt2, index_k1),
 //             ppt2->error_message,
 //             psp->error_message);
 //

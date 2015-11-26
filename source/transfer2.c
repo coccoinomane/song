@@ -330,7 +330,7 @@ int transfer2_init(
     // -----------------------------------------------------------------------------
     
     /* Load sources from disk if needed */
-    class_call(perturb2_load(ppt2, index_k1),
+    class_call (perturb2_load (ppr2, ppt2, index_k1),
         ppt2->error_message,
         ptr2->error_message);
           
@@ -548,7 +548,7 @@ int transfer2_init(
     them. The next time we'll need them, we shall load them from disk.  */
     if (ppr2->store_transfers) {
       
-      class_call (transfer2_store (ppt2, ptr2, index_k1),
+      class_call (transfer2_store (ppr2, ppt2, ptr2, index_k1),
           ptr2->error_message,
           ptr2->error_message);
 
@@ -700,7 +700,8 @@ int transfer2_allocate_type_level(
  * details.
  */
 
-int transfer2_load(
+int transfer2_load (
+      struct precision2 * ppr2,
       struct perturbs2 * ppt2,
       struct transfers2 * ptr2,
       int index_tt
@@ -710,6 +711,11 @@ int transfer2_load(
   /* Load only if needed */
   if (ptr2->transfers_available[index_tt])
     return _SUCCESS_;
+
+  /* If needed, it must be on disk */
+  class_test (!(ppr2->store_transfers || ppr2->load_transfers),
+    ptr2->error_message,
+    "shouldn't be here");
 
   /* Print some info */
   if (ptr2->transfer2_verbose > 2)
@@ -957,7 +963,7 @@ int transfer2_indices_of_transfers(
 
   if (ptr2->transfer2_verbose > 1) {
     printf (" -> will compute tt2_size=%d transfer functions: ", ptr2->tt2_size);
-    if (ppt2->has_source_B == _TRUE_) printf ("T=%d ", ptr2->n_transfers);
+    if (ppt2->has_source_T == _TRUE_) printf ("T=%d ", ptr2->n_transfers);
     if (ppt2->has_source_E == _TRUE_) printf ("E=%d (%d non-zero) ",
       ptr2->n_transfers, ptr2->n_nonzero_transfers_E);
     if (ppt2->has_source_B == _TRUE_) printf ("B=%d (%d non-zero) ",
@@ -1051,7 +1057,7 @@ int transfer2_indices_of_transfers(
 
   /* Create the files to store the transfer functions in */
   
-  if ((ppr2->store_transfers == _TRUE_) || (ppr2->load_transfers == _TRUE_)) {
+  if (ppr2->store_transfers || ppr2->load_transfers) {
 
     /* We are going to store the transfers in n=k_size files, one for each requested k1 */
     class_alloc (ptr2->storage_files, ptr2->tt2_size*sizeof(FILE *), ptr2->error_message);
@@ -2941,11 +2947,16 @@ int transfer2_interpolate_sources_in_time (
  */
 
 int transfer2_store(
+        struct precision2 * ppr2,
         struct perturbs2 * ppt2,
         struct transfers2 * ptr2,
         int index_k1
         )
 {
+
+  class_test (!ppr2->store_transfers,
+    ptr2->error_message,
+    "shouldn't be here");
 
   /* Print some info */
   if (ptr2->transfer2_verbose > 1)
@@ -3071,6 +3082,7 @@ int transfer2_free_type_level(
   /* Free memory only if needed */
   if (!ptr2->transfers_allocated[index_tt])
     return _SUCCESS_;
+
 
   for (int index_k1=0; index_k1 < ppt2->k_size; ++index_k1) {
 
