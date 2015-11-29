@@ -189,7 +189,7 @@ int main(int argc, char **argv) {
       "Mixing arguments between SONG and print mode?");
     l2_fixed = atoi(argv[current_arg++]);
     
-  } // end of if(triangular)
+  } // if(triangular)
   else if (strcmp(print_mode, "equilateral") == 0) {
 
     if (remaining_args < n_args_equilateral) {
@@ -200,7 +200,7 @@ int main(int argc, char **argv) {
   
     PRINT_EQUILATERAL = _TRUE_;
       
-  } // end of if(equilateral)
+  } // if(equilateral)
   else if (strcmp(print_mode, "squeezed_pitrou") == 0) {
 
     if (remaining_args < n_args_squeezed_pitrou) {
@@ -213,7 +213,7 @@ int main(int argc, char **argv) {
     class_warning (strlen(argv[current_arg]) > 4, "Mixing arguments between SONG and print mode?");
     short_to_long_ratio = atoi(argv[current_arg++]);
 
-  } // end of if(squeezed_pitrou)
+  } // if(squeezed_pitrou)
   else if (strcmp(print_mode, "squeezed_small_scale") == 0) {
 
     if (remaining_args < n_args_squeezed_small_scale) {
@@ -226,7 +226,7 @@ int main(int argc, char **argv) {
     class_warning (strlen(argv[current_arg]) > 4, "Mixing arguments between SONG and print mode?");
     l_long = atoi(argv[current_arg++]);
 
-  } // end of if(squeezed_small_scale)
+  } // if(squeezed_small_scale)
   else if ((strcmp(print_mode, "squeezed_large_scale") == 0) || strcmp(print_mode, "squeezed_large_scales") == 0) {
 
     if (remaining_args < n_args_squeezed_large_scale) {
@@ -239,14 +239,14 @@ int main(int argc, char **argv) {
     class_warning (strlen(argv[current_arg]) > 4, "Mixing arguments between SONG and print mode?");
     l_short = atoi(argv[current_arg++]);
 
-  } // end of if(squeezed_large_scale)
+  } // if(squeezed_large_scale)
 
   else {
     printf ("ERROR: Wrong 'print_mode'. Correct syntax follows:\n");
     printf ("%s", usage);
     return _FAILURE_;
 
-  } // end of if(print_mode)
+  } // if(print_mode)
 
 
   // =================================================================================
@@ -782,7 +782,7 @@ int main(int argc, char **argv) {
     fprintf (stderr, "%25s(%03d) ", "cl_XX_short", index_print++);
     fprintf (stderr, "%25s(%03d) ", "cl_XX_long", index_print++);
     
-  } // end of(PRINT_SQUEEZED_SMALL_OR_LARGE_SCALE)
+  } // if(PRINT_SQUEEZED_SMALL_OR_LARGE_SCALE)
   
   fprintf(stderr, "\n");
   
@@ -981,7 +981,7 @@ int main(int argc, char **argv) {
             }
           }
 
-        } // end of if (intrinsic)
+        } // if(intrinsic)
           
         /* Value of the bispectrum of the brightness (momentum-integrated distribution function) */
         double brightness_temperature_factor = (2*l1+1.)*(2*l2+1.)*(2*l3+1.) * pow(2.*_PI_,3);
@@ -1180,13 +1180,13 @@ int main(int argc, char **argv) {
             // -5 * cl_short/cl_zeta_short              /* Difference between lewis_ricci and analytical_cpv_no_lensing */
             );
           
-        } // end of if(PRINT_SQUEEZED_SMART_SCALE || PRINT_SQUEEZED_LARGE_SCALE)
+        } // if(PRINT_SQUEEZED_SMART_SCALE || PRINT_SQUEEZED_LARGE_SCALE)
           
         fprintf(stderr, "\n");
   
-      } // end of for(index_l1)
-    } // end of for(index_l2)
-  } // end of for(index_l3)
+      } // for(index_l1)
+    } // for(index_l2)
+  } // for(index_l3)
   
   
   // =================================================================================

@@ -229,7 +229,7 @@ int main(int argc, char **argv) {
     }
     fprintf (stderr,"\n");
   
-  } // end of for(index_k)
+  } // for(index_k)
   
   
   // =================================================================================

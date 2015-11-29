@@ -1301,7 +1301,7 @@ int spectra2_integrate_fourier_sym(
 //
 //         }
 //
-//       } // end of for (index_tp)
+//       } // for(index_tp)
 //
 //
 //
@@ -1311,14 +1311,14 @@ int spectra2_integrate_fourier_sym(
 //         free(sources_k_spline[index_tp]);
 //       }
 //
-//     } // end of for(index_k2)
+//     } // for(index_k2)
 //
 //
 //     class_call (perturb2_free_k1_level (ppt2, index_k1), ppt2->error_message, ppt2->error_message);
 //
 //
 //
-//   } // end of for(index_k1)
+//   } // for(index_k1)
 //
 //
 //   free (interpolated_sources_in_k);
@@ -1462,7 +1462,7 @@ int spectra2_interpolate_sources_in_k2(
 //       }
 //
 //    }
-//   } // end of for (index_k_tr)
+//   } // for(index_k_tr)
 //
 //
 //

@@ -266,7 +266,7 @@ int perturb2_init (
       ppt2->error_message,
       ppt2->error_message);
     
-  } // end of parallel region
+  } // parallel region
   
   if (abort)
     return _FAILURE_; 
@@ -1538,8 +1538,8 @@ int perturb2_allocate_k1_level(
       ppt2->count_allocated_sources += ppt2->tau_size*ppt2->k3_size[index_k1][index_k2];
       count += ppt2->tau_size*ppt2->k3_size[index_k1][index_k2];
 
-    } // end of for (index_k2)
-  } // end of for (index_type)
+    } // for(index_k2)
+  } // for(index_type)
 
   /* Print some debug information on memory consumption */
   if (ppt2->perturbations2_verbose > 2)
@@ -1961,8 +1961,8 @@ int perturb2_indices_of_perturbs(
       ppt2->field_parity[index_pf] = _ODD_;
       ppt2->index_pf_b = index_pf++;
       
-    } // end of if non-scalar modes
-  } // end of if polarisation
+    } // if non-scalar modes
+  } // if polarisation
 
 
   // --------------------------------------------------------------------------
@@ -2095,7 +2095,7 @@ int perturb2_indices_of_perturbs(
       class_alloc (ppt2->storage_paths[index_k1], _FILENAMESIZE_*sizeof(char), ppt2->error_message);
       sprintf (ppt2->storage_paths[index_k1], "%s/sources_%03d.dat", ppt2->storage_dir, index_k1);
       
-    } // end of loop on index_k1
+    } // loop on index_k1
     
     if (ppr2->store_sources)
       if (ppt2->perturbations2_verbose > 2)
@@ -2386,7 +2386,7 @@ int perturb2_get_lm_lists (
     ppt2->tp2_to_l[index_tp] = l;
     ppt2->tp2_to_index_m[index_tp] = index_m;
 
-  } // end of for (index_tp)
+  } // for(index_tp)
 
 
 
@@ -2434,9 +2434,9 @@ int perturb2_get_lm_lists (
         // printf("c_minus (l=%d,m1=%d,m=%d) = %g\n", l, m1, m, ppt2->c_minus[lm(l,m)][m2+1]);
         // printf("c_plus (l=%d,m1=%d,m=%d) = %g\n", l, m1, m, ppt2->c_plus[lm(l,m)][m2+1]);
         
-      } // end of for m2
-    } // end of for m
-  } // end of for l
+      } // for m2
+    } // for m
+  } // for l
   
 
 
@@ -2939,7 +2939,7 @@ int perturb2_get_k_lists (
                   ppt2->error_message);
 
   
-  } // end of if(smart_sources_k_sampling)
+  } // if(smart_sources_k_sampling)
   
 
   // -------------------------------------------------------------------------------
@@ -3058,7 +3058,7 @@ int perturb2_get_k_lists (
 
     free (k_out);
 
-  } // end of if k_out
+  } // if k_out
 
 
   /* The user might also ask to output the perturbations via the indices
@@ -3238,7 +3238,7 @@ int perturb2_get_k_lists (
           lin_space (k3_grid, k3_min, k3_max, ppr2->k3_size);
         }
        
-      } // end of lin/log sampling
+      } // lin/log sampling
 
 
       // -------------------------------------------------------------------------------
@@ -3275,7 +3275,7 @@ int perturb2_get_k_lists (
           k3_grid[index_k3] = sqrt (k1*k1 + k2*k2 + 2*cosk1k2*k1*k2);
         }
        
-      } // end of theta13 sampling
+      } // theta13 sampling
 
 
       // -------------------------------------------------------------------------------
@@ -3303,7 +3303,7 @@ int perturb2_get_k_lists (
         k3_min = ppt2->k[0];
         k3_max = ppt2->k[ppt2->k_size-1];
         
-      } // end of sym sampling
+      } // sym sampling
 
 
       // -------------------------------------------------------------------------------
@@ -3404,7 +3404,7 @@ int perturb2_get_k_lists (
 
         }
 
-      } // end of smart sampling
+      } // smart sampling
       
 
       // -------------------------------------------------------------------------------
@@ -3514,7 +3514,7 @@ int perturb2_get_k_lists (
 
               ppt2->index_k3_out[index_k_out] = index_k3;
 
-            } // end of if 
+            } // if 
 
 
             /* If this k3 output value was added by specifying an index rather than an exact
@@ -3542,7 +3542,7 @@ int perturb2_get_k_lists (
               /* Add the k3 value to the ppt2->k3_out array */
               ppt2->k3_out[index_k_out] = k3_grid[ppt2->index_k3_out[index_k_out]];
 
-            } // end of if(index or value)
+            } // if(index or value)
 
             /* Debug - Print the k3 grid for all (k1,k2) configurations requested as output */
             // fprintf (stderr, "k1[%d]=%g, k2[%d]=%g, k3_size=%d, k3_min=%g, k3_max=%g\n",
@@ -3557,11 +3557,11 @@ int perturb2_get_k_lists (
             // }
             // fprintf (stderr, "\n\n");
 
-          } // end of if (k1==k1_out && k2==k2_out)
+          } // if(k1==k1_out && k2==k2_out)
 
-        } // end of for k_out
+        } // for k_out
         
-      } // end of if k_out
+      } // if k_out
 
 
 
@@ -3611,9 +3611,9 @@ int perturb2_get_k_lists (
       //   fprintf (stderr, "\n\n");
       // }
 
-    } // end of for (index_k2)
+    } // for(index_k2)
 
-  } // end of for (index_k1)
+  } // for(index_k1)
 
 
 
@@ -3808,7 +3808,7 @@ int perturb2_get_k_lists (
     
     free (k_out_class);
     
-  } // end of if k_out
+  } // if k_out
 
   /* Debug - Print out the first-order k-list */
   // printf ("# ~~~ first-order k-sampling (size=%d) ~~~\n", ppt->k_size[index_md_scalars]);
@@ -4355,7 +4355,7 @@ int perturb2_timesampling_for_sources (
       //   ppt2->tau_sampling[index_tau], index_tau);
     }
 
-  } // end of if tau_out
+  } // if tau_out
 
 
   /* Debug - Print time sampling */
@@ -4557,7 +4557,7 @@ int perturb2_timesampling_for_sources (
                   ppt->tau_size_quadsources*sizeof(double),
                   ppt2->error_message);
 
-  } // end of if(!has_custom_timesampling_for_quadsources)
+  } // if(!has_custom_timesampling_for_quadsources)
 
 
   /* Debug - print the time sampling for the line of sight sources */
@@ -4809,7 +4809,7 @@ int perturb2_start_time_evolution (
     // printf("tau_mid = %g\n", tau_mid);
     // printf("\n");
   
-  } // end of bisection
+  } // bisection
   
   *tau_ini = tau_mid;
   
@@ -4929,7 +4929,7 @@ int perturb2_end_of_recombination (
       break;
     }
 
-  } // end of for (index_tau)
+  } // for(index_tau)
   
   free (pvecback);
   free (pvecthermo);
@@ -5379,13 +5379,13 @@ int perturb2_initial_conditions (
           + ppw2->pvec_quadsources[ppw2->index_qs2_phi_prime_poisson];
       }
 
-    } // end of scalar modes
+    } // scalar modes
 
     /* TODO: include initial conditions for m!=0. These are given by the scalar quadratic
     sources only. Make sure to express them in terms of rot_1 and rot_2 because in this
     way you automatically account for the sin(theta_1) rescaling */
         
-  } // end of if(has_ad)  
+  } // if(has_ad)  
 
 
 
@@ -5764,7 +5764,7 @@ int perturb2_workspace_init_quadratic_sources (
     ppw2->index_qs2_monopole_B = index_qs2;
     index_qs2 += ppw2->n_hierarchy_pol_g;
     
-  } // end of if(has_polarization2)
+  } // if(has_polarization2)
 
 
   // -------------------------------------------------------
@@ -6227,7 +6227,7 @@ in the enumeration must follow chronological order, e.g: enum approx_flags\
     /* Some debug */
     // printf("interval_number_of[%d] = %d\n", index_ap, interval_number_of[index_ap]);
 
-  } // end of for (index_ap)
+  } // for(index_ap)
   
   return _SUCCESS_;
   
@@ -6380,7 +6380,7 @@ int perturb2_find_approximation_switches (
       }
       interval_limit[index_switch_tot]=next_tau_switch;
       index_switch_tot++;
-    } // end of while(index_switch_tot)
+    } // while(index_switch_tot)
     
     interval_limit[index_switch_tot]=tau_end;
     
@@ -6472,9 +6472,9 @@ int perturb2_find_approximation_switches (
             "      \\ will switch on no-radiation approximation at tau = %g\n",
             interval_limit[index_switch]);
 
-      } // end of if(verbose)
+      } // if(verbose)
 
-    } // end of for (index_switch)
+    } // for(index_switch)
   
     free(unsorted_tau_switch);
 
@@ -6984,8 +6984,8 @@ int perturb2_geometrical_corner (
         }
       }
  
-    }  // end of cycle on 'm'
-  } // end of cycle on 'l'
+    }  // cycle on 'm'
+  } // cycle on 'l'
   
   
 
@@ -7117,7 +7117,7 @@ int perturb2_geometrical_corner (
           ppw2->d_zero_product_22[lm(l,m)]  += rot_2(1,m2) * rot_2(l,m1) * d_zero;
           
         }
-      } // end of for (m2)
+      } // for(m2)
 
       /* The R couplings (eq. 142 of BF 2010) are obtained from the C ones */
       ppw2->r_minus_product_12[lm(l,m)] =  (l-1) * ppw2->c_minus_product_12[lm(l,m)];
@@ -7156,8 +7156,8 @@ int perturb2_geometrical_corner (
       //    printf("\n");
       // }
 
-    } // end of for (m)
-  } // end of for (l)
+    } // for(m)
+  } // for(l)
 
 
   /* Test the c_minus factor when l=2 by checking that the equality
@@ -7353,7 +7353,7 @@ int perturb2_geometrical_corner (
           fabs (1-(k1_ten_k2[m+2])/(k1_ten_k2_unrescaled)));
 
     }    
-  } // end of tests on rescaled coefficients
+  } // tests on rescaled coefficients
   
   /* There will be plenty of divisions in what follows. */
   class_test((k1==0.) || (k2==0.) || (k_sq==0.),
@@ -7817,7 +7817,7 @@ int perturb2_solve (
       ppt2->error_message,
       ppt2->error_message);
 
-  } // end of for (index_interval)
+  } // for(index_interval)
 
   
   /* Test that the sources where computed the right amount of times */
@@ -8075,7 +8075,7 @@ int perturb2_vector_init (
         ppt2->error_message,
         "spend some time thinking how the RSA works with non-perfect baryons");
 
-  } // end of if (rsa_on)
+  } // if(rsa_on)
 
 
   /* - Set l_max for the NRA */
@@ -8122,7 +8122,7 @@ int perturb2_vector_init (
       than 1. This is perfectly fine, as we do not evolve anything in that case. */
       
     }
-  } // end of if (nra_on)
+  } // if(nra_on)
   
   /* We shall increment this index to count the equations to evolve */
   int index_pt = 0;
@@ -8371,7 +8371,7 @@ int perturb2_vector_init (
       ppt2->error_message,
       ppt2->error_message);
         
-  } // end of if (old_approx == NULL)
+  } // if(old_approx == NULL)
     
 
   // ====================================================================================
@@ -8606,7 +8606,7 @@ int perturb2_vector_init (
     and filled above */
     ppw2->pv = ppv;
 
-  } // end of if(pba_old != NULL)
+  } // if(pba_old != NULL)
 
 
   if (ppt2->perturbations2_verbose > 3)
@@ -8781,14 +8781,14 @@ int perturb2_free(
             for (int l1=0; l1 <= ppt2->l1_max; ++l1) {  
               for (int m1=m1_min; m1 <= m1_max; ++m1) {
                 free (ppt2->coupling_coefficients[index_pf][lm(l,m)][l1][m1-m1_min]);
-              } // end of for m1
+              } // for m1
               free (ppt2->coupling_coefficients[index_pf][lm(l,m)][l1]);
-            } // end of for l1
+            } // for l1
             free (ppt2->coupling_coefficients[index_pf][lm(l,m)]);
-          } // end of for m
-        } // end of for l
+          } // for m
+        } // for l
       free (ppt2->coupling_coefficients[index_pf]);
-      } // end of for T,E,B...
+      } // for T,E,B...
       free (ppt2->coupling_coefficients);
     }
 
@@ -8840,7 +8840,7 @@ int perturb2_free(
     
     }
 
-  } // end of if(has_perturbations2)
+  } // if(has_perturbations2)
 
   return _SUCCESS_;
 
@@ -9319,7 +9319,7 @@ int perturb2_derivs (
         dE(l,m) = k*( c_pre*E(l-1,m) - c*E(l,m) - c_mix*B(l,m) ) - kappa_dot*E(l,m);
         dB(l,m) = k*( c_pre*B(l-1,m) - c*B(l,m) + c_mix*E(l,m) ) - kappa_dot*B(l,m);
       }
-    } // end of if(l_max_pol_g == ppw2->l_max_pol_g)
+    } // if(l_max_pol_g == ppw2->l_max_pol_g)
 
 
     /* - Add quadratic terms */
@@ -9333,11 +9333,11 @@ int perturb2_derivs (
           dE(l,m) += dE_qs2(l,m);
           dB(l,m) += dB_qs2(l,m);                
 
-        } // end of for (m)
-      } // end of for (l)
-    } // end of if(has_quadratic_sources)
+        } // for(m)
+      } // for(l)
+    } // if(has_quadratic_sources)
 
-  }  // end of if(has_polarization2)
+  }  // if(has_polarization2)
 
       
       
@@ -9413,7 +9413,7 @@ int perturb2_derivs (
   
         dN(l,m) = k*(c_pre*N(l-1,m) - c*N(l,m));
       }
-    } // end of if(l_max_ur == ppw2->l_max_ur)
+    } // if(l_max_ur == ppw2->l_max_ur)
     
 
     /* - Add quadratic terms */
@@ -9423,7 +9423,7 @@ int perturb2_derivs (
         for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m)
           dN(l,ppr2->m[index_m]) += dN_qs2(l,ppr2->m[index_m]);  
   
-  }  // end of if(has_ur)
+  }  // if(has_ur)
 
 
   // -----------------------------------------------------------------------------------------
@@ -9594,7 +9594,7 @@ int perturb2_derivs (
       }
     }
 
-  } // end of if(cdm)
+  } // if(cdm)
   
 
   // -------------------------------------------------------------------------------
@@ -9734,7 +9734,7 @@ int perturb2_derivs (
 
   return _SUCCESS_;
   
-}   // end of perturb2_derivs
+}   // perturb2_derivs
 
 
 
@@ -9981,7 +9981,7 @@ int perturb2_einstein (
       //   + ppw2->pvec_quadsources[ppw2->index_qs2_phi_prime_prime]
       // );
 
-    } // end of scalar potentials
+    } // scalar potentials
 
 
     // -------------------------------------------------------
@@ -9996,7 +9996,7 @@ int perturb2_einstein (
         + 2 * sqrt_3/(5.*k) * a_sq * rho_quadrupole_m1
         + ppw2->pvec_quadsources[ppw2->index_qs2_omega_m1_prime];
 
-    } // end of vector potential
+    } // vector potential
 
 
     // -------------------------------------------------------
@@ -10011,7 +10011,7 @@ int perturb2_einstein (
         - 2/5. * a_sq * rho_quadrupole_m2
         + ppw2->pvec_quadsources[ppw2->index_qs2_gamma_m2_prime_prime];
 
-    } // end of tensor potential
+    } // tensor potential
 
 
     /* Some debug */
@@ -10028,7 +10028,7 @@ int perturb2_einstein (
     // }
 
 
-  } // end of if(newtonian)
+  } // if(newtonian)
 
 
   /* Synchronous gauge */
@@ -10037,9 +10037,9 @@ int perturb2_einstein (
     if (ppr2->compute_m[0]) {
 
 
-    } // end of scalar potentials
+    } // scalar potentials
 
-  } // end of if(synchronous)
+  } // if(synchronous)
 
 
 
@@ -10092,12 +10092,12 @@ int perturb2_einstein (
         ppw2->N_1m[m] = ppw2->N_1m_rsa[m];
     }
     
-  } // end of if(rsa_on)
+  } // if(rsa_on)
   
 
   return _SUCCESS_;
 
-}  // end of perturb2_einstein
+}  // perturb2_einstein
 
 
 
@@ -10305,7 +10305,7 @@ int perturb2_workspace_at_tau (
       ppw2->C_1m[m] = ppw2->C_1m_tca1[m];
     }
 
-  } // end of if(tca_on)
+  } // if(tca_on)
 
 
   return _SUCCESS_;
@@ -11013,9 +11013,9 @@ int perturb2_tca_variables (
       as you would do for a TCA0 approximation. */
       ppw2->B_2m_tca1[m] = (m!=0 ? quadC_B_2M : 0);
 
-    } // end of if(polarisation)
+    } // if(polarisation)
     
-  } // end of loop over m=0,1,2
+  } // loop over m=0,1,2
   
 
 
@@ -11757,7 +11757,7 @@ int perturb2_quadratic_sources_for_k1k2k (
     for (int index_qs2=0; index_qs2 < ppw2->qs2_size; ++index_qs2)
       ppw2->quadcollision_table[index_qs2][index_tau] = ppw2->pvec_quadcollision[index_qs2];
 
-  } // end of for (index_tau)
+  } // for(index_tau)
 
 
 
@@ -12150,7 +12150,7 @@ int perturb2_quadratic_sources (
         rho_dipole_2         +=  rho_ur*N_2_raw(1);
       }
  
-    } // end of scalar modes
+    } // scalar modes
  
 
 
@@ -12314,7 +12314,7 @@ int perturb2_quadratic_sources (
         by -6. The trace equation is in eq. 3.97 of http://arxiv.org/abs/1405.2280. */
         pvec_quadsources[ppw2->index_qs2_phi_prime_prime] = -(Q_TR + Q_TT) / 6;
 
-      } // end of scalar modes
+      } // scalar modes
 
 
       /* Vector potentials */
@@ -12334,7 +12334,7 @@ int perturb2_quadratic_sources (
 
         pvec_quadsources[ppw2->index_qs2_omega_m1_prime] = sqrt_3 / k * Q_SS;
 
-      } // end of vector modes
+      } // vector modes
 
 
       /* Tensor potentials */
@@ -12351,9 +12351,9 @@ int perturb2_quadratic_sources (
 
         pvec_quadsources[ppw2->index_qs2_gamma_m2_prime_prime] = - Q_SS;
 
-      } // end of tensor modes
+      } // tensor modes
 
-    } // end of if(newtonian)
+    } // if(newtonian)
  
  
 
@@ -12424,8 +12424,8 @@ int perturb2_quadratic_sources (
             /* Account for the fact that in BF2010 the Liouville operator appears on the left-hand-side */
             dI_qs2(l,m) *= -1;
       
-          } // end of for (index_m)
-        } // end of for (l)
+          } // for(index_m)
+        } // for(l)
 
    
         // ----------------------------------------
@@ -12463,9 +12463,9 @@ int perturb2_quadratic_sources (
               dE_qs2(l,m) *= -1;
               dB_qs2(l,m) *= -1;
  
-            } // end of for (index_m)
-          } // end of for (l)
-        } // end of if(has_polarization2)
+            } // for(index_m)
+          } // for(l)
+        } // if(has_polarization2)
  
  
         // ---------------------------------------
@@ -12538,7 +12538,7 @@ int perturb2_quadratic_sources (
             }
           }
        
-        } // end of if(has_cdm)
+        } // if(has_cdm)
  
  
         // -------------------------------------------------------
@@ -12580,15 +12580,15 @@ int perturb2_quadratic_sources (
               /* Account for the fact that in BF2010 the Liouville operator appears on the left-hand-side */
               dN_qs2(l,m) *= -1;
 
-            } // end of for (index_m)
-          } // end of for (l)
-        } // end of if(has_ur) 
+            } // for(index_m)
+          } // for(l)
+        } // if(has_ur) 
       
-      }  // end of if(newtonian)
+      }  // if(newtonian)
  
-    } // end of if(has_quadratic_liouville)
+    } // if(has_quadratic_liouville)
   
-  } // end of if(compute_total_and_collision)
+  } // if(compute_total_and_collision)
 
 
   if ((what_to_compute == compute_total_and_collision) ||
@@ -12729,7 +12729,7 @@ int perturb2_quadratic_sources (
         //   fprintf (stderr, "%12.7g %12.7g %12.7g %12.7g %12.7g %12.7g\n",
         //     ppt->tau_sampling_quadsources, a, delta_e_1, approx, delta_b_1, g);
 
-      } // end of if(has_perturbed_recombination_stz)
+      } // if(has_perturbed_recombination_stz)
  
   
 
@@ -12854,8 +12854,8 @@ int perturb2_quadratic_sources (
           if (what_to_compute == compute_only_gain_term)
             dI_qc2(l,m) -= loss_term;
  
-        } // end of for (index_m)
-      } // end of for (l)
+        } // for(index_m)
+      } // for(l)
  
  
  
@@ -12942,8 +12942,8 @@ int perturb2_quadratic_sources (
             else if (what_to_compute == compute_only_gain_term)
               dE_qc2(l,m) -= loss_term;
 
-          } // end of for (index_m)
-        } // end of for (l)
+          } // for(index_m)
+        } // for(l)
       
  
         // -------------------------------------------
@@ -12981,10 +12981,10 @@ int perturb2_quadratic_sources (
             else if (what_to_compute == compute_only_gain_term)
               dB_qc2(l,m) -= loss_term;
           
-          } // end of for (index_m)
-        } // end of for (l)
+          } // for(index_m)
+        } // for(l)
  
-      } // end of if(has_polarization2)
+      } // if(has_polarization2)
  
  
       // ---------------------------------------
@@ -13066,8 +13066,8 @@ int perturb2_quadratic_sources (
           pvec_quadsources[index_qs2] += pvec_quadcollision[index_qs2];
       }
 
-    }  // end of if(has_quadratic_collision)
-  } // end of if(compute_only_collision)  
+    }  // if(has_quadratic_collision)
+  } // if(compute_only_collision)  
 
 
 
@@ -13397,7 +13397,7 @@ int perturb2_sources (
         psi_prime = psi_exp_prime;
       }
       
-    } // end of m=0
+    } // m=0
     
     /* Vector potentials */
     if (ppr2->compute_m[1]) {
@@ -13409,7 +13409,7 @@ int perturb2_sources (
     if (ppr2->compute_m[2])
       gamma_m2_prime = y[ppw2->pv->index_pt2_gamma_m2_prime];
 
-  } // end of newtonian gauge
+  } // newtonian gauge
 
 
   // ====================================================================================
@@ -13671,9 +13671,9 @@ int perturb2_sources (
                 function 'perturb2_get_lm_lists'). For the intensity sources, we can omit such symmetrisation
                 because of the symmetry of the coupling coefficients with respect to l1<->l2.  */
         
-              } // end of for (m1)            
-            } // end of for (l2)
-          } // end of for (l1)
+              } // for(m1)            
+            } // for(l2)
+          } // for(l1)
           
           /* Extra sources for delta tilde. The factor 'quad_coefficient' accounts for the factorial in our
           perturbative expansion. The factor 0.5 in delta_delta_lm accounts for the 1/2 factor in the
@@ -13681,7 +13681,7 @@ int perturb2_sources (
           source += - quad_coefficient * kappa_dot * 0.5*delta_delta_lm
                     - quad_coefficient * kappa_dot * delta_collision_lm;
           
-        } // end of delta_tilde
+        } // delta_tilde
 
   
         // ---------------------------------------------------------------------------------
@@ -13709,7 +13709,7 @@ int perturb2_sources (
   
       }  // end for (m)
     } // end for (l)
-  } // end of temperature sources
+  } // temperature sources
 
   
   
@@ -13834,9 +13834,9 @@ int perturb2_sources (
                   (I_1(l1,m1)*c_E_k2_l2 + c_I_k1_l1*E_2(l2,m2)   /* delta<->collision */
                   +I_2(l1,m1)*c_E_k1_l2 + c_I_k2_l1*E_1(l2,m2)); /* k1<->k2 */
                   
-              } // end of for (m1)            
-            } // end of for (l2)
-          } // end of for (l1)
+              } // for(m1)            
+            } // for(l2)
+          } // for(l1)
           
           /* Extra sources for delta tilde. The factor 'quad_coefficient' accounts for the factorial in our
           perturbative expansion. The factor 0.5 in delta_delta_lm accounts for the 1/2 factor in the
@@ -13844,7 +13844,7 @@ int perturb2_sources (
           source += - quad_coefficient * kappa_dot * 0.5*delta_delta_lm
                     - quad_coefficient * kappa_dot * delta_collision_lm;
           
-        } // end of delta_tilde
+        } // delta_tilde
 
   
         // ---------------------------------------------------------------------------------
@@ -13869,7 +13869,7 @@ int perturb2_sources (
 
       }  // end for (m)
     } // end for (l)
-  } // end of E-mode sources
+  } // E-mode sources
 
   
   
@@ -13983,9 +13983,9 @@ int perturb2_sources (
                   (I_1(l1,m1)*c_E_k2_l2 + c_I_k1_l1*E_2(l2,m2)   /* delta<->collision */
                   +I_2(l1,m1)*c_E_k1_l2 + c_I_k2_l1*E_1(l2,m2)); /* k1<->k2 */
                   
-              } // end of for (m1)            
-            } // end of for (l2)
-          } // end of for (l1)
+              } // for(m1)            
+            } // for(l2)
+          } // for(l1)
           
           /* Extra sources for delta tilde. The factor 'quad_coefficient' accounts for the factorial in our
           perturbative expansion. The factor 0.5 in delta_delta_lm accounts for the 1/2 factor in the
@@ -13993,7 +13993,7 @@ int perturb2_sources (
           source += - quad_coefficient * kappa_dot * 0.5*delta_delta_lm
                     - quad_coefficient * kappa_dot * delta_collision_lm;
           
-        } // end of delta_tilde
+        } // delta_tilde
 
   
         // ---------------------------------------------------------------------------------
@@ -14018,7 +14018,7 @@ int perturb2_sources (
 
       }  // end for (m)
     } // end for (l)
-  } // end of B-mode sources
+  } // B-mode sources
   
 
   // ====================================================================================
@@ -14106,7 +14106,7 @@ int perturb2_sources (
   
   return _SUCCESS_;
 
-} // end of perturb2_sources
+} // perturb2_sources
 
 
 
@@ -14683,7 +14683,7 @@ int perturb2_save_perturbations (
 
     }
 
-  } // end of if(newtonian gauge)
+  } // if(newtonian gauge)
 
 
 
@@ -14696,7 +14696,7 @@ int perturb2_save_perturbations (
   if (ppt->gauge == synchronous) {
 
 
-  } // end of synchronous gauge
+  } // synchronous gauge
 
 
 
@@ -15397,7 +15397,7 @@ int perturb2_save_perturbations (
   //       }
   //     }
   //   }
-  // }  // end of if(has_ur)
+  // }  // if(has_ur)
 
 
   // -------------------------------------------------------------------------------
@@ -15690,7 +15690,7 @@ int perturb2_quadratic_sources_at_tau (
           ppt2->error_message,
           ppt2->error_message);
 
-  } // end of if(ppr->quadsources_time_interpolation)
+  } // if(ppr->quadsources_time_interpolation)
   
   
   return _SUCCESS_;

@@ -261,13 +261,13 @@ int bispectra2_harmonic (
                   pbi->l[index_l1], pbi->l[index_l2], pbi->l[index_l3], bispectrum,
                   pbi->bt_labels[index_bt], pbi->bfff_labels[X][Y][Z]);
 
-              } // end of for(index_l3)
-            } // end of for(index_l2)
-          } // end of for(index_l1)
-        } // end of for(X)
-      } // end of for(Y)
-    } // end of for(Z)
-  } // end of for(index_bt)  
+              } // for(index_l3)
+            } // for(index_l2)
+          } // for(index_l1)
+        } // for(X)
+      } // for(Y)
+    } // for(Z)
+  } // for(index_bt)  
 
   
 
@@ -631,13 +631,13 @@ int bispectra2_intrinsic_init (
                   pbi->error_message,
                   pbi->error_message);
                           
-              } // end of loop on field 'Z'
-            } // end of loop on L1
+              } // loop on field 'Z'
+            } // loop on L1
               
-          } // end of loop on field 'Y'
-        } // end of loop on L3
-      } // end of loop on M3  
-    } // end of loop on field 'X'
+          } // loop on field 'Y'
+        } // loop on L3
+      } // loop on M3  
+    } // loop on field 'X'
 
     // ====================================================================================
     // =                               Consistency checks                                 =
@@ -726,16 +726,16 @@ int bispectra2_intrinsic_init (
                     //   pbi->l[index_l1],pbi->l[index_l3],pbi->l[index_l2], b_2,
                     //   diff);
     
-                  } // end of if bispectrum > _MINUSCULE_
-                } // end of if Y==Z
+                  } // if bispectrum > _MINUSCULE_
+                } // if Y==Z
 
-              } // end of for(X)
-            } // end of for(Y)
-          } // end of for(Z)
+              } // for(X)
+            } // for(Y)
+          } // for(Z)
 
-        } // end of for(index_l3)
-      } // end of for(index_l2)
-    } // end of for(index_l1)
+        } // for(index_l3)
+      } // for(index_l2)
+    } // for(index_l1)
     
     /* We worry only if we have more than 5% of mismatches. We keep the treshold so high because
     the bispectrum crosses the zero many times. */
@@ -792,18 +792,18 @@ int bispectra2_intrinsic_init (
                 #pragma omp atomic
                 pbi->count_memorised_bispectra++;
 
-              } // end of for(Z)
-            } // end of for(Y)
-          } // end of for(X)
+              } // for(Z)
+            } // for(Y)
+          } // for(X)
 
-        } // end of for(index_l3)
-      } // end of for(index_l2)
-    } // end of for(index_l1)
+        } // for(index_l3)
+      } // for(index_l2)
+    } // for(index_l1)
 
     /* The intrinsic bispectrum is now ready */
     pbi->bispectra_available[index_bt] = _TRUE_;
 
-  } // end of loop on index_bt
+  } // loop on index_bt
   
   return _SUCCESS_; 
   
@@ -946,7 +946,7 @@ int bispectra2_intrinsic_workspace_init (
     class_calloc_parallel (pwb->interpolated_integral[thread], ptr->q_size, sizeof(double), pbi->error_message);
     class_calloc_parallel (pwb->f[thread], pwb->k_smooth_size, sizeof(double), pbi->error_message);
   
-  } // end of parallel region
+  } // parallel region
   
   if (abort) return _FAILURE_;
   
@@ -972,8 +972,8 @@ int bispectra2_intrinsic_workspace_init (
             int l3_size = pbi->l_triangular_size[index_l1][index_l2];
             class_calloc (pwb->unsymmetrised_bispectrum[X][Y][Z][index_l1][index_l2], l3_size, sizeof(double), pbi->error_message);
             pwb->count_allocated_for_unsymmetrised_bispectrum += l3_size;
-          } // end of for(index_l2)
-        } // end of for(index_l1)
+          } // for(index_l2)
+        } // for(index_l1)
         
         /* Determine the parity of the considered bispectrum */
         pwb->bispectrum_parity = (pbi->field_parity[X] + pbi->field_parity[Y] + pbi->field_parity[Z])%2;
@@ -986,9 +986,9 @@ int bispectra2_intrinsic_workspace_init (
           pbi->error_message,
           "computing an odd-parity bispectrum with an even l-grid, or viceversa.");
         
-      } // end of for(k)
-    } // end of for(j)
-  } // end of for(i)
+      } // for(k)
+    } // for(j)
+  } // for(i)
   
   if (pbi->bispectra_verbose > 2)
     printf(" -> allocated ~ %.3g MB (%ld doubles) for the unsymmetrised bispectrum array\n",
@@ -1094,15 +1094,15 @@ int bispectra2_intrinsic_workspace_free(
        for (int index_l1 = 0; index_l1 < pbi->l_size; ++index_l1) {
          for (int index_l2 = 0; index_l2 < pbi->l_size; ++index_l2) {
            free (pwb->unsymmetrised_bispectrum[X][Y][Z][index_l1][index_l2]);
-         } // end of for(index_l2)
+         } // for(index_l2)
          free (pwb->unsymmetrised_bispectrum[X][Y][Z][index_l1]);
-       } // end of for(index_l1)
+       } // for(index_l1)
        free (pwb->unsymmetrised_bispectrum[X][Y][Z]);
-     } // end of for(k)
+     } // for(k)
      free (pwb->unsymmetrised_bispectrum[X][Y]);
-   } // end of for(j)
+   } // for(j)
    free (pwb->unsymmetrised_bispectrum[X]);
-  } // end of for(i)
+  } // for(i)
   free (pwb->unsymmetrised_bispectrum);
  
   free (pwb);
@@ -1173,9 +1173,9 @@ int bispectra2_intrinsic_integrate_over_k3 (
         if (pwb->abs_M3 <= pbi->l[index_l3])
           pwb->count_allocated_for_integral_over_k3 += k2_size;
   
-      } // end of for(index_k1)
-    } // end of for(index_r)
-  } // end of for(index_l3)
+      } // for(index_k1)
+    } // for(index_r)
+  } // for(index_l3)
     
   if (pbi->bispectra_verbose > 2)
     printf("     * allocated ~ %.3g MB (%ld doubles) for the k3-integral array (k_size=%d)\n",
@@ -1414,9 +1414,9 @@ int bispectra2_intrinsic_integrate_over_k3 (
             //         fprintf (stderr, "%17.7g %17.7g\n",
             //           k2, pwb->integral_over_k3[index_l3][index_r][index_k1][index_k2]);
 
-          } // end of for(index_r)          
-        } // end of for(index_k2)
-      } // end of for(index_k1)
+          } // for(index_r)          
+        } // for(index_k2)
+      } // for(index_k1)
     } if (abort) return _FAILURE_; /* end of parallel region */
 
   
@@ -1582,7 +1582,7 @@ int bispectra2_interpolate_over_k2 (
       "k2 interpolation yielded a nan for index_r=%d, index_k1=%d, index_l3=%d",
       index_r, index_k1, index_l3);
 
-  } // end of for (index_k_tr)
+  } // for(index_k_tr)
 
 
   /* Some debug - print the original array and the interpolation */
@@ -1680,15 +1680,15 @@ int bispectra2_intrinsic_integrate_over_k2 (
         if (pwb->abs_M3 <= pbi->l[index_l3])
           pwb->count_allocated_for_integral_over_k2 += k1_size;
   
-        } // end of for(index_r)
-      } // end of for(index_l2)
-    } // end of for(index_l3)
+        } // for(index_r)
+      } // for(index_l2)
+    } // for(index_l3)
     
     if (pbi->bispectra_verbose > 2)
       printf("     * allocated ~ %.3g MB (%ld doubles) for the k2-integral array (l_size=%d)\n",
         pwb->count_allocated_for_integral_over_k2*sizeof(double)/1e6, pwb->count_allocated_for_integral_over_k2, pbi->l_size);
 
-  } // end of if pwb->Y==0
+  } // if pwb->Y==0
   
   
   // ==============================================================================================================
@@ -1817,11 +1817,11 @@ int bispectra2_intrinsic_integrate_over_k2 (
   
             #pragma omp flush(abort)
   
-          } // end of for(index_l2)
-        } // end of for(index_k1)
-      } // end of for(index_l3)
-    } // end of for(index_r)
-  } if (abort) return _FAILURE_;  // end of parallel region
+          } // for(index_l2)
+        } // for(index_k1)
+      } // for(index_l3)
+    } // for(index_r)
+  } if (abort) return _FAILURE_;  // parallel region
   
   if (pbi->bispectra_verbose > 2)
     printf("     * memorised ~ %.3g MB (%ld doubles) for the k2-integral array (k2_size=%d)\n",
@@ -1841,11 +1841,11 @@ int bispectra2_intrinsic_integrate_over_k2 (
       for (int index_r=0; index_r < pwb->r_size; ++index_r) {
         for (int index_k1=0; index_k1<pwb->k_smooth_size; ++index_k1) {
           free (pwb->integral_over_k3[index_l3][index_r][index_k1]);
-        } // end of for(index_k1)
+        } // for(index_k1)
         free (pwb->integral_over_k3[index_l3][index_r]);
-      } // end of for(index_r)
+      } // for(index_r)
       free (pwb->integral_over_k3[index_l3]);
-    } // end of for(index_l3)
+    } // for(index_l3)
     free (pwb->integral_over_k3);
   } 
 
@@ -1960,7 +1960,7 @@ int bispectra2_interpolate_over_k1 (
       "k1 interpolation yielded a nan for index_r=%d, index_l3=%d, index_l2=%d",
       index_r, index_l3, index_l2);
 
-  } // end of for (index_k_tr)
+  } // for(index_k_tr)
 
 
   /* Some debug - print the original array and the interpolation */
@@ -2072,15 +2072,15 @@ int bispectra2_intrinsic_integrate_over_k1 (
         if (pwb->abs_M3 <= pbi->l[index_l3])
           pwb->count_allocated_for_integral_over_k1 += pwb->r_size;
       
-        } // end of for(index_l1)
-      } // end of for(index_l2)
-    } // end of for(index_l3)
+        } // for(index_l1)
+      } // for(index_l2)
+    } // for(index_l3)
     
     if (pbi->bispectra_verbose > 2)
       printf("     * allocated ~ %.3g MB (%ld doubles) for the k1-integral array (l_size=%d)\n",
         pwb->count_allocated_for_integral_over_k1*sizeof(double)/1e6, pwb->count_allocated_for_integral_over_k1, pbi->l_size);
   
-  } // end of if(offset_L1==0 and pwb->Z==0)
+  } // if(offset_L1==0 and pwb->Z==0)
   
   
   // ==============================================================================================================
@@ -2232,11 +2232,11 @@ int bispectra2_intrinsic_integrate_over_k1 (
 
             #pragma omp flush(abort)
   
-          } // end of for(index_l1)
-        } // end of for(index_l2)
-      } // end of for(index_l3)
-    } // end of for(index_r)
-  } if (abort) return _FAILURE_;  // end of parallel region
+          } // for(index_l1)
+        } // for(index_l2)
+      } // for(index_l3)
+    } // for(index_r)
+  } if (abort) return _FAILURE_;  // parallel region
 
   /* DISABLED:  While the optimization makes sense, the way we implement it below leads to nan's. Investigate. */
   /* Take care of the case when l1 < l2 */
@@ -2288,13 +2288,13 @@ int bispectra2_intrinsic_integrate_over_k1 (
       for (int index_l2=0; index_l2<pbi->l_size; ++index_l2) {
         for (int index_r=0; index_r < pwb->r_size; ++index_r) {      
           free (pwb->integral_over_k2[index_l3][index_l2][index_r]);
-        } // end of for(index_r)
+        } // for(index_r)
         free (pwb->integral_over_k2[index_l3][index_l2]);
-      } // end of for(index_l2)
+      } // for(index_l2)
       free (pwb->integral_over_k2[index_l3]);
-    } // end of for(index_l3)
+    } // for(index_l3)
     free (pwb->integral_over_k2);
-  } // end of if last term in the L1, Y, Z sums
+  } // if last term in the L1, Y, Z sums
   
   return _SUCCESS_;
 }
@@ -2351,14 +2351,14 @@ int bispectra2_intrinsic_integrate_over_r(
         if (pwb->abs_M3 <= pbi->l[index_l3])
           pwb->count_allocated_for_integral_over_r += l1_size;
 
-      } // end of for(index_l2)
-    } // end of for(index_l3)
+      } // for(index_l2)
+    } // for(index_l3)
 
     if (pbi->bispectra_verbose > 2)
       printf(" -> allocated ~ %.3g MB (%ld doubles) for the r-integral array\n",
         pwb->count_allocated_for_integral_over_r*sizeof(double)/1e6, pwb->count_allocated_for_integral_over_r);
 
-  } // end of if(offset_L1==0 and pwb->Z == 0)
+  } // if(offset_L1==0 and pwb->Z == 0)
   
   
   // ==========================================================================================================
@@ -2426,7 +2426,7 @@ int bispectra2_intrinsic_integrate_over_r(
             //   }
             // }
    
-          } // end of for(index_r)
+          } // for(index_r)
   
   
           /* Fill the result array and include the factor 1/2 from trapezoidal rule */
@@ -2437,13 +2437,13 @@ int bispectra2_intrinsic_integrate_over_r(
           //   fprintf(stderr, "%12d %17.7g\n", l2, pwb->integral_over_r[index_l3][index_l2][index_l1-index_l1_min]);
           // }
             
-        } // end of for(index_l1)
-      } // end of for(index_l2)
+        } // for(index_l1)
+      } // for(index_l2)
       
       #pragma omp flush(abort)
       
-    } // end of for(index_l3)
-  } if (abort) return _FAILURE_;  // end of parallel region
+    } // for(index_l3)
+  } if (abort) return _FAILURE_;  // parallel region
   
   /* We can free the memory that was allocated for the integral over k1, as it is no longer needed */
   if ((pwb->offset_L1 == (2*pwb->abs_M3)) && (pwb->Y == (pbi->bf_size-1)) && (pwb->Z == (pbi->bf_size-1))) {
@@ -2453,13 +2453,13 @@ int bispectra2_intrinsic_integrate_over_r(
         int index_l1_max = pbi->index_l_triangular_max[index_l3][index_l2];
         for (int index_l1=index_l1_min; index_l1<=index_l1_max; ++index_l1) {  
           free (pwb->integral_over_k1[index_l3][index_l2][index_l1-index_l1_min]);
-        } // end of for(index_l1)
+        } // for(index_l1)
         free (pwb->integral_over_k1[index_l3][index_l2]);
-      } // end of for(index_l3)
+      } // for(index_l3)
       free (pwb->integral_over_k1[index_l3]);
-    } // end of for(index_l2)
+    } // for(index_l2)
     free (pwb->integral_over_k1);
-  } // end of last term in the L1 and loop
+  } // last term in the L1 and loop
   
   return _SUCCESS_; 
 }
@@ -2600,7 +2600,7 @@ int bispectra2_intrinsic_geometrical_factors (
       else
         SUMMED_FACTOR_l3_L3_M3 = FACTOR_l3_L3_M3 - ALTERNATING_SIGN(offset_L3)*FACTOR_l3_L3_M3;
 
-    } // end of if(M3!=0)
+    } // if(M3!=0)
   
     // =========================================================================
     // =                             Cycle on l2                             =
@@ -2902,14 +2902,14 @@ int bispectra2_intrinsic_geometrical_factors (
                 "error in the geometrical factor, m=0 not recovered (%g != %g) for b_%d_%d_%d.",
                 bispectrum_for_m0, bispectrum, l2, l3, l1);
           }
-        } // end of if even parity
+        } // if even parity
         else {
 
           #pragma omp atomic
           result[index_l3][index_l2][index_l1-index_l1_min]
             += ALTERNATING_SIGN(exponent/2) * prefactor * geometry * integral;
           
-        } // end of if odd parity
+        } // if odd parity
 
         /* Comparison with Christian's B-modes */
         // if (pwb->abs_M3==1) {
@@ -2991,9 +2991,9 @@ int bispectra2_intrinsic_geometrical_factors (
         
         #pragma omp flush(abort)
   
-      } // end of for(index_l1)
-    } // end of for(index_l2)
-  } // end of for(index_l3) and of parallel region
+      } // for(index_l1)
+    } // for(index_l2)
+  } // for(index_l3) and of parallel region
   if (abort) return _FAILURE_;
 
   /* We can free the memory that was allocated for the integral over r, as it is no longer needed */
@@ -3001,11 +3001,11 @@ int bispectra2_intrinsic_geometrical_factors (
     for (int index_l3 = 0; index_l3 < pbi->l_size; ++index_l3) {
       for (int index_l2 = 0; index_l2 < pbi->l_size; ++index_l2) {
         free (pwb->integral_over_r[index_l3][index_l2]);
-      } // end of for(index_l2)
+      } // for(index_l2)
       free (pwb->integral_over_r[index_l3]);
-    } // end of for(index_l3)
+    } // for(index_l3)
     free (pwb->integral_over_r);
-  } // end of last term in the L1 loop
+  } // last term in the L1 loop
 
   /* Free 3j values array */
   for (thread=0; thread < number_of_threads; ++thread) {
@@ -3103,14 +3103,14 @@ int bispectra2_add_quadratic_corrections (
                 /* Add the correction */
                 pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3] += bolometric_correction + delta_tilde_correction;
             
-              } // end of for(index_l3)
-            } // end of for(index_l2)
-          } // end of for(index_l1)
-        } // end of for(field X)
-      } // end of for(field Y)
-    } // end of for(field X) 
-  } // end of for(index_bt)
+              } // for(index_l3)
+            } // for(index_l2)
+          } // for(index_l1)
+        } // for(field X)
+      } // for(field Y)
+    } // for(field X) 
+  } // for(index_bt)
   
   return _SUCCESS_;
   
-} // end of bispectra2_add_quadratic_corrections
+} // bispectra2_add_quadratic_corrections

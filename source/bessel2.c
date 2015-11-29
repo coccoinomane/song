@@ -294,9 +294,9 @@ int bessel2_init(
         if (ppr->bessels_interpolation == cubic_interpolation)
           class_alloc (pbs2->ddJ_Llm_x[index_J][index_L][index_l], m_size*sizeof(double*), pbs2->error_message);
 
-      } // end of for(index_l)
-    } // end of for(index_L)
-  } // end of loop on projection functions type
+      } // for(index_l)
+    } // for(index_L)
+  } // loop on projection functions type
 
 
 
@@ -366,12 +366,12 @@ int bessel2_init(
                pbs2->error_message,
                pbs2->error_message);     
 
-        } // end of for(index_m)
+        } // for(index_m)
         #pragma omp flush(abort)    
-      } // end of for(index_l)
-      if (abort) return _FAILURE_;  // end of parallel region
-    } // end of for(index_L)
-  } // end of loop on type of projection functions
+      } // for(index_l)
+      if (abort) return _FAILURE_;  // parallel region
+    } // for(index_L)
+  } // loop on type of projection functions
   
   /* Determine the maximum size of the x-level in pbs2->J_Llm_x */
   pbs2->x_size_max_J = 0;
@@ -427,12 +427,12 @@ int bessel2_init(
               pbs2->error_message,
               pbs2->error_message);
 
-          } // end of for(index_m)
+          } // for(index_m)
         #pragma omp flush(abort)
-        } // end of for(index_l)
+        } // for(index_l)
         if (abort) return _FAILURE_;
-      } // end of for(index_L)
-    } // end of loop of projection function type
+      } // for(index_L)
+    } // loop of projection function type
 
 
     /* Compute second derivatives of the j1_l in view of the spline interpolation. */
@@ -460,7 +460,7 @@ int bessel2_init(
     if (abort) return _FAILURE_;
 
 
-  } // end of spline calculation
+  } // spline calculation
 
 
   return _SUCCESS_;
@@ -594,7 +594,7 @@ int bessel2_convolution (
     /* Increment the estimate of the integral */
     *integral += integrand * delta_kk[index_k];
     
-  } // end of for(index_k)
+  } // for(index_k)
    
    
   /* Divide the integral by a factor 1/2 to account for the trapezoidal rule */
@@ -602,7 +602,7 @@ int bessel2_convolution (
    
   return _SUCCESS_;
   
-} // end of bessel_convolution
+} // bessel_convolution
 
 
 
@@ -756,7 +756,7 @@ int bessel2_free(
             if (ppr->bessels_interpolation == cubic_interpolation)
               free(pbs2->ddJ_Llm_x[index_J][index_L][index_l][index_m]);
         
-          }  // end of for(index_m)
+          }  // for(index_m)
       
           free(pbs2->index_xmin_J[index_J][index_L][index_l]);
           free(pbs2->x_size_J[index_J][index_L][index_l]);
@@ -765,7 +765,7 @@ int bessel2_free(
           if (ppr->bessels_interpolation == cubic_interpolation)
             free(pbs2->ddJ_Llm_x[index_J][index_L][index_l]);
       
-        }  // end of for(index_l)
+        }  // for(index_l)
     
         free(pbs2->index_xmin_J[index_J][index_L]);
         free(pbs2->x_size_J[index_J][index_L]);
@@ -774,7 +774,7 @@ int bessel2_free(
         if (ppr->bessels_interpolation == cubic_interpolation)
           free(pbs2->ddJ_Llm_x[index_J][index_L]);
     
-      }  // end of for(index_L)
+      }  // for(index_L)
   
       free(pbs2->index_xmin_J[index_J]);
       free(pbs2->x_size_J[index_J]);
@@ -783,7 +783,7 @@ int bessel2_free(
       if (ppr->bessels_interpolation == cubic_interpolation)
         free(pbs2->ddJ_Llm_x[index_J]);
   
-    } // end of for(index_J)
+    } // for(index_J)
   
     free(pbs2->index_xmin_J);
     free(pbs2->x_size_J);
@@ -1549,7 +1549,7 @@ int bessel2_J_Llm (
     // if ((L==4) && (l==1172)) printf("j(%d, %10.6g) = %10.6g\n", l1, x, j_l1_x);
     // if ((L==4) && (l==1172)) printf("3j(%d,%d,%d)(%d,0,%d) = %10.6g\n", l1, L, l, -m, m, bessel_3j_data->second_3j[index_l1]);    
     
-  } // end of for(index_l1)
+  } // for(index_l1)
 
   /* Apply l1-independent factors */
   (*J_Llm_x) *= ALTERNATING_SIGN(m) * (2*l+1);
@@ -1641,7 +1641,7 @@ int bessel2_J_Llm_at_x_exact(
     (*J_Llm_x) += i_coefficient * (2*l1+1) * bessel_3j_data->first_3j[index_l1]
                   * bessel_3j_data->second_3j[index_l1] * j_l1_x;
     
-  } // end of for(index_l1)
+  } // for(index_l1)
 
   /* Apply constant factors */
   (*J_Llm_x) *= ALTERNATING_SIGN(m) * (2*l+1);
@@ -1748,7 +1748,7 @@ int bessel2_j_for_l1(
       if (pbs2->index_xmin_l1[index_l1] != 0) --pbs2->index_xmin_l1[index_l1];
     } 
       
-  } // end of if (l1!=0)
+  } // if(l1!=0)
     
 
   /* Define number of x values to be stored; set it to unity if all values of j_l1(x) were

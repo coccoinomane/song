@@ -278,7 +278,7 @@ int transfer2_init(
         tau_size_max*sizeof(double),
         ptr2->error_message);
 
-  } // end of parallel region
+  } // parallel region
   
   if (abort)
     return _FAILURE_;
@@ -848,7 +848,7 @@ int transfer2_free(
       free (ptr2->storage_paths);
     }
 
-  } // end of if(has_cls)
+  } // if(has_cls)
 
   return _SUCCESS_;
   
@@ -1186,8 +1186,8 @@ int transfer2_get_lm_lists (
       // printf ("(l,m) = (%d,%d) corresponds to an offset of %d\n",
       //   ptr2->l[index_l], ptr2->m[index_m], ptr2->lm_array[index_l][index_m]);
 
-    } // end of for(index_m)
-  } // end of for(index_l)
+    } // for(index_m)
+  } // for(index_l)
 
 
 
@@ -1301,7 +1301,7 @@ int transfer2_get_lm_lists (
     ptr2->tt2_to_index_l[index_tt] = index_l;
     ptr2->tt2_to_index_m[index_tt] = index_m;
     
-  } // end of for(index_tt)
+  } // for(index_tt)
 
 
   return _SUCCESS_;
@@ -1568,7 +1568,7 @@ int transfer2_get_k3_size (
   return _SUCCESS_;
   
   
-} // end of transfer2_get_k3_size
+} // transfer2_get_k3_size
 
 
 
@@ -1732,7 +1732,7 @@ int transfer2_get_k3_list (
   //   for (index_k_tr=last_k_phys+1; index_k_tr < k_tr_size; ++index_k_tr)
   //     fprintf(stderr, "# %12d %26.17f\n", index_k_tr, k3[index_k_tr]);
   //
-  // } // end of debug
+  // } // debug
 
 #ifdef DEBUG
 
@@ -1760,7 +1760,7 @@ int transfer2_get_k3_list (
 
   return _SUCCESS_;
 
-} // end of transfer2_get_k3_list
+} // transfer2_get_k3_list
 
 
 
@@ -1835,8 +1835,8 @@ int transfer2_get_k3_sizes (
         ptr2->error_message,
         ptr2->error_message);
 
-    } // end of for(index_k2)
-  } // end of for(index_k1)
+    } // for(index_k2)
+  } // for(index_k1)
   
   /* We shall allocate the arrays that depend on k3 with the largest possible number of k3-values */
   ptr2->k3_size_max = 0;
@@ -1969,7 +1969,7 @@ int transfer2_compute (
       ptr2->error_message,
       ptr2->error_message);
       
-  } // end of temperature
+  } // temperature
 
 
 
@@ -2038,7 +2038,7 @@ int transfer2_compute (
       /* The integral is given by the sum of the E->E and B->E contributions. */
       pw->transfer = direct_contribution + mixing_contribution;
       
-  } // end of E-modes
+  } // E-modes
 
 
 
@@ -2111,7 +2111,7 @@ int transfer2_compute (
       here we multiply the mixing contribution by a minus sign. */
       pw->transfer = direct_contribution - mixing_contribution;
 
-  } // end of B-modes
+  } // B-modes
 
 
 
@@ -2369,7 +2369,7 @@ int transfer2_integrate (
       //     *integral);
       // }
 
-    } // end of for(index_L)    
+    } // for(index_L)    
     
     /* Increment the result with the contribution from the considered time-step */
     *integral += integrand * pw->delta_tau[index_tau];
@@ -2381,7 +2381,7 @@ int transfer2_integrate (
     //   fprintf (stderr, "\n");
     // }
   
-  } // end of for(index_tau)
+  } // for(index_tau)
 
   /* Correct for factor 1/2 from the trapezoidal rule */
   *integral *= 0.5;
@@ -2640,7 +2640,7 @@ int transfer2_get_time_grid(
 
   return _SUCCESS_;
 
-} // end of transfer2_get_time_grid
+} // transfer2_get_time_grid
 
 
 
@@ -2753,7 +2753,7 @@ int transfer2_interpolate_sources_in_k(
 
     }
 
-  } // end of for (index_k_tr)
+  } // for(index_k_tr)
 
 
   /* Debug: print the sources in the nodes and in the new grid */
@@ -2825,7 +2825,7 @@ int transfer2_interpolate_sources_in_k(
 
   return _SUCCESS_;
   
-} // end of transfer_interpolate_sources_in_k
+} // transfer_interpolate_sources_in_k
 
 
 
@@ -2942,9 +2942,9 @@ int transfer2_interpolate_sources_in_time (
       //   printf("\n");
       // }
   
-    } // end of for (index_tau_tr)
+    } // for(index_tau_tr)
     
-  } // end of if not sources time sampling
+  } // if not sources time sampling
 
   
   /* Debug - Print the source function at the node points together with its interpolated value */
@@ -2970,7 +2970,7 @@ int transfer2_interpolate_sources_in_time (
   
   return _SUCCESS_;
   
-} // end of transfer_interpolate_sources_in_time
+} // transfer_interpolate_sources_in_time
 
 
 
@@ -3095,8 +3095,8 @@ int transfer2_allocate_k1_level(
       ptr2->count_allocated_transfers += ptr2->k_size_k1k2[index_k1][index_k2];
       count += ptr2->k_size_k1k2[index_k1][index_k2];
 
-    } // end of for(index_k2)
-  } // end of for(index_tt)
+    } // for(index_k2)
+  } // for(index_tt)
   
   /* Print some debug information on memory consumption */
   if (ptr2->transfer2_verbose > 2) {

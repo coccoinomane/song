@@ -294,7 +294,7 @@ int main(int argc, char **argv) {
     
     fprintf (stderr, "\n");
     
-  } // end of for(index_tau)
+  } // for(index_tau)
   
 
   // =====================================================================================

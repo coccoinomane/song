@@ -297,7 +297,7 @@ int input2_init (
       ppt2->has_perturbations2 = _TRUE_;
     }
     
-  } // end of output parsing
+  } // output parsing
 
       
   /* Parse the needed types of bispectra (intrinsic, primordial...) */
@@ -314,7 +314,7 @@ int input2_init (
       ppt2->rescale_cmb_sources = _TRUE_;
     }
     
-  } // end of bispectrum_types parsing
+  } // bispectrum_types parsing
   
 
   /* If second-order perturbations are requested, make sure to compute the derivatives of

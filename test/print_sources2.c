@@ -324,14 +324,14 @@ int main(int argc, char **argv) {
         //   /* Some debug */
         //   printf ("k2=%g, k3=%g\n", pt2.k[index_k2], k3);
         // 
-        // } // end of for(index_k2)
+        // } // for(index_k2)
   
-      } // end of if smart sampling
+      } // if smart sampling
       else {
         printf ("Function not-implemented for k3_sampling != smart_k3_sampling.\n");
         return _SUCCESS_;
       }
-    } // end of if print_k2==_TRUE_
+    } // if print_k2==_TRUE_
 
     /* When k1 and k2 are both fixed, there is no ambiguity in fixing also the index of k3 */
     else if (PRINT_TAU == _TRUE_) {
@@ -339,7 +339,7 @@ int main(int argc, char **argv) {
       fprintf (stderr, "# Fixing k3 = %g\n", k3);
       printf ("# Fixing k3 = %g\n", k3);
     }
-  } // end of if(print_cos==_FALSE_)
+  } // if(!print_cos)
   
   if (PRINT_TAU == _FALSE_) {
     tau = pt2.tau_sampling[index_tau];
@@ -538,7 +538,7 @@ int main(int argc, char **argv) {
   
     fprintf (stderr, "\n");
   
-  } // end of for(running_index)
+  } // for(running_index)
   
   
   
