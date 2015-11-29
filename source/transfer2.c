@@ -117,10 +117,9 @@ int transfer2_init(
   or two values of k1, it does not make sense to continue with less than 4 values, because
   the modules that follow rely on the spline interpolation on the k1 grid. */
 
-  if ((ppt2->k_size < 4) && (ptr2->stop_at_transfers2 == _FALSE_)) {
-    printf("# WARNING: cannot do cubic interpolation in k1 with less than 4 values. ");
-    printf("Increase k_size, or do not trust results for 1st-order transfer functions.\n");
-  }
+  class_warning (ppt2->k_size < 4 && !ptr2->stop_at_transfers2,
+    "cannot do cubic interpolation in k1 with less than 4 values. Increase k_size, or\
+ do not trust results for 1st-order transfer functions.");
 
   /* Get conformal age, recombination time and comoving sound horizon at recombination
   from the background and thermodynamics structures (only place where these structures

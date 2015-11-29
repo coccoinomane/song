@@ -539,20 +539,19 @@ int input2_init (
   class_read_int("k3_size", ppr2->k3_size);
 
   if (ppt2->has_cmb_bispectra && ppt2->k3_sampling == sym_k3_sampling) {
-    printf ("\nWARNING: symmetric sampling not supported for intrinsic bispectrum; switching to 'smart' sampling\n\n");
+    class_warning (_TRUE_, "\nsymmetric sampling not supported for intrinsic bispectrum; switching to 'smart' sampling\n");
     ppt2->k3_sampling = smart_k3_sampling;
   }
 
   if (ppt2->has_cls && ppt2->k3_sampling == sym_k3_sampling) {
-    printf ("\nWARNING: symmetric sampling not supported for second-order C_l; switching to 'smart' sampling\n\n");
+    class_warning (_TRUE_, "\nsymmetric sampling not supported for second-order C_l; switching to 'smart' sampling\n");
     ppt2->k3_sampling = smart_k3_sampling;
   }
 
-  if (ppt2->has_pks && ppt2->k3_sampling != sym_k3_sampling) {
-    printf ("\nWARNING: you are computing second-order Fourier spectra without a symmetric k3 sampling,\
- ie. you didn't set sources2_k3_sampling=sym. Expect the accuracy of the resulting P(k) to decrease for\
- small k\n\n");
-   }
+  class_warning (ppt2->has_pks && ppt2->k3_sampling != sym_k3_sampling,
+    "\nyou asked for second-order Fourier spectra without a symmetric k3 sampling,\
+ ie. you didn't set sources2_k3_sampling=sym. Expect the accuracy of the resulting\
+ P(k) to decrease for small k\n");
 
 
   // ====================================================================================
@@ -2014,11 +2013,10 @@ int input2_init (
     // printf ("\n");
     // ppr->compute_only_odd_ls = _TRUE_;
   
-    class_test_permissive (
-      ((ppt2->has_cmb_polarization_b==_TRUE_) && (ppr->compute_only_even_ls==_TRUE_)) ||
-      ((ppt2->has_cmb_polarization_e==_TRUE_) && (ppr->compute_only_odd_ls==_TRUE_)) ||
-      ((ppt2->has_cmb_temperature==_TRUE_) && (ppr->compute_only_odd_ls==_TRUE_)),
-      errmsg,
+    class_warning (
+      (ppt2->has_cmb_polarization_b && ppr->compute_only_even_ls) ||
+      (ppt2->has_cmb_polarization_e && ppr->compute_only_odd_ls) ||
+      (ppt2->has_cmb_temperature && ppr->compute_only_odd_ls),
       "careful, your choice of parity is wrong!");
   }
   

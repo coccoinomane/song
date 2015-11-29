@@ -182,11 +182,11 @@ int main(int argc, char **argv) {
     }
 
     PRINT_TRIANGULAR = _TRUE_;
-    if (strlen(argv[current_arg]) > 4)
-      printf ("WARNING: Mixing arguments between SONG and print mode?");
+    class_warning (strlen(argv[current_arg]) > 4,
+      "Mixing arguments between SONG and print mode?");
     l1_fixed = atoi(argv[current_arg++]);
-    if (strlen(argv[current_arg]) > 4)
-      printf ("WARNING: Mixing arguments between SONG and print mode?");
+    class_warning (strlen(argv[current_arg]) > 4,
+      "Mixing arguments between SONG and print mode?");
     l2_fixed = atoi(argv[current_arg++]);
     
   } // end of if(triangular)
@@ -210,7 +210,7 @@ int main(int argc, char **argv) {
     }
 
     PRINT_SQUEEZED_PITROU = _TRUE_;
-    if (strlen(argv[current_arg]) > 4) printf ("WARNING: Mixing arguments between SONG and print mode?");
+    class_warning (strlen(argv[current_arg]) > 4, "Mixing arguments between SONG and print mode?");
     short_to_long_ratio = atoi(argv[current_arg++]);
 
   } // end of if(squeezed_pitrou)
@@ -223,7 +223,7 @@ int main(int argc, char **argv) {
     }
 
     PRINT_SQUEEZED_SMALL_SCALE = _TRUE_;
-    if (strlen(argv[current_arg]) > 4) printf ("WARNING: Mixing arguments between SONG and print mode?");
+    class_warning (strlen(argv[current_arg]) > 4, "Mixing arguments between SONG and print mode?");
     l_long = atoi(argv[current_arg++]);
 
   } // end of if(squeezed_small_scale)
@@ -236,7 +236,7 @@ int main(int argc, char **argv) {
     }
 
     PRINT_SQUEEZED_LARGE_SCALE = _TRUE_;
-    if (strlen(argv[current_arg]) > 4) printf ("WARNING: Mixing arguments between SONG and print mode?");
+    class_warning (strlen(argv[current_arg]) > 4, "Mixing arguments between SONG and print mode?");
     l_short = atoi(argv[current_arg++]);
 
   } // end of if(squeezed_large_scale)
@@ -264,7 +264,7 @@ int main(int argc, char **argv) {
   
   for (i=1; i<argc_for_SONG; ++i) {
     if (strlen(argv[current_arg]) < 5) {
-      printf ("WARNING: the %dth argument, which will be passed to SONG ('%s'), is probably wrong. Correct syntax follows:\n",
+      class_warning (_TRUE_, "the %dth argument, which will be passed to SONG ('%s'), is probably wrong. Correct syntax follows:",
       current_arg, argv[current_arg]);
       printf ("%s", usage);
     }    
@@ -464,10 +464,10 @@ int main(int argc, char **argv) {
 
   /* The warning below is useless now, as we just print the configurations where l1>=l2>=l3
   when considering the analytical approximation */
-  if ((bi.has_intrinsic_squeezed==_TRUE_) && (index_bt==bi.index_bt_intrinsic_squeezed))
-    printf ("WARNING: while printing the squeezed-limit bispectrum, keep in mind that we compute it\
- as in eq. 4.1 of Lewis 2012 (http://arxiv.org/abs/1204.5018), which is not symmetrised. Hence, you\
- should ignore the configurations where the condition l1<=l2<=l3 is not met.\n");
+  class_warning (bi.has_intrinsic_squeezed && index_bt==bi.index_bt_intrinsic_squeezed,
+     "while printing the squeezed-limit bispectrum, keep in mind that we compute it as in\
+ eq. 4.1 of Lewis 2012 (http://arxiv.org/abs/1204.5018), which is not symmetrised. Hence,\
+ you should ignore the configurations where the condition l1<=l2<=l3 is not met.");
 
 
   // =================================================================================
@@ -1061,7 +1061,8 @@ int main(int argc, char **argv) {
           }
           else {
             index_ct_Xz = 0;
-            printf ("WARNING: C_l's for <X * zeta> where X=%s not found. Do not trust approximations.\n", bi.bf_labels[X]);
+            class_warning (_TRUE_, "C_l's for <X * zeta> where X=%s not found. Do not trust approximations.\n",
+              bi.bf_labels[X]);
           }
           double cl_Xz_long = bi.cls[index_ct_Xz][l_long-2];
           double cl_Xz_short = bi.cls[index_ct_Xz][l_short-2];
@@ -1097,8 +1098,8 @@ int main(int argc, char **argv) {
               * (bi.cls[bi.index_ct_of_bf_bf[Y][Y]][l_short-2] + bi.cls[bi.index_ct_of_bf_bf[Z][Z]][l_short-2]);
           }
         
-          if (fabs(normalisation) < _MINUSCULE_) {
-            printf ("WARNING: normalisation=%g is small; beware of inf\n", normalisation);
+          class_warning (fabs(normalisation) < _MINUSCULE_,
+            "normalisation=%g is small; beware of inf\n", normalisation);
           }
         
           /* Normalized version of the bolometric temperature bispectrum */

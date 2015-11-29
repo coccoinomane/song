@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
     index_k1 = atoi(argv[first_arg+1]);
     index_k3 = atoi(argv[first_arg+2]);
     index_tau = atoi(argv[first_arg+3]);
-    printf ("WARNING: printing the source functions as a function of k2 is not\
+    class_warning (_TRUE_, "printing the source functions as a function of k2 is not\
  fully supported yet, do not rely on results.");
   }
   else if ((strcmp(variable_to_print, "k") == 0)

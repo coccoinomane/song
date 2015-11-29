@@ -256,8 +256,8 @@ int bispectra2_harmonic (
    
                 /* Check for nan's and crazy values. A value is crazy when it is much larger than
                 the characteristic scale for a bispectrum, A_s*A_s~1e-20 */   
-                if ((isnan(bispectrum)) || (fabs(bispectrum)>1))
-                  printf ("@@@ WARNING: b(%d,%d,%d) = %g for bispectrum '%s_%s'.\n",
+                class_warning (isnan(bispectrum) || fabs(bispectrum)>1,
+                  "b(%d,%d,%d) = %g for bispectrum %s_%s",
                   pbi->l[index_l1], pbi->l[index_l2], pbi->l[index_l3], bispectrum,
                   pbi->bt_labels[index_bt], pbi->bfff_labels[X][Y][Z]);
 
@@ -739,8 +739,7 @@ int bispectra2_intrinsic_init (
     
     /* We worry only if we have more than 5% of mismatches. We keep the treshold so high because
     the bispectrum crosses the zero many times. */
-    class_test_permissive ((wrong_counter/(double)all_counter)>0.15,
-      pbi->error_message,
+    class_warning (wrong_counter/(double)all_counter > 0.15,
       "l1<->l2 symmetry violated: n_configurations=%d, non_negligible=%d,wrong=%d,\
  wrong/non_negl=%g, <diff> of matches=%g, <diff> of wrongs=%g\n",
       all_counter, non_negligible_counter, wrong_counter, wrong_counter/(double)non_negligible_counter,
@@ -1317,8 +1316,7 @@ int bispectra2_intrinsic_integrate_over_k3 (
           if (pwb->abs_M3 == 0) {
             double expected_scale = 1;
             for (int index_k3=0; index_k3 < k3_size; ++index_k3) {
-              class_test_permissive (fabs(transfer[index_k3]) > (expected_scale*1000),
-                pbi->error_message,
+              class_warning (fabs(transfer[index_k3]) > expected_scale*1000,
                 "found extremely large value for second-order transfer function: T_l3_m3(k1,k2,k3_tr)=%g\
  for l3=%d[%d], m3=%d[%d], k1=%g[%d], k2=%g[%d], k3_tr=%g[%d], index_tt2=%d\n",
                 transfer[index_k3], pbi->l[index_l3], index_l3, pwb->abs_M3, ppr2->index_m[pwb->abs_M3],
@@ -1363,9 +1361,8 @@ int bispectra2_intrinsic_integrate_over_k3 (
             if ((index_k1==index_k2) && (pwb->abs_M3%2!=0)) {
               double expected_scale = ppm->A_s*ppm->A_s;
               double epsilon = 1e-4*expected_scale;
-              class_test_permissive (
+              class_warning (
                 fabs (pwb->integral_over_k3[index_l3][index_r][index_k1][index_k2]) > epsilon,
-                ppt2->error_message,
                 "k1=k2, m odd, but bispectrum=%20.12g is larger than the characteristic scale (%20.12g). Problem?",
                 pwb->integral_over_k3[index_l3][index_r][index_k1][index_k2], epsilon);
             }
@@ -1569,8 +1566,7 @@ int bispectra2_interpolate_over_k2 (
     because it is obtained as a convolution of the second-order transfer functions
     and a Bessel function */
     double expected_scale = 1;
-    class_test_permissive (fabs(interpolated_integral[index_k_tr]) > (expected_scale*1000),
-      pbi->error_message,
+    class_warning (fabs(interpolated_integral[index_k_tr]) > (expected_scale*1000),
       "found extremely large value for integral over k3 (m=%d): I_l3(k1_pt,k2_tr,r)=%g,\
  for l3=%d[%d], k1_pt=%g[%d], k2_tr=%g[%d], r=%g[%d]\n",
       pwb->abs_M3, interpolated_integral[index_k_tr], pbi->l[index_l3], index_l3,
@@ -1948,8 +1944,7 @@ int bispectra2_interpolate_over_k1 (
     because it is obtained as a convolution of two O(1) function (the integral over k3
     and a Bessel function) and the primordial power spectrum (of oder A_s) */
     double expected_scale = 1e-10;
-    class_test_permissive (fabs(interpolated_integral[index_k_tr]) > (expected_scale*1000),
-      pbi->error_message,
+    class_warning (fabs(interpolated_integral[index_k_tr]) > (expected_scale*1000),
       "found extremely large value for integral over k2 (m=%d): I_l2_l3(k1_tr,r)=%g,\
  for l2=%d[%d], l3=%d[%d], k1_tr=%g[%d], r=%g[%d]\n",
       pwb->abs_M3, interpolated_integral[index_k_tr], pbi->l[index_l2], index_l2, pbi->l[index_l3], index_l3,
@@ -3108,12 +3103,6 @@ int bispectra2_add_quadratic_corrections (
                 /* Add the correction */
                 pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3] += bolometric_correction + delta_tilde_correction;
             
-                /* Debug - check against nan's */
-                // if (isnan(pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3]))
-                //   printf ("\n### WARNING ###\nb(%d,%d,%d) = %g!!!\n\n",
-                //   pbi->l[index_l1], pbi->l[index_l2], pbi->l[index_l3],
-                //   pbi->bispectra[index_bt][X][Y][Z][index_l1_l2_l3]);
-
               } // end of for(index_l3)
             } // end of for(index_l2)
           } // end of for(index_l1)

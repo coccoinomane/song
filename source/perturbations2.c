@@ -1806,10 +1806,9 @@ int perturb2_indices_of_perturbs(
       "you chose to compute more line-of-sight quadratic sources than evolved multipoles\
  at first order. Make sure that l_max_los_quadratic_p is smaller or equal than l_max_pol_g.");
 
-  class_test_permissive (
-    (ppr2->compute_m[1]==_TRUE_) && (ppt2->radiation_streaming_approximation!=rsa2_none),
-    ppt2->error_message,
-    "WARNING: the radiation streaming approximation for m=1 is not implemented yet.\
+  class_warning (
+    ppr2->compute_m[1] && ppt2->radiation_streaming_approximation!=rsa2_none,
+    "the radiation streaming approximation for m=1 is not implemented yet.\
  The monopole and dipole for photons and neutrinos will be set to zero at late times");
 
   class_test (
@@ -7171,22 +7170,19 @@ int perturb2_geometrical_corner (
     int m = ppr2->m[index_m];
 
     double k1_ten_k2_cminus = (k1*k2*c_minus_12(2,m));
-    class_test_permissive (fabs (k1_ten_k2_cminus - ppw2->k1_ten_k2[m+2]) > _SMALL_,
-      ppt2->error_message,
+    class_warning (fabs (k1_ten_k2_cminus - ppw2->k1_ten_k2[m+2]) > _SMALL_,
       "mode (%g,%g,%g,%g), m=%d, k1_ten_k2 check failed!\n%20.12g != %20.12g, diff = %g",
       k1, k2, k, cosk1k2, m, k1_ten_k2_cminus, ppw2->k1_ten_k2[m+2],
       fabs (1-(k1_ten_k2_cminus)/(ppw2->k1_ten_k2[m+2])));
 
     double k1_ten_k1_cminus = (k1*k1*c_minus_11(2,m));
-    class_test_permissive (fabs (k1_ten_k1_cminus - ppw2->k1_ten_k1[m+2]) > _SMALL_,
-      ppt2->error_message,
+    class_warning (fabs (k1_ten_k1_cminus - ppw2->k1_ten_k1[m+2]) > _SMALL_,
       "mode (%g,%g,%g,%g), m=%d, k1_ten_k1 check failed!\n%20.12g != %20.12g, diff = %g",
       k1, k2, k, cosk1k2, m, k1_ten_k1_cminus, ppw2->k1_ten_k1[m+2],
       fabs (1-(k1_ten_k1_cminus)/(ppw2->k1_ten_k1[m+2])));
 
     double k2_ten_k2_cminus = (k2*k2*c_minus_22(2,m));
-    class_test_permissive (fabs (k2_ten_k2_cminus - ppw2->k2_ten_k2[m+2]) > _SMALL_,
-      ppt2->error_message,
+    class_warning (fabs (k2_ten_k2_cminus - ppw2->k2_ten_k2[m+2]) > _SMALL_,
       "mode (%g,%g,%g,%g), m=%d, k2_ten_k2 check failed!\n%20.12g != %20.12g, diff = %g",
       k1, k2, k, cosk1k2, m, k2_ten_k2_cminus, ppw2->k2_ten_k2[m+2],
       fabs (1-(k2_ten_k2_cminus)/(ppw2->k2_ten_k2[m+2])));
