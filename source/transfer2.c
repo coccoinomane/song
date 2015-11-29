@@ -1856,6 +1856,33 @@ int transfer2_get_k3_sizes (
     printf (" -> maximum size of k3-grid = %d, average size = %g\n",
       ptr2->k3_size_max, (double)k_size_sum/k1_k2_pairs);
 
+  /* Check that the k3 grid is symmetric */
+  for (int index_k1=0; index_k1 < ppt2->k_size; ++index_k1) {
+    for (int index_k2=0; index_k2 <= index_k1; ++index_k2) {
+
+      class_test (ptr2->k_size_k1k2[index_k1][index_k2] != ptr2->k_size_k1k2[index_k2][index_k1],
+        ptr2->error_message,
+        "found different k3_size after switching k1 and k2");
+        
+      class_test (ptr2->k_min_k1k2[index_k1][index_k2] != ptr2->k_min_k1k2[index_k2][index_k1],
+        ptr2->error_message,
+        "found different k3_min after switching k1 and k2");
+        
+      class_test (ptr2->k_max_k1k2[index_k1][index_k2] != ptr2->k_max_k1k2[index_k2][index_k1],
+        ptr2->error_message,
+        "found different k3_max after switching k1 and k2");
+        
+      class_test (ptr2->k_physical_start_k1k2[index_k1][index_k2] != ptr2->k_physical_start_k1k2[index_k2][index_k1],
+        ptr2->error_message,
+        "found different k3_physical_start after switching k1 and k2");
+        
+      class_test (ptr2->k_physical_size_k1k2[index_k1][index_k2] != ptr2->k_physical_size_k1k2[index_k2][index_k1],
+        ptr2->error_message,
+        "found different k3_physical_size after switching k1 and k2");
+    }
+  }
+        
+
   return _SUCCESS_;    
 
 }

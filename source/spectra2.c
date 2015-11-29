@@ -240,16 +240,7 @@ int spectra2_cls (
           abort = _TRUE_;
         }
 
-
-for (int index_tt=0; index_tt < ptr2->tt2_size; ++index_tt) {
-  printf ("%20s[%d]: allocated=%d, available=%d\n", ptr2->tt2_labels[index_tt], index_tt,
-    ptr2->transfers_available[index_tt], ptr2->transfers_allocated[index_tt]);
-}
-
         /* Load transfer functions if needed */
-printf ("index_tt_1 = %d\n", index_tt_1);
-// ptr2->transfers_available[index_tt_1] = _FALSE_;
-// ptr2->transfers_allocated[index_tt_1] = _FALSE_;
         class_call_parallel (transfer2_load (
                                ppr2,
                                ppt2,

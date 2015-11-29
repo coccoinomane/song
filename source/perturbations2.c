@@ -3432,7 +3432,7 @@ int perturb2_get_k_lists (
         ppt2->error_message,
         ppt2->error_message);
 
-      if (ppt2->perturbations2_verbose > 0)
+      if (ppt2->perturbations2_verbose > 1)
         for (int i=0; i < n_removed; ++i)
           printf ("WARNING: removed redundant value k3=%g[%d] from ppt->k3[%d][%d]\n",
             values_removed[i], indices_removed[i], index_k1, index_k2);
@@ -3587,7 +3587,6 @@ int perturb2_get_k_lists (
             );      
 
       }
-      
 
 
       // -------------------------------------------------------------------------------
@@ -3617,6 +3616,11 @@ int perturb2_get_k_lists (
 
   } // end of for (index_k1)
 
+
+
+  // -------------------------------------------------------------------------------
+  // -                            Set k_min and k_max                              -
+  // -------------------------------------------------------------------------------
 
   /* Set the minimum and maximum k-values that will be fed to the differential system.
   This corresponds to the minimum and maximum k-values ever used in SONG. */
@@ -3661,9 +3665,20 @@ int perturb2_get_k_lists (
     }
   }
 
+
+
+  // -------------------------------------------------------------------------------
+  // -                                   Checks                                    -
+  // -------------------------------------------------------------------------------
+
+  /* Check that k_min and k_max have valid values */
+  class_test (ppt2->k_min==0 || ppt2->k_max==0,
+    ppt2->error_message,
+    "found vanishing value in either k_min (%g) or k_max (%g)",
+    ppt2->k_min, ppt2->k_max);
+
   /* The symmetric sampling should have the same maximum and minimum k, because of
   the structure of the transformation. Here we check that this is indeed the case. */
-
   if (ppt2->k3_sampling == sym_k3_sampling) {
 
     class_test (fabs(1-kt_min/ppt2->k_min) > _SMALL_,
@@ -3675,20 +3690,21 @@ int perturb2_get_k_lists (
       "inconsistency in kt transformation");
   }
 
-  class_test ((ppt2->k_min==0) || (ppt2->k_max==0),
-    ppt2->error_message,
-    "found vanishing value in either k_min (%g) or k_max (%g)",
-    ppt2->k_min, ppt2->k_max);
+  /* Check that the k3 grid is symmetric */
+  for (int index_k1=0; index_k1 < ppt2->k_size; ++index_k1) {
+    for (int index_k2=0; index_k2 <= index_k1; ++index_k2) {
 
-  /* Debug - Print the k-output indices */
-  // for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
-  //   printf ("index_k_out=%3d:  (%3d,%3d,%3d)\n",
-  //     index_k_out,
-  //     ppt2->index_k1_out[index_k_out],
-  //     ppt2->index_k2_out[index_k_out],
-  //     ppt2->index_k3_out[index_k_out]);
-  // }
+      class_test (ppt2->k3_size[index_k1][index_k2] != ppt2->k3_size[index_k2][index_k1],
+        ppt2->error_message,
+        "found different k3_size after switching k1 and k2");
 
+      for (int index_k3=0; index_k3 < ppt2->k3_size[index_k1][index_k2]; ++index_k3)
+        class_test (ppt2->k3[index_k1][index_k2][index_k3] != ppt2->k3[index_k2][index_k1][index_k3],
+          ppt2->error_message,
+          "found asymmetric k3 grid for (%d,%d)",
+          index_k1, index_k2);
+    }
+  }
 
 
   // ====================================================================================
