@@ -15,7 +15,7 @@ do
   mkdir -p $folder/sources
   mkdir -p $folder/transfers
   # Update parameter file
-  cp $folder/run_params.ini $folder/run_params.ini.bak
-  sed -i '' 's/^store_sources.*/store_sources = yes/' $folder/run_params.ini
-  sed -i '' 's/^store_transfers.*/store_transfers = yes/' $folder/run_params.ini
+  # cp $folder/run_params.ini $folder/run_params.ini.bak
+  # sed -i '' 's/^store_sources.*/store_sources = yes/' $folder/run_params.ini
+  # sed -i '' 's/^store_transfers.*/store_transfers = yes/' $folder/run_params.ini
 done

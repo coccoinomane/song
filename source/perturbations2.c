@@ -2967,8 +2967,10 @@ int perturb2_get_k_lists (
     ppt2->error_message);
 
   for (int i=0; i < n_removed; ++i)
-    class_warning (_TRUE_, "removed redundant value k=%g[%d] from ppt->k",
-      values_removed[i], indices_removed[i]);
+    class_warning (_TRUE_, 
+      "removed redundant value k=%g[%d] from ppt->k (diff=%g)",
+      values_removed[i], indices_removed[i],
+      fabs(1-ppt2->k[indices_removed[i]-i]/values_removed[i]));
 
   free (indices_removed);
   free (values_removed);
@@ -3433,12 +3435,14 @@ int perturb2_get_k_lists (
 
       if (ppt2->perturbations2_verbose > 1)
         for (int i=0; i < n_removed; ++i)
-          class_warning (_TRUE_, "removed redundant value k3=%g[%d] from ppt->k3[%d][%d]",
-            values_removed[i], indices_removed[i], index_k1, index_k2);
+          class_warning (index_k1>=index_k2,
+            "removed redundant value k3=%g[%d] from ppt->k3[%d][%d] (diff=%g)",
+            values_removed[i], indices_removed[i], index_k1, index_k2,
+            fabs(1-k3_grid[indices_removed[i]-i]/values_removed[i]));
           
       class_test (k3_size <= 0,
         ppt2->error_message,
-        "something's wrong: there should always be at least one point");
+        "something's wrong: removed too many points, there should always be at least one");
 
       free (indices_removed);
       free (values_removed);
@@ -3565,29 +3569,6 @@ int perturb2_get_k_lists (
 
 
 
-      /* Check that the k3 grid is strictly ascending and that its values are sparse enough */
-      for (int index_k3=0; index_k3 < k3_size-1; ++index_k3) {
-        
-        class_test (k3_grid[index_k3+1] <= k3_grid[index_k3],
-          ppt2->error_message,
-          "k3 grid not strictly ascending: k3[%d]=%.18g, k3[%d]=%.18g, diff = %g",
-          index_k3, k3_grid[index_k3], index_k3+1, k3_grid[index_k3+1],
-          1-k3_grid[index_k3+1]/k3_grid[index_k3]);
-        
-        double diff = 1-k3_grid[index_k3+1]/k3_grid[index_k3];
-        
-        if (fabs(diff) < _MIN_K_DISTANCE_)
-          printf ("(%d,%d): found small diff: k3[%d]=%.18g, k3[%d]=%.18g, diff=%g, tol=%g, diff_tol=%g\n",
-            index_k1, index_k2,
-            index_k3, k3_grid[index_k3], index_k3+1, k3_grid[index_k3+1],
-            diff,
-            ppr->smallest_allowed_variation,
-            1-fabs(diff/ppr->smallest_allowed_variation)
-            );      
-
-      }
-
-
       // -------------------------------------------------------------------------------
       // -                                 Update grid                                 -
       // -------------------------------------------------------------------------------
@@ -3689,21 +3670,48 @@ int perturb2_get_k_lists (
       "inconsistency in kt transformation");
   }
 
-  /* Check that the k3 grid is symmetric */
   for (int index_k1=0; index_k1 < ppt2->k_size; ++index_k1) {
     for (int index_k2=0; index_k2 <= index_k1; ++index_k2) {
 
+      /* Check that the k3 grid is symmetric (size) */
       class_test (ppt2->k3_size[index_k1][index_k2] != ppt2->k3_size[index_k2][index_k1],
         ppt2->error_message,
         "found different k3_size after switching k1 and k2");
 
-      for (int index_k3=0; index_k3 < ppt2->k3_size[index_k1][index_k2]; ++index_k3)
-        class_test (ppt2->k3[index_k1][index_k2][index_k3] != ppt2->k3[index_k2][index_k1][index_k3],
+      double * k3_grid = ppt2->k3[index_k1][index_k2];
+      int k3_size = ppt2->k3_size[index_k1][index_k2];
+
+      for (int index_k3=0; index_k3 < k3_size; ++index_k3) {
+
+        /* Check that the k3 grid is symmetric (elements) */
+        class_test (k3_grid[index_k3] != ppt2->k3[index_k2][index_k1][index_k3],
           ppt2->error_message,
           "found asymmetric k3 grid for (%d,%d)",
           index_k1, index_k2);
-    }
-  }
+
+        if (index_k3 != k3_size-1) {
+
+          /* Check that the k3 grid is strictly ascending */
+          class_test (k3_grid[index_k3+1] <= k3_grid[index_k3],
+            ppt2->error_message,
+            "k3 grid not strictly ascending: k3[%d]=%.18g, k3[%d]=%.18g, diff = %g",
+            index_k3, k3_grid[index_k3], index_k3+1, k3_grid[index_k3+1],
+            1-k3_grid[index_k3+1]/k3_grid[index_k3]);
+
+          /* Check that the k3 grid is sparse enough */
+          double diff = 1-k3_grid[index_k3+1]/k3_grid[index_k3];
+        
+          class_warning (fabs(diff) < 1e-7,
+            "(%d,%d): found small diff: k3[%d]=%.18g, k3[%d]=%.18g, diff=%g, tol=%g",
+            index_k1, index_k2,
+            index_k3, k3_grid[index_k3], index_k3+1, k3_grid[index_k3+1],
+            diff,
+            ppr->smallest_allowed_variation);
+        }
+
+      } // index_k3
+    } // index_k2
+  } // index_k1
 
 
   // ====================================================================================

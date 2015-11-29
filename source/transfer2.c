@@ -117,7 +117,7 @@ int transfer2_init(
   or two values of k1, it does not make sense to continue with less than 4 values, because
   the modules that follow rely on the spline interpolation on the k1 grid. */
 
-  class_warning (ppt2->k_size < 4 && !ptr2->stop_at_transfers2,
+  class_warning (!ptr2->stop_at_transfers2 && ppt2->k_size < 4,
     "cannot do cubic interpolation in k1 with less than 4 values. Increase k_size, or\
  do not trust results for 1st-order transfer functions.");
 
@@ -2383,9 +2383,6 @@ int transfer2_integrate (
   
   } // for(index_tau)
 
-  /* Correct for factor 1/2 from the trapezoidal rule */
-  *integral *= 0.5;
-
 
 #ifdef DEBUG
   /* Test for nans */
@@ -2630,13 +2627,19 @@ int transfer2_get_time_grid(
     pw->tau0_minus_tau[index_tau_tr] = ptr2->tau0 - pw->tau_grid[index_tau_tr]; 
 
   /* Fill delta_tau, the measure for the trapezoidal integral */
-  pw->delta_tau[0] = pw->tau_grid[1]-pw->tau_grid[0];
-      
-  for (index_tau_tr=1; index_tau_tr < pw->tau_grid_size-1; ++index_tau_tr)
-    pw->delta_tau[index_tau_tr] = pw->tau_grid[index_tau_tr+1]-pw->tau_grid[index_tau_tr-1];
-      
-  pw->delta_tau[pw->tau_grid_size-1] = pw->tau_grid[pw->tau_grid_size-1]-pw->tau_grid[pw->tau_grid_size-2];
 
+  class_call (trapezoidal_weights (
+                pw->tau_grid,
+                pw->tau_grid_size,
+                pw->tau_grid[0],
+                pw->tau_grid[pw->tau_grid_size-1],
+                _FALSE_,
+                pw->delta_tau,
+                NULL,
+                NULL,
+                ptr2->error_message),
+    ptr2->error_message,
+    ptr2->error_message);
 
   return _SUCCESS_;
 

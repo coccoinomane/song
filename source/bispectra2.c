@@ -1288,21 +1288,18 @@ int bispectra2_intrinsic_integrate_over_k3 (
             "integration grid has less than two elements, cannot use trapezoidal integration");
           
           /* Determine the measure for the trapezoidal rule for k3 */  
-          pwb->delta_k3[thread][0] = pwb->k3_grid[thread][1] - pwb->k3_grid[thread][0];
-            
-          for (int index_k3=1; index_k3<(k3_size-1); ++index_k3)
-            pwb->delta_k3[thread][index_k3] = pwb->k3_grid[thread][index_k3+1] - pwb->k3_grid[thread][index_k3-1];
-            
-          pwb->delta_k3[thread][k3_size-1] = pwb->k3_grid[thread][k3_size-1] - pwb->k3_grid[thread][k3_size-2];
-
-#ifdef DEBUG
-          /* Let's be super cautious */
-          for (int index_k3=0; index_k3<k3_size; ++index_k3)
-            class_test_parallel (pwb->delta_k3[thread][index_k3] < 0,
-              pbi->error_message,
-              "something went terribly wrong, negative trapezoidal measure for index_k1=%d, index_k2=%d :-/",
-              index_k1, index_k2);
-#endif // DEBUG
+          class_call_parallel (trapezoidal_weights (
+                                 pwb->k3_grid[thread],
+                                 k3_size,
+                                 pwb->k3_grid[thread][0],
+                                 pwb->k3_grid[thread][k3_size-1],
+                                 _FALSE_,
+                                 pwb->delta_k3[thread],
+                                 NULL,
+                                 NULL,
+                                 pbi->error_message),
+            pbi->error_message,
+            pbi->error_message);
 
           /* Define the pointer to the second-order transfer function as a function of k3.
           Note that this transfer function has already been rescaled according to eq. 6.26
@@ -2429,8 +2426,8 @@ int bispectra2_intrinsic_integrate_over_r(
           } // for(index_r)
   
   
-          /* Fill the result array and include the factor 1/2 from trapezoidal rule */
-          pwb->integral_over_r[index_l3][index_l2][index_l1-index_l1_min] = 0.5 * integral;
+          /* Fill the result array */
+          pwb->integral_over_r[index_l3][index_l2][index_l1-index_l1_min] = integral;
   
           /* Some debug - output the integral as a function of r on stderr for a custom (l2,l3,l1) */
           // if ( (l2==l3) && (l3==l1) ) {

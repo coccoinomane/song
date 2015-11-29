@@ -471,29 +471,29 @@ int bessel2_init(
 
 
 /**
- * Compute the convolution integral between a spherical Bessel function and up two
- * two arrays.
+ * Compute the convolution integral between a spherical Bessel function
+ * and up to two arrays.
  * 
- * Given the integration domain kk and the arrays f[index_kk] and g[index_kk], compute
- * the following integral using the trapezoidal rule:
+ * Given the integration domain kk and the arrays f[index_kk] and g[index_kk],
+ * compute the following integral using the trapezoidal rule:
  * 
  *     /
  *    |  dk k^2 f[k] * g[k] * j_l1[k*r]
  *    /
  *
- * The spherical Bessel functions are interpolated from the pbs2->j_l1 table in the
- * bessel2 structure, which contains more l1 values than the similar table in the
- * bessel structure (pbs->j_l).
+ * The spherical Bessel functions are interpolated from the pbs2->j_l1 table
+ * in the bessel2 structure, which contains more l1 values than the similar
+ * table in the bessel structure (pbs->j_l).
  *
- * This is the same function as bessel_convolution() in the bessel module, except
- * that the order of the Bessel function has to belong to pbs2->l1, which is an extended
- * version of pbs2->l. 
+ * This is the same function as bessel_convolution() in the bessel module,
+ * except that the order of the Bessel function has to belong to pbs2->l1,
+ * which is an extended version of pbs2->l. 
  * 
- * The delta_k array should contain the trapezoidal measure around a given k[i],
- * that is delta_k[i]=k[i+1]-k[i-1], with delta_k[0]=k[1]-k[0] and
- * delta_k[k_size-1]=k[k_size-1]-k[k_size-2].
+ * The delta_k array should contain the trapezoidal measure around a given
+ * k[i], as computed by the trapezoidal_weights() function.
  *
- * If you give a NULL pointer for the g function, then it is not used at all.
+ * If you give a NULL pointer for the g function, then it is not used at
+ * all.
  */
 
 int bessel2_convolution (
@@ -501,8 +501,8 @@ int bessel2_convolution (
     struct bessels2 * pbs2, /**< pointer to Bessel2 structure, should be already initiated
                             with bessel2_init() */
     double * kk, /**< array with the integration grid in k */
-    double * delta_kk, /**< trapezoidal measure, compute as delta_k[i]=k[i+1]-k[i-1],
-                       and delta_k[0]=k[1]-k[0], delta_k[k_size-1]=k[k_size-1]-k[k_size-2] */
+    double * delta_kk, /**< trapezoidal measure as computed by the trapezoidal_weights()
+                       function */
     int k_size, /**< size of the integration grid in k */
     double * f, /**< array with the integrand function f, of size k_size */
     double * g, /**< array with the integrand function g, of size k_size; pass NULL
@@ -595,10 +595,6 @@ int bessel2_convolution (
     *integral += integrand * delta_kk[index_k];
     
   } // for(index_k)
-   
-   
-  /* Divide the integral by a factor 1/2 to account for the trapezoidal rule */
-  (*integral) *= 0.5;
    
   return _SUCCESS_;
   
