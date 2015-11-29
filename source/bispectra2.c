@@ -74,7 +74,7 @@ int bispectra2_init (
   /* For |m|>0, it is not possible to obtain the reduced form of the intrinsic
   bispectrum (see comment for has_reduced_bispectrum in bispectra.h) */
 
-  if (pbi->has_intrinsic == _TRUE_)
+  if (pbi->has_intrinsic)
     if (ppr2->m_max_song > 0)
         pbi->has_reduced_bispectrum[pbi->index_bt_intrinsic] = _FALSE_;
 
@@ -948,7 +948,7 @@ int bispectra2_intrinsic_workspace_init (
   
   } // end of parallel region
   
-  if (abort == _TRUE_) return _FAILURE_;
+  if (abort) return _FAILURE_;
   
   
   
@@ -981,8 +981,8 @@ int bispectra2_intrinsic_workspace_init (
         /* We should not be computing an odd bispectrum with an all-odd grid, or viceversa, otherwise
         the bispectrum would be indentically zero */
         class_test (
-          ((ppr->compute_only_even_ls==_TRUE_) && (pwb->bispectrum_parity == _ODD_)) ||
-          ((ppr->compute_only_odd_ls==_TRUE_) && (pwb->bispectrum_parity == _EVEN_)),
+          ((ppr->compute_only_even_ls) && (pwb->bispectrum_parity == _ODD_)) ||
+          ((ppr->compute_only_odd_ls) && (pwb->bispectrum_parity == _EVEN_)),
           pbi->error_message,
           "computing an odd-parity bispectrum with an even l-grid, or viceversa.");
         
@@ -1003,13 +1003,13 @@ int bispectra2_intrinsic_workspace_init (
   /* Associate to each field (T,E,...) its transfer function, which was computed in the transfer2.c module */
   for (int X = 0; X < pbi->bf_size; ++X) {
     
-    if ((pbi->has_bispectra_t == _TRUE_) && (X == pbi->index_bf_t)) {
+    if ((pbi->has_bispectra_t) && (X == pbi->index_bf_t)) {
       pwb->index_tt2_of_bf[X] = ptr2->index_tt2_T;
     }
-    else if ((pbi->has_bispectra_e == _TRUE_) && (X == pbi->index_bf_e)) {
+    else if ((pbi->has_bispectra_e) && (X == pbi->index_bf_e)) {
       pwb->index_tt2_of_bf[X] = ptr2->index_tt2_E;
     }
-    else if ((pbi->has_bispectra_b == _TRUE_) && (X == pbi->index_bf_b)) {
+    else if ((pbi->has_bispectra_b) && (X == pbi->index_bf_b)) {
       pwb->index_tt2_of_bf[X] = ptr2->index_tt2_B;
     }
     else {
@@ -1078,7 +1078,7 @@ int bispectra2_intrinsic_workspace_free(
     free(pwb->interpolated_integral[thread]);
     free(pwb->f[thread]);
     
-  }  if (abort == _TRUE_) return _FAILURE_;
+  }  if (abort) return _FAILURE_;
   
   free(pwb->k3_grid);
   free(pwb->delta_k3);
@@ -1417,7 +1417,7 @@ int bispectra2_intrinsic_integrate_over_k3 (
           } // end of for(index_r)          
         } // end of for(index_k2)
       } // end of for(index_k1)
-    } if (abort == _TRUE_) return _FAILURE_; /* end of parallel region */
+    } if (abort) return _FAILURE_; /* end of parallel region */
 
   
     /* Free the memory associated with the second order transfer function for this (l,m) */
@@ -1821,7 +1821,7 @@ int bispectra2_intrinsic_integrate_over_k2 (
         } // end of for(index_k1)
       } // end of for(index_l3)
     } // end of for(index_r)
-  } if (abort == _TRUE_) return _FAILURE_;  // end of parallel region
+  } if (abort) return _FAILURE_;  // end of parallel region
   
   if (pbi->bispectra_verbose > 2)
     printf("     * memorised ~ %.3g MB (%ld doubles) for the k2-integral array (k2_size=%d)\n",
@@ -2236,7 +2236,7 @@ int bispectra2_intrinsic_integrate_over_k1 (
         } // end of for(index_l2)
       } // end of for(index_l3)
     } // end of for(index_r)
-  } if (abort == _TRUE_) return _FAILURE_;  // end of parallel region
+  } if (abort) return _FAILURE_;  // end of parallel region
 
   /* DISABLED:  While the optimization makes sense, the way we implement it below leads to nan's. Investigate. */
   /* Take care of the case when l1 < l2 */
@@ -2443,7 +2443,7 @@ int bispectra2_intrinsic_integrate_over_r(
       #pragma omp flush(abort)
       
     } // end of for(index_l3)
-  } if (abort == _TRUE_) return _FAILURE_;  // end of parallel region
+  } if (abort) return _FAILURE_;  // end of parallel region
   
   /* We can free the memory that was allocated for the integral over k1, as it is no longer needed */
   if ((pwb->offset_L1 == (2*pwb->abs_M3)) && (pwb->Y == (pbi->bf_size-1)) && (pwb->Z == (pbi->bf_size-1))) {
@@ -2688,7 +2688,7 @@ int bispectra2_intrinsic_geometrical_factors (
         Here we make sure that FACTOR_l1_l2_l3 is not zero. We do not worry if it is zero for even 
         bispectra and odd l1+l2+l3, because in that case it must vanish and we cannot define a
         reduced bispectrum. */
-        if (!((pwb->bispectrum_parity == _EVEN_) && (is_even_configuration==_FALSE_)))
+        if (!(pwb->bispectrum_parity == _EVEN_ && !is_even_configuration))
           class_test_parallel (fabs(FACTOR_l1_l2_l3) < _MINUSCULE_,
             pbi->error_message,
             "possibility of having nans, caution! (l1,l2,l3)=(%d,%d,%d), F=%d, 3J=%g",
@@ -2994,7 +2994,7 @@ int bispectra2_intrinsic_geometrical_factors (
       } // end of for(index_l1)
     } // end of for(index_l2)
   } // end of for(index_l3) and of parallel region
-  if (abort == _TRUE_) return _FAILURE_;
+  if (abort) return _FAILURE_;
 
   /* We can free the memory that was allocated for the integral over r, as it is no longer needed */
   if ((offset_L1 == (2*pwb->abs_M3)) && (pwb->Y == (pbi->bf_size-1)) && (pwb->Z == (pbi->bf_size-1))) {
@@ -3062,7 +3062,7 @@ int bispectra2_add_quadratic_corrections (
    /* We assume that when the quadratic sources are not considered at all
   (ppt2->has_quadratic_sources==_FALSE), then the user is trying to run SONG as a
   first-order code, and we turn off the quadratic corrections. */
-  if ((pbi->add_quadratic_correction == _FALSE_) || (ppt2->has_quadratic_sources == _FALSE_))
+  if (!pbi->add_quadratic_correction || !ppt2->has_quadratic_sources)
     return _SUCCESS_;
 
   if (pbi->bispectra_verbose > 0)
@@ -3097,7 +3097,7 @@ int bispectra2_add_quadratic_corrections (
                 sec. 3.1 of http://arxiv.org/abs/1401.3296) */
                 double delta_tilde_correction = 0;
                         
-                if (ppt2->use_delta_tilde_in_los == _TRUE_)
+                if (ppt2->use_delta_tilde_in_los)
                   delta_tilde_correction = + 4/8. * pbi->bispectra[pbi->index_bt_quadratic][X][Y][Z][index_l1_l2_l3];
 
                 /* Add the correction */

@@ -89,7 +89,7 @@ int perturb2_init (
      )
 {
 
-  if (ppt2->has_perturbations2 == _FALSE_) {
+  if (!ppt2->has_perturbations2) {
 
     if (ppt2->perturbations2_verbose > 0)
       printf("No second-order sources requested. Second-order perturbations module skipped.\n");
@@ -159,7 +159,7 @@ int perturb2_init (
   
 
   /* Stop here if the user asked to compute only the first-order perturbations */
-  if (ppt2->stop_at_perturbations1 == _TRUE_) {
+  if (ppt2->stop_at_perturbations1) {
 
     ppt->has_perturbations = _FALSE_;
     ppt->has_cls = _FALSE_;
@@ -178,7 +178,7 @@ int perturb2_init (
   /* Print some info to screen */
   if (ppt2->perturbations2_verbose > 0) {
     printf(" -> computing %s2nd-order sources ",
-      ppt2->rescale_cmb_sources==_TRUE_ ? "RESCALED " : "");
+      ppt2->rescale_cmb_sources ? "RESCALED " : "");
 
     if (ppt->gauge == newtonian)
       printf("in Newtonian gauge ");
@@ -591,7 +591,7 @@ int perturb2_sources_at_k3 (
 
   else if (k3 < k3_min) {
 
-    if (extrapolate == _FALSE_) {
+    if (!extrapolate) {
 
       *source = S(0);
 
@@ -611,7 +611,7 @@ int perturb2_sources_at_k3 (
   
   else if (k3 > k3_max) {
     
-    if (extrapolate == _FALSE_) {
+    if (!extrapolate) {
     
       *source = S(k3_size-1);
 
@@ -1738,7 +1738,7 @@ int perturb2_indices_of_perturbs(
 
   /* E-modes and B-modes start from l=2 */
   class_test (
-    ((ppt2->has_cmb_polarization_e==_TRUE_) || (ppt2->has_cmb_polarization_b==_TRUE_)) && (ppr2->l_max_los_p<2),
+    ((ppt2->has_cmb_polarization_e) || (ppt2->has_cmb_polarization_b)) && (ppr2->l_max_los_p<2),
     ppt2->error_message,
     "E and B modes do not exist for l<2; specify l_max_los_p >= 2");
     
@@ -1764,7 +1764,7 @@ int perturb2_indices_of_perturbs(
  smaller or equal than 'l_max_g + %d'",
     ppt2->lm_extra);
 
-  if (ppt2->has_polarization2 == _TRUE_)
+  if (ppt2->has_polarization2)
     class_test ((ppr2->l_max_pol_g+ppt2->lm_extra) > ppr->l_max_pol_g,
       ppt2->error_message,
       "insufficient number of first-order multipoles; set 'l_max_pol_g'\
@@ -1786,7 +1786,7 @@ int perturb2_indices_of_perturbs(
       "you chose to compute more line-of-sight sources than evolved multipoles\
  at first order. Make sure that l_max_los_t is smaller or equal than l_max_g.");
 
-  if ((ppt2->has_cmb_polarization_e == _TRUE_) || (ppt2->has_cmb_polarization_b == _TRUE_))
+  if ((ppt2->has_cmb_polarization_e) || (ppt2->has_cmb_polarization_b))
     class_test (ppr2->l_max_los_p > ppr2->l_max_pol_g,
       ppt2->error_message,
       "you chose to compute more line-of-sight sources than evolved multipoles\
@@ -1800,7 +1800,7 @@ int perturb2_indices_of_perturbs(
       "you chose to compute more line-of-sight quadratic sources than evolved multipoles\
  at first order. Make sure that l_max_los_quadratic_t is smaller or equal than l_max_g.");
 
-  if ((ppt2->has_cmb_polarization_e == _TRUE_) || (ppt2->has_cmb_polarization_b == _TRUE_))
+  if ((ppt2->has_cmb_polarization_e) || (ppt2->has_cmb_polarization_b))
     class_test (ppr2->l_max_los_quadratic_p > ppr->l_max_pol_g,
       ppt2->error_message,
       "you chose to compute more line-of-sight quadratic sources than evolved multipoles\
@@ -1812,9 +1812,9 @@ int perturb2_indices_of_perturbs(
  The monopole and dipole for photons and neutrinos will be set to zero at late times");
 
   class_test (
-    (ppr2->compute_m[0] == _FALSE_) && (
-    (ppt2->has_pk_delta_cdm == _TRUE_) ||
-    (ppt2->has_bk_delta_cdm == _TRUE_)) ,
+    !ppr2->compute_m[0] && (
+    (ppt2->has_pk_delta_cdm) ||
+    (ppt2->has_bk_delta_cdm)) ,
     ppt2->error_message,
     "density power spectra and bispectra exist only for scalar modes");
 
@@ -1828,7 +1828,7 @@ int perturb2_indices_of_perturbs(
     ppt2->error_message,
     "magnetic sources implemented only for Newtonian gauge");
 
-  class_test ((ppt2->has_quadratic_sources==_FALSE_) && (ppt2->primordial_local_fnl_phi==0),
+  class_test (!ppt2->has_quadratic_sources && ppt2->primordial_local_fnl_phi==0,
     ppt2->error_message,
     "If you run SONG without quadratic sources (quadratic_sources=no) and with vanishing\
  initial conditions (primordial_local_fnl_phi=0), all your results will be exactly zero.\
@@ -1836,7 +1836,7 @@ int perturb2_indices_of_perturbs(
  recover the local bispectrum with fnl=1, or set primordial_local_fnl_phi=5/3 to match CLASS\
  C_l.");
 
-  class_test ((ppt->has_vectors == _TRUE_) || (ppt->has_tensors == _TRUE_),
+  class_test ((ppt->has_vectors) || (ppt->has_tensors),
     ppt2->error_message,
     "SONG does not support neither vector nor tensor modes at first order");
 
@@ -1878,7 +1878,7 @@ int perturb2_indices_of_perturbs(
   // -                       Photons temperature sources                      -
   // --------------------------------------------------------------------------
   
-  if (ppt2->has_cmb_temperature == _TRUE_) {
+  if (ppt2->has_cmb_temperature) {
 
     ppt2->has_source_T = _TRUE_;
     ppt2->has_cmb = _TRUE_;
@@ -1913,7 +1913,7 @@ int perturb2_indices_of_perturbs(
   ppt2->sources associated to the vanishing modes (monopole and dipole for E
   and B, and scalar modes for B) */
 
-  if ((ppt2->has_cmb_polarization_e == _TRUE_) || (ppt2->has_cmb_polarization_b == _TRUE_)) {
+  if ((ppt2->has_cmb_polarization_e) || (ppt2->has_cmb_polarization_b)) {
 
     ppt2->has_source_E = _TRUE_;
     ppt2->has_cmb = _TRUE_;
@@ -1969,7 +1969,7 @@ int perturb2_indices_of_perturbs(
   // -                              Matter sources                            -
   // --------------------------------------------------------------------------
 
-  if ((ppt2->has_bk_delta_cdm == _TRUE_) || (ppt2->has_pk_delta_cdm == _TRUE_)) {
+  if ((ppt2->has_bk_delta_cdm) || (ppt2->has_pk_delta_cdm)) {
     
     ppt2->has_source_delta_cdm = _TRUE_;
     ppt2->has_lss = _TRUE_;
@@ -2006,15 +2006,15 @@ int perturb2_indices_of_perturbs(
   
   if (ppt2->perturbations2_verbose > 1) {
     printf ("     * will compute tp2_size=%d source terms: ", ppt2->tp2_size);
-    if (ppt2->has_cmb_temperature == _TRUE_)
+    if (ppt2->has_cmb_temperature)
       printf ("T=%d ", ppt2->n_sources_T);
-    if (ppt2->has_source_E == _TRUE_) {
+    if (ppt2->has_source_E) {
       printf ("E=%d (%d non-zero) ", ppt2->n_sources_E, ppt2->n_nonzero_sources_E);
     }
-    if (ppt2->has_source_B == _TRUE_) {
+    if (ppt2->has_source_B) {
       printf ("B=%d (%d non-zero) ", ppt2->n_sources_B, ppt2->n_nonzero_sources_B);
     }
-    if (ppt2->has_source_delta_cdm == _TRUE_) {
+    if (ppt2->has_source_delta_cdm) {
       printf ("delta_cdm ");
     }
     if (ppt2->has_source_M) {
@@ -2034,7 +2034,7 @@ int perturb2_indices_of_perturbs(
   /* SONG supports only adiabatic initial conditions. You can skip the following
   test but you risk to obtain unconsistent results. */
 
-  class_test (ppt->has_ad == _FALSE_,
+  class_test (!ppt->has_ad,
     ppt2->error_message,
     "SONG only supports adiabatic initial conditions; make sure ic=ad in parameter file");
 
@@ -2450,7 +2450,7 @@ int perturb2_get_lm_lists (
   details on what these coefficients are, please refer to the documentation for
   ppt2->coupling_coefficients in perturbations2.c. */
 
-  if ((ppt2->has_cmb == _TRUE_) && (ppt2->use_delta_tilde_in_los == _TRUE_)) {
+  if ((ppt2->has_cmb) && (ppt2->use_delta_tilde_in_los)) {
 
     /* We compute the coupling coefficients only up to ppr2->l_max_los_quadratic, because
     this is the highest multipole we are gonna consider for the delta_tilde transformation.
@@ -2568,15 +2568,15 @@ int perturb2_get_lm_lists (
       int F;
       double prefactor;
 
-      if ((ppt2->has_source_T == _TRUE_) && (index_pf == ppt2->index_pf_t)) {
+      if ((ppt2->has_source_T) && (index_pf == ppt2->index_pf_t)) {
         F = 0;
         prefactor = +0.5;
       }
-      else if ((ppt2->has_source_E == _TRUE_) && (index_pf == ppt2->index_pf_e)) {
+      else if ((ppt2->has_source_E) && (index_pf == ppt2->index_pf_e)) {
         F = 2;
         prefactor = +1;
       }
-      else if ((ppt2->has_source_B == _TRUE_) && (index_pf == ppt2->index_pf_b)) {
+      else if ((ppt2->has_source_B) && (index_pf == ppt2->index_pf_b)) {
         F = 2;
         prefactor = +1;
       }
@@ -2672,7 +2672,7 @@ int perturb2_get_lm_lists (
           #pragma omp flush(abort)
           
         } // for l2
-      } if (abort == _TRUE_) return _FAILURE_;
+      } if (abort) return _FAILURE_;
     } // for T,E,B...
   
     /* Free memory */
@@ -2848,7 +2848,7 @@ int perturb2_get_k_lists (
 
     /* - CMB sampling */
 
-    if (ppt2->has_cmb == _TRUE_) {
+    if (ppt2->has_cmb) {
 
       /* We set k_max to be proportional to l_max and inversely proportional to tau0, with
       the constant of proportionality given by the user via ppr2->k_max_tau0_over_l_max.
@@ -2905,7 +2905,7 @@ int perturb2_get_k_lists (
     k < k_max_cmb, which means that the LSS parameters such as k_per_decade_for_pk and
     k_per_decade_for_bao are ignored for k < k_max_cmb. */
     
-    if (ppt2->has_lss == _TRUE_) {
+    if (ppt2->has_lss) {
       
       k_max_lss = ppt2->k_max_for_pk;
       
@@ -2967,7 +2967,7 @@ int perturb2_get_k_lists (
     ppt2->error_message);
 
   for (int i=0; i < n_removed; ++i)
-    printf ("WARNING: removed redundant value k=%g[%d] from ppt->k\n",
+    class_warning (_TRUE_, "removed redundant value k=%g[%d] from ppt->k",
       values_removed[i], indices_removed[i]);
 
   free (indices_removed);
@@ -2986,7 +2986,7 @@ int perturb2_get_k_lists (
 
     /* If we are running in k_out_mode, SONG will compute only the k values specified
     here, and ignore the previously added k. Therefore, we erase the k grid completely */
-    if (ppt2->k_out_mode == _TRUE_)
+    if (ppt2->k_out_mode)
       ppt2->k_size = 0;
 
     /* Build a 1D array with the output values for k1 and k2 */
@@ -3205,7 +3205,7 @@ int perturb2_get_k_lists (
       k3_max = MIN (k3_max, ppt2->k[ppt2->k_size-1]);
       
       /* Check that the chosen k3_min and k3_max make sense */
-      class_test ((k3_min >= k3_max) && (ppt2->k_out_mode == _FALSE_),
+      class_test (k3_min >= k3_max && !ppt2->k_out_mode,
         ppt2->error_message,
         "found k3_min=%g>k3_max=%g for k1(%d)=%g and k2(%d)=%g",
         k3_min, k3_max, index_k1, k1, index_k2, k2);
@@ -3433,7 +3433,7 @@ int perturb2_get_k_lists (
 
       if (ppt2->perturbations2_verbose > 1)
         for (int i=0; i < n_removed; ++i)
-          printf ("WARNING: removed redundant value k3=%g[%d] from ppt->k3[%d][%d]\n",
+          class_warning (_TRUE_, "removed redundant value k3=%g[%d] from ppt->k3[%d][%d]",
             values_removed[i], indices_removed[i], index_k1, index_k2);
           
       class_test (k3_size <= 0,
@@ -3736,7 +3736,7 @@ int perturb2_get_k_lists (
   /* Determine ppt->k_min and ppt->k_max. The following block is copied from perturbations.c */
   ppt->k_min = _HUGE_;
   ppt->k_max = 0;
-  if (ppt->has_scalars == _TRUE_) {
+  if (ppt->has_scalars) {
     ppt->k_min = MIN(ppt->k_min,ppt->k[index_md_scalars][0]);
     ppt->k_max = MAX(ppt->k_max,ppt->k[index_md_scalars][ppt->k_size[index_md_scalars]-1]);
   }
@@ -3750,7 +3750,7 @@ int perturb2_get_k_lists (
   /* Make CLASS output the first-order perturbations in the same k where SONG outputs
   the second-order ones */
   
-  if ((ppt2->k_out_size > 0) && (ppt2->output_class_perturbations == _TRUE_)) {
+  if ((ppt2->k_out_size > 0) && (ppt2->output_class_perturbations)) {
     
     /* Allocate and fill the array with the output values for k1, k2 and k3 */
     double * k_out_class;
@@ -3873,7 +3873,7 @@ int perturb2_timesampling_for_sources (
   by providing a start time, and end time and a preference for the sampling method
   (either linear or logarithmic). */
   
-  if (ppt2->has_custom_timesampling == _TRUE_) {
+  if (ppt2->has_custom_timesampling) {
 
     ppt2->tau_size = ppt2->custom_tau_size;
     class_alloc (ppt2->tau_sampling, ppt2->tau_size*sizeof(double), ppt2->error_message);
@@ -3922,7 +3922,7 @@ int perturb2_timesampling_for_sources (
     0.01, which means that we start sampling the sources in the tight coupling
     regime (tau_c<<tau_h), where the visibility function is still small.  */
 
-    if (ppt2->has_cmb == _TRUE_) {
+    if (ppt2->has_cmb) {
 
       double tau_lower = pth->tau_ini;
 
@@ -4098,7 +4098,7 @@ int perturb2_timesampling_for_sources (
 
       double timescale_source;
 
-      if (ppt2->has_cmb == _TRUE_) {
+      if (ppt2->has_cmb) {
 
         /* Variation rate of thermodynamics variables */
         double rate_thermo = pvecthermo[pth->index_th_rate];
@@ -4406,7 +4406,7 @@ int perturb2_timesampling_for_sources (
   file, by providing a start time, and end time and a sampling method (linear or
   logarithmic). */
 
-  if (ppt->has_custom_timesampling_for_quadsources == _TRUE_) {
+  if (ppt->has_custom_timesampling_for_quadsources) {
 
     ppt->tau_size_quadsources = ppt->custom_tau_size_quadsources;
     class_alloc (ppt->tau_sampling_quadsources, ppt->tau_size_quadsources*sizeof(double),
@@ -4557,7 +4557,7 @@ int perturb2_timesampling_for_sources (
                   ppt->tau_size_quadsources*sizeof(double),
                   ppt2->error_message);
 
-  } // end of if(has_custom_timesampling_for_quadsources==_FALSE_)
+  } // end of if(!has_custom_timesampling_for_quadsources)
 
 
   /* Debug - print the time sampling for the line of sight sources */
@@ -5017,7 +5017,7 @@ int perturb2_initial_conditions (
   double rho_g = ppw2->pvecback[pba->index_bg_rho_g];
   double rho_r = rho_g;
   double rho_ur = 0;
-  if (pba->has_ur == _TRUE_) {
+  if (pba->has_ur) {
     rho_ur  =  ppw2->pvecback[pba->index_bg_rho_ur];
     rho_r   +=  rho_ur;
   }
@@ -5040,7 +5040,7 @@ int perturb2_initial_conditions (
   /* Compute quadratic sources and first-order perturbations at tau, and store the result in
   ppw2->pvec_quadsources */
 
-  if (ppt2->has_quadratic_sources == _TRUE_) {
+  if (ppt2->has_quadratic_sources) {
     class_call (perturb2_quadratic_sources(
                   ppr,
                   ppr2,
@@ -5088,7 +5088,7 @@ int perturb2_initial_conditions (
   vpot_b_2 = pvec_sources2[ppt->index_qs_v_b];
 
   /* Cold dark matter */
-  if (pba->has_cdm == _TRUE_) {
+  if (pba->has_cdm) {
 
     delta_cdm_1 = pvec_sources1[ppt->index_qs_delta_cdm];
     delta_cdm_2 = pvec_sources2[ppt->index_qs_delta_cdm];  
@@ -5100,7 +5100,7 @@ int perturb2_initial_conditions (
   }
 
   /* Neutrinos */
-  if (pba->has_ur == _TRUE_) {
+  if (pba->has_ur) {
 
     delta_ur_1 = pvec_sources1[ppt->index_qs_delta_ur];
     delta_ur_2 = pvec_sources2[ppt->index_qs_delta_ur];
@@ -5130,7 +5130,7 @@ int perturb2_initial_conditions (
   5.4 of my PhD thesis (http://arxiv.org/abs/1405.2280). Here we assume that there are no
   primordial vector or tensor modes from inflation or any other primordial phase. */
 
-  if (ppt2->has_ad == _TRUE_) {  
+  if (ppt2->has_ad) {  
 
     class_test (ppt->gauge != newtonian,
       ppt2->error_message,
@@ -5139,7 +5139,7 @@ int perturb2_initial_conditions (
     if (ppt2->perturbations2_verbose > 3)
       printf("      \\ using adiabatic initial conditions\n");
 
-    if (ppr2->compute_m[0] == _TRUE_) {
+    if (ppr2->compute_m[0]) {
 
       // -----------------------------------------------------------------------
       // -                          Metric & Quadrupoles                       -
@@ -5182,14 +5182,14 @@ int perturb2_initial_conditions (
       5.65 of http://arxiv.org/abs/1405.2280. */
       double N_2_0_quad = 0;
 
-      if (pba->has_ur == _TRUE_)
+      if (pba->has_ur)
         N_2_0_quad = 1/3.*(k/Hc_sq)*dN_qs2(1,0) + 1/(2*Hc)*dN_qs2(2,0)
           + 8/3.*(k_sq/Hc_sq)*psi_1*psi_2;
 
       /* Here we put together the quadratic parts of the radiation quadrupoles */
       double quadrupole_quad = frac_g * I_2_0_quad;
 
-      if (pba->has_ur == _TRUE_)
+      if (pba->has_ur)
         quadrupole_quad += frac_ur * N_2_0_quad;
 
       /* We multiply the quadrupoles by the same factor they are multiplied with in the
@@ -5215,14 +5215,14 @@ int perturb2_initial_conditions (
       http://arxiv.org/abs/1405.2280)*/
       double N_2_0 = 0;
 
-      if (pba->has_ur == _TRUE_)
+      if (pba->has_ur)
         N_2_0 = 2/3.*(k_sq/Hc_sq)*psi + N_2_0_quad;
 
       /* We obtain the initiali conditions of phi from psi and B_quad, as in eq. 5.77
       of http://arxiv.org/abs/1405.2280. */
       double rho_quadrupole = rho_g*I_2_0;
       
-      if (pba->has_ur == _TRUE_)
+      if (pba->has_ur)
         rho_quadrupole += rho_ur*N_2_0;
 
       double phi = (1+2/5.*frac_ur)*psi - B_quad;
@@ -5263,7 +5263,7 @@ int perturb2_initial_conditions (
       I_1_0 = 4*(u_0_adiabatic + delta_g_1*(-k2_0*vpot_g_2) + delta_g_2*(-k1_0*vpot_g_1));
       
       /* Neutrino dipole (same as I_1_0) */
-      if (pba->has_ur == _TRUE_) {
+      if (pba->has_ur) {
 
         N_1_0 = 4*(u_0_adiabatic + delta_ur_1*(-k2_0*vpot_ur_2) + delta_ur_2*(-k1_0*vpot_ur_1));
 
@@ -5286,7 +5286,7 @@ int perturb2_initial_conditions (
       b_1_1_0 = 3*(u_0_adiabatic + delta_b_1*(-k2_0*vpot_b_2) + delta_b_2*(-k1_0*vpot_b_1));
 
       /* Cold dark matter (same as b_1_1_0) */
-      if (pba->has_cdm == _TRUE_)
+      if (pba->has_cdm)
         cdm_1_1_0 = 3*(u_0_adiabatic + delta_cdm_1*(-k2_0*vpot_cdm_2) + delta_cdm_2*(-k1_0*vpot_cdm_1));
     
       /* Uncomment to set the primordial velocity to zero */
@@ -5302,7 +5302,7 @@ int perturb2_initial_conditions (
       
       /* Neutrino monopole */
       double N_0_0 = 0;
-      if (pba->has_ur == _TRUE_)
+      if (pba->has_ur)
         N_0_0 = I_0_0;
 
       /* Baryon monopole (eq. 3.4b of P2010) */
@@ -5331,14 +5331,14 @@ int perturb2_initial_conditions (
       y[ppw2->pv->index_pt2_monopole_b + nlm(1,1,0)] = b_1_1_0;
 
       /* Cold dark matter */
-      if (pba->has_cdm == _TRUE_) {
+      if (pba->has_cdm) {
         y[ppw2->pv->index_pt2_monopole_cdm] = cdm_0_0_0;
         if (ppt->gauge != synchronous)
           y[ppw2->pv->index_pt2_monopole_cdm + nlm(1,1,0)] = cdm_1_1_0;
       }
 
       /* Neutrinos */
-      if (pba->has_ur == _TRUE_) {
+      if (pba->has_ur) {
         y[ppw2->pv->index_pt2_monopole_ur] = N_0_0;
         y[ppw2->pv->index_pt2_monopole_ur + lm(1,0)] = N_1_0;
         y[ppw2->pv->index_pt2_monopole_ur + lm(2,0)] = N_2_0;
@@ -5353,9 +5353,9 @@ int perturb2_initial_conditions (
         
         // double rho_dipole = ppw2->pvecback[pba->index_bg_rho_g]*I_1_0;
         // rho_dipole += ppw2->pvecback[pba->index_bg_rho_b]*b_1_1_0;
-        // if (pba->has_cdm == _TRUE_)
+        // if (pba->has_cdm)
         //   rho_dipole += ppw2->pvecback[pba->index_bg_rho_cdm]*cdm_1_1_0;
-        // if (pba->has_ur == _TRUE_)
+        // if (pba->has_ur)
         //   rho_dipole += ppw2->pvecback[pba->index_bg_rho_ur]*N_1_0;
         //
         // y[ppw2->pv->index_pt2_phi_prime] =
@@ -5367,9 +5367,9 @@ int perturb2_initial_conditions (
         (TODO: why is the IC for phi' so different?)*/
         double rho_monopole = ppw2->pvecback[pba->index_bg_rho_g]*I_0_0;
         rho_monopole += ppw2->pvecback[pba->index_bg_rho_b]*b_0_0_0;
-        if (pba->has_cdm == _TRUE_)
+        if (pba->has_cdm)
           rho_monopole += ppw2->pvecback[pba->index_bg_rho_cdm]*cdm_0_0_0;
-        if (pba->has_ur == _TRUE_)
+        if (pba->has_ur)
           rho_monopole += ppw2->pvecback[pba->index_bg_rho_ur]*N_0_0;
 
         y[ppw2->pv->index_pt2_phi_prime] =
@@ -5398,7 +5398,7 @@ int perturb2_initial_conditions (
   IC are equivalent to the second-order adiabatic initial conditions without quadratic
   sources. */
 
-  else if (ppt2->has_ad_first_order == _TRUE_) {
+  else if (ppt2->has_ad_first_order) {
 
     class_test (ppt->gauge != newtonian,
       ppt2->error_message,
@@ -5420,7 +5420,7 @@ int perturb2_initial_conditions (
     
 
     /* Scalar initial conditions */
-    if (ppr2->compute_m[0] == _TRUE_) {
+    if (ppr2->compute_m[0]) {
 
       /* Scalar potentials */
       double psi = 20*C / (15 + 4*frac_ur);
@@ -5446,7 +5446,7 @@ int perturb2_initial_conditions (
       /* Baryon dipole */
       y[ppw2->pv->index_pt2_monopole_b + nlm(1,1,0)] = 3 * u_0;  //  b_110 = 3 (w+1) u[0]
     
-      if (pba->has_cdm == _TRUE_) {
+      if (pba->has_cdm) {
         /* Cold dark matter monopole */
         y[ppw2->pv->index_pt2_monopole_cdm + nlm(0,0,0)] = 3/4. * I_0_0;
     
@@ -5455,7 +5455,7 @@ int perturb2_initial_conditions (
       }
     
 
-      if (pba->has_ur == _TRUE_) {
+      if (pba->has_ur) {
 
         /* Neutrino monopole */        
         y[ppw2->pv->index_pt2_monopole_ur] = I_0_0;
@@ -5482,7 +5482,7 @@ int perturb2_initial_conditions (
   /* If the user asked for vanishing initial conditions, then do not do anything, as the
   ppw2->pv->y array was initialized with calloc. Works fine in synchronous gauge. */
 
-  else if (ppt2->has_zero_ic == _TRUE_) {
+  else if (ppt2->has_zero_ic) {
 
     if (ppt2->perturbations2_verbose > 3)
       printf("     * assuming vanishing initial conditions for the 2nd-order system\n");
@@ -5497,7 +5497,7 @@ int perturb2_initial_conditions (
 
   /* These initial conditions are used for testing purposes only. */
 
-  else if (ppt2->has_unphysical_ic == _TRUE_) {
+  else if (ppt2->has_unphysical_ic) {
 
     if (ppt2->perturbations2_verbose > 3)
       printf("     * Using unphysical initial conditions...\n");
@@ -5556,7 +5556,7 @@ int perturb2_workspace_init (
     according to Huang 2012. */
 
     /* Scalar potentials */
-    if (ppr2->compute_m[0] == _TRUE_) {
+    if (ppr2->compute_m[0]) {
       ppw2->index_mt2_psi = index_mt++;                         /* Psi */
       ppw2->index_mt2_phi_prime = index_mt++;                   /* Phi' */
       ppw2->index_mt2_phi_prime_prime = index_mt++;             /* Phi'' */
@@ -5565,11 +5565,11 @@ int perturb2_workspace_init (
     }
 
     /* Vector potentials */    
-    if (ppr2->compute_m[1] == _TRUE_)
+    if (ppr2->compute_m[1])
       ppw2->index_mt2_omega_m1_prime = index_mt++;            /* Omega_[m=1] from the vector part of g^i_0 */
 
     /* Tensor potentials */
-    if (ppr2->compute_m[2] == _TRUE_)
+    if (ppr2->compute_m[2])
       ppw2->index_mt2_gamma_m2_prime_prime = index_mt++;      /* Gamma_[m=2] from the tensor part of g^i_j */
 
   }
@@ -5582,7 +5582,7 @@ int perturb2_workspace_init (
     quantities obeying to constraint equations) */
 
     /* Scalar potentials */
-    if (ppr2->compute_m[0] == _TRUE_) {
+    if (ppr2->compute_m[0]) {
       ppw2->index_mt2_h_prime = index_mt++;                     /* h' */
       ppw2->index_mt2_h_prime_prime = index_mt++;               /* h'' */
       ppw2->index_mt2_eta_prime = index_mt++;                   /* eta' */
@@ -5688,7 +5688,7 @@ int perturb2_workspace_init_quadratic_sources (
   if (ppt->gauge == newtonian) {
 
     /* Scalar potentials */
-    if (ppr2->compute_m[0] == _TRUE_) {
+    if (ppr2->compute_m[0]) {
       ppw2->index_qs2_psi = index_qs2++;                         /* Psi */
       ppw2->index_qs2_psi_prime = index_qs2++;                   /* Psi' */
       ppw2->index_qs2_phi_prime = index_qs2++;                   /* Phi' */
@@ -5698,11 +5698,11 @@ int perturb2_workspace_init_quadratic_sources (
     }
 
     /* Scalar potentials */
-    if (ppr2->compute_m[1] == _TRUE_)
+    if (ppr2->compute_m[1])
       ppw2->index_qs2_omega_m1_prime = index_qs2++;            /* Omega_[m=1] from the vector part of g^i_0 */
 
     /* Tensor potentials */
-    if (ppr2->compute_m[2] == _TRUE_)
+    if (ppr2->compute_m[2])
       ppw2->index_qs2_gamma_m2_prime_prime = index_qs2++;      /* Gamma_[m=2] from the tensor part of g^i_j */
 
   }
@@ -5715,7 +5715,7 @@ int perturb2_workspace_init_quadratic_sources (
   if (ppt->gauge == synchronous) {
  
     /* Scalar potentials */
-    if (ppr2->compute_m[0] == _TRUE_) {
+    if (ppr2->compute_m[0]) {
       ppw2->index_qs2_h_prime = index_qs2++;                     /* h' */
       ppw2->index_qs2_h_prime_prime = index_qs2++;               /* h'' */
       ppw2->index_qs2_eta_prime = index_qs2++;                   /* eta' */
@@ -5752,7 +5752,7 @@ int perturb2_workspace_init_quadratic_sources (
   // -          Photon polarization         -
   // ----------------------------------------
 
-  if (ppt2->has_polarization2 == _TRUE_) {
+  if (ppt2->has_polarization2) {
 
     ppw2->n_hierarchy_pol_g = size_l_indexm (ppw2->l_max_pol_g, ppt2->m, ppt2->m_size);
 
@@ -5770,7 +5770,7 @@ int perturb2_workspace_init_quadratic_sources (
   // -------------------------------------------------------
   // -              Ultra Relativistic Neutrinos           -
   // -------------------------------------------------------
-  if (pba->has_ur == _TRUE_) {
+  if (pba->has_ur) {
 
     ppw2->n_hierarchy_ur = size_l_indexm (ppw2->l_max_ur, ppt2->m, ppt2->m_size);
 
@@ -5785,7 +5785,7 @@ int perturb2_workspace_init_quadratic_sources (
   // ---------------------------------------
 
   /* In a perfect fluid we only need to evolve the n<=1 beta-moments. */
-  if (ppt2->has_perfect_baryons == _FALSE_)
+  if (!ppt2->has_perfect_baryons)
     ppw2->n_hierarchy_b = size_n_l_indexm (2, 2, ppt2->m, ppt2->m_size);
   else
     ppw2->n_hierarchy_b = size_n_l_indexm (1, 1, ppt2->m, ppt2->m_size);
@@ -5800,10 +5800,10 @@ int perturb2_workspace_init_quadratic_sources (
   // ----------------------------------------------
   // -               Cold Dark Matter             -
   // ----------------------------------------------
-  if (pba->has_cdm == _TRUE_) {
+  if (pba->has_cdm) {
 
     /* In a perfect fluid we only need to evolve the n<=1 beta-moments. */
-    if (ppt2->has_perfect_cdm == _FALSE_)
+    if (!ppt2->has_perfect_cdm)
       ppw2->n_hierarchy_cdm = size_n_l_indexm (2, 2, ppt2->m, ppt2->m_size);
     else
       ppw2->n_hierarchy_cdm = size_n_l_indexm (1, 1, ppt2->m, ppt2->m_size);
@@ -5870,7 +5870,7 @@ int perturb2_workspace_init_quadratic_sources (
   for (index_qs2=0; index_qs2<ppw2->qs2_size; ++index_qs2)
     class_calloc (ppw2->dd_quadcollision_table[index_qs2], ppt->tau_size_quadsources, sizeof(double), ppt2->error_message);
 
-  if (ppt2->compute_quadsources_derivatives == _TRUE_) {
+  if (ppt2->compute_quadsources_derivatives) {
 
     /* Allocate the arrays that will contain the third derivative of the table arrays, in view of
     spline interpolation of the first derivative */
@@ -5897,7 +5897,7 @@ int perturb2_workspace_init_quadratic_sources (
   contained in the above tables, at a certain time */
   class_calloc (ppw2->pvec_quadsources, ppw2->qs2_size, sizeof(double), ppt2->error_message);
   class_calloc (ppw2->pvec_quadcollision, ppw2->qs2_size, sizeof(double), ppt2->error_message);
-  if (ppt2->compute_quadsources_derivatives == _TRUE_) {
+  if (ppt2->compute_quadsources_derivatives) {
     class_calloc (ppw2->pvec_d_quadsources, ppw2->qs2_size, sizeof(double), ppt2->error_message);
     class_calloc (ppw2->pvec_d_quadcollision, ppw2->qs2_size, sizeof(double), ppt2->error_message);
     class_calloc (ppw2->pvec_dd_quadsources, ppw2->qs2_size, sizeof(double), ppt2->error_message);
@@ -5995,7 +5995,7 @@ int perturb2_workspace_free (
   /* Free quadratic sources temporary arrays */
   free(ppw2->pvec_quadsources);
   free(ppw2->pvec_quadcollision);
-  if (ppt2->compute_quadsources_derivatives == _TRUE_) {
+  if (ppt2->compute_quadsources_derivatives) {
     free(ppw2->pvec_d_quadsources);
     free(ppw2->pvec_d_quadcollision);
     free(ppw2->pvec_dd_quadsources);
@@ -6010,7 +6010,7 @@ int perturb2_workspace_free (
     free (ppw2->quadcollision_table[index_qs2]);
     free (ppw2->d_quadcollision_table[index_qs2]);
     free (ppw2->dd_quadcollision_table[index_qs2]);
-    if (ppt2->compute_quadsources_derivatives == _TRUE_) {
+    if (ppt2->compute_quadsources_derivatives) {
       free (ppw2->ddd_quadcollision_table[index_qs2]);
       free (ppw2->dddd_quadcollision_table[index_qs2]);
       free (ppw2->ddd_quadsources_table[index_qs2]);
@@ -6023,7 +6023,7 @@ int perturb2_workspace_free (
   free (ppw2->quadcollision_table);
   free (ppw2->d_quadcollision_table);  
   free (ppw2->dd_quadcollision_table);  
-  if (ppt2->compute_quadsources_derivatives == _TRUE_) {
+  if (ppt2->compute_quadsources_derivatives) {
     free (ppw2->ddd_quadsources_table);  
     free (ppw2->dddd_quadsources_table);  
     free (ppw2->ddd_quadcollision_table);  
@@ -6459,7 +6459,7 @@ int perturb2_find_approximation_switches (
             "      \\ will switch on radiation streaming approximation at tau = %g\n",
             interval_limit[index_switch]);
   
-        if (pba->has_ur == _TRUE_)
+        if (pba->has_ur)
           if ((interval_approx[index_switch-1][ppw2->index_ap2_ufa]==(int)ufa_off) && 
               (interval_approx[index_switch][ppw2->index_ap2_ufa]==(int)ufa_on))
             printf_log_if (ppt2->perturbations2_verbose, 3,
@@ -6632,7 +6632,7 @@ int perturb2_approximations (
   more economic) after that until today. This is the same approach of CLASS; see 
   Blas, Lesgourgues & Tram 2011 for a complete reference. */
 
-  // if (pba->has_ur == _TRUE_) {
+  // if (pba->has_ur) {
   //
   //   if ((tau/tau_k > ppr->ur_fluid_trigger_tau_over_tau_k) &&
   //       (ppr->ur_fluid_approximation != ufa_none)) {
@@ -6900,7 +6900,7 @@ int perturb2_geometrical_corner (
     
     for (int m=0; m<=l; ++m) {
 
-      if (ppt2->rescale_cmb_sources == _FALSE_) { 
+      if (!ppt2->rescale_cmb_sources) { 
 
         /* The rotation coefficients are basically Wigner matrices, which in turn are spin
         weighted spherical harmonics. For scalar perturbations (spin=0) that lie on the x-z
@@ -7254,7 +7254,7 @@ int perturb2_geometrical_corner (
   double k2_P1_cartesian = -kx2/sqrt_2;
   
   /* Apply the rescaling (in order to compare with our rescaled k1[m] and k2[m]) */
-  if (ppt2->rescale_cmb_sources == _TRUE_) {
+  if (ppt2->rescale_cmb_sources) {
     k1_P1_cartesian = k1_P1_cartesian / sink1k;
     k2_P1_cartesian = k2_P1_cartesian / sink2k * k1/k2;
   }
@@ -7286,7 +7286,7 @@ int perturb2_geometrical_corner (
 
   /* Check that the the inner coupling with c_minus is zero for l=m=0.  We need this to
   be true, otherwise the monopole hierarchy would be coupled to the l=-1 moment. */
-  if (ppr2->compute_m[0]==_TRUE_)
+  if (ppr2->compute_m[0])
     class_test (
       (fabs(ppw2->c_minus_product_12[lm(0,0)])>_SMALL_) || (fabs(ppw2->c_minus_product_21[lm(0,0)])>_SMALL_),
       ppt2->error_message,
@@ -7295,7 +7295,7 @@ int perturb2_geometrical_corner (
 
   /* Check that the the inner product with c_minus for L=1, m=0 is equal to rot_1*rot_2. This
   has to be the case because c_minus(1,m1,0) != 0 only if m1 = 0. */
-  if (ppr2->compute_m[0]==_TRUE_)
+  if (ppr2->compute_m[0])
     class_test (
       (fabs(1-ppw2->c_minus_product_12[lm(1,0)]/(ppw2->rotation_1[lm_quad(1,0)]*ppw2->rotation_2[lm_quad(0,0)]))>_SMALL_) ||
       (fabs(1-ppw2->c_minus_product_21[lm(1,0)]/(ppw2->rotation_2[lm_quad(1,0)]*ppw2->rotation_1[lm_quad(0,0)]))>_SMALL_),
@@ -7306,8 +7306,8 @@ int perturb2_geometrical_corner (
   /* Check that the d_zero-inner-product for m=0 (scalar modes) vanishes.  This is equivalent
   to test that B-mode polarization at second order does not exist for m=0, as it is clear from
   eq. 2.17 of BFK. */
-  if (ppr2->compute_m[0]==_TRUE_)
-    if (ppt2->has_polarization2 == _TRUE_)
+  if (ppr2->compute_m[0])
+    if (ppt2->has_polarization2)
       for (int l=0; l<=ppt2->largest_l; ++l)
         class_test ( fabs(ppw2->d_zero_product_12[lm(l,0)]) > _SMALL_,
           ppt2->error_message,
@@ -7318,7 +7318,7 @@ int perturb2_geometrical_corner (
   equivalent to an overall scaling of 1/sin(theta)^m. This is a very important test
   on the rescaling method in general and, in particualr, on the (k1/k2)^m factor
   appearing in the rescaling of rot_2. */
-  if (ppt2->rescale_cmb_sources == _TRUE_) {
+  if (ppt2->rescale_cmb_sources) {
 
     /* Computed the non-rescaled k1[m] */
     double k1_M1 = kx1/sqrt_2;
@@ -7706,7 +7706,7 @@ int perturb2_solve (
 
   /* Compute the quadratic sources for the second-order system and tabulate them as 
   a function of time. */
-  if (ppt2->has_quadratic_sources == _TRUE_) {
+  if (ppt2->has_quadratic_sources) {
   
     if (ppt2->perturbations2_verbose > 3)
       printf("     * computing quadratic sources for the considered mode\n");
@@ -7851,7 +7851,7 @@ int perturb2_solve (
           
       fclose (ppt2->files_perturbations_tau[ppw2->index_k_out]);
 
-      if (ppt2->output_quadratic_sources == _TRUE_)
+      if (ppt2->output_quadratic_sources)
         fclose (ppt2->files_perturbations_tau_quad[ppw2->index_k_out]);
         
     }
@@ -7961,7 +7961,7 @@ int perturb2_vector_init (
     ppr2->l_max_g, ppr2->l_max_g+3);
 
   /* Photon polarization */
-  if (ppt2->has_polarization2 == _TRUE_) {
+  if (ppt2->has_polarization2) {
     
     class_test (ppr2->l_max_pol_g < 2,
       ppt2->error_message,
@@ -7974,7 +7974,7 @@ int perturb2_vector_init (
   }
     
   /* Neutrinos */
-  if (pba->has_ur == _TRUE_) {
+  if (pba->has_ur) {
     
     class_test(ppr2->l_max_ur < 2,
       ppt2->error_message,
@@ -8001,12 +8001,12 @@ int perturb2_vector_init (
   However, we treat the polarization hierarchies as if it they started from the monopole,
   because it is simpler to implement in SONG. We thus introduce a fake monopole and dipole
   that are not really evolved but are taken to be always zero. */
-  if (ppt2->has_polarization2 == _TRUE_) {
+  if (ppt2->has_polarization2) {
     ppv->l_max_pol_g = ppr2->l_max_pol_g;
     ppv->n_hierarchy_pol_g = size_l_indexm (ppv->l_max_pol_g, ppt2->m, ppt2->m_size);
   }
   
-  if (pba->has_ur == _TRUE_) {
+  if (pba->has_ur) {
     ppv->l_max_ur = ppr2->l_max_ur; 
     ppv->n_hierarchy_ur = size_l_indexm (ppv->l_max_ur, ppt2->m, ppt2->m_size);
   }
@@ -8071,7 +8071,7 @@ int perturb2_vector_init (
       ppv->n_hierarchy_ur = 0;
       ppv->use_closure_ur = _FALSE_;
       
-      class_test (ppt2->has_perfect_baryons == _FALSE_,
+      class_test (!ppt2->has_perfect_baryons,
         ppt2->error_message,
         "spend some time thinking how the RSA works with non-perfect baryons");
 
@@ -8146,7 +8146,7 @@ int perturb2_vector_init (
   // -                               Photon polarisation                                -
   // ------------------------------------------------------------------------------------
       
-  if (ppt2->has_polarization2 == _TRUE_) {
+  if (ppt2->has_polarization2) {
 
     /* E-modes */
     ppv->index_pt2_monopole_E = index_pt;
@@ -8168,7 +8168,7 @@ int perturb2_vector_init (
   // -                                    Neutrinos                                     -
   // ------------------------------------------------------------------------------------
   
-  if (pba->has_ur == _TRUE_) {
+  if (pba->has_ur) {
 
     ppv->index_pt2_monopole_ur = index_pt;
     strcpy (ppv->pt2_labels[index_pt], "N_start");
@@ -8187,7 +8187,7 @@ int perturb2_vector_init (
   /* Evolve a reduced set of equations if the baryon fluid is treated as perfect.
   Otherwise, include the pressure (n=2,l=0,m=0) and the anisotropic stresses (n=2,l=2,m)
   moments in the hierarchy. */
-  if (ppt2->has_perfect_baryons == _FALSE_) {
+  if (!ppt2->has_perfect_baryons) {
     ppv->n_max_b = 2;
     ppv->l_max_b = 2;
   }
@@ -8210,10 +8210,10 @@ int perturb2_vector_init (
   // -                                Cold dark matter                                  -
   // ------------------------------------------------------------------------------------
 
-  if (pba->has_cdm == _TRUE_) {
+  if (pba->has_cdm) {
 
     /* See comment above for baryons */
-    if (ppt2->has_perfect_cdm == _FALSE_) {
+    if (!ppt2->has_perfect_cdm) {
       ppv->n_max_cdm = 2;
       ppv->l_max_cdm = 2;
     }
@@ -8243,7 +8243,7 @@ int perturb2_vector_init (
   /* Newtonian gauge */
   if (ppt->gauge == newtonian) {
 
-    if (ppr2->compute_m[0] == _TRUE_) {
+    if (ppr2->compute_m[0]) {
       strcpy (ppv->pt2_labels[index_pt], "phi");
       ppv->index_pt2_phi = index_pt++;
       if (ppt2->phi_eq == huang) {
@@ -8252,12 +8252,12 @@ int perturb2_vector_init (
       }
     }
 
-    if (ppr2->compute_m[1] == _TRUE_) {
+    if (ppr2->compute_m[1]) {
       strcpy (ppv->pt2_labels[index_pt], "omega_m1");
       ppv->index_pt2_omega_m1 = index_pt++;
     }
 
-    if (ppr2->compute_m[2] == _TRUE_) {
+    if (ppr2->compute_m[2]) {
       strcpy (ppv->pt2_labels[index_pt], "gamma_m2");
       ppv->index_pt2_gamma_m2 = index_pt++;
       strcpy (ppv->pt2_labels[index_pt], "gamma_m2_prime");
@@ -8268,7 +8268,7 @@ int perturb2_vector_init (
   /* Synchronous gauge */
   if (ppt->gauge == synchronous) {
 
-    if (ppr2->compute_m[0] == _TRUE_)
+    if (ppr2->compute_m[0])
       ppv->index_pt2_eta = index_pt++;
 
   }
@@ -8345,7 +8345,7 @@ int perturb2_vector_init (
       ppt2->error_message,
       "initial conditions assume radiation streaming approximation turned off");
       
-    if (pba->has_ur == _TRUE_)
+    if (pba->has_ur)
       class_test (new_approx[ppw2->index_ap2_ufa] == (int)ufa_on,
         ppt2->error_message,
         "initial conditions assume ultra-relativistic fluid approximation turned off");
@@ -8421,7 +8421,7 @@ int perturb2_vector_init (
     }
 
     /* Cold dark matter */
-    if (pba->has_cdm == _TRUE_) {
+    if (pba->has_cdm) {
 
       for (int n=0; n <= ppv->n_max_cdm; ++n) {
         for (int l=0; l <= ppv->l_max_cdm; ++l) {
@@ -8443,7 +8443,7 @@ int perturb2_vector_init (
     /* Synchronous gauge metric variables */
     if (ppt->gauge == synchronous) {
       
-      if (ppr2->compute_m[0] == _TRUE_)
+      if (ppr2->compute_m[0])
         y_new[ppv->index_pt2_eta] = y_old[ppw2->pv->index_pt2_eta];
 
     }
@@ -8451,16 +8451,16 @@ int perturb2_vector_init (
     /* Newtonian gauge metric variables */
     else if (ppt->gauge == newtonian) {
 
-      if (ppr2->compute_m[0] == _TRUE_) {
+      if (ppr2->compute_m[0]) {
         y_new[ppv->index_pt2_phi] = y_old[ppw2->pv->index_pt2_phi];
         if (ppt2->phi_eq == huang)
           y_new[ppv->index_pt2_phi_prime] = y_old[ppw2->pv->index_pt2_phi_prime];
       }
       
-      if (ppr2->compute_m[1] == _TRUE_)
+      if (ppr2->compute_m[1])
         y_new[ppv->index_pt2_omega_m1] = y_old[ppw2->pv->index_pt2_omega_m1];
 
-      if (ppr2->compute_m[2] == _TRUE_) {
+      if (ppr2->compute_m[2]) {
         y_new[ppv->index_pt2_gamma_m2] = y_old[ppw2->pv->index_pt2_gamma_m2];
         y_new[ppv->index_pt2_gamma_m2_prime] = y_old[ppw2->pv->index_pt2_gamma_m2_prime];
       }
@@ -8487,7 +8487,7 @@ int perturb2_vector_init (
             = y_old[ppw2->pv->index_pt2_monopole_g + lm(l,ppt2->m[index_m])];
 
       /* Polarization hierarchies */
-      if (ppt2->has_polarization2 == _TRUE_) {
+      if (ppt2->has_polarization2) {
 
         for (int l=0; l<=ppv->l_max_pol_g; ++l)
           for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m)
@@ -8501,7 +8501,7 @@ int perturb2_vector_init (
       }
 
       /* Neutrino hierarchy */
-      if (pba->has_ur == _TRUE_)
+      if (pba->has_ur)
         for (int l=0; l<=ppv->l_max_ur; ++l)
           for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m)
             y_new[ppv->index_pt2_monopole_ur + lm(l,ppt2->m[index_m])]
@@ -8529,7 +8529,7 @@ int perturb2_vector_init (
 
         y_new[ppv->index_pt2_monopole_g + lm(2,m)] = ppw2->I_2m_tca1[m]; /* Intensity quadrupole */
 
-        if (ppt2->has_polarization2 == _TRUE_) {
+        if (ppt2->has_polarization2) {
           y_new[ppv->index_pt2_monopole_E + lm(2,m)] = ppw2->E_2m_tca1[m]; /* E-modes quadrupole */
           y_new[ppv->index_pt2_monopole_B + lm(2,m)] = ppw2->B_2m_tca1[m]; /* B-modes quadrupole */
         }
@@ -8545,7 +8545,7 @@ int perturb2_vector_init (
             = y_old[ppw2->pv->index_pt2_monopole_g + lm(l,ppt2->m[index_m])];
 
       /* Polarization hierarchies */
-      if (ppt2->has_polarization2 == _TRUE_) {
+      if (ppt2->has_polarization2) {
 
         for (int l=0; l<=ppw2->pv->l_max_pol_g; ++l)
           for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m)
@@ -8559,7 +8559,7 @@ int perturb2_vector_init (
       }
 
       /* Neutrino hierarchy */
-      if (pba->has_ur == _TRUE_)
+      if (pba->has_ur)
         for (int l=0; l<=ppw2->pv->l_max_ur; ++l)
           for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m)
             y_new[ppv->index_pt2_monopole_ur + lm(l,ppt2->m[index_m])]
@@ -8674,12 +8674,12 @@ int perturb2_free(
 {
 
   /* Do not free memory if SONG was run only partially for debug purposes */
-  if ((ppt2->stop_at_perturbations1 == _TRUE_) ||
-      (ppt2->stop_at_perturbations2 == _TRUE_))
+  if ((ppt2->stop_at_perturbations1) ||
+      (ppt2->stop_at_perturbations2))
     return _SUCCESS_;
 
 
-  if (ppt2->has_perturbations2 == _TRUE_) {
+  if (ppt2->has_perturbations2) {
     
     free (ppt2->file_header);
     
@@ -8704,7 +8704,7 @@ int perturb2_free(
       free (ppt2->files_perturbations_tau);
       free (ppt2->paths_sources_k3tau);
       free (ppt2->files_sources_k3tau);
-      if (ppt2->output_quadratic_sources == _TRUE_) {
+      if (ppt2->output_quadratic_sources) {
         free (ppt2->paths_perturbations_tau_quad);
         free (ppt2->files_perturbations_tau_quad);
       }
@@ -8991,7 +8991,7 @@ int perturb2_derivs (
   Comment and use perturb2_quadratic_sources() below instead to reduce the noise
   at the expense of speed. Note that when using interpolation the quadratic
   sources of the collision term (pvec_quadcollision) will not be available. */
-  if (ppt2->has_quadratic_sources == _TRUE_) {
+  if (ppt2->has_quadratic_sources) {
     class_call (perturb2_quadratic_sources_at_tau(
                  ppr,
                  ppr2,
@@ -9008,7 +9008,7 @@ int perturb2_derivs (
   interpolatoin. Good to reduce the numerical noise, but it is likely to
   slightly increase the computation time. It also computes the quadratic
   sources for the collision term. */
-  // if (ppt2->has_quadratic_sources == _TRUE_) {
+  // if (ppt2->has_quadratic_sources) {
   //   class_call (perturb2_quadratic_sources(
   //                 ppr,
   //                 ppr2,
@@ -9068,20 +9068,20 @@ int perturb2_derivs (
   if (ppt->gauge == newtonian) {
 
     /* Scalar potentials */
-    if (ppr2->compute_m[0] == _TRUE_) {
+    if (ppr2->compute_m[0]) {
       phi_prime = pvecmetric[ppw2->index_mt2_phi_prime];
       phi = y[ppw2->pv->index_pt2_phi];
       psi = pvecmetric[ppw2->index_mt2_psi];
     }
 
     /* Vector potentials */
-    if (ppr2->compute_m[1] == _TRUE_) {
+    if (ppr2->compute_m[1]) {
       omega_m1 = y[ppw2->pv->index_pt2_omega_m1];
       omega_m1_prime = pvecmetric[ppw2->index_mt2_omega_m1_prime];
     }
     
     /* Tensor potentials */
-    if (ppr2->compute_m[2] == _TRUE_)
+    if (ppr2->compute_m[2])
       gamma_m2_prime = y[ppw2->pv->index_pt2_gamma_m2_prime];
   }
 
@@ -9101,7 +9101,7 @@ int perturb2_derivs (
   }
   else if (ppt->gauge == newtonian) {
 
-    if (ppr2->compute_m[0] == _TRUE_) {
+    if (ppr2->compute_m[0]) {
       metric_continuity = -3 * phi_prime;
       metric_euler = k * psi;
       metric_shear = 0;
@@ -9136,7 +9136,7 @@ int perturb2_derivs (
   /* - Monopole equation */
 
   if (l_max_g > -1) {
-    if (ppr2->compute_m[0] == _TRUE_) {
+    if (ppr2->compute_m[0]) {
       dI(0,0) = -four_thirds * (k*I_1m[0]/4 + metric_continuity);
     }
   }
@@ -9214,7 +9214,7 @@ int perturb2_derivs (
   /* For the last multipole, we evolve a different equation to avoid numerical
   reflection. We take this closure relation from eq. D.1 of Pitrou et al. 2010. */
 
-  if (ppw2->pv->use_closure_g == _TRUE_) {
+  if (ppw2->pv->use_closure_g) {
     int l = l_max_g;
     for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
       int m = ppt2->m[index_m];
@@ -9229,7 +9229,7 @@ int perturb2_derivs (
 
   /* - Add quadratic terms */
 
-  if (ppt2->has_quadratic_sources == _TRUE_)
+  if (ppt2->has_quadratic_sources)
     for (int l=0; l<=MIN(ppr2->l_max_g_quadsources,l_max_g); ++l)
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m)
         dI(l,ppr2->m[index_m]) += dI_qs2(l,ppr2->m[index_m]);
@@ -9240,13 +9240,13 @@ int perturb2_derivs (
   // -                                     Polarisation                                      -
   // -----------------------------------------------------------------------------------------
 
-  if (ppt2->has_polarization2 == _TRUE_) {
+  if (ppt2->has_polarization2) {
   
     /* Set the monopole and dipole to zero. The hierarchies for the E-modes and B-modes
     start from the quadrupole, we keep the monopole and dipole to keep the structure
     of SONG simpler. */  
     if (l_max_pol_g > -1)
-      if (ppr2->compute_m[0] == _TRUE_)
+      if (ppr2->compute_m[0])
         dE(0,0) = dB(0,0) = 0;
   
     if (l_max_pol_g > 0) {
@@ -9307,7 +9307,7 @@ int perturb2_derivs (
     reflection. We take this closure relation from the real & imaginary parts of
     eq. D.2 of Pitrou et al. (2010), hereafter P2010. */
 
-    if (ppw2->pv->use_closure_pol_g == _TRUE_) {
+    if (ppw2->pv->use_closure_pol_g) {
       int l = l_max_pol_g;
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
         int m = ppt2->m[index_m];
@@ -9324,7 +9324,7 @@ int perturb2_derivs (
 
     /* - Add quadratic terms */
     
-    if (ppt2->has_quadratic_sources == _TRUE_) {
+    if (ppt2->has_quadratic_sources) {
       for (int l=2; l<=MIN(ppr2->l_max_pol_g_quadsources,l_max_pol_g); ++l) {
         for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
 
@@ -9348,12 +9348,12 @@ int perturb2_derivs (
   /* The neutrinos obey the same Boltzmann hierarchy as the photons' one, with kappa_dot 
   set to zero. */
 
-  if (pba->has_ur == _TRUE_) {
+  if (pba->has_ur) {
 
     /* - Monopole */
     
     if (l_max_ur > -1)
-      if (ppr2->compute_m[0] == _TRUE_)
+      if (ppr2->compute_m[0])
         dN(0,0) = -four_thirds * (k*N_1m[0]*0.25 + metric_continuity);
   
 
@@ -9393,7 +9393,7 @@ int perturb2_derivs (
     /* - Tensor metric contribution */
     
     if (l_max_ur > 1)
-      if (ppr2->compute_m[2] == _TRUE_)
+      if (ppr2->compute_m[2])
         dN(2,2) += 4 * gamma_m2_prime;
 
 
@@ -9403,7 +9403,7 @@ int perturb2_derivs (
     reflection. We take this closure relation from eq. D.1 of Pitrou et al. 2010
     without the kappa_dot term. */
 
-    if (ppw2->pv->use_closure_ur == _TRUE_) {
+    if (ppw2->pv->use_closure_ur) {
       int l = l_max_ur;
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
         int m = ppt2->m[index_m];
@@ -9418,7 +9418,7 @@ int perturb2_derivs (
 
     /* - Add quadratic terms */
 
-    if (ppt2->has_quadratic_sources == _TRUE_)
+    if (ppt2->has_quadratic_sources)
       for (int l=0; l<=MIN(ppr2->l_max_ur_quadsources,l_max_ur); ++l)
         for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m)
           dN(l,ppr2->m[index_m]) += dN_qs2(l,ppr2->m[index_m]);  
@@ -9433,7 +9433,7 @@ int perturb2_derivs (
   /* - Baryon monopole */
   
   if (l_max_b > -1)
-    if (ppr2->compute_m[0] == _TRUE_)
+    if (ppr2->compute_m[0])
       db(0,0,0) = - (k*b(1,1,0)*one_third + metric_continuity) - Hc*b_200;
 
   
@@ -9491,8 +9491,8 @@ int perturb2_derivs (
   
   /* The (2,0,0) moment is exponentially suppressed in absence of quadratic sources */
   if (l_max_b > -1)
-    if (ppr2->compute_m[0] == _TRUE_)
-      if (ppt2->has_perfect_baryons == _FALSE_)
+    if (ppr2->compute_m[0])
+      if (!ppt2->has_perfect_baryons)
         db(2,0,0) = - 2*Hc*b(2,0,0);
   
 
@@ -9501,18 +9501,18 @@ int perturb2_derivs (
   /* The (2,2,m) moments are exponentially suppressed in absence of quadratic sources */
   if (l_max_b > 1)
     for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m)
-      if (ppt2->has_perfect_baryons == _FALSE_)
+      if (!ppt2->has_perfect_baryons)
         db(2,2,ppt2->m[index_m]) = - 2*Hc*b(2,2,ppt2->m[index_m]);
 
 
   /* Add baryon quadratic sources */
 
-  if (ppt2->has_quadratic_sources == _TRUE_) {
+  if (ppt2->has_quadratic_sources) {
     for (int n=0; n <= ppw2->pv->n_max_b; ++n) {
       for (int l=0; l <= l_max_b; ++l) {
         if ((l!=n) && (l!=0)) continue;
         if ((l==0) && (n%2!=0)) continue;
-        if (ppt2->has_perfect_baryons == _TRUE_)
+        if (ppt2->has_perfect_baryons)
           if ((n>1)||(l>1)) continue;
         for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
           int m = ppr2->m[index_m];
@@ -9527,12 +9527,12 @@ int perturb2_derivs (
   // -                                    Cold Dark Matter                                   -
   // -----------------------------------------------------------------------------------------
 
-  if (pba->has_cdm == _TRUE_) {
+  if (pba->has_cdm) {
 
     /* - CDM monopole */
   
     if (l_max_cdm > -1)
-      if (ppr2->compute_m[0] == _TRUE_)
+      if (ppr2->compute_m[0])
         dcdm(0,0,0) = - (k*cdm(1,1,0)*one_third + metric_continuity) - Hc*ppw2->cdm_200;
     
   
@@ -9562,8 +9562,8 @@ int perturb2_derivs (
 
     /* The (2,0,0) moment is exponentially suppressed in absence of quadratic sources */
     if (l_max_cdm > -1)
-      if (ppr2->compute_m[0] == _TRUE_)
-        if (ppt2->has_perfect_cdm == _FALSE_)
+      if (ppr2->compute_m[0])
+        if (!ppt2->has_perfect_cdm)
           dcdm(2,0,0) = - 2*Hc*cdm(2,0,0);
 
 
@@ -9573,18 +9573,18 @@ int perturb2_derivs (
     /* TODO: Should we add here (and for baryons) the tensor potential? */
     if (l_max_cdm > 1)
       for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m)
-        if (ppt2->has_perfect_cdm == _FALSE_)
+        if (!ppt2->has_perfect_cdm)
           dcdm(2,2,ppt2->m[index_m]) = - 2*Hc*cdm(2,2,ppt2->m[index_m]);
       
 
     /* - Add CDM quadratic sources */
     
-    if (ppt2->has_quadratic_sources == _TRUE_) {
+    if (ppt2->has_quadratic_sources) {
       for (int n=0; n <= ppw2->pv->n_max_cdm; ++n) {
         for (int l=0; l <= l_max_cdm; ++l) {    
           if ((l!=n) && (l!=0)) continue;
           if ((l==0) && (n%2!=0)) continue;
-          if (ppt2->has_perfect_cdm == _TRUE_)
+          if (ppt2->has_perfect_cdm)
             if ((n>1)||(l>1)) continue;
           for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
             int m = ppr2->m[index_m];
@@ -9635,7 +9635,7 @@ int perturb2_derivs (
   
   if (ppt->gauge == newtonian) {
 
-    if (ppr2->compute_m[0] == _TRUE_) {
+    if (ppr2->compute_m[0]) {
 
       /* Set the time derivative of the curvature potential phi */
       dy[ppw2->pv->index_pt2_phi] = pvecmetric[ppw2->index_mt2_phi_prime];
@@ -9676,11 +9676,11 @@ int perturb2_derivs (
     }
     
     /* Vector potential omega */
-    if (ppr2->compute_m[1] == _TRUE_)
+    if (ppr2->compute_m[1])
       dy[ppw2->pv->index_pt2_omega_m1] = pvecmetric[ppw2->index_mt2_omega_m1_prime];
     
     /* Tensor potential gamma */
-    if (ppr2->compute_m[2] == _TRUE_) {
+    if (ppr2->compute_m[2]) {
       dy[ppw2->pv->index_pt2_gamma_m2] = y[ppw2->pv->index_pt2_gamma_m2_prime];
       dy[ppw2->pv->index_pt2_gamma_m2_prime] = pvecmetric[ppw2->index_mt2_gamma_m2_prime_prime];
     }
@@ -9693,7 +9693,7 @@ int perturb2_derivs (
   if (ppt->gauge == synchronous) {
 
     /* Curvature potential eta */
-    if (ppr2->compute_m[0] == _TRUE_)
+    if (ppr2->compute_m[0])
       dy[ppw2->pv->index_pt2_eta] = pvecmetric[ppw2->index_mt2_eta_prime];
 
   }
@@ -9814,16 +9814,16 @@ int perturb2_einstein (
 
   rho_g = ppw2->pvecback[pba->index_bg_rho_g];
   
-  if (ppr2->compute_m[0] == _TRUE_) {
+  if (ppr2->compute_m[0]) {
     rho_monopole           =  rho_g*ppw2->I_00;
     rho_dipole             =  rho_g*ppw2->I_1m[0];
     rho_quadrupole         =  rho_g*ppw2->I_2m[0];
   }
 
-  if (ppr2->compute_m[1] == _TRUE_)
+  if (ppr2->compute_m[1])
     rho_quadrupole_m1    =  rho_g*ppw2->I_2m[1];
   
-  if (ppr2->compute_m[2] == _TRUE_)
+  if (ppr2->compute_m[2])
     rho_quadrupole_m2    =  rho_g*ppw2->I_2m[2];
 
 
@@ -9831,57 +9831,57 @@ int perturb2_einstein (
 
   rho_b = ppw2->pvecback[pba->index_bg_rho_b];
   
-  if (ppr2->compute_m[0] == _TRUE_) {
+  if (ppr2->compute_m[0]) {
     rho_monopole_b          =  rho_b*b(0,0,0);
     rho_monopole           +=  rho_monopole_b;
     rho_dipole             +=  rho_b*b(1,1,0);
     rho_quadrupole         +=  rho_b*ppw2->b_22m[0];
   }
   
-  if (ppr2->compute_m[1] == _TRUE_)
+  if (ppr2->compute_m[1])
     rho_quadrupole_m1    +=  rho_b*ppw2->b_22m[1];
 
-  if (ppr2->compute_m[2] == _TRUE_)
+  if (ppr2->compute_m[2])
     rho_quadrupole_m2    +=  rho_b*ppw2->b_22m[2];
 
 
   /* - CDM contribution */
 
-  if (pba->has_cdm == _TRUE_) {
+  if (pba->has_cdm) {
 
     rho_cdm = ppw2->pvecback[pba->index_bg_rho_cdm];
     
-    if (ppr2->compute_m[0] == _TRUE_) {
+    if (ppr2->compute_m[0]) {
       rho_monopole_cdm       =  rho_cdm*cdm(0,0,0);
       rho_monopole          +=  rho_monopole_cdm;
       rho_dipole            +=  rho_cdm*cdm(1,1,0);
       rho_quadrupole        +=  rho_cdm*ppw2->cdm_22m[0];
     }
     
-    if (ppr2->compute_m[1] == _TRUE_)
+    if (ppr2->compute_m[1])
       rho_quadrupole_m1   +=  rho_cdm*ppw2->cdm_22m[1];
 
-    if (ppr2->compute_m[2] == _TRUE_)
+    if (ppr2->compute_m[2])
       rho_quadrupole_m2   +=  rho_cdm*ppw2->cdm_22m[2];
   }
 
 
   /* - Ultra-relativistic contribution */
 
-  if (pba->has_ur == _TRUE_) {
+  if (pba->has_ur) {
 
     rho_ur = ppw2->pvecback[pba->index_bg_rho_ur];
 
-    if (ppr2->compute_m[0] == _TRUE_) {
+    if (ppr2->compute_m[0]) {
       rho_monopole           +=  rho_ur*ppw2->N_00;
       rho_dipole             +=  rho_ur*ppw2->N_1m[0];
       rho_quadrupole         +=  rho_ur*N(2,0);
     }
 
-    if (ppr2->compute_m[1] == _TRUE_)
+    if (ppr2->compute_m[1])
       rho_quadrupole_m1    +=  rho_ur*N(2,1);
 
-    if (ppr2->compute_m[2] == _TRUE_)
+    if (ppr2->compute_m[2])
       rho_quadrupole_m2    +=  rho_ur*N(2,2);
   }
 
@@ -9908,7 +9908,7 @@ int perturb2_einstein (
     // -                      Scalar potentials                     -
     // --------------------------------------------------------------
 
-    if (ppr2->compute_m[0] == _TRUE_) {
+    if (ppr2->compute_m[0]) {
 
       /* Constraint equation for psi, using eq. 5.3  of http://arxiv.org/abs/1405.2280.
       This is just the anisotropic stresses Einstein equation. If you consider that
@@ -9989,7 +9989,7 @@ int perturb2_einstein (
     // -------------------------------------------------------
     
 
-    if (ppr2->compute_m[1] == _TRUE_) {
+    if (ppr2->compute_m[1]) {
 
       ppw2->pvecmetric[ppw2->index_mt2_omega_m1_prime] =
         - 2 * Hc * y[ppw2->pv->index_pt2_omega_m1]
@@ -10003,7 +10003,7 @@ int perturb2_einstein (
     // -                   Tensor  potential                 -
     // -------------------------------------------------------
 
-    if (ppr2->compute_m[2] == _TRUE_) {
+    if (ppr2->compute_m[2]) {
 
       ppw2->pvecmetric[ppw2->index_mt2_gamma_m2_prime_prime] =
         - 2 * Hc * y[ppw2->pv->index_pt2_gamma_m2_prime]
@@ -10034,7 +10034,7 @@ int perturb2_einstein (
   /* Synchronous gauge */
   if (ppt->gauge == synchronous) {
 
-    if (ppr2->compute_m[0] == _TRUE_) {
+    if (ppr2->compute_m[0]) {
 
 
     } // end of scalar potentials
@@ -10077,9 +10077,9 @@ int perturb2_einstein (
       ppt2->error_message);
 
     /* Tell SONG to use the RSA values rather than the evolved ones */
-    if (ppr2->compute_m[0] == _TRUE_) {
+    if (ppr2->compute_m[0]) {
       ppw2->I_00 = ppw2->I_00_rsa;
-      if (pba->has_ur == _TRUE_)
+      if (pba->has_ur)
         ppw2->N_00 = ppw2->N_00_rsa;
     }
 
@@ -10088,7 +10088,7 @@ int perturb2_einstein (
       ppw2->I_1m[m] = ppw2->I_1m_rsa[m];
       double kappa_dot = ppw2->pvecthermo[pth->index_th_dkappa];
       ppw2->C_1m[m] = kappa_dot * (four_thirds*b(1,1,m) - ppw2->I_1m_rsa[m]);
-      if (pba->has_ur == _TRUE_)
+      if (pba->has_ur)
         ppw2->N_1m[m] = ppw2->N_1m_rsa[m];
     }
     
@@ -10157,19 +10157,19 @@ int perturb2_workspace_at_tau (
   in perturb2_vector_init() we have adjusted the ppw2->pv->l_max_XXX parameters of the
   various species according to the active approximation schemes. */
 
-  if (ppr2->compute_m[0] == _TRUE_) {
+  if (ppr2->compute_m[0]) {
     ppw2->I_00 = I(0,0);
-    if (pba->has_ur == _TRUE_)
+    if (pba->has_ur)
       ppw2->N_00 = N(0,0);
     ppw2->b_200 = b(2,0,0);
-    if (pba->has_cdm == _TRUE_)
+    if (pba->has_cdm)
       ppw2->cdm_200 = cdm(2,0,0);
   }
 
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     int m = ppt2->m[index_m];
     ppw2->I_1m[m] = I(1,m);
-    if (pba->has_ur == _TRUE_)
+    if (pba->has_ur)
       ppw2->N_1m[m] = N(1,m);
     double kappa_dot = ppw2->pvecthermo[pth->index_th_dkappa];
     ppw2->C_1m[m] = kappa_dot * (four_thirds*b(1,1,m) - I(1,m));
@@ -10178,12 +10178,12 @@ int perturb2_workspace_at_tau (
   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
     int m = ppt2->m[index_m];
     ppw2->I_2m[m] = I(2,m);
-    if (ppt2->has_polarization2 == _TRUE_) {
+    if (ppt2->has_polarization2) {
       ppw2->E_2m[m] = E(2,m);
       ppw2->B_2m[m] = B(2,m);
     }
     ppw2->b_22m[m] = b(2,2,m);
-    if (pba->has_cdm == _TRUE_)
+    if (pba->has_cdm)
       ppw2->cdm_22m[m] = cdm(2,2,m);
   }
 
@@ -10197,7 +10197,7 @@ int perturb2_workspace_at_tau (
   cold dark matter. We store these values in ppw2->b_200, ppw2->b_22m[m], ppw2->cdm_200,
   ppw2->cdm_22m[m]. For details, see eq. 5.18 of http://arxiv.org/abs/1405.2280. */
 
-  if (ppt2->has_perfect_baryons == _TRUE_) { 
+  if (ppt2->has_perfect_baryons) { 
   
     /* Baryon contribution to b200 and b22m, assuming no pressure */
     double vv_b = ppw2->pvec_quadsources[ppw2->index_qs2_vv_b];
@@ -10230,8 +10230,8 @@ int perturb2_workspace_at_tau (
 
 
   /* Same for cold dark matter */
-  if (pba->has_cdm == _TRUE_) {
-    if (ppt2->has_perfect_cdm == _TRUE_) {
+  if (pba->has_cdm) {
+    if (ppt2->has_perfect_cdm) {
       double vv_cdm = ppw2->pvec_quadsources[ppw2->index_qs2_vv_cdm];
       ppw2->cdm_200 = - 2 * ppw2->k1_dot_k2 * vv_cdm;
       for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
@@ -10292,7 +10292,7 @@ int perturb2_workspace_at_tau (
     for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
       int m = ppt2->m[index_m];
       ppw2->I_2m[m] = ppw2->I_2m_tca1[m];
-      if (ppt2->has_polarization2 == _TRUE_) {
+      if (ppt2->has_polarization2) {
         ppw2->E_2m[m] = ppw2->E_2m_tca1[m];
         ppw2->B_2m[m] = (m!=0?ppw2->B_2m_tca1[m]:0);
       }
@@ -10414,7 +10414,7 @@ int perturb2_fluid_variables (
 
   /* - Interpolate first order densities and velocities */
 
-  if (ppt2->has_quadratic_sources == _TRUE_) {
+  if (ppt2->has_quadratic_sources) {
 
     class_call (perturb_song_sources_at_tau_and_k (
                  ppr,
@@ -10463,7 +10463,7 @@ int perturb2_fluid_variables (
   double delta_g_2 = ppw2->delta_g_2 = ppw2->pvec_sources2[ppt->index_qs_delta_g];
   double v_dot_v_g = ppw2->v_dot_v_g = - k1_dot_k2 * vpot_g_1 * vpot_g_2;
       
-  if (ppr2->compute_m[0] == _TRUE_) {
+  if (ppr2->compute_m[0]) {
     ppw2->delta_g = ppw2->I_00 - 8/3.*v_dot_v_g;
     ppw2->pressure_g = ppw2->delta_g/3;
     /* delta_g_adiab is the second-order expansion of delta_g^1/4 minus the
@@ -10503,7 +10503,7 @@ int perturb2_fluid_variables (
   double delta_b_2_prime = ppw2->delta_b_2_prime = ppw2->pvec_sources2[ppt->index_qs_delta_b_prime];
   double v_dot_v_b = ppw2->v_dot_v_b = - k1_dot_k2 * vpot_b_1 * vpot_b_2;
   
-  if (ppr2->compute_m[0] == _TRUE_) {
+  if (ppr2->compute_m[0]) {
     ppw2->delta_b = b(0,0,0) - 2*v_dot_v_b;
     ppw2->pressure_b = (ppw2->b_200 - 2*v_dot_v_b)/3;
   }
@@ -10540,7 +10540,7 @@ int perturb2_fluid_variables (
   // =                                CDM fluid variables                                 =
   // ======================================================================================
 
-  if (pba->has_cdm == _TRUE_) {
+  if (pba->has_cdm) {
 
     /* In synchronous gauge there is no CDM velocity. Therefore we initialise the first-order
     (vpot_cdm_1 and vpot_cdm_2) and second-order (u_cdm) velocities to zero. All other
@@ -10565,7 +10565,7 @@ int perturb2_fluid_variables (
     double delta_cdm_2 = ppw2->delta_cdm_2 = ppw2->pvec_sources2[ppt->index_qs_delta_cdm];
     double v_dot_v_cdm = ppw2->v_dot_v_cdm = - k1_dot_k2 * vpot_cdm_1 * vpot_cdm_2;
   
-    if (ppr2->compute_m[0] == _TRUE_) {
+    if (ppr2->compute_m[0]) {
       ppw2->delta_cdm = cdm(0,0,0) - 2*v_dot_v_cdm;
       ppw2->pressure_cdm = (ppw2->cdm_200 - 2*v_dot_v_cdm)/3;
     }
@@ -10591,7 +10591,7 @@ int perturb2_fluid_variables (
   // =                              Neutrino fluid variables                              =
   // ======================================================================================
 
-  if (pba->has_ur == _TRUE_) {
+  if (pba->has_ur) {
       
     double vpot_ur_1 = ppw2->pvec_sources1[ppt->index_qs_v_ur];
     double vpot_ur_2 = ppw2->pvec_sources2[ppt->index_qs_v_ur];
@@ -10600,7 +10600,7 @@ int perturb2_fluid_variables (
     double delta_ur_2 = ppw2->delta_ur_2 = ppw2->pvec_sources2[ppt->index_qs_delta_ur];
     double v_dot_v_ur = ppw2->v_dot_v_ur = - k1_dot_k2 * vpot_ur_1 * vpot_ur_2;
   
-    if (ppr2->compute_m[0] == _TRUE_) {
+    if (ppr2->compute_m[0]) {
       ppw2->delta_ur = ppw2->N_00 - 8/3.*v_dot_v_ur;
       ppw2->pressure_ur = ppw2->delta_ur/3;
     }
@@ -10723,7 +10723,7 @@ int perturb2_tca_variables (
 
   /* - Extract the quadratic collision term */
 
-  if (ppt2->has_quadratic_sources == _TRUE_) {
+  if (ppt2->has_quadratic_sources) {
     class_call (perturb2_quadratic_sources(
                   ppr,
                   ppr2,
@@ -10748,7 +10748,7 @@ int perturb2_tca_variables (
   convergence speed roughly balances the loss from computing the sources; we choose
   the latter option because it is more precise. */
 
-  // if (ppt2->has_quadratic_sources == _TRUE_) {
+  // if (ppt2->has_quadratic_sources) {
   //   class_call(perturb2_quadratic_sources_at_tau(
   //                ppr,
   //                ppr2,
@@ -10907,7 +10907,7 @@ int perturb2_tca_variables (
     double quadC_I_2M = dI_qc2(2,m)/kappa_dot;
     double quadC_E_2M = 0;
     double quadC_B_2M = 0;
-    if (ppt2->has_polarization2 == _TRUE_) {
+    if (ppt2->has_polarization2) {
       quadC_E_2M = dE_qc2(2,m)/kappa_dot;
       quadC_B_2M = (m!=0?dB_qc2(2,m):0)/kappa_dot;
     }
@@ -10916,7 +10916,7 @@ int perturb2_tca_variables (
     double quadL_I_2M = - (dI_qs2(2,m)-dI_qc2(2,m));
     double quadL_E_2M = 0;
     double quadL_B_2M = 0;
-    if (ppt2->has_polarization2 == _TRUE_) {
+    if (ppt2->has_polarization2) {
       quadL_E_2M = - (dE_qs2(2,m)-dE_qc2(2,m)); /* O(tau_c), see eq. 4.153 */
       quadL_B_2M = (m!=0?-(dB_qs2(2,m)-dB_qc2(2,m)):0); /* O(tau_c), see eq. 4.156 */
     }
@@ -10953,7 +10953,7 @@ int perturb2_tca_variables (
     /* In absence of polarisation, we take the expression of shear_g as a function of
     Pi, expand Pi as I_2M/10=-3/4*shear_m-vv_m and then solve the equation for shear_m
     (eq. 25b of TCA notes, with E_2M set to zero). */
-    if (ppt2->has_polarization2 == _FALSE_) {
+    if (!ppt2->has_polarization2) {
 
       ppw2->shear_g_tca1[m] = -4/27. * (
           quadC_I_2M + 18*v_ten_v_g[m]
@@ -10974,7 +10974,7 @@ int perturb2_tca_variables (
     4.145 of http://arxiv.org/abs/1405.2280. The Pi factor is defined
     as Pi[m] = (I(2,m) - sqrt_6*E(2,m))/10. */
   
-    if (ppt2->has_polarization2 == _TRUE_) {  
+    if (ppt2->has_polarization2) {  
 
       /* The TCA0 expression for Pi is simply given by -vv[m], because its parts are
       I(2,m)=-10*vv[m] and dE_qc2(2,m)=-sqrt(6)*vv[m]. */
@@ -11112,7 +11112,7 @@ int perturb2_rsa_variables (
 
   /* - Extract the quadratic sources */
 
-  if (ppt2->has_quadratic_sources == _TRUE_) {
+  if (ppt2->has_quadratic_sources) {
     class_call (perturb2_quadratic_sources(
                   ppr,
                   ppr2,
@@ -11133,11 +11133,11 @@ int perturb2_rsa_variables (
   /* The quadratic contribution to the RSA approximation includes some higher-order
   terms that we normally omit, and that require the computation of the derivatives
   of the quadratic sources. We include them only if the user asked for
-  ppt2->compute_quadsources_derivatives==_TRUE_ */
+  ppt2->compute_quadsources_derivatives */
 
-  if (ppt2->has_quadratic_sources == _TRUE_) {
+  if (ppt2->has_quadratic_sources) {
 
-    if (ppt2->compute_quadsources_derivatives == _TRUE_) {
+    if (ppt2->compute_quadsources_derivatives) {
 
       /* Interpolate the time derivative of the full quadratic sources
       in ppw2->pvec_d_quadsources */
@@ -11183,7 +11183,7 @@ int perturb2_rsa_variables (
 
   /* - Photon monopole in RSA */
 
-  if (ppr2->compute_m[0] == _TRUE_) {
+  if (ppr2->compute_m[0]) {
 
     /* Purely second-order part. This is all you need if all three wavemodes
     are subhorizon. */
@@ -11195,7 +11195,7 @@ int perturb2_rsa_variables (
     ppw2->delta_g_rsa += quadL_I_10/k;
 
     /* Include higher-order terms */
-    if (ppt2->compute_quadsources_derivatives == _TRUE_) {
+    if (ppt2->compute_quadsources_derivatives) {
       
       double quadL_I_00_prime =
         - (ppw2->pvec_d_quadsources[ppw2->index_qs2_monopole_g]
@@ -11248,13 +11248,13 @@ int perturb2_rsa_variables (
   
   /* - Massless neutrino monopole in RSA */
 
-  if (ppr2->compute_m[0] == _TRUE_) {
+  if (ppr2->compute_m[0]) {
 
     /* In absence of collisions, the monopole of the massless neutrinos has the
     same functional form of the photon monopole. It also has the same value,
     but we compute it nonetheless here. */
   
-    if (pba->has_ur == _TRUE_) {
+    if (pba->has_ur) {
 
       double quadL_N_10 = -dN_qs2(1,0);
 
@@ -11266,7 +11266,7 @@ int perturb2_rsa_variables (
       ppw2->delta_ur_rsa += quadL_N_10/k;
 
       /* Include higher-order terms */
-      if (ppt2->compute_quadsources_derivatives == _TRUE_) {
+      if (ppt2->compute_quadsources_derivatives) {
       
         double quadL_N_00_prime = 
           - (ppw2->pvec_d_quadsources[ppw2->index_qs2_monopole_ur]
@@ -11327,7 +11327,7 @@ int perturb2_rsa_variables (
         - 3/(4*k) * quadL_I_00;
 
       /* Include higher-order terms */
-      if (ppt2->compute_quadsources_derivatives == _TRUE_) {
+      if (ppt2->compute_quadsources_derivatives) {
 
         double quadL_I_00_prime_prime =
           - (ppw2->pvec_dd_quadsources[ppw2->index_qs2_monopole_g]
@@ -11388,7 +11388,7 @@ int perturb2_rsa_variables (
 
   /* - Massless neutrino dipole in RSA */
 
-  if (pba->has_ur == _TRUE_) {
+  if (pba->has_ur) {
 
     for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
 
@@ -11411,7 +11411,7 @@ int perturb2_rsa_variables (
           - 3/(4*k) * quadL_N_00;
 
         /* Include higher-order terms */
-        if (ppt2->compute_quadsources_derivatives == _TRUE_) {
+        if (ppt2->compute_quadsources_derivatives) {
 
           double quadL_N_00_prime_prime =
             - (ppw2->pvec_dd_quadsources[ppw2->index_qs2_monopole_ur]
@@ -11485,7 +11485,7 @@ int perturb2_compute_psi_prime(
        struct perturb2_workspace * ppw2)
 {
 
-  class_test (ppr2->compute_m[0] == _FALSE_,
+  class_test (!ppr2->compute_m[0],
     ppt2->error_message,
     "stopping to prevent segfault - there is no psi without scalar modes.");
 
@@ -11498,7 +11498,7 @@ int perturb2_compute_psi_prime(
 
   /* - Interpolate first order densities and velocities */
 
-  if (ppt2->has_quadratic_sources == _TRUE_) {
+  if (ppt2->has_quadratic_sources) {
 
     class_call (perturb_song_sources_at_tau_and_k (
                  ppr,
@@ -11582,7 +11582,7 @@ int perturb2_compute_psi_prime(
 
   rho_plus_3p_quadrupole += rho_b*ppw2->b_22m[0];
   
-  if (ppt2->has_perfect_baryons == _FALSE_) {
+  if (!ppt2->has_perfect_baryons) {
     rho_quadrupole_prime += rho_b*db(2,2,0);
   }
   else {
@@ -11595,7 +11595,7 @@ int perturb2_compute_psi_prime(
 
   double rho_cdm = 0;
   
-  if (pba->has_cdm == _TRUE_) {
+  if (pba->has_cdm) {
 
     rho_cdm = ppw2->pvecback[pba->index_bg_rho_cdm];
     double vpot_cdm_1 = ppw2->pvec_sources1[ppt->index_qs_v_cdm];
@@ -11605,7 +11605,7 @@ int perturb2_compute_psi_prime(
 
     rho_plus_3p_quadrupole += rho_cdm*ppw2->cdm_22m[0];
 
-    if (ppt2->has_perfect_cdm == _FALSE_) {
+    if (!ppt2->has_perfect_cdm) {
       rho_quadrupole_prime += rho_cdm*dcdm(2,2,0);
     }
     else {
@@ -11620,7 +11620,7 @@ int perturb2_compute_psi_prime(
   
   double rho_ur = 0;
   
-  if (pba->has_ur == _TRUE_) {
+  if (pba->has_ur) {
     rho_ur = ppw2->pvecback[pba->index_bg_rho_ur];
     rho_plus_3p_quadrupole += 2*rho_ur*N(2,0);
     rho_quadrupole_prime += rho_ur*dN(2,0);
@@ -11799,7 +11799,7 @@ int perturb2_quadratic_sources_for_k1k2k (
 
   /* Compute higher-order derivatives if requested */
 
-  if (ppt2->compute_quadsources_derivatives == _TRUE_) {
+  if (ppt2->compute_quadsources_derivatives) {
   
     for (int index_qs2=0; index_qs2 < ppw2->qs2_size; ++index_qs2) {
 
@@ -12084,7 +12084,7 @@ int perturb2_quadratic_sources (
   
   /* CDM variables */
   double delta_cdm_1=0, delta_cdm_2=0, vpot_cdm_1=0, vpot_cdm_2=0;
-  if (pba->has_cdm == _TRUE_) {
+  if (pba->has_cdm) {
     delta_cdm_1 = pvec_sources1[ppt->index_qs_delta_cdm];
     delta_cdm_2 = pvec_sources2[ppt->index_qs_delta_cdm];
     if (ppt->gauge != synchronous) {
@@ -12124,7 +12124,7 @@ int perturb2_quadratic_sources (
  
     /* The only contribution to the quadratic sources is in T^i_0 and we need it to compute the scalar
     potential phi */
-    if (ppr2->compute_m[0] == _TRUE_) {
+    if (ppr2->compute_m[0]) {
  
       /* Photon contribution */
       rho_g = pvecback[pba->index_bg_rho_g];        
@@ -12137,14 +12137,14 @@ int perturb2_quadratic_sources (
       rho_dipole_2         +=  rho_b*pvec_sources2[ppt->index_qs_dipole_b];
  
       /* CDM contribution */
-      if (pba->has_cdm == _TRUE_) {
+      if (pba->has_cdm) {
         rho_cdm = pvecback[pba->index_bg_rho_cdm];
         rho_dipole_1         +=  rho_cdm*pvec_sources1[ppt->index_qs_dipole_cdm];
         rho_dipole_2         +=  rho_cdm*pvec_sources2[ppt->index_qs_dipole_cdm];
       }
     
       /* Neutrinos/ur relics contribution */
-      if (pba->has_ur == _TRUE_) {
+      if (pba->has_ur) {
         rho_ur = pvecback[pba->index_bg_rho_ur];
         rho_dipole_1         +=  rho_ur*N_1_raw(1);
         rho_dipole_2         +=  rho_ur*N_2_raw(1);
@@ -12209,7 +12209,7 @@ int perturb2_quadratic_sources (
       phi_prime_prime_2 = pvec_sources2[ppt->index_qs_phi_prime_prime];
 
       /* Scalar potentials */
-      if (ppr2->compute_m[0] == _TRUE_) {
+      if (ppr2->compute_m[0]) {
 
         /* Here we copy the quadratic part of the Einstein equations, as in eq. 3.100 of
         http://arxiv.org/abs/1405.2280. The labels stand for:
@@ -12318,7 +12318,7 @@ int perturb2_quadratic_sources (
 
 
       /* Vector potentials */
-      if (ppr2->compute_m[1] == _TRUE_) {
+      if (ppr2->compute_m[1]) {
 
         /* Vector potential (omega_m1), using the space-time equation (eq. 3.98 of http://arxiv.org/abs/1405.2280,
         and with omega_m1=i*\omega_{[+1]}). Note that for k1=k2 and m=1, the quadratic sources for the vector
@@ -12338,7 +12338,7 @@ int perturb2_quadratic_sources (
 
 
       /* Tensor potentials */
-      if (ppr2->compute_m[2] == _TRUE_) {
+      if (ppr2->compute_m[2]) {
 
         /* Tensor potential (gamma_m2), using the space-space equation (eq. 3.99 of
         http://arxiv.org/abs/1405.2280) */
@@ -12361,7 +12361,7 @@ int perturb2_quadratic_sources (
     // =                                   Liouville operator                                   =
     // ==========================================================================================
  
-    if (ppt2->has_quadratic_liouville == _TRUE_) {
+    if (ppt2->has_quadratic_liouville) {
  
       /* Newtonian gauge */
       if (ppt->gauge == newtonian) {
@@ -12432,7 +12432,7 @@ int perturb2_quadratic_sources (
         // -          Photon polarization         -
         // ----------------------------------------
 
-        if (ppt2->has_polarization2 == _TRUE_) {
+        if (ppt2->has_polarization2) {
  
           for (int l=2; l<=l_max_pol_g; ++l) {      
             for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
@@ -12473,7 +12473,7 @@ int perturb2_quadratic_sources (
         // ---------------------------------------
  
         /* Baryon monopole */
-        if (ppr2->compute_m[0] == _TRUE_)
+        if (ppr2->compute_m[0])
           db_qs2(0,0,0) = 
               2*k1_dot_k2*(psi_1-phi_1)*vpot_b_2 + k2_sq*(phi_1+psi_1)*vpot_b_2 + 3*phi_prime_1*(delta_b_2 + 2*phi_2)
             + 2*k1_dot_k2*(psi_2-phi_2)*vpot_b_1 + k1_sq*(phi_2+psi_2)*vpot_b_1 + 3*phi_prime_2*(delta_b_1 + 2*phi_1);
@@ -12491,9 +12491,9 @@ int perturb2_quadratic_sources (
    
  
         /* Baryon pressure & quadrupole */
-        if (ppt2->has_perfect_baryons == _FALSE_) {
+        if (!ppt2->has_perfect_baryons) {
         
-          if (ppr2->compute_m[0] == _TRUE_)
+          if (ppr2->compute_m[0])
             db_qs2(2,0,0) = 2*k1_dot_k2*(psi_1*vpot_b_2 + psi_2*vpot_b_1);
  
           for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
@@ -12507,10 +12507,10 @@ int perturb2_quadratic_sources (
         // -               Cold Dark Matter             -
         // ----------------------------------------------
  
-        if (pba->has_cdm == _TRUE_) {     
+        if (pba->has_cdm) {     
  
           /* CDM monopole */
-          if (ppr2->compute_m[0] == _TRUE_)
+          if (ppr2->compute_m[0])
             dcdm_qs2(0,0,0) = 
                 2*k1_dot_k2*(psi_1-phi_1)*vpot_cdm_2 + k2_sq*(phi_1+psi_1)*vpot_cdm_2 + 3*phi_prime_1*(delta_cdm_2 + 2*phi_2)
               + 2*k1_dot_k2*(psi_2-phi_2)*vpot_cdm_1 + k1_sq*(phi_2+psi_2)*vpot_cdm_1 + 3*phi_prime_2*(delta_cdm_1 + 2*phi_1);
@@ -12527,9 +12527,9 @@ int perturb2_quadratic_sources (
  
  
           /* CDM pressure & quadrupole */
-          if (ppt2->has_perfect_cdm == _FALSE_) {
+          if (!ppt2->has_perfect_cdm) {
 
-            if (ppr2->compute_m[0] == _TRUE_)
+            if (ppr2->compute_m[0])
               dcdm_qs2(2,0,0) = 2*k1_dot_k2*(psi_1*vpot_cdm_2 + psi_2*vpot_cdm_1);
  
             for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
@@ -12546,7 +12546,7 @@ int perturb2_quadratic_sources (
         // -------------------------------------------------------
  
         /* This is exactly the same hierarchy as the one above for the photons. */
-        if (pba->has_ur == _TRUE_) {
+        if (pba->has_ur) {
         
           for (int l=0; l<=l_max_ur; ++l) {      
             for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
@@ -12623,7 +12623,7 @@ int perturb2_quadratic_sources (
     for (int index_qs2=0; index_qs2 < ppw2->qs2_size; ++index_qs2)
       pvec_quadcollision[index_qs2] = 0;
  
-    if (ppt2->has_quadratic_collision == _TRUE_) {
+    if (ppt2->has_quadratic_collision) {
      
       /* Spherical components of the linear baryon velocity; obtained as 
           u_m(k1) = -k1_m * vpot(k1) = rot_1(1,m) * v_0_1
@@ -12689,7 +12689,7 @@ int perturb2_quadratic_sources (
       double delta_e_1 = delta_b_1;
       double delta_e_2 = delta_b_2;
 
-      if (ppt2->has_perturbed_recombination_stz == _TRUE_) {
+      if (ppt2->has_perturbed_recombination_stz) {
 
         /* Infer the perturbation to the free-electron fraction, delta_xe, using the method developed
         in Senatore, Tassev & Zaldarriaga 2009 (http://arxiv.org/abs/0812.3652). The formalism
@@ -12714,7 +12714,7 @@ int perturb2_quadratic_sources (
         }
 
         /* Debug - Print perutrbed recombination quantities (make sure that
-        pth->compute_xe_derivatives==_TRUE_) */
+        pth->compute_xe_derivatives) */
         // thermodynamics_at_z(pba,pth,1/a-1,pth->inter_normal,&(ppw2->last_index_thermo),
         //   ppw2->pvecback,ppw2->pvecthermo);
         // 
@@ -12748,7 +12748,7 @@ int perturb2_quadratic_sources (
       the tight coupling approximation at first order, and by storing v_b - v_g in the
       ppt->quadsources array. */
 
-      if (ppr2->compute_m[0] == _TRUE_) {
+      if (ppr2->compute_m[0]) {
         double vpot_g_1    =   ppw2->pvec_sources1[ppt->index_qs_v_g];
         double vpot_g_2    =   ppw2->pvec_sources2[ppt->index_qs_v_g];
 
@@ -12875,7 +12875,7 @@ int perturb2_quadratic_sources (
       // -        Photon E-mode polarization       -
       // -------------------------------------------
  
-      if (ppt2->has_polarization2 == _TRUE_) {
+      if (ppt2->has_polarization2) {
  
         /* We write down the collision term for E-mode polarization from eq. 2.19 of BFK 2011.
         Note that, since for E-mode polarization there is no monopole nor dipole, we start
@@ -12997,7 +12997,7 @@ int perturb2_quadratic_sources (
       for details. */
  
       /* Monopole collision term */
-      if (ppr2->compute_m[0] == _TRUE_)
+      if (ppr2->compute_m[0])
         db_qc2(0,0,0) = - r * dI_qc2(0,0);
  
       /* Dipole collision term */
@@ -13006,7 +13006,7 @@ int perturb2_quadratic_sources (
           
  
       /* Pressure and quadrupole collision term */
-      if (ppt2->has_perfect_baryons == _FALSE_) {
+      if (!ppt2->has_perfect_baryons) {
  
         /* TODO: Derive baryon pressure & quadrupole collision terms!!!!
         For now, we set them to zero */
@@ -13082,7 +13082,7 @@ int perturb2_quadratic_sources (
   double vpot_g_2 = ppw2->pvec_sources2[ppt->index_qs_v_g];
   pvec_quadsources[ppw2->index_qs2_vv_g] = vpot_g_1 * vpot_g_2;
   
-  if (pba->has_ur == _TRUE_) { 
+  if (pba->has_ur) { 
     double vpot_ur_1 = ppw2->pvec_sources1[ppt->index_qs_v_ur];
     double vpot_ur_2 = ppw2->pvec_sources2[ppt->index_qs_v_ur];
     pvec_quadsources[ppw2->index_qs2_vv_ur] = vpot_ur_1 * vpot_ur_2;
@@ -13091,7 +13091,7 @@ int perturb2_quadratic_sources (
   pvec_quadsources[ppw2->index_qs2_dd_b] = delta_b_1 * delta_b_2;
   pvec_quadsources[ppw2->index_qs2_vv_b] = vpot_b_1 * vpot_b_2;
 
-  if (pba->has_cdm == _TRUE_)
+  if (pba->has_cdm)
     pvec_quadsources[ppw2->index_qs2_vv_cdm] = vpot_cdm_1 * vpot_cdm_2;
 
   return _SUCCESS_; 
@@ -13243,7 +13243,7 @@ int perturb2_sources (
   directly with perturb2_quadratic_sources(), because this function is called
   far fewer times than perturb2_derivs(). */
 
-  if (ppt2->has_quadratic_sources == _TRUE_) {
+  if (ppt2->has_quadratic_sources) {
 
     class_call (perturb2_quadratic_sources(
                   ppr,
@@ -13348,7 +13348,7 @@ int perturb2_sources (
 
 
     /* Scalar potentials */
-    if (ppr2->compute_m[0] == _TRUE_) {
+    if (ppr2->compute_m[0]) {
 
       phi = y[ppw2->pv->index_pt2_phi];
       psi = pvecmetric[ppw2->index_mt2_psi];
@@ -13390,7 +13390,7 @@ int perturb2_sources (
       psi_exp_prime = psi_prime - 2*(psi_1*psi_prime_2 + psi_prime_1*psi_2);
       
       /* Should we use the linear potentials or the exponential ones? */
-      if (ppt2->use_exponential_potentials == _TRUE_) {
+      if (ppt2->use_exponential_potentials) {
         phi = phi_exp;
         psi = psi_exp;
         phi_prime = phi_exp_prime;
@@ -13400,13 +13400,13 @@ int perturb2_sources (
     } // end of m=0
     
     /* Vector potentials */
-    if (ppr2->compute_m[1] == _TRUE_) {
+    if (ppr2->compute_m[1]) {
       omega_m1 = y[ppw2->pv->index_pt2_omega_m1];
       omega_m1_prime = pvecmetric[ppw2->index_mt2_omega_m1_prime];
     }
     
     /* Tensor potentials */
-    if (ppr2->compute_m[2] == _TRUE_)
+    if (ppr2->compute_m[2])
       gamma_m2_prime = y[ppw2->pv->index_pt2_gamma_m2_prime];
 
   } // end of newtonian gauge
@@ -13452,23 +13452,23 @@ int perturb2_sources (
   below. */
   
   
-  if (ppt2->has_source_T == _TRUE_) {
+  if (ppt2->has_source_T) {
 
     /* - Should we include the SW and ISW effects? */
 
     int switch_sw=0;
     int switch_isw=0;
   
-    if (ppt2->has_sw == _TRUE_) {
+    if (ppt2->has_sw) {
       switch_sw = 1;
     }
   
-    if (ppt2->has_isw == _TRUE_) {
+    if (ppt2->has_isw) {
 
       switch_isw = 1;
   
       /* Turn off the late ISW effect if requested */
-      if ((ppt2->only_early_isw == _TRUE_) && (z < ppt->eisw_lisw_split_z))
+      if ((ppt2->only_early_isw) && (z < ppt->eisw_lisw_split_z))
         switch_isw = 0;    
     }
 
@@ -13497,7 +13497,7 @@ int perturb2_sources (
 
           /* Intrinsic metric term. This gives part of the ISW effect. The other half comes from the 
           integration by parts of the 4*k*psi term in the dipole. */
-          if (ppt2->has_pure_metric_in_los == _TRUE_) {
+          if (ppt2->has_pure_metric_in_los) {
             source += 4 * phi_prime;
           }
           /* SW and ISW effects, coming from the monopole term 4*phi_prime and from the integration
@@ -13510,7 +13510,7 @@ int perturb2_sources (
           /* Quadratic metric contribution from the Liouville operator. The monopole
           contribution exists only if using the standard linear potentials (cfr 4.97 and 4.100
           of http://arxiv.org/abs/1405.2280) */
-          if ((ppt2->has_quad_metric_in_los==_TRUE_) && (ppt2->use_exponential_potentials==_FALSE_))
+          if ((ppt2->has_quad_metric_in_los) && !ppt2->use_exponential_potentials)
             source += 8 * (phi_1*phi_prime_2 + phi_2*phi_prime_1);
 
         }
@@ -13521,12 +13521,12 @@ int perturb2_sources (
         else if (l==1) {
   
           /* Second-order scattering term for the dipole */
-          if (ppt2->has_pure_scattering_in_los == _TRUE_)
+          if (ppt2->has_pure_scattering_in_los)
             source += four_thirds * kappa_dot * b(1,1,ppt2->m[index_m]);
 
           /* Intrinsic metric term. For m==0, when integrated by parts, this gives the SW effect and the
           other half of the ISW effect. We add it only if we integrate by parts. */
-          if (ppt2->has_pure_metric_in_los == _TRUE_) {
+          if (ppt2->has_pure_metric_in_los) {
             if (m == 0) source += 4 * k * psi;
             if (m == 1) source += - 4 * omega_m1_prime;
           }
@@ -13534,10 +13534,10 @@ int perturb2_sources (
             if (m == 1) source += switch_isw * (- 4 * omega_m1_prime);
 
           /* Quadratic metric contribution from the Liouville operator  */
-          if (ppt2->has_quad_metric_in_los == _TRUE_) {
+          if (ppt2->has_quad_metric_in_los) {
             /* Using the exponential potentials induces a sign difference in the dipole term
             (cfr 4.97 and 4.100 of http://arxiv.org/abs/1405.2280) */
-            if (ppt2->use_exponential_potentials == _FALSE_)
+            if (!ppt2->use_exponential_potentials)
               source += - 4 * (k1_m[m+1]*psi_1*(psi_2-phi_2) + k2_m[m+1]*psi_2*(psi_1-phi_1));
             else
               source += - 4 * (k1_m[m+1]*psi_1*(-psi_2-phi_2) + k2_m[m+1]*psi_2*(-psi_1-phi_1));
@@ -13551,11 +13551,11 @@ int perturb2_sources (
         else if (l==2) {
   
           /* Second-order scattering term for the quadrupole */
-          if (ppt2->has_pure_scattering_in_los == _TRUE_)
+          if (ppt2->has_pure_scattering_in_los)
             source += kappa_dot * 0.1 * (ppw2->I_2m[m] - sqrt_6*ppw2->E_2m[m]);
 
           /* Tensor metric contribution */
-          if (ppt2->has_pure_metric_in_los == _TRUE_) {
+          if (ppt2->has_pure_metric_in_los) {
             if (m == 2) source += 4 * gamma_m2_prime;
           else
             if (m == 2) source += switch_isw * (4 * gamma_m2_prime);
@@ -13565,7 +13565,7 @@ int perturb2_sources (
 
 
         /* Scattering from quadratic sources of the form multipole times baryon_velocity */
-        if (ppt2->has_quad_scattering_in_los == _TRUE_)
+        if (ppt2->has_quad_scattering_in_los)
           source += dI_qc2(l,m);
         
 
@@ -13575,7 +13575,7 @@ int perturb2_sources (
 
         /* Time delay terms, i.e. terms arising from the free streaming part of the Liouville
         operator.  These terms are suppressed by a factor 1/l. */
-        if (ppt2->has_time_delay_in_los == _TRUE_)
+        if (ppt2->has_time_delay_in_los)
           source -=   I_2_raw(l+1) * c_plus_22(l,m)*k2*(phi_1+psi_1)
                     - I_2_raw(l-1) * c_minus_22(l,m)*k2*(phi_1+psi_1)
                     /* Symmetrisation */
@@ -13585,7 +13585,7 @@ int perturb2_sources (
   
         /* Redshift term, that is the part of the Liouville operator which involves the
         derivative of the distribution function with respect to the photon momentum. */
-        if (ppt2->has_redshift_in_los == _TRUE_)
+        if (ppt2->has_redshift_in_los)
           source -= - 4*phi_prime_1*I_2(l,m)
                     + I_2_raw(l+1) * 4 * c_plus_12(l,m)*k1*psi_1
                     - I_2_raw(l-1) * 4 * c_minus_12(l,m)*k1*psi_1
@@ -13596,7 +13596,7 @@ int perturb2_sources (
         
       
         /* Lensing terms, i.e. terms arising from the lensing part of the Liouville operator */
-        if (ppt2->has_lensing_in_los == _TRUE_)
+        if (ppt2->has_lensing_in_los)
           source -=   I_2_raw(l+1) * r_plus_12(l,m)*k1*(phi_1+psi_1)
                     - I_2_raw(l-1) * r_minus_12(l,m)*k1*(phi_1+psi_1)
                     /* Symmetrisation */
@@ -13622,7 +13622,7 @@ int perturb2_sources (
         whereby X ~ X^(1) + 1/2 * X^(2), so that our quadratic sources appear multiplied
         by a factor two with respect to those in Huang & Vernizzi (2013). */
         
-        if ((ppt2->use_delta_tilde_in_los == _TRUE_) && (ppt2->has_quadratic_sources == _TRUE_)) {
+        if ((ppt2->use_delta_tilde_in_los) && (ppt2->has_quadratic_sources)) {
         
           /* We shall compute the (l,m) multipole of delta*delta and delta*collision */
           double delta_delta_lm = 0;
@@ -13717,7 +13717,7 @@ int perturb2_sources (
   // =                               E-mode polarisation                                =
   // ====================================================================================
 
-  if (ppt2->has_source_E == _TRUE_) {
+  if (ppt2->has_source_E) {
 
     for (int l=0; l<=ppr2->l_max_los_p; ++l) {
 
@@ -13745,12 +13745,12 @@ int perturb2_sources (
 
         if (l==2) {
           /* Second-order scattering term for the quadrupole */
-          if (ppt2->has_pure_scattering_in_los == _TRUE_)
+          if (ppt2->has_pure_scattering_in_los)
             source += - sqrt_6 * kappa_dot * 0.1 * (ppw2->I_2m[m] - sqrt_6*ppw2->E_2m[m]);
         }
           
         /* Scattering from quadratic sources of the form multipole times baryon_velocity */
-        if (ppt2->has_quad_scattering_in_los == _TRUE_)
+        if (ppt2->has_quad_scattering_in_los)
           source += dE_qc2(l,m);
 
 
@@ -13759,7 +13759,7 @@ int perturb2_sources (
         // ---------------------------------------------------------------------------------
 
         /* Time delay terms, i.e. terms arising from the free streaming part of the Liouville operator */
-        if (ppt2->has_time_delay_in_los == _TRUE_)
+        if (ppt2->has_time_delay_in_los)
           source -=   E_2_raw(l+1) * d_plus_22(l,m)*k2*(phi_1+psi_1)
                     - E_2_raw(l-1) * d_minus_22(l,m)*k2*(phi_1+psi_1)
                     /* Symmetrisation */
@@ -13769,7 +13769,7 @@ int perturb2_sources (
           
         /* Redshift term, that is the part of the Liouville operator which involves the derivative of the
         distribution function with respect to the photon momentum. */
-        if (ppt2->has_redshift_in_los == _TRUE_)
+        if (ppt2->has_redshift_in_los)
           source -= - 4*phi_prime_1*E_2(l,m)
                     + E_2_raw(l+1) * 4 * d_plus_12(l,m)*k1*psi_1
                     - E_2_raw(l-1) * 4 * d_minus_12(l,m)*k1*psi_1
@@ -13780,7 +13780,7 @@ int perturb2_sources (
         
               
         /* Lensing terms, i.e. terms arising from the lensing part of the Liouville operator */
-        if (ppt2->has_lensing_in_los == _TRUE_)
+        if (ppt2->has_lensing_in_los)
           source -=   E_2_raw(l+1) * k_plus_12(l,m)*k1*(phi_1+psi_1)
                     - E_2_raw(l-1) * k_minus_12(l,m)*k1*(phi_1+psi_1)
                     /* Symmetrisation */
@@ -13792,7 +13792,7 @@ int perturb2_sources (
         // -                         Sources for delta_tilde  (E)                          -
         // ---------------------------------------------------------------------------------
           
-        if ((ppt2->use_delta_tilde_in_los == _TRUE_) && (ppt2->has_quadratic_sources == _TRUE_)) {
+        if ((ppt2->use_delta_tilde_in_los) && (ppt2->has_quadratic_sources)) {
         
           /* We shall compute the (l,m) multipole of delta*delta and delta*collision */
           double delta_delta_lm = 0;
@@ -13877,7 +13877,7 @@ int perturb2_sources (
   // =                               B-mode polarisation                                =
   // ====================================================================================
   
-  if (ppt2->has_source_B == _TRUE_) {
+  if (ppt2->has_source_B) {
 
     for (int l=0; l<=ppr2->l_max_los_p; ++l) {
 
@@ -13907,7 +13907,7 @@ int perturb2_sources (
         // ---------------------------------------------------------------------------------
 
         /* Scattering from quadratic sources of the form multipole times baryon_velocity */
-        if (ppt2->has_quad_scattering_in_los == _TRUE_)
+        if (ppt2->has_quad_scattering_in_los)
           source += dB_qc2(l,m);
 
 
@@ -13916,7 +13916,7 @@ int perturb2_sources (
         // ---------------------------------------------------------------------------------
 
         /* Time delay terms, i.e. terms arising from the free streaming part of the Liouville operator */
-        if (ppt2->has_time_delay_in_los == _TRUE_)
+        if (ppt2->has_time_delay_in_los)
           source -= - k2*E_2_raw(l) * d_zero_22(l,m)*(phi_1+psi_1)
                     /* Symmetrisation */
                     - k1*E_1_raw(l) * d_zero_11(l,m)*(phi_2+psi_2);
@@ -13924,14 +13924,14 @@ int perturb2_sources (
           
         /* Redshift term, that is the part of the Liouville operator which involves the derivative of the
         distribution function with respect to the photon momentum. */
-        if (ppt2->has_redshift_in_los == _TRUE_)
+        if (ppt2->has_redshift_in_los)
           source -= - E_2_raw(l) * 4 * d_zero_12(l,m)*k1*psi_1
                     /* Symmetrisation */
                     - E_1_raw(l) * 4 * d_zero_21(l,m)*k2*psi_2;
 
 
         /* Lensing terms, i.e. terms arising from the lensing part of the Liouville operator */
-        if (ppt2->has_lensing_in_los == _TRUE_)
+        if (ppt2->has_lensing_in_los)
           source -= - E_2_raw(l) * k_zero_12(l,m)*k1*(phi_1+psi_1)
                     /* Symmetrisation */
                     - E_1_raw(l) * k_zero_21(l,m)*k2*(phi_2+psi_2);
@@ -13941,7 +13941,7 @@ int perturb2_sources (
         // -                         Sources for delta_tilde  (B)                          -
         // ---------------------------------------------------------------------------------
           
-        if ((ppt2->use_delta_tilde_in_los == _TRUE_) && (ppt2->has_quadratic_sources == _TRUE_)) {
+        if ((ppt2->use_delta_tilde_in_los) && (ppt2->has_quadratic_sources)) {
         
           /* We shall compute the (l,m) multipole of delta*delta and delta*collision */
           double delta_delta_lm = 0;
@@ -14038,7 +14038,7 @@ int perturb2_sources (
   X ~ X^(1) + 1/2*X^(2), to the actual second-order perturbation, defined as
   X ~ X^(1) + X^(2). */
 
-  if (ppt2->has_lss == _TRUE_) {
+  if (ppt2->has_lss) {
 
     /* Compute densities, velocities and shear for all species */
     class_call (perturb2_fluid_variables(
@@ -14059,7 +14059,7 @@ int perturb2_sources (
     // -                                 Delta CDM                                 -
     // -----------------------------------------------------------------------------
     
-    if (ppt2->has_source_delta_cdm == _TRUE_) {
+    if (ppt2->has_source_delta_cdm) {
 
       sources(ppt2->index_tp2_delta_cdm) = 0.5 * ppw2->delta_cdm;
 
@@ -14096,7 +14096,7 @@ int perturb2_sources (
 
   /* To be used only for debug purposes */
 
-  if (ppt2->use_test_source == _TRUE_) {
+  if (ppt2->use_test_source) {
 
     sources(ppt2->index_tp2_T) = g * psi * psi;
 
@@ -14417,7 +14417,7 @@ int perturb2_save_perturbations (
   double r = pvecback[pba->index_bg_rho_g]/pvecback[pba->index_bg_rho_b];
   double tau_c = 1/kappa_dot;
 
-  if (ppt2->has_quadratic_sources == _TRUE_) {
+  if (ppt2->has_quadratic_sources) {
 
     /* Compute quadratic sources and store them in ppw2->pvec_quadsources and
     ppw2->pvec_quadcollision. Also interpolate the first-order perturbations
@@ -14440,7 +14440,7 @@ int perturb2_save_perturbations (
       error_message);
 
     /* Interpolate the time derivatives of the quadratic sources if requested */
-    if (ppt2->compute_quadsources_derivatives == _TRUE_) {
+    if (ppt2->compute_quadsources_derivatives) {
 
       /* Interpolate the time derivative of the total quadratic sources
       as well, and store it in ppw2->pvec_d_quadsources */
@@ -14589,7 +14589,7 @@ int perturb2_save_perturbations (
 
     /* -  Scalar potentials phi and psi */
 
-    if (ppr2->compute_m[0] == _TRUE_) {
+    if (ppr2->compute_m[0]) {
 
       psi = pvecmetric[ppw2->index_mt2_psi];
 
@@ -14614,7 +14614,7 @@ int perturb2_save_perturbations (
 
     /* - Vector potential */
 
-    if (ppr2->compute_m[1] == _TRUE_) {
+    if (ppr2->compute_m[1]) {
 
       /* Extract the vector potential omega_m1 as evolved from the space-space
       Einstein equation (eq. 3.99 of http://arxiv.org/abs/1405.2280) */
@@ -14635,14 +14635,14 @@ int perturb2_save_perturbations (
       rho_dipole_1         +=  rho_b*pvec_sources1[ppt->index_qs_dipole_b];
       rho_dipole_2         +=  rho_b*pvec_sources2[ppt->index_qs_dipole_b];
 
-      if ((pba->has_cdm == _TRUE_) && (ppt->gauge != synchronous)) {
+      if ((pba->has_cdm) && (ppt->gauge != synchronous)) {
         rho_cdm = ppw2->pvecback[pba->index_bg_rho_cdm];
         rho_dipole_m1        +=  rho_cdm*cdm(1,1,1);
         rho_dipole_1         +=  rho_cdm*pvec_sources1[ppt->index_qs_dipole_cdm];
         rho_dipole_2         +=  rho_cdm*pvec_sources2[ppt->index_qs_dipole_cdm];
       }
 
-      if (pba->has_ur == _TRUE_) {
+      if (pba->has_ur) {
         rho_ur = ppw2->pvecback[pba->index_bg_rho_ur];
         rho_dipole_m1        +=  rho_ur*ppw2->N_1m[1];
         rho_dipole_1         +=  rho_ur*N_1_raw(1);
@@ -14676,7 +14676,7 @@ int perturb2_save_perturbations (
 
     /* - Tensor potential */
 
-    if (ppr2->compute_m[2] == _TRUE_) {
+    if (ppr2->compute_m[2]) {
 
       gamma_m2 = y[ppw2->pv->index_pt2_gamma_m2];
       gamma_m2_prime = y[ppw2->pv->index_pt2_gamma_m2_prime];
@@ -14714,7 +14714,7 @@ int perturb2_save_perturbations (
 
   double delta_cdm_analytical=0, theta_cdm_analytical=0, u_0_cdm_analytical=0, psi_analytical=0;
 
-  if (ppr2->compute_m[0] == _TRUE_) {
+  if (ppr2->compute_m[0]) {
 
     /* We take the delta and theta equations from eq. 40,45,46 of Bernardeau et al. 2002.
     The 2 factors come from the fact that we expand X = X0 + X1 + 1/2*X2. */
@@ -14739,7 +14739,7 @@ int perturb2_save_perturbations (
   we expand X = X0 + X1 + 1/2*X2. */
   double omega_m1_analytical=0;
 
-  if (ppr2->compute_m[1] == _TRUE_) {
+  if (ppr2->compute_m[1]) {
     double kernel_omega_m1 =  4/(3*Hc*k_sq) * (k1_sq * k2_m[2] + k2_sq * k1_m[2]);
     // kernel_omega_m1 =  4/(3/tau*k_sq) * (k1_sq * k2_m[2] + k2_sq * k1_m[2]);
     omega_m1_analytical = 2 * kernel_omega_m1 * psi_1 * psi_2;
@@ -14752,7 +14752,7 @@ int perturb2_save_perturbations (
   of Boubeker, Creminelli et al. 2009. */
   double gamma_m2_analytical=0;
 
-  if (ppr2->compute_m[2] == _TRUE_) {
+  if (ppr2->compute_m[2]) {
     double kernel_gamma_m2 = ppw2->k1_ten_k2[4]/k_sq;
     double ktau = k*tau;
     double j1_ktau = sin(ktau)/(ktau*ktau) - cos(ktau)/ktau;
@@ -14785,12 +14785,12 @@ int perturb2_save_perturbations (
   // double H0 = pba->H0;
   // double f = pow(Omega_m,4/7.);
   // double Fz = 2*g*g*Ez*f/(Omega_m0*H0*(1+z)*(1+z));
-  // if (ppr2->compute_m[1] == _TRUE_) {
+  // if (ppr2->compute_m[1]) {
   //   omega_m1_analytical *= Fz*Hc/2;
   // }
 
   /* Debug of the analytical limits for m=1 and m=2 */
-  // if ((ppr2->compute_m[1] == _TRUE_) && (ppr2->compute_m[2] == _TRUE_)) {
+  // if ((ppr2->compute_m[1]) && (ppr2->compute_m[2])) {
   //   if (ppw2->n_steps==1) {
   //     fprintf (stderr, "%12s %12s %12s %12s %12s %12s %12s %12s %12s %12s \n",
   //       "tau", "z", "frac_vec", "frac_ten", "rho_r/rho_m", "growth", "Fz*Hc/2", "Fz/tau/2", "Omega_m", "Omega_l");
@@ -14818,7 +14818,7 @@ int perturb2_save_perturbations (
 
   double u_0_adiabatic = 0;
 
-  if (ppr2->compute_m[0] == _TRUE_) {
+  if (ppr2->compute_m[0]) {
 
     double L_quad = ppw2->pvec_quadsources[ppw2->index_qs2_phi_prime_longitudinal];
     u_0_adiabatic = 2*(k/Hc)*(psi - L_quad/Hc)
@@ -14904,63 +14904,63 @@ int perturb2_save_perturbations (
   strcpy (label[++i], "psi");
   pointer_tr[i] = &psi;
   pointer_qs[i] = &pvec_quadsources[ppw2->index_qs2_psi];
-  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]==_TRUE_) && (v>0);
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]) && (v>0);
 
   /* Newtonian time potential psi_prime */
   strcpy (label[++i], "psi'");
   pointer_tr[i] = &psi_prime;
   pointer_qs[i] = &pvec_quadsources[ppw2->index_qs2_psi_prime];
-  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]==_TRUE_) && (v>1);
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]) && (v>1);
 
   /* Newtonian curvature potential phi */
   strcpy (label[++i], "phi");
   pointer_tr[i] = &phi;
-  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]==_TRUE_) && (v>0);
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]) && (v>0);
 
   /* Newtonian curvature potential phi_prime */
   strcpy (label[++i], "phi'");
   pointer_tr[i] = &pvecmetric[ppw2->index_mt2_phi_prime];
-  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]==_TRUE_) && (v>1);
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]) && (v>1);
 
   /* Newtonian curvature potential phi_prime_prime */
   strcpy (label[++i], "phi''");
   pointer_tr[i] = &pvecmetric[ppw2->index_mt2_phi_prime_prime];
   pointer_qs[i] = &pvec_quadsources[ppw2->index_qs2_phi_prime_prime];
-  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]==_TRUE_) && (v>1);
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]) && (v>1);
 
   /* Newtonian curvature potential phi_prime (using Poisson equation) */
   strcpy (label[++i], "phi'P");
   pointer_tr[i] = &pvecmetric[ppw2->index_mt2_phi_prime_poisson];
   pointer_qs[i] = &pvec_quadsources[ppw2->index_qs2_phi_prime_poisson];
-  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]==_TRUE_) && (v>2);
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]) && (v>2);
 
   /* Newtonian curvature potential phi_prime (using the longitudinal equation) */
   strcpy (label[++i], "phi'L");
   pointer_tr[i] = &pvecmetric[ppw2->index_mt2_phi_prime_longitudinal];
   pointer_qs[i] = &pvec_quadsources[ppw2->index_qs2_phi_prime_longitudinal];
-  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]==_TRUE_) && (v>2);
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]) && (v>2);
 
   /* Newtonian vector potential omega_[1] (evolved) */
   strcpy (label[++i], "omega_m1");
   pointer_tr[i] = &y[ppw2->pv->index_pt2_omega_m1];
   pointer_qs[i] = &pvec_quadsources[ppw2->index_qs2_omega_m1_prime];
-  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[1]==_TRUE_) && (v>0);
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[1]) && (v>0);
 
   /* Newtonian vector potential omega_[1] (constraint) */
   strcpy (label[++i], "omega_m1_c");
   pointer_tr[i] = &omega_m1_constraint;
-  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[1]==_TRUE_) && (v>1);
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[1]) && (v>1);
 
   /* Newtonian tensor potential gamma_[2] */
   strcpy (label[++i], "gamma_m2");
   pointer_tr[i] = &y[ppw2->pv->index_pt2_gamma_m2];
   pointer_qs[i] = &pvec_quadsources[ppw2->index_qs2_gamma_m2_prime_prime];
-  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[2]==_TRUE_) && (v>0);
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[2]) && (v>0);
 
   /* Newtonian tensor potential gamma_prime_[2] */
   strcpy (label[++i], "gamma_m2'");
   pointer_tr[i] = &y[ppw2->pv->index_pt2_gamma_m2_prime];
-  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[2]==_TRUE_) && (v>1);
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[2]) && (v>1);
 
 
   // -------------------------------------------------------------------------------
@@ -14970,32 +14970,32 @@ int perturb2_save_perturbations (
   /* Newtonian scalar potential on subhorizon scales */
   strcpy (label[++i], "psi_an");
   pointer_tr[i] = &psi_analytical;
-  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]==_TRUE_) && (v>3);
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[0]) && (v>3);
 
   /* Newtonian vector potential on subhorizon scales */
   strcpy (label[++i], "omega_m1_an");
   pointer_tr[i] = &omega_m1_analytical;
-  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[1]==_TRUE_) && (v>3);
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[1]) && (v>3);
 
   /* Newtonian tensor potential on subhorizon scales */
   strcpy (label[++i], "gamma_m2_an");
   pointer_tr[i] = &gamma_m2_analytical;
-  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[2]==_TRUE_) && (v>3);
+  condition[i] = (ppt->gauge==newtonian) && (ppr2->compute_m[2]) && (v>3);
 
   /* CDM density contrast on subhorizon scales */
   strcpy (label[++i], "deltacdm_an");
   pointer_tr[i] = &delta_cdm_analytical;
-  condition[i] = (pba->has_cdm==_TRUE_) && (ppr2->compute_m[0]==_TRUE_) && (v>3);
+  condition[i] = (pba->has_cdm) && (ppr2->compute_m[0]) && (v>3);
 
   /* CDM velocity on subhorizon scales */
   strcpy (label[++i], "u_0_cdm_an");
   pointer_tr[i] = &u_0_cdm_analytical;
-  condition[i] = (pba->has_cdm==_TRUE_) && (ppr2->compute_m[0]==_TRUE_) && (v>3);
+  condition[i] = (pba->has_cdm) && (ppr2->compute_m[0]) && (v>3);
 
   /* Photon density contrast (RSA) */
   strcpy (label[++i], "delta_g_rsa");
   pointer_tr[i] = &ppw2->delta_g_rsa;
-  condition[i] = (ppr2->compute_m[0]==_TRUE_) && (v>3);
+  condition[i] = (ppr2->compute_m[0]) && (v>3);
 
   /* Photon velocity (RSA) */
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
@@ -15016,14 +15016,14 @@ int perturb2_save_perturbations (
   /* Neutrino density contrast (RSA) */
   strcpy (label[++i], "delta_ur_rsa");
   pointer_tr[i] = &ppw2->delta_ur_rsa;
-  condition[i] = (pba->has_ur==_TRUE_) && (ppr2->compute_m[0]==_TRUE_) && (v>3);
+  condition[i] = (pba->has_ur) && (ppr2->compute_m[0]) && (v>3);
 
   /* Neutrino velocity (RSA) */
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     int m = ppr2->m[index_m];
     sprintf (label[++i], "u_ur_m%d_rsa", m);
     pointer_tr[i] = &ppw2->u_ur_rsa[m];
-    condition[i] = (pba->has_ur==_TRUE_) && (v>3);
+    condition[i] = (pba->has_ur) && (v>3);
   }
 
   /* Neutrino dipole (RSA) */
@@ -15031,7 +15031,7 @@ int perturb2_save_perturbations (
     int m = ppr2->m[index_m];
     sprintf (label[++i], "N_1_%d_rsa", m);
     pointer_tr[i] = &ppw2->N_1m_rsa[m];
-    condition[i] = (pba->has_ur==_TRUE_) && (v>3);
+    condition[i] = (pba->has_ur) && (v>3);
   }
 
 
@@ -15042,7 +15042,7 @@ int perturb2_save_perturbations (
   /* Common initial adiabatic velocity */
   sprintf (label[++i], "u_0_adiab");
   pointer_tr[i] = &u_0_adiabatic;
-  condition[i] = (ppr2->compute_m[0]==_TRUE_) && (v>1);
+  condition[i] = (ppr2->compute_m[0]) && (v>1);
 
   /* Velocity slip (TCA1) */
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
@@ -15113,7 +15113,7 @@ int perturb2_save_perturbations (
     int m = ppr2->m[index_m];
     sprintf (label[++i], "E_2_%d_tca1", m);
     pointer_tr[i] = &ppw2->E_2m_tca1[m];
-    condition[i] = (ppt2->has_polarization2==_TRUE_) && (v>3);
+    condition[i] = (ppt2->has_polarization2) && (v>3);
   }
 
   /* B-modes quadrupole (TCA1) */
@@ -15121,7 +15121,7 @@ int perturb2_save_perturbations (
     int m = ppr2->m[index_m];
     sprintf (label[++i], "B_2_%d_tca1", m);
     pointer_tr[i] = &ppw2->B_2m_tca1[m];
-    condition[i] = (ppt2->has_polarization2==_TRUE_) && (m>0) && (v>3);
+    condition[i] = (ppt2->has_polarization2) && (m>0) && (v>3);
   }
 
   /* Pi factor (TCA1) */
@@ -15129,7 +15129,7 @@ int perturb2_save_perturbations (
     int m = ppr2->m[index_m];
     sprintf (label[++i], "pi_m%d_tca1", m);
     pointer_tr[i] = &ppw2->Pi_tca1[m];
-    condition[i] = (ppt2->has_polarization2==_TRUE_) && (v>3);
+    condition[i] = (ppt2->has_polarization2) && (v>3);
   }
 
   /* Pi factor (numeric) */
@@ -15139,7 +15139,7 @@ int perturb2_save_perturbations (
     Pi[m] =  0.1 * (ppw2->I_2m[m] - sqrt_6*ppw2->E_2m[m]);
     sprintf (label[++i], "pi_m%d", m);
     pointer_tr[i] = &Pi[m];
-    condition[i] = (ppt2->has_polarization2==_TRUE_) && (v>3);
+    condition[i] = (ppt2->has_polarization2) && (v>3);
   }
 
 
@@ -15151,15 +15151,15 @@ int perturb2_save_perturbations (
 
   sprintf (label[++i], "delta_g_ad");
   pointer_tr[i] = &ppw2->delta_g_adiab;
-  condition[i] = (ppr2->compute_m[0]==_TRUE_) && (v>3);
+  condition[i] = (ppr2->compute_m[0]) && (v>3);
 
   sprintf (label[++i], "delta_b");
   pointer_tr[i] = &ppw2->delta_b;
-  condition[i] = (ppr2->compute_m[0]==_TRUE_) && (v>0);
+  condition[i] = (ppr2->compute_m[0]) && (v>0);
 
   sprintf (label[++i], "pressure_b");
   pointer_tr[i] = &ppw2->pressure_b;
-  condition[i] = (ppr2->compute_m[0]==_TRUE_) && (v>4);
+  condition[i] = (ppr2->compute_m[0]) && (v>4);
 
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     int m = ppr2->m[index_m];
@@ -15190,35 +15190,35 @@ int perturb2_save_perturbations (
 
   sprintf (label[++i], "delta_cdm");
   pointer_tr[i] = &ppw2->delta_cdm;
-  condition[i] = (pba->has_cdm==_TRUE_) && (ppr2->compute_m[0]==_TRUE_) && (v>0);
+  condition[i] = (pba->has_cdm) && (ppr2->compute_m[0]) && (v>0);
 
   sprintf (label[++i], "pressure_cdm");
   pointer_tr[i] = &ppw2->pressure_cdm;
-  condition[i] = (pba->has_cdm==_TRUE_) && (ppr2->compute_m[0]==_TRUE_) && (v>4);
+  condition[i] = (pba->has_cdm) && (ppr2->compute_m[0]) && (v>4);
 
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     int m = ppr2->m[index_m];
     sprintf (label[++i], "u_cdm_m%d", m);
     pointer_tr[i] = &ppw2->u_cdm[m];
-    condition[i] = (pba->has_cdm==_TRUE_) && (ppt->gauge != synchronous) && (v>0);
+    condition[i] = (pba->has_cdm) && (ppt->gauge != synchronous) && (v>0);
   }
 
   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
     int m = ppr2->m[index_m];
     sprintf (label[++i], "shear_cdm_m%d", m);
     pointer_tr[i] = &ppw2->shear_cdm[m];
-    condition[i] = (pba->has_cdm==_TRUE_) && (v>4);
+    condition[i] = (pba->has_cdm) && (v>4);
   }
 
   /* - Photon fluid variables */
 
   sprintf (label[++i], "delta_g");
   pointer_tr[i] = &ppw2->delta_g;
-  condition[i] = (ppr2->compute_m[0]==_TRUE_) && (v>0);
+  condition[i] = (ppr2->compute_m[0]) && (v>0);
 
   sprintf (label[++i], "pressure_g");
   pointer_tr[i] = &ppw2->pressure_g;
-  condition[i] = (ppr2->compute_m[0]==_TRUE_) && (v>4);
+  condition[i] = (ppr2->compute_m[0]) && (v>4);
 
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     int m = ppr2->m[index_m];
@@ -15239,24 +15239,24 @@ int perturb2_save_perturbations (
 
   sprintf (label[++i], "delta_ur");
   pointer_tr[i] = &ppw2->delta_ur;
-  condition[i] = (pba->has_ur==_TRUE_) && (ppr2->compute_m[0]==_TRUE_) && (v>0);
+  condition[i] = (pba->has_ur) && (ppr2->compute_m[0]) && (v>0);
 
   sprintf (label[++i], "pressure_ur");
   pointer_tr[i] = &ppw2->pressure_ur;
-  condition[i] = (pba->has_ur==_TRUE_) && (ppr2->compute_m[0]==_TRUE_) && (v>4);
+  condition[i] = (pba->has_ur) && (ppr2->compute_m[0]) && (v>4);
 
   for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m) {
     int m = ppr2->m[index_m];
     sprintf (label[++i], "u_ur_m%d", m);
     pointer_tr[i] = &ppw2->u_ur[m];
-    condition[i] = (pba->has_ur==_TRUE_) && (v>0);
+    condition[i] = (pba->has_ur) && (v>0);
   }
 
   for (int index_m=0; index_m <= ppr2->index_m_max[2]; ++index_m) {
     int m = ppr2->m[index_m];
     sprintf (label[++i], "shear_ur_m%d", m);
     pointer_tr[i] = &ppw2->shear_ur[m];
-    condition[i] = (pba->has_ur==_TRUE_) && (v>0);
+    condition[i] = (pba->has_ur) && (v>0);
   }
 
 
@@ -15270,7 +15270,7 @@ int perturb2_save_perturbations (
     for (int l=0; l <= ppw2->pv->l_max_b; ++l) {
       if ((l!=n) && (l!=0)) continue;
       if ((l==0) && (n%2!=0)) continue;
-      if (ppt2->has_perfect_baryons == _TRUE_)
+      if (ppt2->has_perfect_baryons)
         if ((n>1)||(l>1)) continue;
 
       for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
@@ -15289,7 +15289,7 @@ int perturb2_save_perturbations (
     for (int l=0; l <= ppw2->pv->l_max_cdm; ++l) {
       if ((l!=n) && (l!=0)) continue;
       if ((l==0) && (n%2!=0)) continue;
-      if (ppt2->has_perfect_cdm == _TRUE_)
+      if (ppt2->has_perfect_cdm)
         if ((n>1)||(l>1)) continue;
       if ((ppt->gauge==synchronous) && (l==1))
         continue;
@@ -15299,7 +15299,7 @@ int perturb2_save_perturbations (
         sprintf (label[++i], "cdm_%d_%d_%d", n, l, m);
         pointer_tr[i] = &y[ppw2->pv->index_pt2_monopole_cdm + nlm(n,l,m)];
         pointer_qs[i] = &ppw2->pvec_quadsources[ppw2->index_qs2_monopole_cdm + nlm(n,l,m)];
-        condition[i] = (pba->has_cdm==_TRUE_) && (v > ((l+2)/2));
+        condition[i] = (pba->has_cdm) && (v > ((l+2)/2));
       }
     }
   }
@@ -15321,7 +15321,7 @@ int perturb2_save_perturbations (
 
   /* - Photon polarisation multipoles */
 
-  if (ppt2->has_polarization2 == _TRUE_) {
+  if (ppt2->has_polarization2) {
 
     /* E-modes */
     for (int l=2; l<=ppw2->l_max_pol_g; ++l) {
@@ -15331,7 +15331,7 @@ int perturb2_save_perturbations (
         if (l==2) pointer_tr[i] = &ppw2->E_2m[m];
         else pointer_tr[i] = &y[ppw2->pv->index_pt2_monopole_E + lm(l,m)];
         pointer_qs[i] = &ppw2->pvec_quadsources[ppw2->index_qs2_monopole_E + lm(l,m)];
-        condition[i] = (ppt2->has_polarization2==_TRUE_) && (v > (l/2));
+        condition[i] = (ppt2->has_polarization2) && (v > (l/2));
       }
     }
 
@@ -15343,7 +15343,7 @@ int perturb2_save_perturbations (
         if (l==2) pointer_tr[i] = &ppw2->B_2m[m];
         else pointer_tr[i] = &y[ppw2->pv->index_pt2_monopole_B + lm(l,m)];
         pointer_qs[i] = &ppw2->pvec_quadsources[ppw2->index_qs2_monopole_B + lm(l,m)];
-        condition[i] = (ppt2->has_polarization2==_TRUE_) && (m>0) && (v > (l/2));
+        condition[i] = (ppt2->has_polarization2) && (m>0) && (v > (l/2));
       }
     }
   }
@@ -15358,7 +15358,7 @@ int perturb2_save_perturbations (
       else if (l==1) pointer_tr[i] = &ppw2->N_1m[m];
       else pointer_tr[i] = &y[ppw2->pv->index_pt2_monopole_ur + lm(l,m)];
       pointer_qs[i] = &ppw2->pvec_quadsources[ppw2->index_qs2_monopole_ur + lm(l,m)];
-      condition[i] = (pba->has_ur==_TRUE_) && (v > ((l+2)/2));
+      condition[i] = (pba->has_ur) && (v > ((l+2)/2));
     }
   }
 
@@ -15372,7 +15372,7 @@ int perturb2_save_perturbations (
 
   /* - Time derivatives of the neutrino multipoles (careful with RSA or NRA) */
 
-  // if (pba->has_ur == _TRUE_) {
+  // if (pba->has_ur) {
   //
   //   for (int l=0; l<=ppw2->l_max_ur; ++l) {
   //     for (int index_m=0; index_m <= ppr2->index_m_max[l]; ++index_m) {
@@ -15554,7 +15554,7 @@ int perturb2_save_perturbations (
 
     /* Do the same for the quadratic sources, if requested */
 
-    if (ppt2->output_quadratic_sources == _TRUE_) {
+    if (ppt2->output_quadratic_sources) {
 
       /* Shortcut to the file with the quadratic sources for this k triplet */
       FILE * file_qs = ppt2->files_perturbations_tau_quad[ppw2->index_k_out];
@@ -15734,7 +15734,7 @@ int perturb2_quadratic_sources_at_tau_linear(
   
   /* When the time-sampling is linear or logarithmic, we can obtain the
   position of tau in a straightforward way */
-  if (ppt->has_custom_timesampling_for_quadsources == _TRUE_) {
+  if (ppt->has_custom_timesampling_for_quadsources) {
 
     if (ppt->custom_tau_mode_quadsources == lin_tau_sampling) {
       step = ppt->custom_tau_step_quadsources;
@@ -15800,7 +15800,7 @@ int perturb2_quadratic_sources_at_tau_linear(
     size = ppw2->qs2_size;
   }
   else if (what_to_interpolate == interpolate_d_total) {
-    class_test (ppt2->compute_quadsources_derivatives == _FALSE_,
+    class_test (!ppt2->compute_quadsources_derivatives,
       ppt2->error_message,
       "can't interpolate derivatives of quadsources if you don't compute them first!");
     table = ppw2->d_quadsources_table;
@@ -15808,7 +15808,7 @@ int perturb2_quadratic_sources_at_tau_linear(
     size = ppw2->qs2_size;
   }
   else if (what_to_interpolate == interpolate_d_collision) {
-    class_test (ppt2->compute_quadsources_derivatives == _FALSE_,
+    class_test (!ppt2->compute_quadsources_derivatives,
       ppt2->error_message,
       "can't interpolate derivatives of quadsources if you don't compute them first!");
     table = ppw2->d_quadcollision_table;
@@ -15816,7 +15816,7 @@ int perturb2_quadratic_sources_at_tau_linear(
     size = ppw2->qs2_size;
   }
   else if (what_to_interpolate == interpolate_dd_total) {
-    class_test (ppt2->compute_quadsources_derivatives == _FALSE_,
+    class_test (!ppt2->compute_quadsources_derivatives,
       ppt2->error_message,
       "can't interpolate derivatives of quadsources if you don't compute them first!");
     table = ppw2->dd_quadsources_table;
@@ -15824,7 +15824,7 @@ int perturb2_quadratic_sources_at_tau_linear(
     size = ppw2->qs2_size;
   }
   else if (what_to_interpolate == interpolate_dd_collision) {
-    class_test (ppt2->compute_quadsources_derivatives == _FALSE_,
+    class_test (!ppt2->compute_quadsources_derivatives,
       ppt2->error_message,
       "can't interpolate derivatives of quadsources if you don't compute them first!");
     table = ppw2->dd_quadcollision_table;
@@ -15879,7 +15879,7 @@ int perturb2_quadratic_sources_at_tau_spline (
     size = ppw2->qs2_size;
   }
   else if (what_to_interpolate == interpolate_d_total) {
-    class_test (ppt2->compute_quadsources_derivatives == _FALSE_,
+    class_test (!ppt2->compute_quadsources_derivatives,
       ppt2->error_message,
       "can't interpolate derivatives of quadsources if you don't compute them first!");
     table = ppw2->d_quadsources_table;
@@ -15888,7 +15888,7 @@ int perturb2_quadratic_sources_at_tau_spline (
     size = ppw2->qs2_size;
   }
   else if (what_to_interpolate == interpolate_d_collision) {
-    class_test (ppt2->compute_quadsources_derivatives == _FALSE_,
+    class_test (!ppt2->compute_quadsources_derivatives,
       ppt2->error_message,
       "can't interpolate derivatives of quadsources if you don't compute them first!");
     table = ppw2->d_quadcollision_table;
@@ -15897,7 +15897,7 @@ int perturb2_quadratic_sources_at_tau_spline (
     size = ppw2->qs2_size;
   }
   else if (what_to_interpolate == interpolate_dd_total) {
-    class_test (ppt2->compute_quadsources_derivatives == _FALSE_,
+    class_test (!ppt2->compute_quadsources_derivatives,
       ppt2->error_message,
       "can't interpolate derivatives of quadsources if you don't compute them first!");
     table = ppw2->dd_quadsources_table;
@@ -15906,7 +15906,7 @@ int perturb2_quadratic_sources_at_tau_spline (
     size = ppw2->qs2_size;
   }
   else if (what_to_interpolate == interpolate_dd_collision) {
-    class_test (ppt2->compute_quadsources_derivatives == _FALSE_,
+    class_test (!ppt2->compute_quadsources_derivatives,
       ppt2->error_message,
       "can't interpolate derivatives of quadsources if you don't compute them first!");
     table = ppw2->dd_quadcollision_table;
@@ -16353,7 +16353,7 @@ int perturb2_output_k2k3 (
 
       /* Output the 1D and 2D files, but this time interpolating in k2 and k3 */
       
-      if (output_interpolated_sources == _TRUE_) {
+      if (output_interpolated_sources) {
 
 
         // -------------------------------------------------------------------------------

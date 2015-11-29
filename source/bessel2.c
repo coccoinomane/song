@@ -86,8 +86,8 @@ int bessel2_init(
   // ==============================================================================
 
   /* Do we need to compute the 2nd-order projection functions? */
-  if ((pbs->l_max==0) || ((ppt2->has_cls==_FALSE_) && (ppt2->has_cmb_bispectra==_FALSE_))
-    || ((ppr2->load_transfers==_TRUE_) && (ppr->load_bispectra==_TRUE_))) {
+  if ((pbs->l_max==0) || (!ppt2->has_cls && !ppt2->has_cmb_bispectra)
+    || ((ppr2->load_transfers) && (ppr->load_bispectra))) {
 
     if (pbs2->bessels2_verbose > 0)
       printf("Second-order Bessel module skipped.\n");
@@ -144,7 +144,7 @@ int bessel2_init(
   
   int index_J = 0;
   
-  if (ppt2->has_cmb_temperature == _TRUE_) {
+  if (ppt2->has_cmb_temperature) {
 
     /* T->T projection function (eq. 5.97 of http://arxiv.org/abs/1405.2280) */
     pbs2->has_J_TT = _TRUE_;
@@ -154,7 +154,7 @@ int bessel2_init(
   /* We compute the projection functions for both the E and B-modes, regardless of
   which polarisation type is requested, because free streaming makes the two types
   of polarisation mix in the line of sight integral */
-  if ((ppt2->has_cmb_polarization_e == _TRUE_) || (ppt2->has_cmb_polarization_b == _TRUE_)) {
+  if ((ppt2->has_cmb_polarization_e) || (ppt2->has_cmb_polarization_b)) {
 
     /* E->E projection function (equal to B->B). See eq. 5.103 of
     http://arxiv.org/abs/1405.2280 */
@@ -172,7 +172,7 @@ int bessel2_init(
 
   pbs2->J_size = index_J;
 
-  if ((pbs2->bessels2_verbose > 0) && (ppr2->load_transfers == _FALSE_))
+  if ((pbs2->bessels2_verbose > 0) && !ppr2->load_transfers)
     printf(" -> will compute size_J=%d projection functions\n", pbs2->J_size);
 
 
@@ -212,7 +212,7 @@ int bessel2_init(
     #pragma omp flush(abort)
 
   }
-  if (abort == _TRUE_) return _FAILURE_;
+  if (abort) return _FAILURE_;
 
   /* Debug - Check the computation of the Bessel functions */
   // {
@@ -228,7 +228,7 @@ int bessel2_init(
 
   /* The projection functions are needed only to compute the transfer functions. If the
   latter are loaded from disk, there is no need for the former */
-  if (ppr2->load_transfers == _TRUE_) {
+  if (ppr2->load_transfers) {
     if (pbs2->bessels2_verbose > 0)
       printf (" -> No second-order projection functions needed.\n");
 
@@ -369,7 +369,7 @@ int bessel2_init(
         } // end of for(index_m)
         #pragma omp flush(abort)    
       } // end of for(index_l)
-      if (abort == _TRUE_) return _FAILURE_;  // end of parallel region
+      if (abort) return _FAILURE_;  // end of parallel region
     } // end of for(index_L)
   } // end of loop on type of projection functions
   
@@ -430,7 +430,7 @@ int bessel2_init(
           } // end of for(index_m)
         #pragma omp flush(abort)
         } // end of for(index_l)
-        if (abort == _TRUE_) return _FAILURE_;
+        if (abort) return _FAILURE_;
       } // end of for(index_L)
     } // end of loop of projection function type
 
@@ -457,7 +457,7 @@ int bessel2_init(
 
       #pragma omp flush(abort)
     }
-    if (abort == _TRUE_) return _FAILURE_;
+    if (abort) return _FAILURE_;
 
 
   } // end of spline calculation
@@ -740,7 +740,7 @@ int bessel2_free(
     )
 {
 
-  if (ppr2->load_transfers == _FALSE_) {
+  if (!ppr2->load_transfers) {
 
     for (int index_J = 0; index_J < pbs2->J_size; ++index_J) {
   
@@ -891,14 +891,14 @@ int bessel2_get_l1_list(
                   
     }
     
-    if (l1_logical[l1] == _TRUE_)               // Increment the counter
+    if (l1_logical[l1])               // Increment the counter
       pbs2->l1_size++;
 
   }
 
   /* Debug - Print which l1 shall be computed */
   // for(index_l1=0; index_l1<(l1_max+1); ++index_l1)
-  //   if (l1_logical[index_l1] == _FALSE_)
+  //   if (!l1_logical[index_l1])
   //     printf("We shall not compute the l1=%d bessel.\n", index_l1);
   // printf("pbs->l_size = %d, pbs2->l1_size = %d\n", pbs->l_size, pbs2->l1_size);
   
@@ -914,7 +914,7 @@ int bessel2_get_l1_list(
 
   for(int index_l1=0; index_l1<pbs2->l1_size; ++index_l1) {
 
-    while (l1_logical[l1] == _FALSE_)
+    while (!l1_logical[l1])
       l1++;                         // Look for the first l1 to keep
 
     pbs2->l1[index_l1] = l1++;      // and store it in pbs2->l1
@@ -1071,15 +1071,15 @@ int bessel2_J_for_Llm (
   enum projection_function_types projection_function;
   int S;
   
-  if ((pbs2->has_J_TT==_TRUE_) && (index_J==pbs2->index_J_TT)) {
+  if ((pbs2->has_J_TT) && (index_J==pbs2->index_J_TT)) {
     projection_function = J_TT;
     S = 0;
   }
-  else if ((pbs2->has_J_EE==_TRUE_) && (index_J==pbs2->index_J_EE)) {
+  else if ((pbs2->has_J_EE) && (index_J==pbs2->index_J_EE)) {
     projection_function = J_EE;
     S = 2;
   }  
-  else if ((pbs2->has_J_EB==_TRUE_) && (index_J==pbs2->index_J_EB)) {
+  else if ((pbs2->has_J_EB) && (index_J==pbs2->index_J_EB)) {
     projection_function = J_EB;
     S = 2;
   }

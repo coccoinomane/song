@@ -517,7 +517,7 @@ int spectra2_cls (
       if (l > psp->l_song[psp->l_size_song-1]) {
         psp->cl[index_md][index_l*psp->ct_size + index_ct] = 0;
         psp->ddcl[index_md][index_l*psp->ct_size + index_ct] = 0;
-        if (psp->compute_cl_derivative == _TRUE_) {
+        if (psp->compute_cl_derivative) {
           psp->d_lsq_cl[index_md][index_l*psp->ct_size + index_ct] = 0;
           psp->dd_lsq_cl[index_md][index_l*psp->ct_size + index_ct] = 0;
           psp->spline_d_lsq_cl[index_md][index_l*psp->ct_size + index_ct] = 0;
@@ -1040,7 +1040,7 @@ int spectra2_integrate_fourier (
 
     } // for(index_k1)
     
-    if (abort == _TRUE_)
+    if (abort)
       return _FAILURE_;
 
   } // for(index_pk)
@@ -1118,7 +1118,7 @@ int spectra2_integrate_fourier_sym(
 //         index_k1, psp->k_size, psp->k[index_k1]);
 //
 //     // load sources
-//     if ((ppr2->load_sources == _TRUE_) || (ppr2->store_sources == _TRUE_))
+//     if ((ppr2->load_sources) || (ppr2->store_sources))
 //           class_call(perturb2_load(ppr2, ppt2, index_k1),
 //             ppt2->error_message,
 //             psp->error_message);

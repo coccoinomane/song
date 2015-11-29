@@ -795,7 +795,7 @@ int transfer2_free(
       )
 {
 
-  if (ptr2->has_cls == _TRUE_) {
+  if (ptr2->has_cls) {
   
     free (ptr2->tt2_labels);
   
@@ -964,10 +964,10 @@ int transfer2_indices_of_transfers(
 
   if (ptr2->transfer2_verbose > 1) {
     printf (" -> will compute tt2_size=%d transfer functions: ", ptr2->tt2_size);
-    if (ppt2->has_source_T == _TRUE_) printf ("T=%d ", ptr2->n_transfers);
-    if (ppt2->has_source_E == _TRUE_) printf ("E=%d (%d non-zero) ",
+    if (ppt2->has_source_T) printf ("T=%d ", ptr2->n_transfers);
+    if (ppt2->has_source_E) printf ("E=%d (%d non-zero) ",
       ptr2->n_transfers, ptr2->n_nonzero_transfers_E);
-    if (ppt2->has_source_B == _TRUE_) printf ("B=%d (%d non-zero) ",
+    if (ppt2->has_source_B) printf ("B=%d (%d non-zero) ",
       ptr2->n_transfers, ptr2->n_nonzero_transfers_B);
     printf ("\n");
   }  
@@ -1219,7 +1219,7 @@ int transfer2_get_lm_lists (
 
 
     /* - Photon temperature */
-    if ((ppt2->has_source_T==_TRUE_)
+    if ((ppt2->has_source_T)
     && (index_tt >= ptr2->index_tt2_T) && (index_tt < ptr2->index_tt2_T+ptr2->n_transfers)) {
 
       /* Store the position of the temperature monopole in ppt2->sources and ptr2->transfer */
@@ -1244,7 +1244,7 @@ int transfer2_get_lm_lists (
 
     /* - Photon E-mode polarization */
     
-    else if ((ppt2->has_source_E==_TRUE_)
+    else if ((ppt2->has_source_E)
     && (index_tt >= ptr2->index_tt2_E) && (index_tt < ptr2->index_tt2_E+ptr2->n_transfers)) {
 
       /* Store the position of the E-modes monopole in ppt2->sources and ptr2->transfer */
@@ -1269,7 +1269,7 @@ int transfer2_get_lm_lists (
 
     /* - Photon B-mode polarization */
 
-    else if ((ppt2->has_source_B==_TRUE_)
+    else if ((ppt2->has_source_B)
     && (index_tt >= ptr2->index_tt2_B) && (index_tt < ptr2->index_tt2_B+ptr2->n_transfers)) {
 
       /* Store the position of the B-modes monopole in ppt2->sources and ptr2->transfer */
@@ -1451,7 +1451,7 @@ int transfer2_get_k3_size (
     
     /* In older versions, the step was determined with respect to the comoving sound horizon
     at recombination. */
-    if ((ppr->load_run == _TRUE_) && (ppr2->old_run == _TRUE_))
+    if ((ppr->load_run) && (ppr2->old_run))
       k_step_max = 2.*_PI_/ptr2->rs_rec*ppr2->q_linstep_song;
 
   }
@@ -1619,7 +1619,7 @@ int transfer2_get_k3_list (
 
     k_step_max = 2.*_PI_/(ptr2->tau0-ptr2->tau_rec)*ppr2->q_linstep_song;
     
-    if ((ppr->load_run == _TRUE_) && (ppr2->old_run == _TRUE_))
+    if ((ppr->load_run) && (ppr2->old_run))
       k_step_max = 2.*_PI_/ptr2->rs_rec*ppr2->q_linstep_song;
   }
 
