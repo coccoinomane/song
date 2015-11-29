@@ -281,7 +281,8 @@ int transfer2_init(
 
   } // end of parallel region
   
-  if (abort == _TRUE_) return _FAILURE_;
+  if (abort)
+    return _FAILURE_;
 
   #ifdef _OPENMP
   if (ptr2->transfer2_verbose > 3)
@@ -301,9 +302,9 @@ int transfer2_init(
   
 
 
-  // =====================================================================================
+  // ====================================================================================
   // =                             Main loop on (k1,k2,tt2)                             =
-  // =====================================================================================
+  // ====================================================================================
 
   /* We shall now compute the transfer function array (ptr2->transfer) by calling the
   transfer2_compute() function in a loop over its levels. The order of the loops is
@@ -320,14 +321,14 @@ int transfer2_init(
         index_k1, ppt2->k_size, ppt2->k[index_k1]);
 
     /* Allocate the remaining levels of ptr2->transfer */
-    class_call(transfer2_allocate_k1_level(ppt2, ptr2, index_k1),
+    class_call (transfer2_allocate_k1_level (ppt2, ptr2, index_k1),
       ptr2->error_message,
       ptr2->error_message);
 
 
-    // -----------------------------------------------------------------------------
-    // -                            Load sources from disk                         -
-    // -----------------------------------------------------------------------------
+    // -------------------------------------------------------------------------------
+    // -                             Load sources from disk                          -
+    // -------------------------------------------------------------------------------
     
     /* Load sources from disk if needed */
     class_call (perturb2_load (ppr2, ppt2, index_k1),
@@ -340,19 +341,20 @@ int transfer2_init(
     for (int index_k2 = 0; index_k2 <= index_k1; ++index_k2) {
 
       if (ptr2->transfer2_verbose > 2)
-        printf(" -> computing transfer function for (k1,k2) = (%.3g,%.3g)\n", ppt2->k[index_k1], ppt2->k[index_k2]);
+        printf(" -> computing transfer function for (k1,k2) = (%.3g,%.3g)\n",
+          ppt2->k[index_k1], ppt2->k[index_k2]);
 
 
-      // -----------------------------------------------------------------------------
-      // -                        Interpolate sources in k3                          -
-      // -----------------------------------------------------------------------------
+      // -------------------------------------------------------------------------------
+      // -                         Interpolate sources in k3                           -
+      // -------------------------------------------------------------------------------
 
       /* Find the integration grid in k3 for the current (k1,k2) pair */
       int last_used_index_pt;
       double * k_grid_temp;
       class_alloc(k_grid_temp, ptr2->k3_size_max*sizeof(double), ptr2->error_message);
 
-      class_call_parallel (transfer2_get_k3_list(
+      class_call (transfer2_get_k3_list(
                     ppr,
                     ppr2,
                     ppt2,
@@ -375,8 +377,8 @@ int transfer2_init(
       
       /* Print some information */
       if (ptr2->transfer2_verbose > 3)
-        printf("     * (k1,k2)=(%.3g,%.3g): the k3-grid comprises sources+transfer+left+right=%d+%d+%d+%d points from %g to %g\n",
-          ppt2->k[index_k1], ppt2->k[index_k2],
+        printf("     * k1=%.3g[%d], k2=%.3g[%d]: the k3-grid comprises sources+transfer+left+right=%d+%d+%d+%d points from %g to %g\n",
+          ppt2->k[index_k1], index_k1, ppt2->k[index_k2], index_k2,
           last_used_index_pt,
           ptr2->k_physical_size_k1k2[index_k1][index_k2] - last_used_index_pt,
           ptr2->k_physical_start_k1k2[index_k1][index_k2],
@@ -387,9 +389,9 @@ int transfer2_init(
       free (k_grid_temp);
       
 
-      // -----------------------------------------------------------------------------
-      // -                          Interpolate sources in k                         -
-      // -----------------------------------------------------------------------------
+      // -------------------------------------------------------------------------------
+      // -                           Interpolate sources in k                          -
+      // -------------------------------------------------------------------------------
 
       for (int index_tp=0; index_tp<ppt2->tp2_size; ++index_tp) {
       
@@ -448,9 +450,9 @@ int transfer2_init(
           ppw[thread]->k = ppw[thread]->k_grid[index_k];
 
 
-          // -----------------------------------------------------------------------
-          // -                    Interpolate sources in time                      -
-          // -----------------------------------------------------------------------
+          // --------------------------------------------------------------------------------
+          // -                         Interpolate sources in time                          -
+          // --------------------------------------------------------------------------------
 
           /* Get the integration grid in time for the given k-mode */
           class_call_parallel (transfer2_get_time_grid(
@@ -493,9 +495,9 @@ int transfer2_init(
           } // for (index_tp)
 
           
-          // ----------------------------------------------------------------------------
-          // -                         Compute transfer functions                       -
-          // ----------------------------------------------------------------------------
+          // --------------------------------------------------------------------------------
+          // -                           Compute transfer functions                         -
+          // --------------------------------------------------------------------------------
 
           /* Now that we have interpolated the source function as a function of time in
           the right point of k, we have all the ingredients to compute the second-order
@@ -1699,10 +1701,10 @@ int transfer2_get_k3_list (
     index_k_tr-1, k_tr_size);
 
   /* Debug - Print the k3 list */
-  // int index_k1_debug = index_k1;
-  // int index_k2_debug = index_k2;
+  // int index_k1_debug = 61;
+  // int index_k2_debug = 47;
   //
-  // if ((index_k1==index_k1_debug) && (index_k2==index_k2_debug)) {
+  // if (index_k1==index_k1_debug && index_k2==index_k2_debug) {
   //
   //   fprintf (stderr, "# ~~~~ (index_k1,index_k2)=(%d,%d), (k1,k2)=(%g,%g), k_tr_size=%d ~~~~~\n",
   //     index_k1, index_k2, ppt2->k[index_k1], ppt2->k[index_k2], ptr2->k_size_k1k2[index_k1][index_k2]);
@@ -2114,13 +2116,13 @@ int transfer2_compute (
    */     
           
   /* Brightness -> Brightness temperature */
-  pw->transfer /= 4.;
+  pw->transfer /= 4.0;
         
   /* Y_lm expansion -> Legendre expansion */
-  pw->transfer /= (2.*ptr2->l[index_l] + 1);
+  pw->transfer /= (2.0*ptr2->l[index_l] + 1);
     
   /* Take the full second-order part of the temperature perturbation */
-  pw->transfer /= 2.;
+  pw->transfer /= 2.0;
 
 
 
@@ -2203,9 +2205,9 @@ int transfer2_integrate (
     
 
 
-  // =====================================================================================
-  // =                             Perform the integration                               =
-  // =====================================================================================
+  // ====================================================================================
+  // =                             Perform the integration                              =
+  // ====================================================================================
   
   /* Solve the line of sight integral by looping over time. The integral is in eq. 5.95
   of http://arxiv.org/abs/1405.2280. The time grid is built in transfer2_get_time_grid()
@@ -2234,7 +2236,7 @@ int transfer2_integrate (
     multipoles. */
     double integrand = 0;
 
-    for(int index_L=0; index_L<=pw->L_max; ++index_L) {
+    for (int index_L=0; index_L<=pw->L_max; ++index_L) {
   
       /* The 3j symbol in the definition of J forces the azimuthal number m to be smaller
       than both l and L (see eq. 5.97 of http://arxiv.org/abs/1405.2280) */
@@ -2271,9 +2273,9 @@ int transfer2_integrate (
 #endif // DEBUG
   
   
-      // ---------------------------------------------------------------------------
-      // -                              Interpolate J(x)                           -
-      // ---------------------------------------------------------------------------
+      // -------------------------------------------------------------------------------
+      // -                                Interpolate J(x)                             -
+      // -------------------------------------------------------------------------------
 
       /* Interpolate J in x=k*(tau0-tau) */
       double J_Llm;
@@ -2319,9 +2321,9 @@ int transfer2_integrate (
       // }
 
 
-      // ---------------------------------------------------------------------------
-      // -                           Build the integrand                           -
-      // ---------------------------------------------------------------------------
+      // -------------------------------------------------------------------------------
+      // -                             Build the integrand                             -
+      // -------------------------------------------------------------------------------
 
       /* Pre-interpolated source function in tau and k3 for the desired source type */
       double source_Lm = interpolated_sources_in_time[index_source_monopole + lm(L,m)][index_tau];
@@ -2329,23 +2331,28 @@ int transfer2_integrate (
       /* Increment the integrand function by adding another L-multipole  */
       integrand += J_Llm * source_Lm;
   
-      /* Debug - Print the integrand function for a given set of (l,m,k1,k2,k) */
-      // if ( (l==100) && (m==0) ) {
-      //   if ( (pw->index_k1==0) && (pw->index_k2==1) && (pw->index_k==2500) ) {
-      //     fprintf (stderr, "%15f %15f\n", ptr2->tau0_minus_tau[index_tau], integrand);
-      //   }
+      /* Debug: print the integrand function for a given set of (l,m,k1,k2,k) */
+      // if (l==2 && m==0 && index_k1==61 && index_k2==47 && index_k==25) {
+      //   fprintf (stderr, "%25.15g %25.15g %15d %25.15g %25.15g %25.15g %25.15g\n",
+      //     pw->tau0_minus_tau[index_tau],
+      //     pw->delta_tau[index_tau],
+      //     L,
+      //     J_Llm,
+      //     source_Lm,
+      //     integrand,
+      //     *integral);
       // }
 
     } // end of for(index_L)    
     
     /* Increment the result with the contribution from the considered time-step */
     *integral += integrand * pw->delta_tau[index_tau];
-  
-    /* Debug - Output the integrand as a function of time */
-    // if (l == 2) {
-    //   if (index_tau==0)
-    //     fprintf_k_debug (stderr, "# k1=%g, k2=%g, k=%g\n", ppt2->k[index_k1], ppt2->k[index_k2], k);
-    //   p2 (pw->tau_grid[index_tau], integrand);
+
+    /* Debug: goes with debug block in L loop */
+    // if (l==2 && m==0 && index_k1==61 && index_k2==47 && index_k==25) {
+    //   fprintf (stderr, "\n");
+    //   fprintf (stderr, "integral(r > %g) = %.15g\n", pw->tau0_minus_tau[index_tau], *integral);
+    //   fprintf (stderr, "\n");
     // }
   
   } // end of for(index_tau)
@@ -2669,8 +2676,9 @@ int transfer2_interpolate_sources_in_k(
                   sources_k_spline,
                   _SPLINE_EST_DERIV_,
                   ptr2->error_message),
-         ptr2->error_message,
-         ptr2->error_message);
+      ptr2->error_message,
+      ptr2->error_message);
+
   }
 
 
@@ -2688,57 +2696,62 @@ int transfer2_interpolate_sources_in_k(
   int index_k = 0;
   double h = k_pt[index_k+1] - k_pt[index_k];
 
-  /* Debug - Print the sources as a function of time */
-  // index_K = 50;
-  // if ((index_k1 == 1) && (index_k2 == 0))
-  //   if (index_tp2 == (ppt2->index_tp2_T + lm(2,0)))
-  //     for (int index_tau = 0; index_tau < ppt2->tau_size; index_tau++)
-  //         printf ("%12g %12g\n", ppt2->tau_sampling[index_tau], sources(index_tau,index_K));
-
-  /* Debug - Print the sources as a function of k3 */
-  // int index_tau = ppt2->index_tau_rec;
-  // if ((index_k1 == 1) && (index_k2 == 0))
-  //   if (index_tp2 == (ppt2->index_tp2_T + lm(1,0)))
-  //     for (int index_k=0; index_k < ppt2->k3_size[index_k1][index_k2]; ++index_k)
-  //       printf ("%12g %12g\n", ppt2->k3[index_k1][index_k2][index_k], sources(index_tau,index_k));
-
-
   for (int index_k_tr = first_physical_index; index_k_tr <= last_physical_index; ++index_k_tr) {
     
     while (((index_k+1) < k_pt_size) && (k_pt[index_k+1] < k_tr[index_k_tr])) {
       index_k++;
       h = k_pt[index_k+1] - k_pt[index_k];
     }
-    
+
     class_test(h==0, ptr2->error_message, "stop to avoid division by zero");
     
     double b = (k_tr[index_k_tr] - k_pt[index_k])/h;
     double a = 1-b;
 
-    /* We shall interpolate for each value of conformal time, hence the loop
-    on index_tau */
+    /* We shall interpolate for each value of conformal time, hence the loop on index_tau */
     if (ppr2->sources_k3_interpolation == linear_interpolation) {
+
       for (int index_tau = 0; index_tau < ppt2->tau_size; index_tau++)
         interpolated_sources_in_k[index_k_tr*ppt2->tau_size + index_tau] = 
           a * sources(index_tau,index_k) + b * sources(index_tau,index_k+1);
+
     }
+
     else if (ppr2->sources_k3_interpolation == cubic_interpolation) {
+
       for (int index_tau = 0; index_tau < ppt2->tau_size; index_tau++)
-        interpolated_sources_in_k[index_k_tr*ppt2->tau_size + index_tau] = 
+        interpolated_sources_in_k[index_k_tr*ppt2->tau_size + index_tau] =
           a * sources(index_tau,index_k) + b * sources(index_tau,index_k+1)
           + ((a*a*a-a) * sources_k_spline[index_tau*k_pt_size + index_k]
           +(b*b*b-b) * sources_k_spline[index_tau*k_pt_size + index_k+1])*h*h/6.0;
+
     }
 
   } // end of for (index_k_tr)
 
 
-  /* Debug - Print the sources as a function of the new grid */
+  /* Debug: print the sources in the nodes and in the new grid */
   // int index_tau = ppt2->index_tau_rec;
-  // if ((index_k1 == 1) && (index_k2 == 0))
-  //   if (index_tp2 == (ppt2->index_tp2_T + lm(1,0)))
-  //     for (int index_k_tr = first_physical_index; index_k_tr <= last_physical_index; ++index_k_tr)
-  //       printf ("%12g %12g\n", k_tr[index_k_tr], interpolated_sources_in_k[index_k_tr*ppt2->tau_size + index_tau]);
+  //
+  // if (index_k1 == 61 && index_k2 == 47 && index_tp2 == ppt2->index_tp2_T+lm(0,0)) {
+  //
+  //   for (int index_k_tr = first_physical_index; index_k_tr <= last_physical_index; ++index_k_tr)
+  //     fprintf (stderr, "%28.18g %28.18g\n",
+  //       k_tr[index_k_tr],
+  //       interpolated_sources_in_k[index_k_tr*ppt2->tau_size + index_tau]
+  //     );
+  //
+  //   /* Double space to allow plotting with gnuplot using "index 0" and "index 1" */
+  //   fprintf (stderr, "\n\n");
+  //
+  //   for (int index_k_pt = 0; index_k_pt < k_pt_size; ++index_k_pt)
+  //     fprintf (stderr, "%28.18g %28.18g %28.18g\n",
+  //       k_pt[index_k_pt],
+  //       // sources(index_tau, index_k_pt),
+  //       S[index_tau*k_pt_size + index_k_pt],
+  //       sources_k_spline[index_tau*k_pt_size + index_k_pt]
+  //     );
+  // }
 
 
   // ====================================================================================
@@ -2772,6 +2785,7 @@ int transfer2_interpolate_sources_in_k(
           interpolated_sources_in_k[index_k_tr*ppt2->tau_size + index_tau] = 
             interpolated_sources_in_k[last_physical_index*ppt2->tau_size + index_tau];
     }
+
     /* Extrapolation on the left (k < k_max_pt) */
     for (int index_k_tr = 0; index_k_tr < first_physical_index; ++index_k_tr) {
       
@@ -2831,7 +2845,7 @@ int transfer2_interpolate_sources_in_time (
   /* If the integration grid matches the time sampling of the sources, there is no need for
   interpolation */
   if (ptr2->tau_sampling == sources_tau_sampling) {
-    
+
     for (int index_tau = 0; index_tau < pw->tau_grid_size; ++index_tau)     
       interpolated_sources_in_time[index_tau]
         = interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau];

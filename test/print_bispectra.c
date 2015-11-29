@@ -475,7 +475,7 @@ int main(int argc, char **argv) {
   // =================================================================================
   
   /* Load bispectrum from disk, if needed */
-  for (int index_bt=0; index_bt < pbi->bt_size; ++index_bt) {
+  for (int index_bt=0; index_bt < bi.bt_size; ++index_bt) {
     if (bispectra_load(&pr, &bi, index_bt) == _FAILURE_) {
       printf("\n\nError in bispectra_load \n=>%s\n", bi.error_message);
       return _FAILURE_;

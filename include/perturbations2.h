@@ -164,7 +164,26 @@ enum quadratic_source_computation {
 #define _MAX_NUM_EQUATIONS_ 4096
 
 /**
- * Exclude edges of the triangular condition on (k1,k2,k3).
+ * Minimum fractional distance between two consecutive k-values.
+ *
+ * The k-sampling in the perturbations2.c module (ppt2->k and ppt2->k3) is used
+ * in the subsequent modules for linear and spline interpolation. In the rare
+ * occurrence where two values in either arrays are very close, the interpolation
+ * might give crazy results due to loss of significant digits. In order to avoid
+ * this effect, we set a minimum value for such distance.
+ *
+ * Note that the removal of these very close points is harmless because, as long
+ * as _MIN_K_DISTANCE_ is much smaller than unity, they are basically duplicates
+ * that do not add much physical information.
+ */
+#define _MIN_K_DISTANCE_ 1e-7
+
+/**
+ * Minimum absoulte distance to the limits of the triangular condition.
+ *
+ * This parameter serves the purpose of excluding from the second-order differential
+ * system those (k1,k2,k3) modes that are too close to the edges of the triangular
+ * condition.
  *
  * The differential system at second-order has to be solved for a set of three wavemodes
  * (k1,k2,k3) whereby k3 has to be in the range |k1-k2|<=k3<=k1+k1. When k3 is too close
@@ -172,10 +191,10 @@ enum quadratic_source_computation {
  * sines and cosines. In order to avoid that, we define here the safety distance between
  * k3 and the bounds. This safety distance is going to correspond to the largest scale
  * probed by SONG. The largest angular scale probed by SONG is l_min=2, which corresponds
- * to k~l_min/tau_0^-1~1e-4. Therefore, setting _MIN_K3_DISTANCE_ to anything smaller
+ * to k~l_min/tau_0^-1~1e-4. Therefore, setting this parameter to anything smaller
  * than 1e-6 is quite safe.
  */
-#define _MIN_K3_DISTANCE_ 1e-10
+#define _MIN_K_TRIANGULAR_DISTANCE_ 1e-10
 
 /**
  * Exclude squeezed configurations (TODO: remove)

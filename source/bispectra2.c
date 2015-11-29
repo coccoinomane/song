@@ -1320,10 +1320,10 @@ int bispectra2_intrinsic_integrate_over_k3 (
               class_test_permissive (fabs(transfer[index_k3]) > (expected_scale*1000),
                 pbi->error_message,
                 "found extremely large value for second-order transfer function: T_l3_m3(k1,k2,k3_tr)=%g\
- for l3=%d[%d], m3=%d[%d], k1=%g[%d], k2=%g[%d], k3_tr=%g[%d]\n",
+ for l3=%d[%d], m3=%d[%d], k1=%g[%d], k2=%g[%d], k3_tr=%g[%d], index_tt2=%d\n",
                 transfer[index_k3], pbi->l[index_l3], index_l3, pwb->abs_M3, ppr2->index_m[pwb->abs_M3],
                 ppt2->k[index_k1], index_k1, ppt2->k[index_k2], index_k2, 
-                pwb->k3_grid[thread][index_k3], index_k3);
+                pwb->k3_grid[thread][index_k3], index_k3, index_tt2_k3 + ptr2->lm_array[index_l3][index_M3]);
             }
           }
 #endif // DEBUG

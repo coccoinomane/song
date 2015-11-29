@@ -2776,7 +2776,7 @@ int perturb2_get_k_lists (
       ppt2->error_message, ppt2->error_message);
 
   }
-  
+
 
   // -------------------------------------------------------------------------------
   // -                               Linear sampling                               -
@@ -2944,6 +2944,38 @@ int perturb2_get_k_lists (
   
 
   // -------------------------------------------------------------------------------
+  // -                          Remove redundant points                            -
+  // -------------------------------------------------------------------------------
+
+  /* Remove a point if it is too close to the following one. See documentation
+  for _MIN_K_DISTANCE_ for more details. */
+
+  int * indices_removed = NULL;
+  double * values_removed = NULL;
+  int n_removed = 0;
+
+  /* If a point is closer than _MIN_K_DISTANCE_ to its closest neighbour to the
+  right, remove it from the sampling */
+  class_call (remove_close_points (
+                &ppt2->k,
+                &ppt2->k_size,
+                _MIN_K_DISTANCE_,
+                &n_removed,
+                &indices_removed,
+                &values_removed,
+                ppt2->error_message),
+    ppt2->error_message,
+    ppt2->error_message);
+
+  for (int i=0; i < n_removed; ++i)
+    printf ("WARNING: removed redundant value k=%g[%d] from ppt->k\n",
+      values_removed[i], indices_removed[i]);
+
+  free (indices_removed);
+  free (values_removed);
+
+
+  // -------------------------------------------------------------------------------
   // -                             Add output points                               -
   // -------------------------------------------------------------------------------
 
@@ -3077,30 +3109,50 @@ int perturb2_get_k_lists (
   }
 
 
-  /* Debug - Print out the k-list */
+  // -------------------------------------------------------------------------------
+  // -                             Add custom points                               -
+  // -------------------------------------------------------------------------------
+
+  /* Uncomment to remove points by hand */
+  // int indices[] = {5, 15};
+  // class_call (remove_points_double (
+  //               ppt2->k,
+  //               ppt2->k_size,
+  //               indices,
+  //               sizeof indices/sizeof(int),
+  //               &(ppt2->k),
+  //               &(ppt2->k_size),
+  //               ppt2->error_message),
+  //   ppt2->error_message,
+  //   ppt2->error_message);
+
+  /* Uncomment to add points by hand. If you get an error complaining about
+  xx_max, just increase pbs2->xx_max by hand in input2.c. */
+  // double points[] = {0.001, 0.002};
+  // for (int i=0; i < sizeof points/sizeof(double); ++i)
+  //   class_call (add_point_double (
+  //                 &ppt2->k,
+  //                 &ppt2->k_size,
+  //                 points[i],
+  //                 compare_doubles,
+  //                 ppt2->error_message),
+  //     ppt2->error_message,
+  //     ppt2->error_message);
+
+
+
+  /* Debug: print out the k-list */
   // printf ("# ~~~ k-sampling for k1 and k2 (size=%d) ~~~\n", ppt2->k_size);
   // for (int index_k=0; index_k < ppt2->k_size; ++index_k) {
-  //   printf ("%17d %17.7g", index_k, ppt2->k[index_k]);
+  //   printf ("%17d %27.17g", index_k, ppt2->k[index_k]);
   //   for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
   //     if (index_k==ppt2->index_k1_out[index_k_out]) printf ("\t(triplet #%d, k1) ", index_k_out);
   //     if (index_k==ppt2->index_k2_out[index_k_out]) printf ("\t(triplet #%d, k2) ", index_k_out);
   //   }
   //   printf ("\n");
   // }
-  
-  /* Check that the minimum and maximum values of ppt2->k are different. This
-  test might fire if the user set a custom time sampling with two equal k-values */
-  class_test ((ppt2->k[0]>=ppt2->k[ppt2->k_size-1]) && (ppt2->k_out_mode==_FALSE_),
-    ppt2->error_message,
-    "first and last value of ppt2->k coincide; maybe you set k_min_custom>=k_max_custom?");
-  
-  /* Check that the k array is strictly ascending */
-  for (int index_k=1; index_k < ppt2->k_size; ++index_k)
-    class_test (ppt2->k[index_k]<=ppt2->k[index_k-1],
-      ppt2->error_message,
-      "the k-sampling should be strictly ascending");
-  
-  
+
+
   
   // ====================================================================================
   // =                                      k3 grid                                     =
@@ -3140,8 +3192,8 @@ int perturb2_get_k_lists (
       achievable. Relying on this would ultimately give rise to nan, for example when
       computing the Legendre polynomials or square roots. Hence, we shall never sample k3 too close
       to its exact minimum or maximum. */
-      double k3_min = fabs(k1 - k2) + fabs(_MIN_K3_DISTANCE_);
-      double k3_max = k1 + k2 - fabs(_MIN_K3_DISTANCE_);
+      double k3_min = fabs(k1 - k2) + fabs(_MIN_K_TRIANGULAR_DISTANCE_);
+      double k3_max = k1 + k2 - fabs(_MIN_K_TRIANGULAR_DISTANCE_);
 
       /* The differential system dies when k1=k2 and k3 is very small. These configurations
       are irrelevant, so we set a minimum ratio between k1=k2 and k3. TODO: remove? */
@@ -3357,6 +3409,43 @@ int perturb2_get_k_lists (
       
 
       // -------------------------------------------------------------------------------
+      // -                          Remove redundant points                            -
+      // -------------------------------------------------------------------------------
+
+      /* Remove a point if it is too close to the following one. See documentation
+      for _MIN_K_DISTANCE_ for more details. */
+
+      int * indices_removed = NULL;
+      double * values_removed = NULL;
+      int n_removed = 0;
+
+      /* If a point is closer than _MIN_K_DISTANCE_ to its closest neighbour to the
+      right, remove it from the sampling */
+      class_call (remove_close_points (
+                    &k3_grid,
+                    &k3_size,
+                    _MIN_K_DISTANCE_,
+                    &n_removed,
+                    &indices_removed,
+                    &values_removed,
+                    ppt2->error_message),
+        ppt2->error_message,
+        ppt2->error_message);
+
+      if (ppt2->perturbations2_verbose > 0)
+        for (int i=0; i < n_removed; ++i)
+          printf ("WARNING: removed redundant value k3=%g[%d] from ppt->k3[%d][%d]\n",
+            values_removed[i], indices_removed[i], index_k1, index_k2);
+          
+      class_test (k3_size <= 0,
+        ppt2->error_message,
+        "something's wrong: there should always be at least one point");
+
+      free (indices_removed);
+      free (values_removed);
+
+
+      // -------------------------------------------------------------------------------
       // -                             Add k3 output points                            -
       // -------------------------------------------------------------------------------
 
@@ -3476,6 +3565,31 @@ int perturb2_get_k_lists (
       } // end of if k_out
 
 
+
+      /* Check that the k3 grid is strictly ascending and that its values are sparse enough */
+      for (int index_k3=0; index_k3 < k3_size-1; ++index_k3) {
+        
+        class_test (k3_grid[index_k3+1] <= k3_grid[index_k3],
+          ppt2->error_message,
+          "k3 grid not strictly ascending: k3[%d]=%.18g, k3[%d]=%.18g, diff = %g",
+          index_k3, k3_grid[index_k3], index_k3+1, k3_grid[index_k3+1],
+          1-k3_grid[index_k3+1]/k3_grid[index_k3]);
+        
+        double diff = 1-k3_grid[index_k3+1]/k3_grid[index_k3];
+        
+        if (fabs(diff) < _MIN_K_DISTANCE_)
+          printf ("(%d,%d): found small diff: k3[%d]=%.18g, k3[%d]=%.18g, diff=%g, tol=%g, diff_tol=%g\n",
+            index_k1, index_k2,
+            index_k3, k3_grid[index_k3], index_k3+1, k3_grid[index_k3+1],
+            diff,
+            ppr->smallest_allowed_variation,
+            1-fabs(diff/ppr->smallest_allowed_variation)
+            );      
+
+      }
+      
+
+
       // -------------------------------------------------------------------------------
       // -                                 Update grid                                 -
       // -------------------------------------------------------------------------------
@@ -3487,8 +3601,8 @@ int perturb2_get_k_lists (
       /* Update counter of k-configurations */
       ppt2->count_k_configurations += k3_size;
 
-      /* Debug - Print out the k3 list for a special configuration */
-      // if ((index_k1==0) && (index_k2==0)) {
+      /* Debug: print out the k3 list for a special configuration */
+      // if (index_k1==61 && index_k2==47) {
       //
       //   fprintf (stderr, "k1[%d]=%.17f, k2[%d]=%.17f, k3_size=%d, k3_min=%.17f, k3_max=%.17f\n",
       //     index_k1, k1, index_k2, k2, k3_size, k3_min, k3_max);
@@ -16224,6 +16338,7 @@ int perturb2_output_k2k3 (
       int output_interpolated_sources = _TRUE_;
       int extrapolate = _TRUE_;
 
+
       /* Output the 1D and 2D files, but this time interpolating in k2 and k3 */
       
       if (output_interpolated_sources == _TRUE_) {
@@ -16290,8 +16405,7 @@ int perturb2_output_k2k3 (
                       &k2_interp_size,
                       ppt2->k2_out[index_k_out],
                       compare_doubles,
-                      ppt2->error_message
-                      ),
+                      ppt2->error_message),
           ppt2->error_message,
           ppt2->error_message);
 

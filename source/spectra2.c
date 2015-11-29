@@ -360,9 +360,9 @@ printf ("index_tt_1 = %d\n", index_tt_1);
 
             /* Make sure that we do not step into the extrapolation region */
             if (ppr->bispectra_k3_extrapolation != no_k3_extrapolation) {
-              k3_min += fabs(_MIN_K3_DISTANCE_);
+              k3_min += fabs(_MIN_K_TRIANGULAR_DISTANCE_);
               k3_min = MAX (k3_min, (k1+k2)/_MIN_K3_RATIO_);
-              k3_max = k1 + k2 - fabs(_MIN_K3_DISTANCE_);
+              k3_max = k1 + k2 - fabs(_MIN_K_TRIANGULAR_DISTANCE_);
             }
 
             class_call_parallel (trapezoidal_weights (
