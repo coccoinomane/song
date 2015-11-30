@@ -112,11 +112,8 @@ struct bispectra_workspace_intrinsic {
   double ****** unsymmetrised_bispectrum;
   
 
-  /* Array that contains the interpolated values of the above integrals in ptr->k. Each thread has one.
-  Indexed as integral_splines[thread][index_k] and interpolated_integral[thread][index_k], where
-  index_k belongs to ptr->k. */
-  double ** integral_splines;
-  double ** interpolated_integral;
+  double ** interpolated_integral;  /**< Array with the intermediate integrals in ptr->k. Indexed as
+                                    interpolated_integral[thread][index_k] with index_k belonging to ptr->k. */
   
   /* Same as above, but for the k3 integration grid (one per thread) */
   double ** delta_k3;
@@ -275,9 +272,7 @@ extern "C" {
       int index_r,
       int index_k1,
       int index_l3,
-      double * integral_splines,
       double * interpolated_integral,
-      double * f,
       struct bispectra_workspace_intrinsic * pwb
       );
 
@@ -312,9 +307,7 @@ extern "C" {
       int index_r,
       int index_l3,
       int index_l2,
-      double * integral_splines,
       double * interpolated_integral,
-      double * f,
       struct bispectra_workspace_intrinsic * pwb
       );
   

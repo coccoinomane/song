@@ -100,9 +100,9 @@ transfer2_k3_sampling = smart
 	
 ## Interpolation parameters
 quadsources_time_interpolation = cubic
-sources_time_interpolation = linear
+sources_time_interpolation = cubic
 bessels_interpolation = linear
-sources_k3_interpolation = linear
+sources_k3_interpolation = cubic
 transfers_k1_interpolation = linear
 transfers_k2_interpolation = linear
 
@@ -149,8 +149,8 @@ custom_tau_size_song_sources = 500
 custom_tau_mode_song_sources = log             # either lin, log or class
 
 ## Integration grid in time for the second-order transfer functions
-transfer2_tau_sampling = sources
-
+transfer2_tau_sampling = custom
+tau_linstep_song = 0.1
 
 
 # =============================================================================
