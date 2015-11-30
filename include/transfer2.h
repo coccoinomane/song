@@ -290,9 +290,8 @@ struct transfer2_workspace {
   /* Sampling in k where we shall compute the transfer function */
   double * k_grid;
 
-  /* Arrays that will contain the second derivatives and the interpolated value of the sources, respectively, at
-    the times contained in the integration grid. */
-  double ** sources_time_spline;
+  /* Array that will contain the interpolated value of the sources at
+  the times contained in the integration grid. */
   double ** interpolated_sources_in_time;
 
   /* We shall interpolate the sources in ptr2->k and in pw->tau_grid. In order to speed up the table look-up for the
@@ -422,7 +421,6 @@ extern "C" {
         int index_k2,
         int index_tp,
         double * k_grid,
-        double * splines,
         double * interpolated_sources
         );
 
@@ -451,7 +449,6 @@ extern "C" {
         struct transfers2 * ptr2,
         int index_tp2,                          
         double * interpolated_sources_in_k,
-        double * sources_time_spline,
         double * interpolated_sources_in_time,
         struct transfer2_workspace * pw
         );

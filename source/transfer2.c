@@ -253,19 +253,6 @@ int transfer2_init(
       tau_size_max*sizeof(double),
       ptr2->error_message);
 
-    /* Allocate the array that will contain the second derivatives of the sources with respect to time,
-    in view of spline interpolation */
-    class_alloc_parallel (
-      ppw[thread]->sources_time_spline,
-      ppt2->tp2_size*sizeof(double *),
-      ptr2->error_message);
-
-    for (int index_tp=0; index_tp<ppt2->tp2_size; ++index_tp)
-      class_alloc_parallel(
-        ppw[thread]->sources_time_spline[index_tp],
-        tau_size_max*sizeof(double),
-        ptr2->error_message);
-
     /* Allocate the array that will contain the sources interpolated at the exact time-values in the integration grid */
     class_alloc_parallel (
       ppw[thread]->interpolated_sources_in_time,
@@ -289,11 +276,6 @@ int transfer2_init(
      __func__,number_of_threads);
   #endif
 
-  /* Array that will contain the second derivative of the sources with respect to k3,
-  in view of spline interpolation */
-  double ** sources_k_spline;
-  class_alloc (sources_k_spline, ppt2->tp2_size*sizeof(double *), ptr2->error_message);
-  
   /* Array that will contain the interpolated sources at the exact k3-values needed
   of the intergration grid */
   double ** interpolated_sources_in_k;
@@ -395,11 +377,6 @@ int transfer2_init(
       for (int index_tp=0; index_tp<ppt2->tp2_size; ++index_tp) {
       
         class_alloc(
-          sources_k_spline[index_tp],
-          ppt2->k3_size[index_k1][index_k2]*ppt2->tau_size*sizeof(double),
-          ptr2->error_message);
-      
-        class_alloc(
           interpolated_sources_in_k[index_tp],
           ptr2->k_size_k1k2[index_k1][index_k2]*ppt2->tau_size*sizeof(double),
           ptr2->error_message);
@@ -416,7 +393,6 @@ int transfer2_init(
                       index_k2,
                       index_tp,
                       ppw[0]->k_grid, /* Grid of desired k-values for integration; all ppw->[thread]->k_grid are filled with the same values */
-                      sources_k_spline[index_tp], /* Will be filled with second-order derivatives */
                       interpolated_sources_in_k[index_tp] /* Will be filled with interpolated values in ptr2->k(k1,k2) */
                       ),
           ptr2->error_message,
@@ -484,7 +460,6 @@ int transfer2_init(
                           ptr2,
                           index_tp,
                           interpolated_sources_in_k[index_tp], /* Must be already filled by transfer2_interpolate_sources_in_k() */
-                          ppw[thread]->sources_time_spline[index_tp], /* Will be filled with second-order derivatives */
                           ppw[thread]->interpolated_sources_in_time[index_tp], /* Will be filled with interpolated values in pw->tau_grid */
                           ppw[thread]
                           ),
@@ -533,10 +508,8 @@ int transfer2_init(
       } if (abort) return _FAILURE_; /* end of parallel region */
 
       /* Free the memory for the interpolated sources */
-      for (int index_tp=0; index_tp<ppt2->tp2_size; ++index_tp) {
-        free(sources_k_spline[index_tp]);
+      for (int index_tp=0; index_tp<ppt2->tp2_size; ++index_tp)
         free(interpolated_sources_in_k[index_tp]);
-      }
 
     } // for(index_k2)
 
@@ -571,7 +544,6 @@ int transfer2_init(
   // =                                  Clean & exit                                    =
   // ====================================================================================
 
-  free (sources_k_spline);
   free (interpolated_sources_in_k);  
   
   #pragma omp parallel shared(ppw) private(thread)
@@ -586,11 +558,8 @@ int transfer2_init(
     free(ppw[thread]->delta_tau);
     free(ppw[thread]->index_tau_left);    
     int index_tp;
-    for (index_tp=0; index_tp<ppt2->tp2_size; ++index_tp) {
-      free(ppw[thread]->sources_time_spline[index_tp]);
+    for (index_tp=0; index_tp<ppt2->tp2_size; ++index_tp)
       free(ppw[thread]->interpolated_sources_in_time[index_tp]);
-    }
-    free(ppw[thread]->sources_time_spline);
     free(ppw[thread]->interpolated_sources_in_time);
     free(ppw[thread]);
   }
@@ -2660,14 +2629,15 @@ int transfer2_get_time_grid(
  * an array containing the same source function interpolated in the desired values
  * of k, for all times where the source function is sampled.
  *
- * The output arrays, sources_k_spline and interpolated_sources_in_k, are matrices of
- * size k3_size*tau_size, where k3_size = ptr2->k3_size[index_k1][index_k2] and
- * tau_size = ppt2->tau_sampling. They are addressed as:
+ * The output array interpolated_sources_in_k is a matrix of size k3_size * tau_size,
+ * where k3_size = ptr2->k3_size[index_k1][index_k2] and tau_size = ppt2->tau_sampling.
+ * It is addressed as
  * 
- *   sources_k_spline[index_k3*ppt2->tau_size + index_tau]
  *   interpolated_sources_in_k[index_k3*ppt2->tau_size + index_tau]
  * 
- * and must be preallocated.
+ * and must be preallocated. Note that the indexing is inverted with respect to the
+ * last level of ppt2->sources, because in this way the interpolation in time will
+ * be simpler.
  */
 
 int transfer2_interpolate_sources_in_k(
@@ -2682,7 +2652,6 @@ int transfer2_interpolate_sources_in_k(
       int index_k2,
       int index_tp2, /**< input, type of the requested source function */
       double * k_grid, /**< input, list of k-values where to interpolate the source function */
-      double * sources_k_spline, /**< output, second derivative of the source function with respect to k, for all time values */
       double * interpolated_sources_in_k /**< output, source function at the desired k-values, for all time values */
       )
 {
@@ -2693,71 +2662,29 @@ int transfer2_interpolate_sources_in_k(
   double * k_pt = ppt2->k3[index_k1][index_k2];
   int k_tr_size = ptr2->k_size_k1k2[index_k1][index_k2];
   double * k_tr = k_grid;
-    
-  /* Find second derivative of original sources with respect to k in view of spline interpolation */
-  if (ppr2->sources_k3_interpolation == cubic_interpolation) {
 
-    class_call (array_spline_table_columns (
-                  ppt2->k3[index_k1][index_k2],
-                  ppt2->k3_size[index_k1][index_k2],
-                  ppt2->sources[index_tp2][index_k1][index_k2],
-                  ppt2->tau_size,
-                  sources_k_spline,
-                  _SPLINE_EST_DERIV_,
-                  ptr2->error_message),
-      ptr2->error_message,
-      ptr2->error_message);
-
-  }
-
-
-  // ====================================================================================
-  // =                                   Interpolation                                  =
-  // ====================================================================================
-
-  /* Limits for which we shall interpolate the sources */
+  /* We shall interpolate the sources in the k-values satisfying the triangular
+  condition*/
   int physical_size = ptr2->k_physical_size_k1k2[index_k1][index_k2];
   int first_physical_index = ptr2->k_physical_start_k1k2[index_k1][index_k2];
   int last_physical_index = first_physical_index + physical_size - 1;
 
-  /* Interpolate the source function at each k value contained in k_grid, using the usual
-  spline interpolation algorithm */
-  int index_k = 0;
-  double h = k_pt[index_k+1] - k_pt[index_k];
-
-  for (int index_k_tr = first_physical_index; index_k_tr <= last_physical_index; ++index_k_tr) {
-    
-    while (((index_k+1) < k_pt_size) && (k_pt[index_k+1] < k_tr[index_k_tr])) {
-      index_k++;
-      h = k_pt[index_k+1] - k_pt[index_k];
-    }
-
-    class_test(h==0, ptr2->error_message, "stop to avoid division by zero");
-    
-    double b = (k_tr[index_k_tr] - k_pt[index_k])/h;
-    double a = 1-b;
-
-    /* We shall interpolate for each value of conformal time, hence the loop on index_tau */
-    if (ppr2->sources_k3_interpolation == linear_interpolation) {
-
-      for (int index_tau = 0; index_tau < ppt2->tau_size; index_tau++)
-        interpolated_sources_in_k[index_k_tr*ppt2->tau_size + index_tau] = 
-          a * sources(index_tau,index_k) + b * sources(index_tau,index_k+1);
-
-    }
-
-    else if (ppr2->sources_k3_interpolation == cubic_interpolation) {
-
-      for (int index_tau = 0; index_tau < ppt2->tau_size; index_tau++)
-        interpolated_sources_in_k[index_k_tr*ppt2->tau_size + index_tau] =
-          a * sources(index_tau,index_k) + b * sources(index_tau,index_k+1)
-          + ((a*a*a-a) * sources_k_spline[index_tau*k_pt_size + index_k]
-          +(b*b*b-b) * sources_k_spline[index_tau*k_pt_size + index_k+1])*h*h/6.0;
-
-    }
-
-  } // for(index_k_tr)
-
+  /* Interpolate the source function in ptr2->k for all time values */
+  class_call (interpolate_matrix (
+                k_pt,
+                k_pt_size,
+                ppt2->sources[index_tp2][index_k1][index_k2],
+                ppt2->tau_size,
+                ppr2->sources_k3_interpolation,
+                _SPLINE_EST_DERIV_,
+                _TRUE_, /* Invert k and tau indices in the output */
+                k_tr + first_physical_index,
+                physical_size,
+                interpolated_sources_in_k + first_physical_index*ppt2->tau_size,
+                NULL,
+                ptr2->error_message),
+       ptr2->error_message,
+       ptr2->error_message);
 
   /* Debug: print the sources in the nodes and in the new grid */
   // int index_tau = ppt2->index_tau_rec;
@@ -2774,11 +2701,10 @@ int transfer2_interpolate_sources_in_k(
   //   fprintf (stderr, "\n\n");
   //
   //   for (int index_k_pt = 0; index_k_pt < k_pt_size; ++index_k_pt)
-  //     fprintf (stderr, "%28.18g %28.18g %28.18g\n",
+  //     fprintf (stderr, "%28.18g %28.18g\n",
   //       k_pt[index_k_pt],
   //       // sources(index_tau, index_k_pt),
-  //       S[index_tau*k_pt_size + index_k_pt],
-  //       sources_k_spline[index_tau*k_pt_size + index_k_pt]
+  //       S[index_tau*k_pt_size + index_k_pt]
   //     );
   // }
 
@@ -2839,13 +2765,9 @@ int transfer2_interpolate_sources_in_k(
  * an array containing the same source function interpolated in the desired values
  * of time.
  *
- * The output arrays, sources_time_spline and interpolated_sources_in_time, are vectors
- * of size pw->tau_grid_size; they are addressed as:
- * 
- *   sources_time_spline[index_tau]
- *   interpolated_sources_in_time[index_tau]
- * 
- * and must be preallocated.
+ * The output array interpolated_sources_in_time is a vector of size pw->tau_grid_size;
+ * it can be addressed as interpolated_sources_in_time[index_tau] and must be
+ * preallocated.
  */
 
 int transfer2_interpolate_sources_in_time (
@@ -2859,7 +2781,6 @@ int transfer2_interpolate_sources_in_time (
       int index_tp2, /**< input, type of the requested source function */
       double * interpolated_sources_in_k, /**< input, source function at the desired k-values, for all time values;
                                           this is the output of transfer2_interpolate_sources_in_k(). */
-      double * sources_time_spline, /**< output, second derivative of the source function with respect to time */
       double * interpolated_sources_in_time, /**< output, source function at the desired time-value */
       struct transfer2_workspace * pw /**< input, workspace containing the grid of required times (pw->tau_grid) and the value of k (pw->index_k) */
       )
@@ -2870,87 +2791,37 @@ int transfer2_interpolate_sources_in_time (
   double * tau_pt = ppt2->tau_sampling;
   int tau_size_tr = pw->tau_grid_size;
   double * tau_tr = pw->tau_grid;
-    
-  /* If the integration grid matches the time sampling of the sources, there is no need for
-  interpolation */
+
+  /* If the integration grid matches the time sampling of the sources, there is no need
+  for interpolation */
   if (ptr2->tau_sampling == sources_tau_sampling) {
 
-    for (int index_tau = 0; index_tau < pw->tau_grid_size; ++index_tau)     
+    for (int index_tau = 0; index_tau < pw->tau_grid_size; ++index_tau)
       interpolated_sources_in_time[index_tau]
         = interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau];
-    
+
   }
-  
+
   else {
 
-    /* Find second derivative of original sources with respect to k in view of spline
-    interpolation */
-    if (ppr2->sources_time_interpolation == cubic_interpolation) {
+    /* Interpolate the source function in tau_tr */
+    class_call (interpolate_array (
+                  tau_pt,
+                  tau_size_pt,
+                  interpolated_sources_in_k + pw->index_k*tau_size_pt,
+                  ppr2->sources_time_interpolation,
+                  _SPLINE_EST_DERIV_,
+                  tau_tr,
+                  tau_size_tr,
+                  interpolated_sources_in_time,
+                  NULL,
+                  ptr2->error_message),
+      ptr2->error_message,
+      ptr2->error_message);
 
-      class_call (array_spline_table_columns (
-                    tau_pt,
-                    tau_size_pt,
-                    interpolated_sources_in_k + pw->index_k * tau_size_pt, /* start from index_k */
-                    1,  /* we interpolate in time for only 1 k-value (pw->index_k) */
-                    sources_time_spline,
-                    _SPLINE_EST_DERIV_,
-                    ptr2->error_message),
-           ptr2->error_message,
-           ptr2->error_message);
-    }
-  
-    /* Interpolate the source function at each tau value contained in pw->tau_grid, using the
-    usual spline interpolation algorithm */
+  }
 
-    for (int index_tau_tr = 0; index_tau_tr < tau_size_tr; ++index_tau_tr) {
-    
-      /* Determine the index to the left of tau_tr in the sources time sampling, using
-      the array pw->index_tau_left, precomputed  in transfer2_get_time_grid() */
-      int index_tau = pw->index_tau_left[index_tau_tr];
-      double h = tau_pt[index_tau+1] - tau_pt[index_tau];
-
-      class_test(h==0., ptr2->error_message, "stop to avoid division by zero");
-    
-      double b = (tau_tr[index_tau_tr] - tau_pt[index_tau])/h;
-      double a = 1-b;
-
-      /* Actual interpolation */
-      if (ppr2->sources_time_interpolation == linear_interpolation) {
-
-        interpolated_sources_in_time[index_tau_tr] = 
-          a * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau]
-          + b * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau+1];
-      }
-      else if (ppr2->sources_time_interpolation == cubic_interpolation) {
-
-        interpolated_sources_in_time[index_tau_tr] = 
-          a * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau]
-          + b * interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau+1]
-          + ((a*a*a-a) * sources_time_spline[index_tau]
-          +(b*b*b-b) * sources_time_spline[index_tau+1])*h*h/6.0;
-      }
-
-      /* Debug - Print information for the current time of interpolation */
-      // if ((index_tp2==0) && (pw->index_k1==1) && (pw->index_k2==1) && (pw->index_k==1000)) {
-      //   printf("index_tau_tr = %d, index_tau = %d\n", index_tau_tr, index_tau);
-      //   printf("tau_tr = %g\n", tau_tr[index_tau_tr]);
-      //   printf("interpolated_sources_in_time[index_tau_tr] = %g\n", interpolated_sources_in_time[index_tau_tr]);
-      //   printf("a = %g, b = %g\n", a, b);
-      //   printf("tau_pt = %g, source = %g, dd = %g\n",
-      //     tau_pt[index_tau], interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau],
-      //       (a*a*a-a)*sources_time_spline[index_tau]*h*h/6.0);
-      //   printf("tau_pt[+1] = %g, source = %g, dd = %g\n",
-      //     tau_pt[index_tau+1], interpolated_sources_in_k[pw->index_k*tau_size_pt + index_tau+1],
-      //       (b*b*b-b)*sources_time_spline[index_tau+1]*h*h/6.0);
-      //   printf("\n");
-      // }
-  
-    } // for(index_tau_tr)
-    
-  } // if not sources time sampling
-
-  
-  /* Debug - Print the source function at the node points together with its interpolated value */
+  /* Debug: print the source function at the node points together with its interpolated value */
   // if ((pw->index_k1==1) && (pw->index_k2==0) && (pw->index_k==50)) {
   //
   //   if (index_tp2 == (ppt2->index_tp2_T + lm(2,0))) {
@@ -2969,7 +2840,6 @@ int transfer2_interpolate_sources_in_time (
   //
   //   }
   // }
-
   
   return _SUCCESS_;
   
