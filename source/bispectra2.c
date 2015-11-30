@@ -922,9 +922,7 @@ int bispectra2_intrinsic_workspace_init (
   /* We need a k3_grid per thread because it varies with k1 and k2 due to the triangular condition */
   class_alloc (pwb->k3_grid, number_of_threads*sizeof(double*), pbi->error_message);
   class_alloc (pwb->delta_k3, number_of_threads*sizeof(double*), pbi->error_message);
-  class_alloc (pwb->integral_splines, number_of_threads*sizeof(double*), pbi->error_message);
   class_alloc (pwb->interpolated_integral, number_of_threads*sizeof(double*), pbi->error_message);
-  class_alloc (pwb->f, number_of_threads*sizeof(double*), pbi->error_message);
     
   /* Beginning of parallel region */
   abort = _FALSE_;
@@ -942,9 +940,7 @@ int bispectra2_intrinsic_workspace_init (
   
   
     /* Allocate memory for the interpolation arrays (used only for the k2 and k3 integrations) */
-    class_calloc_parallel (pwb->integral_splines[thread], ptr->q_size, sizeof(double), pbi->error_message);
     class_calloc_parallel (pwb->interpolated_integral[thread], ptr->q_size, sizeof(double), pbi->error_message);
-    class_calloc_parallel (pwb->f[thread], pwb->k_smooth_size, sizeof(double), pbi->error_message);
   
   } // parallel region
   
@@ -1074,17 +1070,13 @@ int bispectra2_intrinsic_workspace_free(
   
     free(pwb->k3_grid[thread]);
     free(pwb->delta_k3[thread]);
-    free(pwb->integral_splines[thread]);
     free(pwb->interpolated_integral[thread]);
-    free(pwb->f[thread]);
     
   }  if (abort) return _FAILURE_;
   
   free(pwb->k3_grid);
   free(pwb->delta_k3);
-  free(pwb->integral_splines);
   free(pwb->interpolated_integral);
-  free(pwb->f);
   free(pwb->k_window_inverse);
  
   /* Free pwb->unsymmetrised bispectrum */
@@ -1466,9 +1458,7 @@ int bispectra2_interpolate_over_k2 (
     int index_r,
     int index_k1,
     int index_l3,
-    double * integral_splines,
     double * interpolated_integral,
-    double * f,
     struct bispectra_workspace_intrinsic * pwb
     )
 {
@@ -1499,6 +1489,9 @@ int bispectra2_interpolate_over_k2 (
       T_rescaled(\vec{k2},\vec{k1},\vec{k3})
       = T_rescaled(\vec{k1},\vec{k2},\vec{k3})*(k1/k2)^m */
 
+  double * f;
+  class_calloc (f, k_pt_size, sizeof(double), pbi->error_message);
+
   for (int index_k2=0; index_k2 < k_pt_size; ++index_k2) {
 
     if (index_k1 > index_k2)
@@ -1509,51 +1502,25 @@ int bispectra2_interpolate_over_k2 (
     
     /* Multiply by window function */
     f[index_k2] *= pwb->k_window[index_k2];
-                                        
+
   }
   
-  if (ppr->transfers_k2_interpolation == cubic_interpolation) {
-    
-    class_call (array_spline_table_columns (
-                  k_pt,
-                  k_pt_size,
-                  f,
-                  1,  /* how many columns to consider */
-                  integral_splines,
-                  _SPLINE_EST_DERIV_,
-                  pbi->error_message),
-         pbi->error_message,
-         pbi->error_message);
-  }
+  /* Interpolate f in all k_tr values */
+  class_call (interpolate_array (
+                k_pt,
+                k_pt_size,
+                f,
+                ppr->transfers_k2_interpolation,
+                _SPLINE_EST_DERIV_,
+                k_tr,
+                k_tr_size,
+                interpolated_integral,
+                NULL,
+                pbi->error_message),
+       pbi->error_message,
+       pbi->error_message);
 
-
-  /* Interpolate at each k value using the usual spline interpolation algorithm */
-  int index_k = 0;
-  double h = k_pt[index_k+1] - k_pt[index_k];
-    
   for (int index_k_tr = 0; index_k_tr < k_tr_size; ++index_k_tr) {
-    
-    while (((index_k+1) < k_pt_size) && (k_pt[index_k+1] < k_tr[index_k_tr])) {
-      index_k++;
-      h = k_pt[index_k+1] - k_pt[index_k];
-    }
-    
-    class_test(h==0., pbi->error_message, "stop to avoid division by zero");
-    class_test((index_k+1) >= k_pt_size, pbi->error_message,
-      "some of the elements in k_tr are larger than the largest k_pt. Stop to avoid seg fault.");
-    
-    double b = (k_tr[index_k_tr] - k_pt[index_k])/h;
-    double a = 1.-b;
-
-    /* Interpolate for each value of l3, r, k1 */
-    if (ppr->transfers_k2_interpolation == linear_interpolation) {
-      interpolated_integral[index_k_tr] = a * f[index_k] + b * f[index_k+1];
-    }
-    else if (ppr->transfers_k2_interpolation == cubic_interpolation) {
-      interpolated_integral[index_k_tr] =  
-        a * f[index_k] + b * f[index_k+1] +
-        ((a*a*a-a) * integral_splines[index_k] +(b*b*b-b) * integral_splines[index_k+1])*h*h/6.0;
-    }
 
     /* Revert the effect of the window function */
     interpolated_integral[index_k_tr] *= pwb->k_window_inverse[index_k_tr];
@@ -1582,7 +1549,7 @@ int bispectra2_interpolate_over_k2 (
   } // for(index_k_tr)
 
 
-  /* Some debug - print the original array and the interpolation */
+  /* Debug: print the original array and the interpolation */
   // if ((index_k1==1) && (index_l3==0) && (index_r==0)) {
   // 
   //   fprintf (stderr, "\n\n");
@@ -1607,6 +1574,7 @@ int bispectra2_interpolate_over_k2 (
   //   
   // }
 
+  free (f);
 
   return _SUCCESS_;
 
@@ -1721,8 +1689,8 @@ int bispectra2_intrinsic_integrate_over_k2 (
         for (int index_k1 = 0; index_k1 < pwb->k_smooth_size; ++index_k1) {
     
           /* Interpolate the integral I_l3(k1,k2,r) that we computed above in the integration grid of k2.
-          Note that we pass the integral_splines and interpolated_integral arrays separately rather
-          than accessing them from pwb, because they are thread dependent (while pwb isn't). */
+          Note that we pass interpolated_integral rather than accessing it from pwb, because it is thread
+          dependent (while pwb isn't). */
           class_call_parallel (bispectra2_interpolate_over_k2 (
                                  ppr,
                                  ppr2,
@@ -1738,14 +1706,12 @@ int bispectra2_intrinsic_integrate_over_k2 (
                                  index_r,
                                  index_k1,
                                  index_l3,
-                                 pwb->integral_splines[thread],
                                  pwb->interpolated_integral[thread],
-                                 pwb->f[thread],
                                  pwb),
             pbi->error_message,
             pbi->error_message);            
             
-          /* Some debug - show the function that was interpolated as a function of r */
+          /* Debug: show the function that was interpolated as a function of r */
           // if ((pbi->l[index_l3]==205) && (pwb->abs_M3==1))
           //   if (pwb->offset_L3==1)
           //     if (index_k1==46) {
@@ -1753,7 +1719,7 @@ int bispectra2_intrinsic_integrate_over_k2 (
           //       fprintf (stderr, "%17.7g %17.7g\n", pwb->r[index_r], pwb->f[thread][index_k2]);
           //     }
             
-          /* Some debug - show the function that was interpolated as a function of k2 */
+          /* Debug: show the function that was interpolated as a function of k2 */
           // if (pwb->offset_L3==-1)
           //   if (index_k1==46)
           //     if (index_k2==37)
@@ -1763,7 +1729,7 @@ int bispectra2_intrinsic_integrate_over_k2 (
           //           fprintf (stderr, "%17.7g %17.7g\n",
           //             pwb->k_smooth_grid[index_k2], pwb->f[thread][index_k2]);
 
-          /* Some debug - show the function after interpolation as a function of k2 */
+          /* Debug: show the function after interpolation as a function of k2 */
           // if (pwb->offset_L3==0)
           //   if (index_k1==85) /* for ref runs with l_max=200 and kmax=6 it corresponds to 0.03728321, which is Christian's 13 */
           //   // if (index_k1==118) /* For better k-sampling, corresponds to 0.1 */
@@ -1799,7 +1765,7 @@ int bispectra2_intrinsic_integrate_over_k2 (
               pbi->error_message,
               pbi->error_message);
 
-            /* Some debug - Print the integral as a function of r */
+            /* Debug: Print the integral as a function of r */
             // if ((pwb->abs_M3==1) && (pwb->offset_L3==0))
             //   if ((pbi->l[index_l2]==200) && (pbi->l[index_l3]==200))
             //     /* for l_max=200 and kmax=6 it corresponds to 0.03728321, which is Christian's 13 */
@@ -1870,9 +1836,7 @@ int bispectra2_interpolate_over_k1 (
     int index_r,
     int index_l3,
     int index_l2,
-    double * integral_splines,
     double * interpolated_integral,
-    double * f,
     struct bispectra_workspace_intrinsic * pwb
     )
 {
@@ -1884,55 +1848,33 @@ int bispectra2_interpolate_over_k1 (
   double * k_tr = ptr->q;
   
   /* Define the function to be interpolated, and multiply it by a window function */
+
+  double * f;
+  class_calloc (f, k_pt_size, sizeof(double), pbi->error_message);
+
   for (int index_k1=0; index_k1 < k_pt_size; ++index_k1) {
     
     f[index_k1] = pwb->integral_over_k2[index_l3][index_l2][index_r][index_k1];
     f[index_k1] *= pwb->k_window[index_k1];
   }
- 
-  if (ppr->transfers_k1_interpolation == cubic_interpolation) {
-    
-    class_call (array_spline_table_columns (
-                  k_pt,
-                  k_pt_size,
-                  f,
-                  1,  /* How many columns to consider */
-                  integral_splines,
-                  _SPLINE_EST_DERIV_,
-                  pbi->error_message),
-         pbi->error_message,
-         pbi->error_message);
-  }
 
+  /* Interpolate f in all k_tr values */
+  class_call (interpolate_array (
+                k_pt,
+                k_pt_size,
+                f,
+                ppr->transfers_k1_interpolation,
+                _SPLINE_EST_DERIV_,
+                k_tr,
+                k_tr_size,
+                interpolated_integral,
+                NULL,
+                pbi->error_message),
+       pbi->error_message,
+       pbi->error_message);
 
-  /* Interpolate at each k value using the usual spline interpolation algorithm */
-  int index_k = 0;
-  double h = k_pt[index_k+1] - k_pt[index_k];
-    
   for (int index_k_tr = 0; index_k_tr < k_tr_size; ++index_k_tr) {
-    
-    while (((index_k+1) < k_pt_size) && (k_pt[index_k+1] < k_tr[index_k_tr])) {
-      index_k++;
-      h = k_pt[index_k+1] - k_pt[index_k];
-    }
-    
-    class_test(h==0., pbi->error_message, "stop to avoid division by zero");
-    class_test((index_k+1) >= k_pt_size, pbi->error_message,
-      "some of the elements in k_tr are larger than the largest k_pt. Stop to avoid seg fault.");
-    
-    double b = (k_tr[index_k_tr] - k_pt[index_k])/h;
-    double a = 1.-b;
-      
-    /* Interpolate for each value of l2, l3, r */
-    if (ppr->transfers_k1_interpolation == linear_interpolation) {
-      interpolated_integral[index_k_tr] = a * f[index_k] + b * f[index_k+1];
-    }
-    else if (ppr->transfers_k1_interpolation == cubic_interpolation) {
-      interpolated_integral[index_k_tr] =  
-        a * f[index_k] + b * f[index_k+1]
-        + ((a*a*a-a) * integral_splines[index_k] +(b*b*b-b) * integral_splines[index_k+1])*h*h/6.0;
-    }
-
+ 
     /* Revert the effect of the window function */
     interpolated_integral[index_k_tr] *= pwb->k_window_inverse[index_k_tr];
 
@@ -1960,7 +1902,7 @@ int bispectra2_interpolate_over_k1 (
   } // for(index_k_tr)
 
 
-  /* Some debug - print the original array and the interpolation */
+  /* Debug: print the original array and the interpolation */
   // if ((index_l2==10) && (index_l3==11) && (index_r==49)) {
   // 
   //   fprintf (stderr, "\n\n");
@@ -1984,6 +1926,8 @@ int bispectra2_interpolate_over_k1 (
   //   fprintf (stderr, "\n\n");
   //   
   // }
+
+  free (f);
 
   return _SUCCESS_;
 
@@ -2151,9 +2095,7 @@ int bispectra2_intrinsic_integrate_over_k1 (
                           index_r,
                           index_l3,
                           index_l2,
-                          pwb->integral_splines[thread],
                           pwb->interpolated_integral[thread],
-                          pwb->f[thread],
                           pwb),
               pbi->error_message,
               pbi->error_message);
@@ -2408,7 +2350,7 @@ int bispectra2_intrinsic_integrate_over_r(
             /* Increment the estimate of the integral */
             integral += integrand * pwb->delta_r[index_r];
     
-            /* Some debug - output intermediate results on stderr for a custom (l2,l3,l1) configuration */
+            /* Debug: output intermediate results on stderr for a custom (l2,l3,l1) configuration */
             // int index_l3 = pbi->l[index_l3];
             // int index_l2 = pbi->l[index_l2];
             // int index_l1 = pbi->l[index_l1];
@@ -2429,7 +2371,7 @@ int bispectra2_intrinsic_integrate_over_r(
           /* Fill the result array */
           pwb->integral_over_r[index_l3][index_l2][index_l1-index_l1_min] = integral;
   
-          /* Some debug - output the integral as a function of r on stderr for a custom (l2,l3,l1) */
+          /* Debug: output the integral as a function of r on stderr for a custom (l2,l3,l1) */
           // if ( (l2==l3) && (l3==l1) ) {
           //   fprintf(stderr, "%12d %17.7g\n", l2, pwb->integral_over_r[index_l3][index_l2][index_l1-index_l1_min]);
           // }
