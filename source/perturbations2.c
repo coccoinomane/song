@@ -14927,7 +14927,7 @@ int perturb2_output(
 
     sprintf (desc, "array of names of first-order perturbations (each has %d char)", _MAX_LENGTH_LABEL_);
     sprintf (name, "ppt->qs_labels");
-    class_call (binary_append_string (file, &ppt->qs_labels, ppt->qs_size_short*_MAX_LENGTH_LABEL_, desc, name),
+    class_call (binary_append_string (file, ppt->qs_labels, ppt->qs_size_short*_MAX_LENGTH_LABEL_, desc, name),
       file->error_message,
       ppt2->error_message);
 
@@ -15220,7 +15220,7 @@ int perturb2_output(
 
     sprintf (desc, "array of names of first-order perturbations (each has %d char)", _MAX_LENGTH_LABEL_);
     sprintf (name, "ppt->qs_labels");
-    class_call (binary_append_string (file, &ppt->qs_labels, ppt->qs_size_short*_MAX_LENGTH_LABEL_, desc, name),
+    class_call (binary_append_string (file, ppt->qs_labels, ppt->qs_size_short*_MAX_LENGTH_LABEL_, desc, name),
       file->error_message,
       ppt2->error_message);
 

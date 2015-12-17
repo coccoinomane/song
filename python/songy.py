@@ -98,16 +98,15 @@ class Fixedk1k2File(SongBinary):
         self.header = tmp[tmp.nonzero()].tostring()
 
         #Case of fized k1 and k2
-        self.k1 = self.read_block(1)[0]
-        self.k2 = self.read_block(2)[0]
-        self.tau = self.read_block(4)
-        self.a = self.read_block(5)
-        self.H = self.read_block(6)
-        self.k3 = self.read_block(8)
-        self.mu = self.read_block(9)
-        self.sourceblockstart = 19
+        self.k1 = self.read_block(2)[0]
+        self.k2 = self.read_block(3)[0]
+        self.tau = self.read_block(5)
+        self.a = self.read_block(6)
+        self.H = self.read_block(7)
+        self.k3 = self.read_block(9)
+        self.mu = self.read_block(10)
         # Read first order perturbations into dictionaries
-        name_array_1st = self.get_name_array(10,12)
+        name_array_1st = self.get_name_array(11,12)
         self.first_order_sources_k1 = {}
         self.first_order_sources_k2 = {}
         sourcek1 = self.read_block(13).reshape(len(self.tau),len(name_array_1st))
@@ -117,7 +116,7 @@ class Fixedk1k2File(SongBinary):
             self.first_order_sources_k1[name] = sourcek1[:,i]
             self.first_order_sources_k2[name] = sourcek2[:,i]
         #Store names of second order perturbations:
-        self.sourcenames = self.get_name_array(15,17)
+        self.sourcenames = self.get_name_array(15,16)
 
     def get_source(self,sourcename):
         """
@@ -127,7 +126,7 @@ class Fixedk1k2File(SongBinary):
         """
         for i in range(len(self.sourcenames)):
             if sourcename in self.sourcenames[i]:
-                val = self.read_block(19+i)
+                val = self.read_block(18+i)
                 #Case of fized k1 and k2. Reshape matrix:
                 return val.reshape(len(self.tau),len(self.k3))
     
@@ -157,12 +156,12 @@ class FixedTauFile(SongBinary):
         self.header = tmp[tmp.nonzero()].tostring()
         
         #Case of fixed tau
-        self.k1 = self.read_block(7)
+        self.k1 = self.read_block(8)
         self.k2 = [self.k1[0:i+1] for i in range(len(self.k1))]
-        self.tau = self.read_block(2)[0]
-        self.z = self.read_block(1)[0]
-        self.a = self.read_block(4)[0]
-        self.H = self.read_block(5)[0]
+        self.tau = self.read_block(3)[0]
+        self.z = self.read_block(2)[0]
+        self.a = self.read_block(5)[0]
+        self.H = self.read_block(6)[0]
         #k3 is naturally a list of lists of numpy arrays. However, it is easier to deal with a single list,
         #so we will use a 2d array to access the list.
         #Create lower triangular matrix such that self.flatidx[index_k1][index_k2] is the index in the flattened list.
@@ -171,17 +170,17 @@ class FixedTauFile(SongBinary):
         self.flatidx[np.tril_indices(N)] = range(0,N*(N+1)/2)
         #Read the flattened lower triangular matrix of k3 sizes and form the cumulative sum.
         #We use [:-1] not to get the total number, which would result in an empty list after np.split()
-        self.k3sizes_cumsum = self.read_block(8)[:-1].cumsum()
+        self.k3sizes_cumsum = self.read_block(9)[:-1].cumsum()
         #Read packed k3 array and split it into a (flattened) lower triangular list:
-        self.k3 = np.split(self.read_block(9),self.k3sizes_cumsum)
+        self.k3 = np.split(self.read_block(10),self.k3sizes_cumsum)
         # Read first order perturbations into dictionaries
-        name_array_1st = self.get_name_array(10,12)
-        self.first_order_sources = {'k':self.read_block(7)}
+        name_array_1st = self.get_name_array(11,12)
+        self.first_order_sources = {'k':self.k1}
         source = self.read_block(13).reshape(len(self.first_order_sources['k']),len(name_array_1st))
         for i in range(len(name_array_1st)):
             self.first_order_sources[name_array_1st[i]] = source[:,i]
         #Store names of second order perturbations:
-        self.sourcenames = self.get_name_array(14,16)
+        self.sourcenames = self.get_name_array(14,15)
 
     def get_source(self,sourcename):
         """
@@ -195,12 +194,12 @@ class FixedTauFile(SongBinary):
         """
         for i in range(len(self.sourcenames)):
             if sourcename in self.sourcenames[i]:
-                val = self.read_block(17+i)
+                val = self.read_block(16+i)
                 #Case of fixed tau: do same split as k3:
                 return np.split(val,self.k3sizes_cumsum)
                 
 
-    class BispectraFileCMB(SongBinary):
+class BispectraFileCMB(SongBinary):
     """
     This class is used for accessing SONG binary files for
     the intrinsic, reduced CMB bispectra today.
