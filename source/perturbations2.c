@@ -3469,8 +3469,12 @@ int perturb2_get_k_lists (
           assignation of the index_k3_out indices, because each addition will shift the grid
           and with it the indices assigned previously. We prevent this from happening by
           enforcing in input2.c that the k3 values are given in ascending order. */
+          
+          int index_k1_out = ppt2->index_k1_out[index_k_out];
+          int index_k2_out = ppt2->index_k2_out[index_k_out];
         
-          if ((index_k1==ppt2->index_k1_out[index_k_out]) && (index_k2==ppt2->index_k2_out[index_k_out])) {
+          if (index_k1==index_k1_out && index_k2==index_k2_out
+          ||  index_k2==index_k1_out && index_k1==index_k2_out && index_k1!=index_k2) {
 
             /* If this k3 output value was added by specifying an exact value, then we do need to
             add this value to the k3 grid */
@@ -3676,7 +3680,9 @@ int perturb2_get_k_lists (
       /* Check that the k3 grid is symmetric (size) */
       class_test (ppt2->k3_size[index_k1][index_k2] != ppt2->k3_size[index_k2][index_k1],
         ppt2->error_message,
-        "found different k3_size after switching k1 and k2");
+        "found different k3_size after switching k1 and k2: %d!=%d (%d,%d)",
+        ppt2->k3_size[index_k1][index_k2], ppt2->k3_size[index_k2][index_k1],
+        index_k1, index_k2);
 
       double * k3_grid = ppt2->k3[index_k1][index_k2];
       int k3_size = ppt2->k3_size[index_k1][index_k2];
