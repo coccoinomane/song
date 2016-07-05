@@ -413,21 +413,25 @@ int spectra2_cls (
 
               double total_factor =
                   // integration weight
-                   k1 * k2 * k3 *
+                  k1 * k2 * k3 *
                   // integration stepsize
-                   step_k1 * step_k2 * step_k3[index_k3] *
+                  step_k1 * step_k2 * step_k3[index_k3] *
                   // if the sources were rescaled, revert the rescaling
-                   inverse_rescaling * inverse_rescaling *
-                  // spectra factors (2l+1) already in transfer def (sum over m has factor 2 for m neq 0)
-                   2/_PI_ / pow(2*_PI_,3) *
+                  inverse_rescaling * inverse_rescaling *
+                  // spectra factors (2l+1) already in transfer def 
+                  8. / pow(2.*_PI_,3) *
                   // definition of second order perturbation theory
                   // already in transfer definition 1./2./2.*
                   // factor 4 of Delta also already in transfer def
                   // primordial spectra
-                   spectra_k1 * spectra_k2;
+                  spectra_k1 * spectra_k2;
+              
+              // the full factor is 1/2 1/(2pi)^3 Sum_m 1/(2l+1)^2
+              // we have a factor 1/16 and 1/(2l+1)^2 in the transfer function defenition 
 
-              double integrand = total_factor * transfer_1[index_k3] * transfer_2[index_k3];
-
+              double integrand =  // m neq 0 count double
+                    (m == 0 ? 1. : 2.)  * total_factor * transfer_1[index_k3] * transfer_2[index_k3];
+              
               #pragma omp atomic
               *result += integrand;
 

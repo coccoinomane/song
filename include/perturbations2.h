@@ -148,7 +148,8 @@ enum quadratic_source_computation {
   compute_only_collision,       /**< compute only the quadratic part of the collision term in
                                 pvec_quadcollision */
   compute_only_loss_term,       /**< compute only the collisional loss term in pvec_quadcollision */ 
-  compute_only_gain_term        /**< compute only the collisional gain term in pvec_quadcollision */ 
+  compute_only_gain_term,      /**< compute only the collisional gain term in pvec_quadcollision */ 
+  test_terms
 };
 
 
@@ -360,6 +361,12 @@ struct perturbs2
    * the second-order line of sight sources?
    */
   int has_only_gain_term;
+  
+ /**
+  * Debug flag: should we include only certain parts of the collision term in 
+  * the second-order line of sight sources?
+  */
+  int has_scat_test;
 
 
   /**

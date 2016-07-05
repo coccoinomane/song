@@ -12608,7 +12608,8 @@ int perturb2_quadratic_sources (
   if ((what_to_compute == compute_total_and_collision) ||
       (what_to_compute == compute_only_collision) ||
       (what_to_compute == compute_only_loss_term) ||
-      (what_to_compute == compute_only_gain_term)) {
+      (what_to_compute == compute_only_gain_term) ||
+      (what_to_compute == test_terms)) {
 
     // ==========================================================================================
     // =                                    Collision term                                      =
@@ -12767,6 +12768,13 @@ int perturb2_quadratic_sources (
         double vpot_g_2    =   ppw2->pvec_sources2[ppt->index_qs_v_g];
 
         dI_qc2(0,0) = four_thirds * ppw2->k1_dot_k2 * (vpot_b_1*(vpot_g_2 - vpot_b_2) + vpot_b_2*(vpot_g_1 - vpot_b_1));
+        
+      
+        double test_source =  1./kappa_dot * 1./sqrt(3.14159) * pow(2.71828,-(tau-10000.)*(tau-10000.)/50./50.)/50.;
+      
+        if (what_to_compute == test_terms){
+          dI_qc2(0,0) = test_source;
+        }
       }
 
 
@@ -12859,6 +12867,10 @@ int perturb2_quadratic_sources (
                              - c_plus_21(l,m)  * v_0_2 * I_1_raw(l+1);
 
           dI_qc2(l,m) += loss_term;
+          
+          double test_source = 0.;
+          
+       
 
           /* The quadratic loss term is given by all the terms that are unbound in l */
           if (what_to_compute == compute_only_loss_term)
@@ -12867,11 +12879,16 @@ int perturb2_quadratic_sources (
           /* The quadratic gain term is given by all the terms that are bound in l */
           if (what_to_compute == compute_only_gain_term)
             dI_qc2(l,m) -= loss_term;
+          
+          
+          if (what_to_compute == test_terms){
+            dI_qc2(l,m) = test_source;
+          }
  
         } // for(index_m)
       } // for(l)
  
- 
+      
  
       /* - A note on  1/2 factors and symmetrization */
     
@@ -12947,6 +12964,17 @@ int perturb2_quadratic_sources (
                                - d_plus_21(l,m)  * v_0_2 * E_1_raw(l+1);
             
             dE_qc2(l,m) += loss_term;
+            
+            double test_source = 0.;
+            
+            if (l==2) {
+          
+              test_source =  0.* 0.5 * sqrt_6 *
+                             (  c_minus_12(2,m) * v_0_1 * (I_2_raw(1) -  2.*v_0_2)
+                              + c_minus_21(2,m) * v_0_2 * (I_1_raw(1) -  2.*v_0_1));
+            }
+            
+            
 
             /* The quadratic loss term is given by all the terms that are unbound in l */
             if (what_to_compute == compute_only_loss_term)
@@ -12955,6 +12983,10 @@ int perturb2_quadratic_sources (
             /* The quadratic gain term is given by all the terms that are bound in l */
             else if (what_to_compute == compute_only_gain_term)
               dE_qc2(l,m) -= loss_term;
+            
+            if (what_to_compute == test_terms){
+              dE_qc2(l,m) = test_source;
+            }
 
           } // for(index_m)
         } // for(l)
@@ -12987,6 +13019,13 @@ int perturb2_quadratic_sources (
             double loss_term =   d_zero_12(l,m) * v_0_1 * E_2_raw(l)
                                + d_zero_21(l,m) * v_0_2 * E_1_raw(l);
             
+            double test_source = 0.;
+            
+            if (l==2)
+              test_source = -0.* 0.2*sqrt_6 *
+                             (  d_zero_12(2,m) * v_0_1 * (I_2_raw(2) - sqrt_6*E_2_raw(2))
+                              + d_zero_21(2,m) * v_0_2 * (I_1_raw(2) - sqrt_6*E_1_raw(2)));
+            
             dB_qc2(l,m) += loss_term;
             
             if (what_to_compute == compute_only_loss_term)
@@ -12994,6 +13033,10 @@ int perturb2_quadratic_sources (
 
             else if (what_to_compute == compute_only_gain_term)
               dB_qc2(l,m) -= loss_term;
+            
+            if (what_to_compute == test_terms){
+              dB_qc2(l,m) = test_source;
+            }
           
           } // for(index_m)
         } // for(l)
@@ -13017,7 +13060,14 @@ int perturb2_quadratic_sources (
       /* Dipole collision term */
       for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m)
         db_qc2(1,1,ppt2->m[index_m]) = - r * dI_qc2(1,ppt2->m[index_m]);
-          
+        
+      double test_source = 0.;
+      
+      if (what_to_compute == test_terms){
+        db_qc2(0,0,0) =  test_source;
+        for (int index_m=0; index_m <= ppr2->index_m_max[1]; ++index_m)
+          db_qc2(1,1,ppt2->m[index_m]) = test_source;
+      }    
  
       /* Pressure and quadrupole collision term */
       if (!ppt2->has_perfect_baryons) {
@@ -13275,37 +13325,8 @@ int perturb2_sources (
       ppt2->error_message,
       error_message);
 
-
-    /* If the user asked to exclude either the loss or gain term from the
-    quadratic collision term, overwrite pvec_quadcollision accordingly */
-
-    int what_to_compute = -1;
-    
-    if (ppt2->has_only_loss_term)
-      what_to_compute = compute_only_loss_term;
-
-    else if (ppt2->has_only_gain_term) 
-      what_to_compute = compute_only_gain_term;
-    
-    if (what_to_compute > -1)
-      class_call (perturb2_quadratic_sources(
-                    ppr,
-                    ppr2,
-                    pba,
-                    pth,
-                    ppt,
-                    ppt2,
-                    -1,
-                    tau,
-                    what_to_compute,
-                    ppw2->pvec_quadsources,
-                    ppw2->pvec_quadcollision,
-                    ppw2),
-        ppt2->error_message,
-        error_message);
-
   }
-  
+   
   /* Define shorthands */
   double * pvec_sources1 = ppw2->pvec_sources1;
   double * pvec_sources2 = ppw2->pvec_sources2;
@@ -13323,6 +13344,7 @@ int perturb2_sources (
                 ppw2),
     ppt2->error_message,
     ppt2->error_message);
+    
   
   /* Interpolate Einstein equations (ppw2->pvecmetric) */
   class_call (perturb2_einstein (
@@ -13337,6 +13359,44 @@ int perturb2_sources (
                 ppw2),
     ppt2->error_message,
     error_message);
+  
+  
+    /* If the user asked to exclude either the loss or gain term from the
+    quadratic collision term, overwrite pvec_quadcollision accordingly */
+
+    if (ppt2->has_quadratic_sources) {
+      int what_to_compute = -1;
+    
+      if (ppt2->has_only_loss_term)
+        what_to_compute = compute_only_loss_term;
+
+      else if (ppt2->has_only_gain_term) 
+        what_to_compute = compute_only_gain_term;
+    
+      else if (ppt2->has_scat_test){
+        what_to_compute = test_terms;
+      }
+    
+      if (what_to_compute > -1)
+        class_call (perturb2_quadratic_sources(
+                      ppr,
+                      ppr2,
+                      pba,
+                      pth,
+                      ppt,
+                      ppt2,
+                      -1,
+                      tau,
+                      what_to_compute,
+                      ppw2->pvec_quadsources,
+                      ppw2->pvec_quadcollision,
+                      ppw2),
+          ppt2->error_message,
+          error_message);
+      
+    }
+  
+  
   
   /* Shortcuts for metric variables */
   double phi=0, phi_1=0, phi_2=0, psi=0, psi_1=0, psi_2=0;
@@ -13507,7 +13567,7 @@ int perturb2_sources (
 
           /* Since the monopole doesn't have a purely second-order collision term, we have to include a
           kappa_dot*I_00 term to compensate the same term present in the line of sight formula. */
-          source += kappa_dot * ppw2->I_00;
+          source += (ppt2->has_scat_test ? 0.: 1.)* kappa_dot * ppw2->I_00;
 
           /* Intrinsic metric term. This gives part of the ISW effect. The other half comes from the 
           integration by parts of the 4*k*psi term in the dipole. */
@@ -13724,7 +13784,8 @@ int perturb2_sources (
       }  // end for (m)
     } // end for (l)
   } // temperature sources
-
+  
+  
   
   
   // ====================================================================================
@@ -13757,6 +13818,8 @@ int perturb2_sources (
 
         /* - Quadrupole source */
 
+        //printf(" E quad test S = %g\n", dE_qc2(2,1));
+
         if (l==2) {
           /* Second-order scattering term for the quadrupole */
           if (ppt2->has_pure_scattering_in_los)
@@ -13764,8 +13827,9 @@ int perturb2_sources (
         }
           
         /* Scattering from quadratic sources of the form multipole times baryon_velocity */
-        if (ppt2->has_quad_scattering_in_los)
+        if (ppt2->has_quad_scattering_in_los){
           source += dE_qc2(l,m);
+        }
 
 
         // ---------------------------------------------------------------------------------

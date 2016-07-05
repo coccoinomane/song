@@ -741,6 +741,10 @@ int input2_init (
   class_call(parser_read_string(pfc,"only_gain_term",&(string1),&(flag1),errmsg),errmsg,errmsg);
   if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
     ppt2->has_only_gain_term = _TRUE_;
+  
+  class_call(parser_read_string(pfc,"scattering_test_source",&(string1),&(flag1),errmsg),errmsg,errmsg);
+  if ((flag1 == _TRUE_) && ((strstr(string1,"y") != NULL) || (strstr(string1,"Y") != NULL)))
+    ppt2->has_scat_test = _TRUE_;
 
   class_test (ppt2->has_only_loss_term && ppt2->has_only_gain_term,
     errmsg,
@@ -2162,6 +2166,7 @@ int input2_default_params (
   ppt2->has_only_reionisation = _FALSE_;
   ppt2->has_only_loss_term = _FALSE_;
   ppt2->has_only_gain_term = _FALSE_;
+  ppt2->has_scat_test = _FALSE_;
   
   ppt2->has_cls = _FALSE_;
   ppt2->has_pks = _FALSE_;
