@@ -1,3 +1,9 @@
+## UPDATE: SONG is looking for a maintainer
+
+Find out more at
+
+* https://github.com/coccoinomane/song/issues/10
+
 ## DESCRIPTION
 
 SONG computes the non-linear evolution of the Universe in order to predict cosmological observables such as the bispectrum of the Cosmic Microwave Background (CMB).
