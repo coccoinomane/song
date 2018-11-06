@@ -48,14 +48,14 @@ The physics, mathematics and numerics of SONG are described extensively in my Ph
 ## GETTING STARTED
 First, download SONG. You can do so either from the project's page <https://github.com/coccoinomane/song/releases> or from the command line with:
 
-    git clone --recursive https://github.com/coccoinomane/song.git song.git
+    git clone --recursive https://github.com/coccoinomane/song.git
 
 The `--recursive` flag is important because it allows to download both SONG and CLASS in one command. To compile and make a test run of SONG, enter SONG's directory and execute the following commands from your terminal:
 
     make song
     ./song ini/intrinsic.ini pre/quick_song_run.pre
 
-The first command compiles the code using the instructions contained in the file `makefile`. This can be customised to match the configuration of your system. The main variables are the location of the C compiler (gcc by default) and of the OpenMP library (if you want parallelisation); SONG does not rely on any other external library.
+The first command compiles the code using the instructions contained in the file `makefile`. This can be customised to match the configuration of your system. The main variables are the location of the C compiler (gcc by default) and of the OpenMP library (if you want parallelisation); SONG does not rely on any other external library. To compile SONG without parallel support, comment the lines with `-fopenmp` in the Makefile.
 
 The second command executes a test run of SONG using the input files `ini/intrinsic.ini` and `pre/quick_song_run.pre`. These are text-only files with a list of "key = value" settings; SONG will read their content and set its internal parameters accordingly.
 
@@ -67,6 +67,9 @@ SONG will output to file and to screen the Fisher matrix and signal-to-noise of 
 
 Feel free to experiment with the parameter files! For example, if you delete `eBisp` from `ini/intrinsic.ini`, SONG will neglect E-polarisation and run much faster. For a guide on what each parameter does, please refer to the (*not yet*) documented file `explanatory.ini` or to the documented `ini/intrinsic.ini`. Use these files as templates for creating your custom input files!
 
+## MORE TEMPLATES
+
+
 
 ## PARALLEL COMPUTING
 
@@ -74,7 +77,14 @@ SONG is a parallel code, via the OpenMP standard. Therefore, it can use all the 
 
 Set the number of cores you want to use on the command line via the environment variable `OMP_NUM_THREADS`. For example, if you run SONG on a laptop with 8 cores on a bash shell, you might want to execute `export OMP_NUM_THREADS=8` before running SONG.
 
-Apple Os X default compiler, `clang`, does not natively support OpenMP. I suggest using the GNU `gcc` compiler, which can be downloaded from [Macports], [Homebrew] or [HPC].
+## MAC SUPPORT
+
+On Mac Os X the default `gcc` compiler is `clang`, which does not natively support OpenMP.
+To compile SONG without parallel support, comment the lines with `-fopenmp` in the Makefile.
+If instead you want parallel support, I suggest either one of the following:
+
+* Use the GNU `gcc` compiler, which can be downloaded from [Macports], [Homebrew] or [HPC].
+* Install the clang-optimized version of OpenMP (see for ex. https://stackoverflow.com/a/39843038/2972183).
 
 
 ## DIRECTORY STRUCTURE
