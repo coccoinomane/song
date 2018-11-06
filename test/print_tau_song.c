@@ -1,8 +1,10 @@
-/** @file print_k.c 
- * Guido Walter Pettinari 04/08/2011
+/** @file print_tau_song.c 
  *
  * Print to screen the tau-sampling of the sources in the perturbations2 module.
- * The only argument is the .ini file,
+ *
+ * Arguments:
+ * -# The .ini file
+ * -# The .pre file (optional)
  */
  
 #include "song.h"
@@ -28,6 +30,11 @@ int main(int argc, char **argv) {
   struct output op;           /* output files */
   ErrorMsg errmsg;            /* error messages */
 
+
+  // =========================
+  // = Compute perturbations =
+  // =========================
+
   if (input_init_from_arguments(argc,argv,&pr,&ba,&th,&pt,&pt2,&bs,&tr,&pm,&sp,&nl,&le,&fi,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
     return _FAILURE_;
@@ -44,12 +51,6 @@ int main(int argc, char **argv) {
   th.thermodynamics_verbose = 0;
   pt.perturbations_verbose = 0;
   pt2.perturbations2_verbose = 0;
-
-  // Print arguments (debug)
-  // int jj=0;
-  // printf ("argc = %d\n", argc);
-  // for (jj=0; jj<argc; ++jj)
-  //   printf("argv[%d] = %s\n", jj, argv[jj]);
 
   // Make sure to stop before computing second-order sources
   pt2.stop_at_perturbations1 = _TRUE_;
@@ -76,7 +77,6 @@ int main(int argc, char **argv) {
   for (ii=0; ii<pt2.tau_size; ++ii) {
     printf ("%g\n", pt2.tau_sampling[ii]);
   }
-
 
 
   // =================================================================================

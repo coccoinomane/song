@@ -69,7 +69,7 @@ Feel free to experiment with the parameter files! For example, if you delete `eB
 
 ## QUICKLY OUTPUT THE MATTER BISPECTRUM
 
-The arguments `ini/matter.ini` and `pre/matter.pre` will compute the dark matter bispectrum delta_cdm(k1,k2,k3,tau) with a sparse sampling: about 25 points in each k direction and about 40 points in the time direction; the computation should take less than a minute on a single processor.
+Running SONG with `ini/matter.ini` and `pre/matter.pre` will compute the dark matter bispectrum delta_cdm(k1,k2,k3,tau) with a sparse sampling consisting of about 25 points in each k direction (from k=10^-5 to k=0.1/Mpc) and about 40 points in the time direction (from tau=280Mpc to today); the computation should take less than a minute on a single processor.
 
 The following instructions explains how to extract 1D and 2D slices of the bispectrum; **please note that the instructions apply not only for the bispectrum but for any computed source**, including the CMB & baryon sources.
 
@@ -86,9 +86,11 @@ Similarly, you can obtain the evolution of the matter bispectrum as a function o
     ./print_sources2 matter.ini matter.pre k2 <index_k1> <index_k2> <index_tau>
     ./print_sources2 matter.ini matter.pre k3 <index_k1> <index_k3> <index_tau>
 
-If you need specific values of k1, k2, k3, tau or z to be included in the grid, feel free to specify them as comma-separated lists in the `k1_out`, `k2_out`, `k3_out`, `tau_out` and `z_out` parameters in the ini file, respectively. Anything that you add here will be automatically added to the computed grids.
+Some important points:
 
-To inspect the k- and tau-grids, you can execute the `print_k_song` and `print_tau_song` commands.
+* To print the k- and tau-grids, you can execute the `print_k_song` and `print_tau_song` giving the ini and pre files as parameters.
+* If you need specific values of k1, k2, k3, tau or z to be included in the grid, feel free to specify them as comma-separated lists in the `k1_out`, `k2_out`, `k3_out`, `tau_out` and `z_out` parameters in the ini file, respectively. Anything that you add here will be automatically added to the computed grids.
+* The `print_` commands need to be compiled before being executed: `make print_sources2 print_k_song print_tau_song`.
 
 ### 2D Slices
 
@@ -96,7 +98,7 @@ To extract 2D slices of the matter bispectrum, and in general of any other compu
 
 The corresponding output files will be placed in the `output` folder and have the `sources_song_` prefix.
 
-These are binary files; their values can be extracted following the mapping contained in their header, which is visible if you open the files using a text editor.
+These are binary files; their values can be read by applying the mapping contained in the file header; the header is visible if you open the files using a text editor.
 
 
 ## PARALLEL COMPUTING

@@ -28,11 +28,11 @@ CFLAGS   += -w
 # CFLAGS += -Wall -Wno-unused -Wno-logical-not-parentheses
 
 # Parallelisation flags
-# Comment both rows if you do not need parallel support.
-# If you are compiling on a Mac, you'll need to comment
-# both lines, unless you either manually install openmp support
-# for Clang (see https://stackoverflow.com/a/39843038/2972183)
-# or you install and use standard GCC (ex. using Homebrew).
+# Uncomment both rows if you not need parallel support.
+# If you are compiling on a Mac, in order to enable parallel support
+# you'll need to either manually install openmp for Clang (see
+# https://stackoverflow.com/a/39843038/2972183) or to use a standard
+# implementation of GCC (ex. GNU GCC using Homebrew).
 # CFLAGS += -fopenmp
 # LDFLAGS += -fopenmp
 
