@@ -40,7 +40,7 @@ Here is a summary of the most relevant properties of SONG:
 * Its source code is extensively documented with more than 10,000 lines of comments.
 
 ## DOCUMENTATION
-SONG's source code is extensively documented with more than 10,000 lines of comments. The physical and numerical steps are explained in the source (.c) files, while the employed variables are documented in the header (.h) files.  We are also working on a series of tutorials which I plan to release early in 2016.
+SONG's source code is extensively documented with more than 10,000 lines of comments. The physical and numerical steps are explained in the source (.c) files, while the employed variables are documented in the header (.h) files.
 
 The physics, mathematics and numerics of SONG are described extensively in my PhD thesis [[10]], especially in Chapters 5 and 6. For any doubt or enquiry, please email me at <guido.pettinari@gmail.com>.
 
