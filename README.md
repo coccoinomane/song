@@ -67,8 +67,36 @@ SONG will output to file and to screen the Fisher matrix and signal-to-noise of 
 
 Feel free to experiment with the parameter files! For example, if you delete `eBisp` from `ini/intrinsic.ini`, SONG will neglect E-polarisation and run much faster. For a guide on what each parameter does, please refer to the (*not yet*) documented file `explanatory.ini` or to the documented `ini/intrinsic.ini`. Use these files as templates for creating your custom input files!
 
-## MORE TEMPLATES
+## QUICKLY OUTPUT THE MATTER BISPECTRUM
 
+The arguments `ini/matter.ini` and `pre/matter.pre` will compute the dark matter bispectrum delta_cdm(k1,k2,k3,tau) with a sparse sampling: about 25 points in each k direction and about 40 points in the time direction; the computation should take less than a minute on a single processor.
+
+The following instructions explains how to extract 1D and 2D slices of the bispectrum; **please note that the instructions apply not only for the bispectrum but for any computed source**, including the CMB & baryon sources.
+
+### 1D Slices
+
+To obtain the time evolution of the matter bispectrum for fixed values of (k1,k2,k3) you can run
+
+    ./print_sources2 matter.ini matter.pre tau <index_k1> <index_k2> <index_k3>
+
+where the three k-indices need to be replaced by the indices of (k1,k2,k3) on the k-grid.
+
+Similarly, you can obtain the evolution of the matter bispectrum as a function of k2 and k3 (with all other parameters fixed) using the following commands, respectively:
+
+    ./print_sources2 matter.ini matter.pre k2 <index_k1> <index_k2> <index_tau>
+    ./print_sources2 matter.ini matter.pre k3 <index_k1> <index_k3> <index_tau>
+
+If you need specific values of k1, k2, k3, tau or z to be included in the grid, feel free to specify them as comma-separated lists in the `k1_out`, `k2_out`, `k3_out`, `tau_out` and `z_out` parameters in the ini file, respectively. Anything that you add here will be automatically added to the computed grids.
+
+To inspect the k- and tau-grids, you can execute the `print_k_song` and `print_tau_song` commands.
+
+### 2D Slices
+
+To extract 2D slices of the matter bispectrum, and in general of any other computed source, you need to specify some output values using the `k1_out`, `k2_out`, `k3_out`, `tau_out` and `z_out` parameters.
+
+The corresponding output files will be placed in the `output` folder and have the `sources_song_` prefix.
+
+These are binary files; their values can be extracted following the mapping contained in their header, which is visible if you open the files using a text editor.
 
 
 ## PARALLEL COMPUTING
