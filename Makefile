@@ -6,23 +6,39 @@
 # =========================================================================
 
 # Your C compiler and library tool
-CC			 = gcc
-AR       = ar rv
+# To compile on a vanilla Mac, you might need to disable openmp
+# support, see "Parallelisation flags" below.
+CC = gcc
+AR = ar rv
 
 # Optimization flags
-OPTFLAG  = -O4
+OPTFLAG = -O3
 
-# Compilation flags
-CFLAGS   += -g
-# CFLAGS   += -w
-# CFLAGS   += -Wall -Wno-unused
-CFLAGS   += -std=c99
-CFLAGS   += -fopenmp
-CFLAGS   += -DDEBUG
+# Debug flags
+CFLAGS += -g
+CFLAGS += -DDEBUG
+
+# Allow C99 syntax
+CFLAGS += -std=c99
+
+# Uncomment to inhibit all warning messages
+CFLAGS   += -w
+
+# Uncomment to enable most warning messages
+# CFLAGS += -Wall -Wno-unused -Wno-logical-not-parentheses
+
+# Parallelisation flags
+# Comment both rows if you do not need parallel support.
+# If you are compiling on a Mac, you'll need to comment
+# both lines, unless you either manually install openmp support
+# for Clang (see https://stackoverflow.com/a/39843038/2972183)
+# or you install and use standard GCC (ex. using Homebrew).
+CFLAGS += -fopenmp
+LDFLAGS += -fopenmp
 
 # Header files and libraries
 INCLUDES = -I../include -I../$(CLASS_DIR)/include
-LDFLAGS  = -fopenmp -lm
+LDFLAGS = -lm
 
 
 # =========================================================================
