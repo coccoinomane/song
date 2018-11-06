@@ -3,31 +3,39 @@
  *
  * Print to screen the tau-sampling of the sources in the perturbations2 module.
  * The only argument is the .ini file,
- *
- * IMPORTANT: this file won't compile; it has to be updated it
- * for the latest version of SONG.
  */
  
-#include "class.h"
+#include "song.h"
 
 int main(int argc, char **argv) {
 
-  struct precision pr;        /* for precision parameters */
-  struct background ba;       /* for cosmological background */
-  struct thermo th;           /* for thermodynamics */
-  struct perturbs pt;         /* for source functions (1st-order) */
-  struct perturbs2 pt2;       /* for source functions (2nd-order) */  
-  struct bessels bs;          /* for bessel functions */
-  struct transfers tr;        /* for transfer functions */
-  struct primordial pm;       /* for primordial spectra */
-  struct spectra sp;          /* for output spectra */
-  struct nonlinear nl;        /* for non-linear spectra */
-  struct lensing le;          /* for lensed spectra */
-  struct output op;           /* for output files */             
-  ErrorMsg errmsg;            /* for error messages */
+  struct precision pr;        /* precision parameters (1st-order) */
+  struct precision2 pr2;      /* precision parameters (2nd-order) */
+  struct background ba;       /* cosmological background */
+  struct thermo th;           /* thermodynamics */
+  struct perturbs pt;         /* source functions (1st-order) */
+  struct perturbs2 pt2;       /* source functions (2nd-order) */  
+  struct transfers tr;        /* transfer functions (1st-order) */
+  struct bessels bs;          /* bessel functions (1st-order) */
+  struct bessels2 bs2;        /* bessel functions (2nd-order) */
+  struct transfers2 tr2;      /* transfer functions (2nd-order) */
+  struct primordial pm;       /* primordial spectra */
+  struct spectra sp;          /* output spectra (1st-order) */
+  struct nonlinear nl;        /* non-linear spectra */
+  struct lensing le;          /* lensed spectra */
+  struct bispectra bi;        /* bispectra */
+  struct fisher fi;           /* fisher matrix */
+  struct output op;           /* output files */
+  ErrorMsg errmsg;            /* error messages */
 
-  if (input_init_from_arguments(argc, argv,&pr,&ba,&th,&pt,&pt2,&bs,&tr,&pm,&sp,&nl,&le,&op,errmsg) == _FAILURE_) {
+  if (input_init_from_arguments(argc,argv,&pr,&ba,&th,&pt,&pt2,&bs,&tr,&pm,&sp,&nl,&le,&fi,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
+    return _FAILURE_;
+  }
+
+  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&tr,&bs,&bs2,&tr2,&pm,
+    &sp,&nl,&le,&bi,&fi,&op,errmsg) == _FAILURE_) {
+    printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg);
     return _FAILURE_;
   }
 
@@ -43,6 +51,8 @@ int main(int argc, char **argv) {
   // for (jj=0; jj<argc; ++jj)
   //   printf("argv[%d] = %s\n", jj, argv[jj]);
 
+  // Make sure to stop before computing second-order sources
+  pt2.stop_at_perturbations1 = _TRUE_;
 
   // Compute perturbations
   if (background_init(&pr,&ba) == _FAILURE_) {
@@ -55,15 +65,17 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
-  if (perturb2_init(&pr,&ba,&th,&pt,&pt2) == _FAILURE_) {
+  if (perturb2_init(&pr,&pr2,&ba,&th,&pt,&pt2) == _FAILURE_) {
     printf("\n\nError in perturb2_init \n=>%s\n",pt2.error_message);
     return _FAILURE_;
   }
 
   // Print tau-sampling according to the chosen wavemode (k1, k2, or cosk1k2)
   int ii;
-  for (ii=0; ii<pt2.tau_size; ++ii)
+  printf("pt2.tau_size = %d\n", pt2.tau_size);
+  for (ii=0; ii<pt2.tau_size; ++ii) {
     printf ("%g\n", pt2.tau_sampling[ii]);
+  }
 
 
 

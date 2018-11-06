@@ -25,6 +25,8 @@ print_sources2
 print_transfers1
 print_transfers2
 print_couplings
+print_tau_song
+print_k_song
 class
 
 # Valgrind related files

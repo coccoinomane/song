@@ -13,39 +13,35 @@
  *
  * Created by Guido Walter Pettinari on 01/08/2011
  * Last modified by Guido Walter Pettinari on 30/06/2015
- *
- * IMPORTANT: this file won't compile; it has to be updated it
- * for the latest version of SONG.
- *
  */
 
-#include "class.h"
+#include "song.h"
 
 int main(int argc, char **argv) {
 
-  struct precision pr;        /* for precision parameters */
-  struct background ba;       /* for cosmological background */
-  struct thermo th;           /* for thermodynamics */
-  struct perturbs pt;         /* for source functions (1st-order) */
-  struct perturbs2 pt2;       /* for source functions (2nd-order) */  
-  struct bessels bs;          /* for bessel functions */
-  struct transfers tr;        /* for transfer functions */
-  struct primordial pm;       /* for primordial spectra */
-  struct spectra sp;          /* for output spectra */
-  struct nonlinear nl;        /* for non-linear spectra */
-  struct lensing le;          /* for lensed spectra */
-  struct output op;           /* for output files */             
-  ErrorMsg errmsg;            /* for error messages */
+  struct precision pr;        /* precision parameters (1st-order) */
+  struct precision2 pr2;      /* precision parameters (2nd-order) */
+  struct background ba;       /* cosmological background */
+  struct thermo th;           /* thermodynamics */
+  struct perturbs pt;         /* source functions (1st-order) */
+  struct perturbs2 pt2;       /* source functions (2nd-order) */  
+  struct transfers tr;        /* transfer functions (1st-order) */
+  struct bessels bs;          /* bessel functions (1st-order) */
+  struct bessels2 bs2;        /* bessel functions (2nd-order) */
+  struct transfers2 tr2;      /* transfer functions (2nd-order) */
+  struct primordial pm;       /* primordial spectra */
+  struct spectra sp;          /* output spectra (1st-order) */
+  struct nonlinear nl;        /* non-linear spectra */
+  struct lensing le;          /* lensed spectra */
+  struct bispectra bi;        /* bispectra */
+  struct fisher fi;           /* fisher matrix */
+  struct output op;           /* output files */
+  ErrorMsg errmsg;            /* error messages */
 
 
   // ===================
   // = Parse arguments =
   // ===================
-  // Print arguments (debug)
-  // int jj=0;
-  // printf ("argc = %d\n", argc);
-  // for (jj=0; jj<argc; ++jj)
-  //   printf("argv[%d] = %s\n", jj, argv[jj]);
 
   // Parse arguments
   int index_mode, index_wavemode;
@@ -60,13 +56,18 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
-
-
   // =========================
   // = Compute perturbations =
   // =========================
-  if (input_init_from_arguments(argc, argv,&pr,&ba,&th,&pt,&pt2,&bs,&tr,&pm,&sp,&nl,&le,&op,errmsg) == _FAILURE_) {
+
+  if (input_init_from_arguments(argc,argv,&pr,&ba,&th,&pt,&pt2,&bs,&tr,&pm,&sp,&nl,&le,&fi,&op,errmsg) == _FAILURE_) {
     printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg); 
+    return _FAILURE_;
+  }
+
+  if (input2_init_from_arguments(argc,argv,&pr,&pr2,&ba,&th,&pt,&pt2,&tr,&bs,&bs2,&tr2,&pm,
+    &sp,&nl,&le,&bi,&fi,&op,errmsg) == _FAILURE_) {
+    printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg);
     return _FAILURE_;
   }
 
@@ -76,49 +77,42 @@ int main(int argc, char **argv) {
   pt.perturbations_verbose = 0;
   pt2.perturbations2_verbose = 0;
 
-  if (background_init(&pr,&ba) == _FAILURE_) {
-    printf("\n\nError running background_init \n=>%s\n",ba.error_message);
-    return _FAILURE_;
-  }
+  // Print arguments (debug)
+  // int jj=0;
+  // printf ("argc = %d\n", argc);
+  // for (jj=0; jj<argc; ++jj)
+  //   printf("argv[%d] = %s\n", jj, argv[jj]);
 
-  if (thermodynamics_init(&pr,&ba,&th) == _FAILURE_) {
-    printf("\n\nError in thermodynamics_init \n=>%s\n",th.error_message);
-    return _FAILURE_;
-  }
+  // Make sure to stop before computing second-order sources
+  pt2.stop_at_perturbations1 = _TRUE_;
 
-  if (perturb2_init(&pr,&ba,&th,&pt,&pt2) == _FAILURE_) {
-    printf("\n\nError in perturb2_init \n=>%s\n",pt2.error_message);
-    return _FAILURE_;
-  }
+  // // Check that the index_mode is correct
+  // if ((index_mode >= pt2.md2_size) || (index_mode < 0)) {
+  //   printf ("ERROR: index_mode=%d is out of range. It should be between 0 and %d.\n", index_mode, pt2.md2_size-1);
+  //   return _FAILURE_;
+  // }
 
-  // Check that the index_mode is correct
-  if ((index_mode >= pt2.md2_size) || (index_mode < 0)) {
-    printf ("ERROR: index_mode=%d is out of range. It should be between 0 and %d.\n", index_mode, pt2.md2_size-1);
-    return _FAILURE_;
-  }
-
-  // Print some useful info
-  printf ("# %s modes,  ", pt2.md2_labels[index_mode]);
+  // // Print some useful info
+  // printf ("# %s modes,  ", pt2.md2_labels[index_mode]);
       
       
-  // ====================
-  // = Print k-sampling =
-  // ====================
-  // Print k-sampling according to the chosen wavemode (k or cosk1k2)
-  int ii;
-  if (index_wavemode==0) {
-    printf("k1\n");
-    for (ii=0; ii<pt2.k_size[index_mode]; ++ii)
-      printf ("%g\n", pt2.k[index_mode][ii]); }
-  else if (index_wavemode==1) {
-    printf("cosk1k2\n");
-    for (ii=0; ii<pt2.cosk1k2_size[index_mode]; ++ii)
-      printf ("%g\n", pt2.cosk1k2[index_mode][ii]); }
-  else {
-    printf ("ERROR: index_wavemode=%d is out of range. It should be between 0 and %d.\n", index_wavemode, 1);
-    return _FAILURE_;
-  }
-
+  // // ====================
+  // // = Print k-sampling =
+  // // ====================
+  // // Print k-sampling according to the chosen wavemode (k or cosk1k2)
+  // int ii;
+  // if (index_wavemode==0) {
+  //   printf("k1\n");
+  //   for (ii=0; ii<pt2.k_size[index_mode]; ++ii)
+  //     printf ("%g\n", pt2.k[index_mode][ii]); }
+  // else if (index_wavemode==1) {
+  //   printf("cosk1k2\n");
+  //   for (ii=0; ii<pt2.cosk1k2_size[index_mode]; ++ii)
+  //     printf ("%g\n", pt2.cosk1k2[index_mode][ii]); }
+  // else {
+  //   printf ("ERROR: index_wavemode=%d is out of range. It should be between 0 and %d.\n", index_wavemode, 1);
+  //   return _FAILURE_;
+  // }
 
 
   // =================================================================================
@@ -130,7 +124,7 @@ int main(int argc, char **argv) {
     return _FAILURE_;
   }
 
-  if (perturb_free(&pr,&pt) == _FAILURE_) {
+  if (perturb_free(&pt) == _FAILURE_) {
     printf("\n\nError in perturb_free \n=>%s\n",pt.error_message);
     return _FAILURE_;
   }

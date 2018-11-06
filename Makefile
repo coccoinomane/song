@@ -33,8 +33,8 @@ CFLAGS   += -w
 # both lines, unless you either manually install openmp support
 # for Clang (see https://stackoverflow.com/a/39843038/2972183)
 # or you install and use standard GCC (ex. using Homebrew).
-CFLAGS += -fopenmp
-LDFLAGS += -fopenmp
+# CFLAGS += -fopenmp
+# LDFLAGS += -fopenmp
 
 # Header files and libraries
 INCLUDES = -I../include -I../$(CLASS_DIR)/include
@@ -136,6 +136,8 @@ PRINT_BISPECTRA = print_bispectra.o
 PRINT_BACKGROUND = print_background.o
 PRINT_THERMO = print_thermo.o
 PRINT_COUPLINGS = print_couplings.o
+PRINT_TAU_SONG = print_tau_song.o
+PRINT_K_SONG = print_k_song.o
 
 song: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2)\
 	$(BESSEL2) $(TRANSFER2) $(BISPECTRA2) $(SPECTRA2) $(OUTPUT) $(SONG)
@@ -172,6 +174,12 @@ print_thermo: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PRINT_THERMO)
 print_couplings: $(SONG_TOOLS) $(SOURCE_CLASS) $(PRINT_COUPLINGS)
 	$(CC) $(LDFLAGS) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
+print_tau_song: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2) $(PRINT_TAU_SONG)
+	$(CC) $(LDFLAGS) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+
+print_k_song: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PERTURBATIONS2) $(PRINT_K_SONG)
+	$(CC) $(LDFLAGS) -o  $@ $(addprefix build/,$(notdir $^)) -lm
+
 clean: .base
 	rm -rf $(WRKDIR);
 	cd $(CLASS_DIR); $(MAKE) clean;
@@ -180,8 +188,6 @@ clean: .base
 # THE EXECUTABLES BELOW THIS POINT ARE BROKEN
 
 PRINT_K = print_k.o
-PRINT_K_SONG = print_k_song.o
-PRINT_TAU_SONG = print_tau_song.o
 PRINT_INITIAL_CONDITIONS_SONG = print_initial_conditions_song.o
 PRINT_KERNEL = print_kernel.o
 
@@ -189,9 +195,6 @@ print_k: $(SONG_TOOLS) $(SOURCE_CLASS) $(INPUT2) $(PRINT_K)
 	$(CC) $(LDFLAGS) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_k_song: $(SONG_TOOLS) $(SOURCE_CLASS) $(PRINT_K_SONG)
-	$(CC) $(LDFLAGS) -o  $@ $(addprefix build/,$(notdir $^)) -lm
-
-print_tau_song: $(SONG_TOOLS) $(SOURCE_CLASS) $(PERTURBATIONS2) $(PRINT_TAU_SONG)
 	$(CC) $(LDFLAGS) -o  $@ $(addprefix build/,$(notdir $^)) -lm
 
 print_initial_conditions_song: $(SONG_TOOLS) $(SOURCE_CLASS) $(PERTURBATIONS2) \
