@@ -33,3 +33,7 @@ class
 
 # Configurations file
 .gdb_history
+
+# System files
+.DS_Store
+desktop.ini
