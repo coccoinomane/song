@@ -67,11 +67,12 @@ SONG will output to file and to screen the Fisher matrix and signal-to-noise of 
 
 Feel free to experiment with the parameter files! For example, if you delete `eBisp` from `ini/intrinsic.ini`, SONG will neglect E-polarisation and run much faster. For a guide on what each parameter does, please refer to the (*not yet*) documented file `explanatory.ini` or to the documented `ini/intrinsic.ini`. Use these files as templates for creating your custom input files!
 
-## QUICKLY OUTPUT THE MATTER BISPECTRUM
+## EXTRACT THE MATTER BISPECTRUM (OR ANY OTHER SOURCE)
 
 Running SONG with `ini/matter.ini` and `pre/matter.pre` will compute the dark matter bispectrum delta_cdm(k1,k2,k3,tau) with a sparse sampling consisting of about 25 points in each k direction (from k=10^-5 to k=0.1/Mpc) and about 40 points in the time direction (from tau=280Mpc to today); the computation should take less than a minute on a single processor.
 
-The following instructions explains how to extract 1D and 2D slices of the bispectrum; **please note that the instructions apply not only for the bispectrum but for any computed source**, including the CMB & baryon sources.
+The following instructions explains how to extract 1D, 2D and 3D slices from the computed bispectrum.
+**Please note that what follows applies not only for the bispectrum but for any computed source**, including the CMB & baryon sources; you can specify which sources to compute using the `output` parameter in the ini file.
 
 ### 1D Slices
 
@@ -94,11 +95,43 @@ Some important points:
 
 ### 2D Slices
 
-To extract 2D slices of the matter bispectrum, and in general of any other computed source, you need to specify some output values using the `k1_out`, `k2_out`, `k3_out`, `tau_out` and `z_out` parameters.
+To extract (k3,tau) slices of the matter bispectrum, and in general of any other computed source, you need to specify some fixed values for (k1,k2) using the `k1_out` and `k2_out` parameters in the ini file.
 
-The corresponding output files will be placed in the `output` folder and have the `sources_song_` prefix.
+This will generate as many binary files as the number of pairs specified via `k1_out` and `k2_out`; for example, if you set
 
-These are binary files; their values can be read by applying the mapping contained in the file header; the header is visible if you open the files using a text editor.
+    k1_out =  0.1,  0.01
+    k2_out = 0.02, 0.002
+
+then two files will be generated:
+
+    output/sources_song_k000.dat
+    output/sources_song_k001.dat
+
+containing the sources for (k1,k2)=(0.1/Mpc,0.02/Mpc) and (k1,k2)=(0.01/Mpc,0.002/Mpc), respectively.
+
+You can read these files directly in C using `fread()`, as it is done in the `perturb2_load_sources_from_disk()` function in `perturbations2.c`.
+
+The exact mapping of any binary file produced by SONG is stored as plain text at the beginning of the file.
+To see it, you can either open the file with a text editor or (if the file is too big) you can use the `head -n50 <file>` command in the terminal.
+
+### 3D Slices
+
+To extract (k1,k2,k3) slices of the matter bispectrum, and in general of any other computed source, you need to specify some fixed values for the conformal time (tau) or for the redshift (z) using either the `tau_out` or `z_out` parameters in the ini file.
+
+This will generate as many binary files as the number of values specified in either `tau_out` or `z_out`; for example, if you set
+
+    z_out = 0, 1000
+    tau_out = 280
+
+then three files will be generated:
+
+    output/sources_song_z000.dat
+    output/sources_song_z001.dat
+    output/sources_song_tau000.dat
+
+containing the sources for z=0, z=1000 and tau=280 respectively.
+
+To extract the content of these binary files, please refer to the "2D slices" section, above. 
 
 
 ## PARALLEL COMPUTING
