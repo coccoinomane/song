@@ -48,3 +48,8 @@ l_max_los_t = 5
 l_max_los_p = 5
 l_max_los_quadratic_t = 5
 l_max_los_quadratic_p = 5
+
+ur_fluid_approximation = 3 
+ur_fluid_trigger_tau_over_tau_k = 50 
+ur_fluid_approximation_song = 0
+ur_fluid_trigger_tau_over_tau_k_song = 50

@@ -107,7 +107,7 @@ radiation_streaming_trigger_tau_over_tau_k_song = 45
 radiation_streaming_trigger_tau_c_over_tau_song = 5
 
 ## UFA First order.
-ur_fluid_approximation = 2 # set to 3 to disable
+ur_fluid_approximation = 3 # set to 3 to disable
 ur_fluid_trigger_tau_over_tau_k = 30
 
 ## UFA Second order (NOT IMPLEMENTED YET)

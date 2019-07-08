@@ -318,7 +318,7 @@ tight_coupling_trigger_tau_c_over_tau_k_song = 0.007
 ## It is also good to keep the RSA approximation because it relieves the truncation
 ## effects.  We know that the reflection effects get worse and worse with time,
 ## so using RSA from a certain point avoids this issue.
-radiation_streaming_approximation = 2 # set to 3 to disable RSA
+radiation_streaming_approximation = 3 # set to 3 to disable RSA
 radiation_streaming_trigger_tau_over_tau_k = 45
 radiation_streaming_trigger_tau_c_over_tau = 5
 
