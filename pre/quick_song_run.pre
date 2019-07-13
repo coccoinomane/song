@@ -342,7 +342,7 @@ radiation_streaming_trigger_tau_c_over_tau_song = 5
 ## ur_fluid_trigger_tau_over_tau_k to a very high number (e.g. 10000). If you turn off the
 ## ufa, and do not use a high l_max_ur (>100), be prepared to have numerical noise such as
 ## the red curve in fig. 6 of Blas et al. 2010.
-ur_fluid_approximation = 2 # set to 3 to disable
+ur_fluid_approximation = 3 # set to 3 to disable
 ur_fluid_trigger_tau_over_tau_k = 30
 
 ## Second order (NOT IMPLEMENTED YET)
