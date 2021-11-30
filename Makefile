@@ -33,12 +33,13 @@ CFLAGS   += -w
 # you'll need to either manually install openmp for Clang (see
 # https://stackoverflow.com/a/39843038/2972183) or to use a standard
 # implementation of GCC (ex. GNU GCC using Homebrew).
-# CFLAGS += -fopenmp
-# LDFLAGS += -fopenmp
 
 # Header files and libraries
 INCLUDES = -I../include -I../$(CLASS_DIR)/include
 LDFLAGS = -lm
+
+CFLAGS += -fopenmp
+LDFLAGS += -fopenmp
 
 
 # =========================================================================

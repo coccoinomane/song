@@ -254,6 +254,11 @@ int input2_init (
       ppt2->has_perturbations2 = _TRUE_;
     }
 
+    if (((strstr(string1,"delta_b_pk") != NULL) || (strstr(string1,"pk_delta_b") != NULL) || (strstr(string1,"mPk") != NULL))) {
+      ppt2->has_pk_delta_b = _TRUE_;
+      ppt2->has_perturbations2 = _TRUE_;
+    }
+
     if (((strstr(string1,"magnetic_pk") != NULL) || (strstr(string1,"pk_magnetic") != NULL) || (strstr(string1,"magPk") != NULL))) {
       ppt2->has_pk_magnetic = _TRUE_;
       ppt2->has_perturbations2 = _TRUE_;
@@ -990,20 +995,26 @@ int input2_init (
     
     free (pointer1);
 
+    ppt2->only_k1k2 = _FALSE_;
+  }
+  else{
+    ppt2->only_k1k2 = _TRUE_;
   }
 
 
   /* Check that the added k values satisfy the triangular condition */
+  if (ppt2->only_k1k2 == _FALSE_){
 
-  for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
+    for (int index_k_out=0; index_k_out < ppt2->k_out_size; ++index_k_out) {
 
-    double k1 = ppt2->k1_out[index_k_out];
-    double k2 = ppt2->k2_out[index_k_out];
-    double k3 = ppt2->k3_out[index_k_out];
+      double k1 = ppt2->k1_out[index_k_out];
+      double k2 = ppt2->k2_out[index_k_out];
+      double k3 = ppt2->k3_out[index_k_out];
 
-    class_test (((k1+k2)<k3) || (fabs(k1-k2)>k3), errmsg,
-      "the k_out triplet #%d (%g,%g,%g) does not satisfy the triangular condition",
-        index_k_out, k1, k2, k3);
+      class_test (((k1+k2)<k3) || (fabs(k1-k2)>k3), errmsg,
+                  "the k_out triplet #%d (%g,%g,%g) does not satisfy the triangular condition",
+                  index_k_out, k1, k2, k3);
+    }
   }
 
 
@@ -2076,6 +2087,7 @@ int input2_default_params (
   ppt2->has_cmb_polarization_e = _FALSE_; 
   ppt2->has_cmb_polarization_b = _FALSE_; 
   ppt2->has_pk_delta_cdm = _FALSE_;
+  ppt2->has_pk_delta_b = _FALSE_;
   ppt2->has_pk_magnetic = _FALSE_;
   ppt2->has_bk_delta_cdm = _FALSE_;
 

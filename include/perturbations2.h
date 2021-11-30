@@ -223,7 +223,11 @@ struct perturbs2
 
   short has_pk_delta_cdm;        /**< Do we need to compute the power spectrum of the density contrast of the cold dark matter component? */
 
-  short has_pk_magnetic;         /**< Do we need to compute the power spectrum of the magnetic field generated at recombination? 
+  short has_bk_delta_b;          /**< Do we need to compute the bispectrum delta_b(k1,k2,k3,tau) of the density contrast of baryons? */
+
+  short has_pk_delta_b;          /**< Do we need to compute the power spectrum of the density contrast of baryons? */
+
+  short has_pk_magnetic;         /**< Do we need to compute the power spectrum of the magnetic field generated at recombination?
                                  For reference, see Fidler, Pettinari & Pitrou 2015. If you are interested in an optimal result
                                  at early times and large scales, choose the symmetric k-sampling for the sources by setting
                                  sources2_k3_sampling=sym_sampling, and make the quadsources time sampling finer by decreasing the

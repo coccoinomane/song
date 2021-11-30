@@ -943,6 +943,14 @@ int perturb2_indices_of_perturbs(
     
   }
 
+  if ((ppt2->has_bk_delta_b == _TRUE_) || (ppt2->has_pk_delta_b == _TRUE_)) {
+
+    ppt2->has_source_delta_b = _TRUE_;
+    ppt2->has_lss = _TRUE_;
+    ppt2->index_tp2_delta_b = index_type++;
+
+  }
+
   if (ppt2->has_pk_magnetic) {
 
     ppt2->has_source_M = _TRUE_;
@@ -982,6 +990,9 @@ int perturb2_indices_of_perturbs(
     }
     if (ppt2->has_source_delta_cdm == _TRUE_) {
       printf ("delta_cdm ");
+    }
+    if (ppt2->has_source_delta_b == _TRUE_) {
+      printf ("delta_b ");
     }
     if (ppt2->has_source_M) {
       printf ("magnetic_field ");
@@ -1975,14 +1986,17 @@ int perturb2_get_k_lists (
 
       /* The differential system dies when k1=k2 and k3 is very small. These configurations
       are irrelevant, so we set a minimum ratio between k1=k2 and k3. TODO: remove? */
-      k3_min = MAX (k3_min, (k1+k2)/_MIN_K3_RATIO_);
+      //k3_min = MAX (k3_min, (k1+k2)/_MIN_K3_RATIO_);
 
       /* We take k3 in the same range as k1 and k2. Comment it out if you prefer a range that
       goes all the way to the limits of the triangular condition. If you do so, remember to
       double pbs2->xx_max in input2.c */
       k3_min = MAX (k3_min, ppt2->k[0]);
       k3_max = MIN (k3_max, ppt2->k[ppt2->k_size-1]);
-      
+
+      /* Uncomment to make k3<=k1. */
+      //k3_max = MIN (k3_max, ppt2->k[index_k1]);
+
       /* Check that the chosen k3_min and k3_max make sense */
       class_test ((k3_min >= k3_max) && (ppt2->k_out_mode == _FALSE_),
         ppt2->error_message,
@@ -2196,7 +2210,7 @@ int perturb2_get_k_lists (
         start over. If an output time or redshift is requested, we do keep the k3 grid,
         lest the output files have only one entry. */
 
-        if ((ppt2->k_out_mode == _TRUE_) && ((ppt2->tau_out_size+ppt2->z_out_size) <= 0))
+        if ((ppt2->k_out_mode == _TRUE_) && (ppt2->only_k1k2 == _FALSE_))
           k3_size = 0;
 
         /* Add the output values to the k3 sampling. These values are contained in
@@ -12784,6 +12798,21 @@ int perturb2_sources (
     
     }
     
+    // -----------------------------------------------------------------------------
+    // -                                 Delta baryons                                -
+    // -----------------------------------------------------------------------------
+
+    if (ppt2->has_source_delta_b == _TRUE_) {
+
+      sources(ppt2->index_tp2_delta_b) = 0.5 * ppw2->delta_b;
+
+      sprintf(ppt2->tp2_labels[ppt2->index_tp2_delta_b], "delta_b");
+
+      #pragma omp atomic
+      ++ppt2->count_memorised_sources;
+
+    }
+
 
     // -----------------------------------------------------------------------------
     // -                              Magnetic field                               -
